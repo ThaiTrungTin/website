@@ -151,20 +151,8 @@ const AMBIENT_PETALS = [
 export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
   const { config } = useSystemConfig();
 
-  // Khởi tạo slides có sẵn ngay từ frame đầu tiên (ưu tiên localStorage cache nếu có, fallback HERO_SLIDES_DEFAULT)
-  // → Bật lên là CÓ ẢNH LIỀN, không bị trắng màn hình chờ mạng!
-  const [slides, setSlides] = useState<HeroBannerItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('pet_hero_banners_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {}
-    }
-    return HERO_SLIDES_DEFAULT;
-  });
+  // Khởi tạo slides ban đầu từ HERO_SLIDES_DEFAULT để SSR và Client khớp 100% (tránh lỗi Hydration Mismatch)
+  const [slides, setSlides] = useState<HeroBannerItem[]>(HERO_SLIDES_DEFAULT);
 
   const [slideIndex, setSlideIndex] = useState<{ current: number; prev: number }>({
     current: 0,
@@ -247,6 +235,18 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
 
   // Tải ban đầu và tự động cập nhật khi quay lại tab web hoặc có ảnh mới từ Admin
   useEffect(() => {
+    // Đọc cache từ localStorage ngay sau khi hydrate để cập nhật tức thì nếu có ảnh mới
+    try {
+      const cached = localStorage.getItem('pet_hero_banners_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSlides(parsed);
+          slidesRef.current = parsed;
+        }
+      }
+    } catch {}
+
     loadBannerFromSupabase();
 
     const handleFocus = () => {
@@ -362,7 +362,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
       ref={heroRef}
       id="hero"
       aria-label="Khu vực mở đầu Pet M&M 5 sao"
-      className="relative min-h-[48vh] sm:min-h-screen flex items-center justify-center pt-4 pb-2 sm:pt-28 sm:pb-12 text-slate-900 overflow-hidden select-none cursor-grab active:cursor-grabbing bg-white"
+      className="relative min-h-[50vh] sm:min-h-screen flex items-center justify-center pt-4 pb-14 sm:pt-28 sm:pb-16 text-slate-900 overflow-hidden select-none cursor-grab active:cursor-grabbing bg-white"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onMouseDown={handleMouseDown}
@@ -575,17 +575,8 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
             );
           })()}
 
-          {/* Poetic description (Cấu hình linh hoạt qua Admin & Entrance animation) */}
-          <p
-            suppressHydrationWarning
-            className="text-[11px] sm:text-base text-slate-800 leading-snug mb-2 sm:mb-8 max-w-xl font-normal drop-shadow-[0_1px_8px_rgba(255,255,255,0.95)] line-clamp-3 sm:line-clamp-none animate-slogan-desc"
-          >
-            {config.slogan_dau_trang_noi_dung ||
-              'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.'}
-          </p>
-
-          {/* 2 CTA Buttons */}
-          <div className="flex flex-row items-center gap-2 sm:gap-4 max-w-sm sm:max-w-none animate-slogan-cta">
+          {/* 2 CTA Buttons (Đưa lên ngay dưới Tiêu đề chính) */}
+          <div className="flex flex-row items-center gap-2 sm:gap-4 max-w-sm sm:max-w-none animate-slogan-cta mb-2 sm:mb-4">
             <button
               onClick={() => onOpenBookingModal()}
               className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-[11px] sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer whitespace-nowrap"
@@ -605,7 +596,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
         </div>
       </div>
 
-      {/* 5. NÚT CHUYỂN SLIDE TRÁI / PHẢI NẰM Ở RÌA (DƯỚI TRÊN MOBILE ĐỂ TRÁNH ĐÈ CHỮ, GIỮA TRÊN DESKTOP) */}
+      {/* 5. NÚT CHUYỂN SLIDE TRÁI / PHẢI NẰM Ở RÌA (TRÊN MOBILE NẰM TRÊN THANH SLIDE, TRÊN DESKTOP NẰM GIỮA) */}
       {/* Nút Trái (Ảnh trước) */}
       <button
         onClick={(e) => {
@@ -613,7 +604,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           prevSlide();
         }}
         aria-label="Xem ảnh trước"
-        className="absolute left-3 sm:left-6 bottom-4 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-30 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-[#2D5A27] border border-slate-200/90 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer group"
+        className="absolute left-3 sm:left-6 bottom-14 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-30 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-[#2D5A27] border border-slate-200/90 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer group"
       >
         <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-0.5" />
       </button>
@@ -625,13 +616,48 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           nextSlide();
         }}
         aria-label="Xem ảnh kế tiếp"
-        className="absolute right-3 sm:right-6 bottom-4 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-30 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-[#2D5A27] border border-slate-200/90 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer group"
+        className="absolute right-3 sm:right-6 bottom-14 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-30 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-[#2D5A27] border border-slate-200/90 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer group"
       >
         <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform group-hover:translate-x-0.5" />
       </button>
 
-      {/* 6. CHUYỂN VÙNG: chỉ xuất hiện ở sát vạch ngăn dưới, không chiếm nhiều chiều cao */}
-      <div className="absolute bottom-0 inset-x-0 h-10 sm:h-16 bg-gradient-to-b from-transparent to-white pointer-events-none z-20" />
+      {/* 6. CHUYỂN VÙNG & THANH SLIDE CHẠY THÔNG ĐIỆP CHÂN BANNER (Yêu cầu: Chuyển câu slogan mô tả xuống vạch ngăn & chạy như slide) */}
+      <div
+        className="absolute bottom-0 inset-x-0 z-20 pointer-events-auto"
+        onTouchStart={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Lớp gradient mờ hoà trộn ảnh Hero êm dịu vào vạch trắng */}
+        <div className="h-6 sm:h-10 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
+
+        {/* Thanh slide chạy thông điệp y khoa (Marquee Ticker Banner) */}
+        <div className="relative w-full bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-2px_12px_rgba(0,0,0,0.03)] py-2 sm:py-2.5 overflow-hidden group">
+          {/* Lớp bóng mờ 2 mép (Vignette Fade) tạo hiệu ứng chữ lướt vào/ra êm dịu */}
+          <div className="pointer-events-none absolute left-0 inset-y-0 w-8 sm:w-20 bg-gradient-to-r from-white via-white/90 to-transparent z-10" />
+          <div className="pointer-events-none absolute right-0 inset-y-0 w-8 sm:w-20 bg-gradient-to-l from-white via-white/90 to-transparent z-10" />
+
+          {/* Dải chữ chạy liên tục vô tận (Infinite Marquee Ticker) */}
+          <div className="flex w-max animate-marquee-slogan select-none hover:[animation-play-state:paused] active:[animation-play-state:paused]">
+            {[1, 2].map((loopIdx) => (
+              <div key={loopIdx} className="flex shrink-0 items-center gap-8 sm:gap-14 pr-8 sm:pr-14">
+                <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
+                  {config.slogan_dau_trang_noi_dung ||
+                    'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.'}
+                </span>
+
+                <span className="text-emerald-700/50 text-xs sm:text-sm font-light select-none">✦</span>
+
+                <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
+                  {config.slogan_dau_trang_noi_dung ||
+                    'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.'}
+                </span>
+
+                <span className="text-emerald-700/50 text-xs sm:text-sm font-light select-none">✦</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

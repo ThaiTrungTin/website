@@ -2,12 +2,17 @@
 
 import React from 'react';
 import { PhoneCall, CalendarCheck } from 'lucide-react';
+import { useSystemConfig } from '@/context/SystemConfigContext';
 
 interface MobileStickyBarProps {
   onOpenBookingModal: () => void;
 }
 
 export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarProps) {
+  const { config } = useSystemConfig();
+  const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
+  const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
+
   return (
     <aside
       aria-label="Thanh hành động nhanh di động"
@@ -16,11 +21,11 @@ export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarP
       <div className="grid grid-cols-2 gap-2.5 max-w-md mx-auto">
         {/* Button 1: Gọi Cấp Cứu / Hotline */}
         <a
-          href="tel:0903599339"
+          href={`tel:${hotlineRaw}`}
           className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 active:scale-95 transition-all text-center leading-none"
         >
           <PhoneCall className="w-4 h-4 animate-pulse shrink-0" />
-          <span>Hotline: 0903 599 339</span>
+          <span>Hotline: {hotlineDisplay}</span>
         </a>
 
         {/* Button 2: Đặt Lịch Nhanh */}

@@ -9,7 +9,7 @@ import BranchFaqSidebar from '@/components/BranchFaqSidebar';
 import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
-import { getAssetUrl } from '@/lib/assets';
+import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
 
 // ISR Cache: Revalidate every 60 seconds (Instant 0ms responses for cached pages)
 export const revalidate = 60;
@@ -182,7 +182,7 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
 
               {branch.link_ggmap_app && (
                 <a
-                  href={branch.link_ggmap_app}
+                  href={getDirectionsUrl(branch.link_ggmap_app, branch.dia_chi, branch.ten_chi_nhanh)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition shadow-xs shrink-0 cursor-pointer whitespace-nowrap"

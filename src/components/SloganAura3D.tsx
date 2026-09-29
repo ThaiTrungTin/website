@@ -162,7 +162,7 @@ export default function SloganAura3D({ className = '' }: SloganAura3DProps) {
 
     // 7. Animation Loop
     let animId: number;
-    let clock = new THREE.Clock();
+    const startTime = performance.now();
 
     // Intro entrance progress (0 to 1)
     let entranceProgress = 0;
@@ -187,7 +187,7 @@ export default function SloganAura3D({ className = '' }: SloganAura3DProps) {
       }
       animId = requestAnimationFrame(animate);
 
-      const elapsedTime = clock.getElapsedTime();
+      const elapsedTime = (performance.now() - startTime) * 0.001;
 
       // Smooth entrance expansion
       if (entranceProgress < 1) {

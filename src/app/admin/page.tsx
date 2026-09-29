@@ -2414,33 +2414,24 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Hotline gọi nhanh 24/7 (Bấm gọi trực tiếp `tel:`): *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={configForm.hotline || ''}
-                          onChange={(e) => setConfigForm((prev) => ({ ...prev, hotline: e.target.value }))}
-                          placeholder="0903599339"
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Hotline hiển thị (Định dạng số đẹp trên web):
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.hotline_hien_thi || ''}
-                          onChange={(e) => setConfigForm((prev) => ({ ...prev, hotline_hien_thi: e.target.value }))}
-                          placeholder="0903 599 339"
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Hotline 24/7 (Gọi trực tiếp & Hiển thị trên web): *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={configForm.hotline_hien_thi || configForm.hotline || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setConfigForm((prev) => ({
+                            ...prev,
+                            hotline: val,
+                            hotline_hien_thi: val,
+                          }));
+                        }}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
@@ -2452,7 +2443,6 @@ export default function AdminDashboardPage() {
                           type="text"
                           value={configForm.link_zalo || ''}
                           onChange={(e) => setConfigForm((prev) => ({ ...prev, link_zalo: e.target.value }))}
-                          placeholder="https://zalo.me/0903599339"
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -2465,7 +2455,6 @@ export default function AdminDashboardPage() {
                           type="text"
                           value={configForm.link_facebook || ''}
                           onChange={(e) => setConfigForm((prev) => ({ ...prev, link_facebook: e.target.value }))}
-                          placeholder="https://facebook.com/petmm.official"
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -2480,7 +2469,6 @@ export default function AdminDashboardPage() {
                           type="text"
                           value={configForm.link_messenger || ''}
                           onChange={(e) => setConfigForm((prev) => ({ ...prev, link_messenger: e.target.value }))}
-                          placeholder="https://m.me/petmm.official"
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -2493,7 +2481,6 @@ export default function AdminDashboardPage() {
                           type="text"
                           value={configForm.link_tiktok || ''}
                           onChange={(e) => setConfigForm((prev) => ({ ...prev, link_tiktok: e.target.value }))}
-                          placeholder="https://tiktok.com/@petmm"
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -2508,7 +2495,6 @@ export default function AdminDashboardPage() {
                           type="email"
                           value={configForm.email || ''}
                           onChange={(e) => setConfigForm((prev) => ({ ...prev, email: e.target.value }))}
-                          placeholder="contact@petmm.vn"
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -2974,7 +2960,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Nội dung mô tả chi tiết đầu trang:
+                        Nội dung chạy slide chân banner (Sứ mệnh y khoa):
                       </label>
                       <textarea
                         rows={3}

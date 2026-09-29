@@ -6,7 +6,7 @@ import Link from 'next/link';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { branchesData, BranchItem } from '@/data/branchesData';
 import { supabase, ChiNhanhRecord } from '@/lib/supabase';
-import { getAssetUrl } from '@/lib/assets';
+import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
 import {
   MapPin,
   PhoneCall,
@@ -312,7 +312,7 @@ export default function LocationsSection() {
 
                 {selectedBranch.googleMapsAppUrl && (
                   <a
-                    href={selectedBranch.googleMapsAppUrl}
+                    href={getDirectionsUrl(selectedBranch.googleMapsAppUrl, selectedBranch.address, selectedBranch.name)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-xs transition shrink-0 cursor-pointer"

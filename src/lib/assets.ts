@@ -28,3 +28,40 @@ export function getAssetUrl(path: string | undefined | null): string {
   }
   return `/website${cleanPath}`;
 }
+
+/**
+ * Chuyển đổi mọi định dạng link Google Maps (Place link, địa chỉ) thành
+ * link Universal Directions chỉ đường thực tế (tương tự bấm icon mũi tên xanh chỉ đường).
+ */
+export function getDirectionsUrl(
+  url?: string | null,
+  address?: string | null,
+  name?: string | null
+): string {
+  if (url) {
+    const trimmed = url.trim();
+    // Nếu đã là link chỉ đường (chứa /dir/ hoặc daddr=)
+    if (trimmed.includes('/maps/dir/') || trimmed.includes('daddr=')) {
+      return trimmed;
+    }
+
+    // Nếu là link xem địa điểm /maps/place/... -> chuyển thành link chỉ đường
+    if (trimmed.includes('/maps/place/')) {
+      const parts = trimmed.split('/maps/place/')[1];
+      if (parts) {
+        const placePart = parts.split('/')[0];
+        const decodedPlace = decodeURIComponent(placePart).replace(/\+/g, ' ');
+        const dest = address ? `${decodedPlace}, ${address}` : decodedPlace;
+        return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
+      }
+    }
+  }
+
+  // Fallback từ Tên chi nhánh + Địa chỉ
+  const dest = [name, address].filter(Boolean).join(', ');
+  if (dest) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
+  }
+
+  return url || '';
+}

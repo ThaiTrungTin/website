@@ -17,7 +17,7 @@ export default function FloatingContactWidgets() {
 
   return (
     <div className="fixed right-3 sm:right-6 bottom-20 sm:bottom-8 z-50 flex flex-col items-end gap-2.5 sm:gap-3 select-none">
-      {/* 1. Hotline 24/7 (Ẩn nếu không có) */}
+      {/* 1. Hotline 24/7 (Hiển thị icon nút gọi nổi trên cả điện thoại và máy tính) */}
       {hotlineRaw && (
         <a
           href={`tel:${hotlineRaw}`}

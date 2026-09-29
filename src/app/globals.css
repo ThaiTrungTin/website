@@ -219,6 +219,28 @@ body {
   animation: sloganFadeUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
 }
 
+/* ─── Ticker Marquee chạy thông điệp y khoa chân Hero Banner ─── */
+@keyframes marqueeSlogan {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-slogan {
+  display: flex;
+  width: max-content;
+  animation: marqueeSlogan 38s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-slogan:hover,
+.animate-marquee-slogan:active {
+  animation-play-state: paused;
+}
+
 
 /* Scroll Reveal Entrance Animations for Sections & Cards */
 @keyframes sectionFadeUp {

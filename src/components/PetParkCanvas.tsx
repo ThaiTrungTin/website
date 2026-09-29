@@ -486,12 +486,12 @@ export default function PetParkCanvas() {
     window.addEventListener('mousemove', onMouseMove);
 
     // --- ANIMATION LOOP ---
-    let clock = new THREE.Clock();
+    const startTime = performance.now();
     let animId: number;
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      const t = (performance.now() - startTime) * 0.001;
 
       // Smooth camera/scene parallax tracking
       targetX += (mouseX - targetX) * 0.05;

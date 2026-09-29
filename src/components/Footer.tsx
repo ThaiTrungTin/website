@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import PetLogo from './PetLogo';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { getDirectionsUrl } from '@/lib/assets';
 
 interface FooterProps {
   branch?: {
@@ -290,7 +291,7 @@ export default function Footer({ branch }: FooterProps) {
             {/* Nút chỉ đường */}
             {mapAppUrl && (
               <a
-                href={mapAppUrl}
+                href={getDirectionsUrl(mapAppUrl, branchAddress, branchName)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-white/15 hover:bg-amber-400 hover:text-slate-900 text-white text-xs font-semibold transition border border-white/20 shadow-xs cursor-pointer"
