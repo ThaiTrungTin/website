@@ -168,6 +168,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
   // Slogan re-trigger: mỗi lần Hero vào viewport thì reset key → animation chạy lại
   const [sloganKey, setSloganKey] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
+  const tickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = heroRef.current;
@@ -627,7 +628,16 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
       {/* 6. CHUYỂN VÙNG & THANH SLIDE CHẠY THÔNG ĐIỆP CHÂN BANNER (Yêu cầu: Chuyển câu slogan mô tả xuống vạch ngăn & chạy như slide) */}
       <div
         className="absolute bottom-0 inset-x-0 z-20 pointer-events-auto"
-        onTouchStart={(e) => e.stopPropagation()}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+          if (tickerRef.current) tickerRef.current.style.animationPlayState = 'paused';
+        }}
+        onTouchEnd={() => {
+          if (tickerRef.current) tickerRef.current.style.animationPlayState = 'running';
+        }}
+        onTouchCancel={() => {
+          if (tickerRef.current) tickerRef.current.style.animationPlayState = 'running';
+        }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Lớp gradient mờ hoà trộn ảnh Hero êm dịu vào vạch trắng */}
@@ -640,7 +650,25 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           <div className="pointer-events-none absolute right-0 inset-y-0 w-8 sm:w-20 bg-gradient-to-l from-white via-white/90 to-transparent z-10" />
 
           {/* Dải chữ chạy liên tục vô tận (Infinite Marquee Ticker) với Icon Chó & Mèo 8K siêu sắc nét */}
-          <div className="flex w-max animate-marquee-slogan select-none hover:[animation-play-state:paused] active:[animation-play-state:paused]">
+          <div
+            ref={tickerRef}
+            className="flex w-max animate-marquee-slogan select-none"
+            onMouseEnter={() => {
+              if (tickerRef.current) tickerRef.current.style.animationPlayState = 'paused';
+            }}
+            onMouseLeave={() => {
+              if (tickerRef.current) tickerRef.current.style.animationPlayState = 'running';
+            }}
+            onTouchStart={() => {
+              if (tickerRef.current) tickerRef.current.style.animationPlayState = 'paused';
+            }}
+            onTouchEnd={() => {
+              if (tickerRef.current) tickerRef.current.style.animationPlayState = 'running';
+            }}
+            onTouchCancel={() => {
+              if (tickerRef.current) tickerRef.current.style.animationPlayState = 'running';
+            }}
+          >
             {(() => {
               const rawSlogan =
                 config.slogan_dau_trang_noi_dung ||

@@ -236,9 +236,11 @@ body {
   will-change: transform;
 }
 
-.animate-marquee-slogan:hover,
-.animate-marquee-slogan:active {
-  animation-play-state: paused;
+/* Chỉ máy tính dùng chuột mới dừng qua CSS hover (tránh dính trạng thái hover trên màn cảm ứng điện thoại) */
+@media (hover: hover) and (pointer: fine) {
+  .animate-marquee-slogan:hover {
+    animation-play-state: paused;
+  }
 }
 
 
