@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Send, User, Phone, CheckCircle2 } from 'lucide-react';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 
-export default function ConsultationSidebar({ branchName }: { branchName: string }) {
+export default function ConsultationSidebar({ branchName = 'Hệ Thống Pet M&M' }: { branchName?: string }) {
   const { config } = useSystemConfig();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');

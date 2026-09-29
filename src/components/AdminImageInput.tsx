@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 interface AdminImageInputProps {
   value: string;
   onChange: (url: string) => void;
-  folder: 'banners' | 'branches' | 'services' | 'general';
+  folder: 'banners' | 'branches' | 'services' | 'general' | 'articles';
   label?: string;
   uploadButtonLabel?: string;
   pasteButtonLabel?: string;

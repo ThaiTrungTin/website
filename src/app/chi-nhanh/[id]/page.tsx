@@ -2,14 +2,15 @@ import { cache } from 'react';
 import { supabase, ChiNhanhRecord } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, Phone, Clock, Navigation } from 'lucide-react';
+import { MapPin, Phone, Clock, Navigation, BookOpen, ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
 import ConsultationSidebar from '@/components/ConsultationSidebar';
-import BranchFaqSidebar from '@/components/BranchFaqSidebar';
+import BranchFaqSidebar, { SupportPanel } from '@/components/BranchFaqSidebar';
 import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
+import ArticleContent from '@/components/ArticleContent';
 
 // ISR Cache: Revalidate every 60 seconds (Instant 0ms responses for cached pages)
 export const revalidate = 60;
@@ -32,6 +33,21 @@ const getBranch = cache(async (id: string): Promise<ChiNhanhRecord | null> => {
     return data;
   } catch {
     return null;
+  }
+});
+
+// Lấy bài viết cẩm nang mới nhất để hiển thị sidebar
+const getRecentArticles = cache(async (): Promise<{ id: string; tieu_de: string; hinh_anh: string | null; chuyen_muc: string | null; ngay_dang: string | null }[]> => {
+  try {
+    const { data } = await supabase
+      .from('bai_viet')
+      .select('id, tieu_de, hinh_anh, chuyen_muc, ngay_dang')
+      .eq('kich_hoat', true)
+      .order('thu_tu', { ascending: true })
+      .limit(3);
+    return data || [];
+  } catch {
+    return [];
   }
 });
 
@@ -66,6 +82,7 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
 
   if (!branch) notFound();
 
+  const recentArticles = await getRecentArticles();
   const heroImg = branch.anh_dai_dien;
   const heroPos = branch.can_chinh_anh || '50% 50%';
 
@@ -196,7 +213,8 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
             {/* Rich-text article */}
             {branch.bai_viet_chi_tiet && branch.bai_viet_chi_tiet.trim() !== '' ? (
               <article className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 sm:p-8 md:p-10">
-                <div
+                <ArticleContent
+                  html={branch.bai_viet_chi_tiet}
                   className="prose prose-slate prose-base sm:prose-lg max-w-none
                     prose-headings:text-[#2D5A27] prose-headings:font-bold prose-headings:tracking-tight
                     prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:border-b prose-h2:border-emerald-100/60 prose-h2:pb-2.5
@@ -207,7 +225,6 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
                     prose-strong:text-slate-900 prose-strong:font-bold
                     prose-img:rounded-2xl prose-img:shadow-md prose-img:my-6
                     prose-blockquote:border-l-4 prose-blockquote:border-l-[#2D5A27] prose-blockquote:bg-emerald-50/50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:text-slate-700 prose-blockquote:not-italic"
-                  dangerouslySetInnerHTML={{ __html: branch.bai_viet_chi_tiet }}
                 />
               </article>
             ) : (
@@ -219,7 +236,7 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
 
           </div>
 
-          {/* RIGHT SIDEBAR: form + FAQ + support (chiếm 4/12 cột ôm khít tự nhiên, không bị khoảng trống hở) */}
+          {/* RIGHT SIDEBAR: form + FAQ + cẩm nang + support (chiếm 4/12 cột) */}
           <div className="lg:col-span-4">
             <div className="sticky top-20 space-y-4 w-full">
               {/* Consultation form */}
@@ -227,6 +244,56 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
 
               {/* FAQ + Support panel */}
               <BranchFaqSidebar />
+
+              {/* Bài Viết Cẩm Nang */}
+              {recentArticles.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                  <h3 className="text-sm font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-[#2D5A27]" />
+                    <span>Bài Viết Cẩm Nang</span>
+                  </h3>
+                  <div className="space-y-3.5">
+                    {recentArticles.map((item) => (
+                      <a
+                        key={item.id}
+                        href={`/kien-thuc/${item.id}`}
+                        className="group flex gap-3 items-start p-2 rounded-xl hover:bg-slate-50 transition"
+                      >
+                        <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-slate-100 border border-slate-200">
+                          <img
+                            src={getAssetUrl(item.hinh_anh || '/about_consultation.jpg')}
+                            alt={item.tieu_de}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {item.chuyen_muc && (
+                            <span className="text-[10px] font-bold text-[#2D5A27] uppercase tracking-wider block mb-0.5">
+                              {item.chuyen_muc}
+                            </span>
+                          )}
+                          <h4 className="text-xs font-semibold text-slate-800 group-hover:text-[#2D5A27] transition line-clamp-2 leading-snug">
+                            {item.tieu_de}
+                          </h4>
+                          {item.ngay_dang && (
+                            <span className="text-[11px] text-slate-400 mt-1 block">{item.ngay_dang}</span>
+                          )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                  <a
+                    href="/#knowledge"
+                    className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-[#2D5A27] hover:underline pt-3 border-t border-slate-100"
+                  >
+                    <span>Xem tất cả bài viết</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+
+              {/* Hỗ trợ — cuối sidebar */}
+              <SupportPanel />
             </div>
           </div>
 

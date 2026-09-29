@@ -7,10 +7,10 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Dog,
-  Cat,
   PawPrint,
 } from 'lucide-react';
+
+import { Cute3DDogIcon, Cute3DCatIcon, Cute3DPawIcon } from './Cute3DPetIcons';
 
 import InteractiveWaterShader from './InteractiveWaterShader';
 import SloganAura3D from './SloganAura3D';
@@ -679,40 +679,32 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
 
               return [1, 2].map((loopIdx) => (
                 <div key={loopIdx} className="flex shrink-0 items-center gap-6 sm:gap-10 pr-6 sm:pr-10">
-                  {/* Cụm 1: Icon Chó Vàng 8K + Câu 1 */}
+                  {/* Cụm 1: Icon Chó Hoạt Hình 3D Dễ Thương + Câu 1 */}
                   <div className="flex items-center gap-2 sm:gap-2.5">
-                    <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 text-white shadow-xs shadow-amber-500/30 ring-1.5 ring-amber-400/60 shrink-0 transform hover:scale-110 transition-transform">
-                      <Dog className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
-                    </span>
+                    <Cute3DDogIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
                     <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
                       {part1}
                     </span>
                   </div>
 
-                  {/* Cụm 2: Icon Mèo Cưng 8K + Câu 2 (nếu có) */}
+                  {/* Cụm 2: Icon Mèo Hoạt Hình 3D Dễ Thương + Câu 2 (nếu có) */}
                   {part2 ? (
                     <div className="flex items-center gap-2 sm:gap-2.5">
-                      <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-300 text-white shadow-xs shadow-emerald-600/30 ring-1.5 ring-emerald-400/60 shrink-0 transform hover:scale-110 transition-transform">
-                        <Cat className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
-                      </span>
+                      <Cute3DCatIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
                       <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
                         {part2}
                       </span>
                     </div>
                   ) : null}
 
-                  {/* Dấu chân thú cưng 8K */}
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100/90 text-[#2D5A27] shrink-0 shadow-2xs">
-                    <PawPrint className="w-3 h-3 fill-emerald-600/40 text-[#2D5A27]" />
-                  </span>
+                  {/* Dấu chân thú cưng 3D siêu dễ thương */}
+                  <Cute3DPawIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 hover:scale-125 transition-transform duration-200" />
 
-                  <span className="text-emerald-700/40 text-xs sm:text-sm font-light select-none">✦</span>
+                  <span className="text-amber-500/70 text-xs sm:text-sm font-light select-none">✦</span>
 
                   {/* Lặp lại để chuỗi chạy dày dặn không bị trống trên màn hình lớn */}
                   <div className="flex items-center gap-2 sm:gap-2.5">
-                    <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 text-white shadow-xs shadow-amber-500/30 ring-1.5 ring-amber-400/60 shrink-0 transform hover:scale-110 transition-transform">
-                      <Dog className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
-                    </span>
+                    <Cute3DDogIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
                     <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
                       {part1}
                     </span>
@@ -720,20 +712,16 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
 
                   {part2 ? (
                     <div className="flex items-center gap-2 sm:gap-2.5">
-                      <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-300 text-white shadow-xs shadow-emerald-600/30 ring-1.5 ring-emerald-400/60 shrink-0 transform hover:scale-110 transition-transform">
-                        <Cat className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
-                      </span>
+                      <Cute3DCatIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
                       <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
                         {part2}
                       </span>
                     </div>
                   ) : null}
 
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100/90 text-[#2D5A27] shrink-0 shadow-2xs">
-                    <PawPrint className="w-3 h-3 fill-emerald-600/40 text-[#2D5A27]" />
-                  </span>
+                  <Cute3DPawIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 hover:scale-125 transition-transform duration-200" />
 
-                  <span className="text-emerald-700/40 text-xs sm:text-sm font-light select-none">✦</span>
+                  <span className="text-amber-500/70 text-xs sm:text-sm font-light select-none">✦</span>
                 </div>
               ));
             })()}

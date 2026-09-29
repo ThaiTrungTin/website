@@ -47,14 +47,15 @@ import {
   CheckCheck,
   Star,
   BarChart3,
+  BookOpen,
 } from 'lucide-react';
-import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord } from '@/lib/supabase';
+import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
-type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'config';
+type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config';
 export type ConfigSubTab = 'contact' | 'about' | 'slides' | 'stats' | 'slogans';
 
 export default function AdminDashboardPage() {
@@ -1180,6 +1181,150 @@ export default function AdminDashboardPage() {
   };
 
   // -------------------------------------------------------------
+  // TAB 8: QUẢN LÝ BÀI VIẾT & CẨM NANG KIẾN THỨC (ARTICLES)
+  // -------------------------------------------------------------
+  const [articles, setArticles] = useState<BaiVietRecord[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(true);
+  const [editingArticle, setEditingArticle] = useState<Partial<BaiVietRecord> | null>(null);
+  const [isCreatingNewArticle, setIsCreatingNewArticle] = useState(false);
+  const [isArticleSaving, setIsArticleSaving] = useState(false);
+  const [articleCategoryFilter, setArticleCategoryFilter] = useState<string>('all');
+
+  const loadArticles = useCallback(async () => {
+    setArticlesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('bai_viet')
+        .select('*')
+        .order('thu_tu', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setArticles((data as BaiVietRecord[]) || []);
+    } catch (err: any) {
+      console.error('Lỗi tải danh sách bài viết:', err);
+      showNotification('error', `Lỗi tải bài viết: ${err.message}`);
+    } finally {
+      setArticlesLoading(false);
+    }
+  }, []);
+
+  const handleAddNewArticle = () => {
+    const nextOrder = articles.length > 0 ? Math.max(...articles.map((a) => a.thu_tu || 0)) + 1 : 1;
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const dateFormatted = `${day}/${month}/${year}`;
+
+    setEditingArticle({
+      tieu_de: '',
+      slug: '',
+      chuyen_muc: articleCategoryFilter !== 'all' ? articleCategoryFilter : 'Y Khoa Dự Phòng',
+      mo_ta_ngan: '',
+      noi_dung: '',
+      hinh_anh: '',
+      thoi_gian_doc: '4 phút đọc',
+      tac_gia: 'Hội Đồng Y Khoa Pet M&M',
+      ngay_dang: dateFormatted,
+      thu_tu: nextOrder,
+      kich_hoat: true,
+      luot_xem: 0,
+    });
+    setIsCreatingNewArticle(true);
+  };
+
+  const handleEditArticle = (article: BaiVietRecord) => {
+    setEditingArticle({ ...article });
+    setIsCreatingNewArticle(false);
+  };
+
+  const handleToggleArticleActive = async (article: BaiVietRecord) => {
+    const newStatus = !article.kich_hoat;
+    try {
+      const { error } = await supabase
+        .from('bai_viet')
+        .update({ kich_hoat: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', article.id);
+
+      if (error) throw error;
+      setArticles((prev) => prev.map((a) => (a.id === article.id ? { ...a, kich_hoat: newStatus } : a)));
+      showNotification('success', `Đã ${newStatus ? 'hiển thị' : 'tạm ẩn'} bài viết`);
+    } catch (err: any) {
+      showNotification('error', `Lỗi cập nhật: ${err.message}`);
+    }
+  };
+
+  const handleDeleteArticle = async (article: BaiVietRecord) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa bài viết "${article.tieu_de}" không?`)) return;
+
+    try {
+      const { error } = await supabase.from('bai_viet').delete().eq('id', article.id);
+      if (error) throw error;
+      showNotification('success', 'Đã xóa bài viết thành công!');
+      setArticles((prev) => prev.filter((a) => a.id !== article.id));
+      if (editingArticle?.id === article.id) setEditingArticle(null);
+    } catch (err: any) {
+      showNotification('error', `Lỗi xóa: ${err.message}`);
+    }
+  };
+
+  const handleSaveArticle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingArticle) return;
+    if (!editingArticle.tieu_de?.trim()) {
+      showNotification('error', 'Vui lòng nhập tiêu đề bài viết');
+      return;
+    }
+
+    setIsArticleSaving(true);
+    try {
+      const payload = {
+        tieu_de: editingArticle.tieu_de.trim(),
+        slug:
+          editingArticle.slug?.trim() ||
+          editingArticle.tieu_de
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, ''),
+        chuyen_muc: editingArticle.chuyen_muc?.trim() || 'Y Khoa Dự Phòng',
+        mo_ta_ngan: editingArticle.mo_ta_ngan?.trim() || '',
+        noi_dung: editingArticle.noi_dung?.trim() || '',
+        hinh_anh: editingArticle.hinh_anh?.trim() || '',
+        thoi_gian_doc: editingArticle.thoi_gian_doc?.trim() || '4 phút đọc',
+        tac_gia: editingArticle.tac_gia?.trim() || 'Hội Đồng Y Khoa Pet M&M',
+        ngay_dang: editingArticle.ngay_dang?.trim() || '',
+        thu_tu: Number(editingArticle.thu_tu) || 0,
+        kich_hoat: editingArticle.kich_hoat !== false,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (isCreatingNewArticle || !editingArticle.id) {
+        const { error } = await supabase.from('bai_viet').insert([payload]);
+        if (error) throw error;
+        showNotification('success', 'Đã thêm bài viết mới thành công!');
+      } else {
+        const { error } = await supabase.from('bai_viet').update(payload).eq('id', editingArticle.id);
+        if (error) throw error;
+        showNotification('success', 'Đã cập nhật bài viết thành công!');
+      }
+
+      setEditingArticle(null);
+      setIsCreatingNewArticle(false);
+      await loadArticles();
+    } catch (err: any) {
+      console.error('Save article error:', err);
+      showNotification('error', `Lỗi lưu bài viết: ${err.message}`);
+    } finally {
+      setIsArticleSaving(false);
+    }
+  };
+
+  // -------------------------------------------------------------
   // SLIDES ẢNH GIỚI THIỆU & ĐỘI NGŨ (ABOUT SLIDES)
   // -------------------------------------------------------------
   const [aboutSlides, setAboutSlides] = useState<HeroBannerItem[]>([]);
@@ -1305,6 +1450,7 @@ export default function AdminDashboardPage() {
     loadReviews();
     loadTeamMembers();
     loadAboutSlides();
+    loadArticles();
 
     // Lắng nghe Realtime lịch hẹn mới khi khách đặt trên website
     const channel = supabase
@@ -1406,6 +1552,19 @@ export default function AdminDashboardPage() {
     );
   });
 
+  const filteredArticles = articles.filter((a) => {
+    if (articleCategoryFilter !== 'all' && a.chuyen_muc !== articleCategoryFilter) return false;
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (a.tieu_de && a.tieu_de.toLowerCase().includes(term)) ||
+      (a.mo_ta_ngan && a.mo_ta_ngan.toLowerCase().includes(term)) ||
+      (a.chuyen_muc && a.chuyen_muc.toLowerCase().includes(term)) ||
+      (a.tac_gia && a.tac_gia.toLowerCase().includes(term)) ||
+      (a.noi_dung && a.noi_dung.toLowerCase().includes(term))
+    );
+  });
+
   const pendingAppointmentsCount = appointments.filter((a) => a.trang_thai === 'cho_xac_nhan').length;
 
   // Current tab metadata for Breadcrumbs
@@ -1417,6 +1576,7 @@ export default function AdminDashboardPage() {
     faqs: { title: 'Quản Lý Câu Hỏi Thường Gặp', category: 'Hỗ Trợ & Giải Đáp', icon: HelpCircle },
     reviews: { title: 'Quản Lý Đánh Giá Khách Hàng', category: 'Phản Hồi & Đánh Giá', icon: Star },
     team: { title: 'Quản Lý Đội Ngũ Y Tế', category: 'Chuyên Môn & Nhân Sự', icon: UserCheck },
+    articles: { title: 'Quản Lý Cẩm Nang & Bài Viết', category: 'Tin Tức & Kiến Thức', icon: BookOpen },
     config: { title: 'Cài Đặt Hệ Thống', category: 'Cài Đặt', icon: Settings },
   };
 
@@ -1696,6 +1856,36 @@ export default function AdminDashboardPage() {
                   }`}
                 >
                   {teamMembers.length}
+                </span>
+              </button>
+
+              {/* Menu 8: Articles / Cẩm Nang */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('articles');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
+                  activeTab === 'articles'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <BookOpen
+                    className={`w-4 h-4 transition ${
+                      activeTab === 'articles' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span>Cẩm Nang &amp; Bài Viết</span>
+                </div>
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    activeTab === 'articles' ? 'bg-black/30 text-amber-300' : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {articles.length}
                 </span>
               </button>
             </nav>
@@ -4012,6 +4202,255 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           )}
+
+          {/* ========================================================= */}
+          {/* TAB 8: QUẢN LÝ BÀI VIẾT & CẨM NANG KIẾN THỨC             */}
+          {/* ========================================================= */}
+          {activeTab === 'articles' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-[#2D5A27]" />
+                    <span>Cẩm Nang Kiến Thức &amp; Kinh Nghiệm Nuôi Thú Cưng</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Quản lý toàn bộ bài viết chia sẻ y khoa, hướng dẫn sơ cứu khẩn cấp, dinh dưỡng và kinh nghiệm chăm sóc thú cưng.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/#kien-thuc"
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Xem Ngoài Trang Chủ</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={handleAddNewArticle}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Thêm Bài Viết Mới</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter Tabs & Search Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { id: 'all', label: 'Tất Cả', count: articles.length },
+                    { id: 'Y Khoa Dự Phòng', label: 'Y Khoa Dự Phòng', count: articles.filter((a) => a.chuyen_muc === 'Y Khoa Dự Phòng').length },
+                    { id: 'Sơ Cứu Thú Cưng', label: 'Sơ Cứu Thú Cưng', count: articles.filter((a) => a.chuyen_muc === 'Sơ Cứu Thú Cưng').length },
+                    { id: 'Chăm Sóc & Spa', label: 'Chăm Sóc & Spa', count: articles.filter((a) => a.chuyen_muc === 'Chăm Sóc & Spa').length },
+                    { id: 'Dinh Dưỡng Thú Cưng', label: 'Dinh Dưỡng', count: articles.filter((a) => a.chuyen_muc === 'Dinh Dưỡng Thú Cưng').length },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setArticleCategoryFilter(tab.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                        articleCategoryFilter === tab.id
+                          ? 'bg-[#2D5A27] text-white shadow-2xs'
+                          : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          articleCategoryFilter === tab.id
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative min-w-[200px] sm:min-w-[260px]">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    aria-label="Tìm kiếm bài viết"
+                    className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:border-[#2D5A27] bg-white shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                {articlesLoading ? (
+                  <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
+                    <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
+                    <span className="text-xs font-medium">Đang tải danh sách bài viết từ cơ sở dữ liệu...</span>
+                  </div>
+                ) : filteredArticles.length === 0 ? (
+                  <div className="p-16 text-center text-slate-500">
+                    <BookOpen className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+                    <p className="text-sm font-semibold text-slate-700">Chưa có bài viết nào</p>
+                    <p className="text-xs text-slate-400 mt-1">Bấm nút &ldquo;Thêm Bài Viết Mới&rdquo; ở góc phải để tạo bài viết đầu tiên.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
+                          <th className="py-3 px-4 w-12 text-center">STT</th>
+                          <th className="py-3 px-4 min-w-[280px]">Bài Viết &amp; Ảnh Bìa</th>
+                          <th className="py-3 px-4 min-w-[150px]">Chuyên Mục</th>
+                          <th className="py-3 px-4 min-w-[160px]">Tác Giả / Ngày Đăng</th>
+                          <th className="py-3 px-4 min-w-[120px]">Thời Gian Đọc</th>
+                          <th className="py-3 px-4 w-16 text-center">Thứ Tự</th>
+                          <th className="py-3 px-4 min-w-[100px] text-center">Trạng Thái</th>
+                          <th className="py-3 px-4 min-w-[110px] text-right">Thao Tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredArticles.map((art, index) => {
+                          const badgeColor =
+                            art.chuyen_muc === 'Y Khoa Dự Phòng'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : art.chuyen_muc === 'Sơ Cứu Thú Cưng'
+                              ? 'bg-rose-50 text-rose-800 border-rose-200'
+                              : art.chuyen_muc === 'Chăm Sóc & Spa'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : 'bg-blue-50 text-blue-800 border-blue-200';
+
+                          return (
+                            <tr key={art.id} className="hover:bg-slate-50/60 transition group">
+                              <td className="py-3.5 px-4 text-center font-bold text-slate-400">
+                                {index + 1}
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-16 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 relative flex items-center justify-center">
+                                    {art.hinh_anh ? (
+                                      <img
+                                        src={art.hinh_anh}
+                                        alt={art.tieu_de}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <ImageIcon className="w-5 h-5 text-slate-300" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <Link
+                                      href={`/kien-thuc/${art.id}`}
+                                      target="_blank"
+                                      className="font-bold text-slate-900 text-xs sm:text-sm hover:text-[#2D5A27] transition line-clamp-1 flex items-center gap-1"
+                                      title={art.tieu_de}
+                                    >
+                                      <span>{art.tieu_de}</span>
+                                      <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+                                    </Link>
+                                    <p className="text-slate-500 text-[11px] line-clamp-1 mt-0.5">
+                                      {art.mo_ta_ngan || 'Chưa có mô tả tóm tắt'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${badgeColor}`}>
+                                  {art.chuyen_muc || 'Y Khoa Dự Phòng'}
+                                </span>
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <div className="text-slate-800 font-medium text-xs">
+                                  {art.tac_gia || 'Hội Đồng Y Khoa'}
+                                </div>
+                                <div className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
+                                  <CalendarDays className="w-3 h-3" />
+                                  <span>{art.ngay_dang || 'Mới cập nhật'}</span>
+                                </div>
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <span className="inline-flex items-center gap-1 text-slate-600 font-medium text-xs">
+                                  <Clock className="w-3 h-3 text-slate-400" />
+                                  <span>{art.thoi_gian_doc || '4 phút đọc'}</span>
+                                </span>
+                              </td>
+
+                              <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-500">
+                                {art.thu_tu ?? 0}
+                              </td>
+
+                              <td className="py-3.5 px-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleArticleActive(art)}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                                    art.kich_hoat !== false
+                                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
+                                  }`}
+                                >
+                                  {art.kich_hoat !== false ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>Hiển thị</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <X className="w-3 h-3 text-slate-400" />
+                                      <span>Đang ẩn</span>
+                                    </>
+                                  )}
+                                </button>
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Link
+                                    href={`/kien-thuc/${art.id}`}
+                                    target="_blank"
+                                    className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-600 transition"
+                                    title="Xem bài viết ngoài website"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditArticle(art)}
+                                    className="p-1.5 rounded-lg border border-slate-200 hover:border-[#2D5A27] hover:bg-emerald-50 text-slate-600 hover:text-[#2D5A27] transition cursor-pointer"
+                                    title="Chỉnh sửa bài viết"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteArticle(art)}
+                                    className="p-1.5 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition cursor-pointer"
+                                    title="Xóa bài viết"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -5769,6 +6208,222 @@ export default function AdminDashboardPage() {
                 >
                   <Check className="w-4 h-4" />
                   <span>{isAboutSlideSaving ? 'Đang lưu...' : 'Lưu Ảnh Slide'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 11. MODAL THÊM / CHỈNH SỬA BÀI VIẾT CẨM NANG             */}
+      {/* ========================================================= */}
+      {editingArticle && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#2D5A27]/10 flex items-center justify-center text-[#2D5A27]">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide uppercase">
+                  {isCreatingNewArticle ? 'Thêm Bài Viết Cẩm Nang Mới' : 'Chỉnh Sửa Bài Viết Cẩm Nang'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingArticle(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveArticle} className="p-6 overflow-y-auto space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tiêu đề bài viết: *
+                </label>
+                <input
+                  type="text"
+                  value={editingArticle.tieu_de || ''}
+                  onChange={(e) => setEditingArticle((prev) => ({ ...prev, tieu_de: e.target.value }))}
+                  required
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Chuyên mục bài viết:
+                  </label>
+                  <select
+                    value={editingArticle.chuyen_muc || 'Y Khoa Dự Phòng'}
+                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, chuyen_muc: e.target.value }))}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
+                  >
+                    <option value="Y Khoa Dự Phòng">Y Khoa Dự Phòng</option>
+                    <option value="Sơ Cứu Thú Cưng">Sơ Cứu Thú Cưng</option>
+                    <option value="Chăm Sóc & Spa">Chăm Sóc &amp; Spa</option>
+                    <option value="Dinh Dưỡng Thú Cưng">Dinh Dưỡng Thú Cưng</option>
+                    <option value="Hành Vi & Huấn Luyện">Hành Vi &amp; Huấn Luyện</option>
+                    <option value="Cẩm Nang Tổng Hợp">Cẩm Nang Tổng Hợp</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tác giả / Bác sĩ phụ trách:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingArticle.tac_gia || ''}
+                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, tac_gia: e.target.value }))}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Ảnh bìa bài viết:
+                </label>
+                <AdminImageInput
+                  value={editingArticle.hinh_anh || ''}
+                  onChange={(url) => setEditingArticle((prev) => ({ ...prev, hinh_anh: url }))}
+                  folder="articles"
+                  label=""
+                  uploadButtonLabel="Tải Ảnh Bìa"
+                  pasteButtonLabel="Dán Link Ảnh"
+                  onNotification={showNotification}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Thời gian đọc dự kiến:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingArticle.thoi_gian_doc || ''}
+                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, thoi_gian_doc: e.target.value }))}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Ngày đăng bài:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingArticle.ngay_dang || ''}
+                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, ngay_dang: e.target.value }))}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tóm tắt ngắn (hiển thị ngoài danh sách thẻ card):
+                </label>
+                <textarea
+                  rows={2}
+                  value={editingArticle.mo_ta_ngan || ''}
+                  onChange={(e) => setEditingArticle((prev) => ({ ...prev, mo_ta_ngan: e.target.value }))}
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
+                    <span>Nội dung chi tiết bài viết:</span>
+                  </label>
+                  {editingArticle.id && (
+                    <Link
+                      href={`/kien-thuc/${editingArticle.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Xem trang ngoài web</span>
+                    </Link>
+                  )}
+                </div>
+                <RichTextEditor
+                  value={editingArticle.noi_dung || ''}
+                  onChange={(html) => setEditingArticle((prev) => ({ ...prev, noi_dung: html }))}
+                  minHeight={340}
+                  onUploadImage={async (file) => {
+                    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                    const filePath = `articles/content_${Date.now()}_${Math.random()
+                      .toString(36)
+                      .substring(2, 6)}.${fileExt}`;
+                    const { error } = await supabase.storage
+                      .from('hinh_anh')
+                      .upload(filePath, file, { cacheControl: '3600', upsert: true });
+                    if (error) throw error;
+                    const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+                    return urlData.publicUrl;
+                  }}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Thứ tự hiển thị:
+                  </label>
+                  <input
+                    type="number"
+                    value={editingArticle.thu_tu ?? 0}
+                    onChange={(e) =>
+                      setEditingArticle((prev) => ({
+                        ...prev,
+                        thu_tu: parseInt(e.target.value, 10) || 0,
+                      }))
+                    }
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingArticle.kich_hoat !== false}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                      className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị ngoài website</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingArticle(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isArticleSaving}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isArticleSaving ? 'Đang lưu...' : 'Lưu Bài Viết'}</span>
                 </button>
               </div>
             </form>

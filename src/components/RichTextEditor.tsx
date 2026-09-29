@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, Mark, mergeAttributes } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
+import { TextStyle, Color, FontFamily, FontSize } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
@@ -53,6 +52,17 @@ interface ToolbarProps {
   stickyTopClass?: string;
 }
 
+const FONT_SIZES = ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '36px', '48px', '64px'];
+const FONT_FAMILIES = [
+  { label: 'Phông chữ', value: '' },
+  { label: 'Inter', value: 'Inter, sans-serif' },
+  { label: 'Roboto', value: 'Roboto, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Times New Roman', value: "'Times New Roman', serif" },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+  { label: 'Courier New', value: "'Courier New', monospace" },
+];
+
 function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-top-6' }: ToolbarProps) {
   const addImage = useCallback(async (file?: File) => {
     if (!editor) return;
@@ -81,6 +91,9 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
 
   if (!editor) return null;
 
+  const currentFontSize = editor.getAttributes('textStyle').fontSize ?? '';
+  const currentFontFamily = editor.getAttributes('textStyle').fontFamily ?? '';
+
   return (
     <div
       className={`sticky ${stickyTopClass} z-30 flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-slate-200 bg-white shadow-xs rounded-t-xl`}
@@ -107,6 +120,52 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
         <option value="1">Tiêu đề 1</option>
         <option value="2">Tiêu đề 2</option>
         <option value="3">Tiêu đề 3</option>
+      </select>
+
+      <Divider />
+
+      {/* Phông chữ */}
+      <select
+        value={currentFontFamily}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (!v) {
+            (editor.chain().focus() as any).unsetFontFamily().run();
+          } else {
+            (editor.chain().focus() as any).setFontFamily(v).run();
+          }
+        }}
+        title="Phông chữ"
+        style={{ fontFamily: currentFontFamily || undefined }}
+        className="h-7 text-xs rounded border border-slate-200 bg-white px-1.5 text-slate-700 focus:outline-none focus:border-[#2D5A27] cursor-pointer max-w-[110px]"
+      >
+        {FONT_FAMILIES.map((f) => (
+          <option key={f.value} value={f.value} style={{ fontFamily: f.value || undefined }}>
+            {f.label}
+          </option>
+        ))}
+      </select>
+
+      {/* Cỡ chữ */}
+      <select
+        value={currentFontSize}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (!v) {
+            (editor.chain().focus() as any).unsetFontSize().run();
+          } else {
+            (editor.chain().focus() as any).setFontSize(v).run();
+          }
+        }}
+        title="Cỡ chữ"
+        className="h-7 text-xs rounded border border-slate-200 bg-white px-1.5 text-slate-700 focus:outline-none focus:border-[#2D5A27] cursor-pointer w-[68px]"
+      >
+        <option value="">Cỡ chữ</option>
+        {FONT_SIZES.map((s) => (
+          <option key={s} value={s}>
+            {s.replace('px', '')}
+          </option>
+        ))}
       </select>
 
       <Divider />
@@ -176,7 +235,7 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
       <Divider />
 
       {/* Link & Image */}
-      <ToolbarBtn onClick={setLink} active={editor.isActive('link')} title="Chen lien ket">
+      <ToolbarBtn onClick={setLink} active={editor.isActive('link')} title="Chèn liên kết">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       </ToolbarBtn>
 
@@ -269,6 +328,8 @@ export default function RichTextEditor({
       }),
       Underline,
       TextStyle,
+      FontFamily,
+      FontSize,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),

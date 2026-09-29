@@ -176,3 +176,22 @@ export interface DoiNguRecord {
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }
+
+export interface BaiVietRecord {
+  id: string;
+  tieu_de: string;
+  slug?: string | null;
+  chuyen_muc?: string | null;
+  mo_ta_ngan?: string | null;
+  noi_dung?: string | null;
+  hinh_anh?: string | null;
+  thoi_gian_doc?: string | null;
+  tac_gia?: string | null;
+  ngay_dang?: string | null;
+  thu_tu?: number | null;
+  kich_hoat?: boolean | null;
+  luot_xem?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
