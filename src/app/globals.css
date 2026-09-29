@@ -1,0 +1,619 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Tiptap editor content styles */
+.ProseMirror {
+  outline: none;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #94a3b8;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+.ProseMirror blockquote {
+  border-left: 4px solid #2D5A27;
+  padding-left: 1rem;
+  color: #475569;
+  font-style: italic;
+}
+
+
+@theme {
+  --color-pet-green: #2D5A27;
+  --color-pet-green-dark: #1E3F1B;
+  --color-pet-green-deep: #132A11;
+  --color-pet-green-light: #3D7835;
+  --color-pet-green-subtle: #EBF3EA;
+  --color-pet-green-tint: #F3F8F2;
+  
+  --color-pet-amber: #FFB800;
+  --color-pet-amber-hover: #E5A600;
+  --color-pet-amber-light: #FFF8E7;
+  --color-pet-amber-subtle: #FFFDF5;
+  
+  --color-pet-cream: #F8F9FA;
+  --color-pet-card: #FFFFFF;
+  --color-pet-text-dark: #0F172A;
+  --color-pet-text-muted: #475569;
+  --color-pet-border: #E2E8F0;
+  --font-serif: var(--font-serif);
+}
+
+.font-editorial {
+  font-family: var(--font-serif), "Playfair Display", Georgia, serif;
+}
+
+/* Responsive Banner Object Position (Chống lệch ảnh trên điện thoại) */
+@media (max-width: 639px) {
+  .hero-slide-img {
+    object-position: var(--pos-mobile, 50% 15%) !important;
+  }
+}
+@media (min-width: 640px) {
+  .hero-slide-img {
+    object-position: var(--pos-desktop, center) !important;
+  }
+}
+
+/* Hotspot Ripple Pin */
+@keyframes hotspotPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 16px rgba(255, 255, 255, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.hotspot-glow {
+  animation: hotspotPulse 2.4s infinite cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────────
+   SLOGAN: LETTER DROP ENTRANCE (từ trên rớt xuống từng chữ)
+───────────────────────────────────────────── */
+@keyframes letterDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-52px) rotateX(35deg) scale(0.85);
+    filter: blur(6px);
+  }
+  55% {
+    transform: translateY(6px) rotateX(-6deg) scale(1.02);
+    filter: blur(0px);
+  }
+  75% {
+    transform: translateY(-3px) rotateX(3deg) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg) scale(1);
+    filter: blur(0px);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   SLOGAN LOOP: floating nhẹ nhàng liên tục sau khi xuất hiện
+───────────────────────────────────────────── */
+@keyframes sloganFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Shimmer chạy qua chữ italic xanh lá liên tục */
+@keyframes sloganGreenShimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -150% 0;
+  }
+}
+
+/* Wave lần lượt từng chữ nhô lên nhẹ */
+@keyframes sloganWordWave {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.02);
+  }
+}
+
+/* ─── Các lớp entrance: từng word rớt xuống ─── */
+.slogan-word-drop {
+  display: inline-block;
+  opacity: 0;
+  animation: letterDrop 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ─── Sau entrance: dòng 1 float lên xuống liên tục ─── */
+.slogan-line1-loop {
+  display: inline-block;
+  animation: sloganFloat 4.2s ease-in-out infinite;
+}
+
+/* ─── Sau entrance: dòng 2 italic shimmer màu xanh liên tục ─── */
+.slogan-line2-shimmer {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    #2D5A27 0%,
+    #3D7835 18%,
+    #6DC55E 35%,
+    #A8E99C 48%,
+    #6DC55E 62%,
+    #3D7835 78%,
+    #2D5A27 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: sloganGreenShimmer 3.5s linear infinite;
+}
+
+/* ─── desc + cta vẫn fade up từ dưới ─── */
+@keyframes sloganFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.animate-slogan-desc {
+  animation: sloganFadeUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 1.4s both;
+}
+
+.animate-slogan-cta {
+  animation: sloganFadeUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 1.7s both;
+}
+
+/* legacy — giữ để không bị lỗi nếu còn dùng chỗ khác */
+.animate-slogan-title-1 {
+  animation: sloganFadeUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.animate-slogan-title-2 {
+  animation: sloganFadeUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+
+/* Scroll Reveal Entrance Animations for Sections & Cards */
+@keyframes sectionFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes cardCascade {
+  0% {
+    opacity: 0;
+    transform: translateY(48px) scale(0.96);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes titleEntrancePop {
+  0% {
+    opacity: 0;
+    transform: translateY(42px) scale(0.96);
+    filter: blur(10px);
+  }
+  60% {
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.animate-service-title-1 {
+  animation: titleEntrancePop 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+.animate-service-title-2 {
+  animation: titleEntrancePop 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+
+.animate-service-title-3 {
+  animation: titleEntrancePop 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+
+.animate-section-header {
+  animation: sectionFadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-section-tabs {
+  animation: titleEntrancePop 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+}
+
+.animate-service-card {
+  animation: cardCascade 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-service-body {
+  animation: titleEntrancePop 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
+}
+
+/* Luxury Dot Grid Background */
+.bg-luxury-grid {
+  background-size: 32px 32px;
+  background-image: 
+    radial-gradient(circle, rgba(45, 90, 39, 0.08) 1px, transparent 1px);
+}
+
+/* Glassmorphism Classes */
+.glass-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-card-dark {
+  background: rgba(19, 42, 17, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Luxury Gold Text Gradient */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #FFB800 0%, #D97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-emerald-gradient {
+  background: linear-gradient(135deg, #2D5A27 0%, #162E13 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+::-webkit-scrollbar-thumb {
+  background: #2D5A27;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1E3F1B;
+}
+
+/* Instant Zero-Delay Firefly Animations (100% GPU Composite - No Layout Reflow) */
+@keyframes fireflyAscend {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.9);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  45% {
+    transform: translate3d(14px, -50vh, 0) scale(1.1);
+    opacity: 0.95;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(-10px, -115vh, 0) scale(0.85);
+    opacity: 0;
+  }
+}
+
+
+/* Living Photo Ken-Burns Dynamic Motion */
+@keyframes livingMotion1 {
+  0% {
+    transform: scale(1.0) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-1%, -1.5%);
+  }
+  100% {
+    transform: scale(1.04) translate(1%, 0.5%);
+  }
+}
+
+@keyframes livingMotion2 {
+  0% {
+    transform: scale(1.06) translate(1%, 1%);
+  }
+  50% {
+    transform: scale(1.01) translate(-1.5%, 0%);
+  }
+  100% {
+    transform: scale(1.08) translate(0%, -1%);
+  }
+}
+
+.living-photo-1 {
+  animation: livingMotion1 14s ease-in-out infinite alternate;
+}
+
+.living-photo-2 {
+  animation: livingMotion2 16s ease-in-out infinite alternate;
+}
+
+/* Floating Herbal Petals & Mist for living atmosphere */
+@keyframes floatDrift {
+  0% {
+    transform: translateY(0) rotate(0deg) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-80vh) rotate(360deg) translateX(40px);
+    opacity: 0;
+  }
+}
+
+@keyframes warmSteamRise {
+  0% {
+    transform: translateY(0) scaleX(1);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.25;
+  }
+  80% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(-120px) scaleX(1.3);
+    opacity: 0;
+  }
+}
+
+.animate-floating-petal {
+  animation: floatDrift 16s linear infinite;
+}
+
+.animate-warm-steam {
+  animation: warmSteamRise 8s ease-out infinite;
+}
+
+/* 8K Ultra-Luxury Logo Shimmer & Glow Animations */
+@keyframes goldLiquidShimmer {
+  0% {
+    background-position: -250% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+@keyframes whiteDiamondShimmer {
+  0% {
+    background-position: -250% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+@keyframes logoAuraPulse {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.9;
+  }
+}
+
+@keyframes logoCrestRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes goldLiquidShimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gold-shimmer {
+  background: linear-gradient(
+    115deg,
+    #B45309 0%,
+    #D97706 20%,
+    #FFB800 40%,
+    #F59E0B 60%,
+    #FFC107 80%,
+    #B45309 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldLiquidShimmer 4s ease-in-out infinite;
+}
+
+@keyframes emeraldLiquidShimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-emerald-shimmer {
+  background: linear-gradient(
+    115deg,
+    #2D5A27 0%,
+    #1E4D1A 25%,
+    #3D7835 45%,
+    #2D5A27 65%,
+    #143612 85%,
+    #2D5A27 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: emeraldLiquidShimmer 4s ease-in-out infinite;
+}
+
+.animate-diamond-shimmer {
+  background: linear-gradient(
+    115deg,
+    #FFFFFF 0%,
+    #F1F5F9 25%,
+    #FFFFFF 40%,
+    #FFFDE7 52%,
+    #CBD5E1 75%,
+    #FFFFFF 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: whiteDiamondShimmer 4.5s ease-in-out infinite;
+}
+
+.animate-logo-aura {
+  animation: logoAuraPulse 3.5s ease-in-out infinite;
+}
+
+.animate-crest-ring {
+  animation: logoCrestRotate 28s linear infinite;
+}
+
+/* 8K Navbar Animated Beam & Gleam */
+@keyframes navbarBeamSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  45% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-navbar-beam {
+  animation: navbarBeamSweep 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes buttonGleamSweep {
+  0% {
+    transform: translateX(-180%) skewX(-25deg);
+  }
+  35%, 100% {
+    transform: translateX(280%) skewX(-25deg);
+  }
+}
+
+.animate-button-gleam {
+  animation: buttonGleamSweep 3.2s ease-in-out infinite;
+}
+
+@keyframes phoneRingPulse {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  10%, 30% {
+    transform: rotate(-14deg) scale(1.1);
+  }
+  20%, 40% {
+    transform: rotate(14deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.animate-phone-ring {
+  animation: phoneRingPulse 2.4s ease-in-out infinite;
+}
+
+/* No Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
