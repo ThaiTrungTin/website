@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
+const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+
 const nextConfig: NextConfig = {
+  output: 'export',
+  basePath: isGithubActions ? '/website' : '',
+  trailingSlash: true,
   images: {
-    qualities: [75, 90, 95],
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
