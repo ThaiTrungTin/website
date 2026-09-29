@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { supabase, DichVuRecord } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useScrollReveal } from '@/components/ScrollRevealTitle';
+import { getAssetUrl } from '@/lib/assets';
 import {
   Stethoscope,
   Scissors,
@@ -333,7 +334,7 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
       {/* 1. ARCHITECTURAL BACKGROUND WITH SOFT LIGHT & GENTLE TOP BLEND */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
-          src="/services_bg.jpg"
+          src={getAssetUrl('/services_bg.jpg')}
           alt="Kiến trúc resort bệnh viện thú y Pet M&M"
           fill
           quality={90}
@@ -458,7 +459,7 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
                       {/* Ảnh thumbnail nhỏ (Chung 1 ảnh với chi tiết, nhỏ gọn ở list) */}
                       <div className="relative w-15 h-15 sm:w-16 sm:h-16 rounded-xl overflow-hidden shrink-0 bg-slate-100 border border-slate-200 shadow-2xs">
                         <img
-                          src={service.hinh_anh}
+                          src={getAssetUrl(service.hinh_anh)}
                           alt={service.ten_dich_vu}
                           className={`w-full h-full object-cover transition-transform duration-300 ${
                             isSelected ? 'scale-110' : 'group-hover:scale-105'
@@ -623,7 +624,7 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
               {/* 1. ẢNH LỚN NỔI BẬT: NÚT ĐẶT LỊCH VÀ SĐT NẰM TRỰC TIẾP TRÊN NỀN ẢNH */}
               <div className="relative w-full h-64 md:h-72 rounded-2xl overflow-hidden bg-slate-900 shadow-md mb-4 group">
                 <img
-                  src={selectedService.hinh_anh}
+                  src={getAssetUrl(selectedService.hinh_anh)}
                   alt={selectedService.ten_dich_vu}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   style={{ objectPosition: selectedService.can_chinh_anh || '50% 50%' }}

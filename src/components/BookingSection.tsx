@@ -6,6 +6,7 @@ import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { supabase, ChiNhanhRecord, DichVuRecord } from '@/lib/supabase';
 import { branchesData } from '@/data/branchesData';
 import { servicesData } from '@/data/servicesData';
+import { getAssetUrl } from '@/lib/assets';
 import {
   CalendarCheck,
   User,
@@ -208,7 +209,7 @@ export default function BookingSection({
       {!isModal && (
         <div className="absolute inset-0 z-0">
           <Image
-            src="/branches_bg.jpg"
+            src={getAssetUrl('/branches_bg.jpg')}
             alt="Không gian tiếp đón Pet M&M"
             fill
             quality={90}

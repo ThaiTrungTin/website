@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { branchesData, BranchItem } from '@/data/branchesData';
 import { supabase, ChiNhanhRecord } from '@/lib/supabase';
+import { getAssetUrl } from '@/lib/assets';
 import {
   MapPin,
   PhoneCall,
@@ -119,7 +120,7 @@ export default function LocationsSection() {
       {/* 1. ARCHITECTURAL BACKGROUND WITH BRIGHT OVERLAY */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/branches_bg.jpg"
+          src={getAssetUrl('/branches_bg.jpg')}
           alt="Kiến trúc resort bệnh viện thú y Pet M&M sang trọng lúc hoàng hôn"
           fill
           quality={90}

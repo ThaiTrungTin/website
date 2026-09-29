@@ -6,6 +6,7 @@ import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { supabase, CauHoiThuongGapRecord } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { faqData } from '@/data/faqData';
+import { getAssetUrl } from '@/lib/assets';
 import {
   ChevronDown,
   ChevronUp,
@@ -94,7 +95,7 @@ export default function FaqSection() {
       {/* 1. CINEMATIC LUXURY BACKGROUND */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/services_bg.jpg"
+          src={getAssetUrl('/services_bg.jpg')}
           alt="Không gian an yên tại Pet M&M"
           fill
           quality={90}

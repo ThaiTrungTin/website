@@ -18,6 +18,7 @@ import {
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { supabase } from '@/lib/supabase';
+import { getAssetUrl } from '@/lib/assets';
 
 // Interface slide giới thiệu
 interface AboutSlideItem {
@@ -170,7 +171,7 @@ export default function AboutSection() {
       {/* Nền mờ trang trí */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/services_bg.jpg"
+          src={getAssetUrl('/services_bg.jpg')}
           alt="Bác sĩ Pet M&M chăm sóc ân cần cho thú cưng"
           fill
           quality={90}
@@ -229,7 +230,7 @@ export default function AboutSection() {
               <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-900 group">
                 {slides.length > 0 && (
                   <Image
-                    src={slides[currentSlide]?.image || '/about_team_entrance.jpg'}
+                    src={getAssetUrl(slides[currentSlide]?.image || '/about_team_entrance.jpg')}
                     alt={slides[currentSlide]?.title || 'Pet M&M'}
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"

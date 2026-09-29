@@ -14,6 +14,7 @@ import SloganAura3D from './SloganAura3D';
 import PetLogo from './PetLogo';
 import { supabase, HeroBannerItem } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { getAssetUrl } from '@/lib/assets';
 
 interface HeroSectionProps {
   onOpenBookingModal: (preselectedService?: string) => void;
@@ -398,7 +399,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
                 }}
               >
                 <Image
-                  src={slide.duong_dan_anh}
+                  src={getAssetUrl(slide.duong_dan_anh)}
                   alt={slide.alt_text || slide.tieu_de || 'Ảnh nền Pet M&M'}
                   fill
                   priority={index === 0}

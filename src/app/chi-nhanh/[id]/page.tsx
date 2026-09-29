@@ -9,6 +9,7 @@ import BranchFaqSidebar from '@/components/BranchFaqSidebar';
 import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
+import { getAssetUrl } from '@/lib/assets';
 
 // ISR Cache: Revalidate every 60 seconds (Instant 0ms responses for cached pages)
 export const revalidate = 60;
@@ -75,7 +76,7 @@ export default async function ChiNhanhDetailPage({ params }: Props) {
       {heroImg ? (
         <div className="relative w-full h-56 sm:h-72 md:h-96 lg:h-[460px] overflow-hidden">
           <img
-            src={heroImg}
+            src={getAssetUrl(heroImg)}
             alt={branch.ten_chi_nhanh}
             className="w-full h-full object-cover"
             style={{ objectPosition: heroPos }}

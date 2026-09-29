@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { BookOpen, Sparkles, ArrowRight, Calendar } from 'lucide-react';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
+import { getAssetUrl } from '@/lib/assets';
 
 export default function KnowledgeSection() {
   const articles = [
@@ -39,7 +40,7 @@ export default function KnowledgeSection() {
       {/* 1. CINEMATIC BACKGROUND */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/services_bg.jpg"
+          src={getAssetUrl('/services_bg.jpg')}
           alt="Cẩm nang chăm sóc thú cưng Pet M&M"
           fill
           quality={90}

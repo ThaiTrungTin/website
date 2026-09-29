@@ -22,6 +22,7 @@ import ConsultationSidebar from '@/components/ConsultationSidebar';
 import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
+import { getAssetUrl } from '@/lib/assets';
 
 // Component Avatar mặc định Facebook silhouette khi để trống ảnh
 function DefaultFacebookAvatar() {
@@ -173,7 +174,7 @@ function CategorySwipeSection({
               <div className="relative w-full sm:w-28 sm:h-36 aspect-square sm:aspect-auto rounded-xl bg-[#E5DFDA] overflow-hidden shrink-0">
                 {doctor.hinh_anh ? (
                   <Image
-                    src={doctor.hinh_anh}
+                    src={getAssetUrl(doctor.hinh_anh)}
                     alt={doctor.ho_ten}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -221,7 +222,7 @@ function CategorySwipeSection({
               <div className="relative w-full aspect-[4/3] bg-[#E5DFDA] overflow-hidden">
                 {doctor.hinh_anh ? (
                   <Image
-                    src={doctor.hinh_anh}
+                    src={getAssetUrl(doctor.hinh_anh)}
                     alt={doctor.ho_ten}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -487,7 +488,7 @@ export default function DoiNguYTePage() {
       {/* 1. HERO BANNER */}
       <div className="relative w-full h-64 sm:h-80 md:h-[400px] overflow-hidden bg-slate-900">
         <Image
-          src="/about_team_entrance.jpg"
+          src={getAssetUrl('/about_team_entrance.jpg')}
           alt="Đội ngũ bác sĩ và chuyên gia Pet M&M"
           fill
           priority

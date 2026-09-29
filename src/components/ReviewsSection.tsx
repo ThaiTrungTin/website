@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { supabase, DanhGiaRecord } from '@/lib/supabase';
 import ScrollRevealTitle from './ScrollRevealTitle';
+import { getAssetUrl } from '@/lib/assets';
 
 // Danh sách đánh giá chuẩn dự phòng (hiển thị tức thì)
 const DEFAULT_REVIEWS: DanhGiaRecord[] = [
@@ -245,7 +246,7 @@ export default function ReviewsSection() {
                 {/* Avatar thú cưng / khách hàng */}
                 <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 bg-slate-100 border border-slate-200 shadow-2xs">
                   <Image
-                    src={rev.hinh_anh_thu_cung || '/pet_golden_spa.jpg'}
+                    src={getAssetUrl(rev.hinh_anh_thu_cung || '/pet_golden_spa.jpg')}
                     alt={rev.ten_khach_hang}
                     fill
                     className="object-cover"
