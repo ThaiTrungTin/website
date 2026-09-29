@@ -7,6 +7,9 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  Dog,
+  Cat,
+  PawPrint,
 } from 'lucide-react';
 
 import InteractiveWaterShader from './InteractiveWaterShader';
@@ -636,25 +639,76 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           <div className="pointer-events-none absolute left-0 inset-y-0 w-8 sm:w-20 bg-gradient-to-r from-white via-white/90 to-transparent z-10" />
           <div className="pointer-events-none absolute right-0 inset-y-0 w-8 sm:w-20 bg-gradient-to-l from-white via-white/90 to-transparent z-10" />
 
-          {/* Dải chữ chạy liên tục vô tận (Infinite Marquee Ticker) */}
+          {/* Dải chữ chạy liên tục vô tận (Infinite Marquee Ticker) với Icon Chó & Mèo 8K siêu sắc nét */}
           <div className="flex w-max animate-marquee-slogan select-none hover:[animation-play-state:paused] active:[animation-play-state:paused]">
-            {[1, 2].map((loopIdx) => (
-              <div key={loopIdx} className="flex shrink-0 items-center gap-8 sm:gap-14 pr-8 sm:pr-14">
-                <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
-                  {config.slogan_dau_trang_noi_dung ||
-                    'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.'}
-                </span>
+            {(() => {
+              const rawSlogan =
+                config.slogan_dau_trang_noi_dung ||
+                'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.';
+              const dotIndex = rawSlogan.indexOf('.');
+              const part1 = dotIndex > -1 ? rawSlogan.slice(0, dotIndex + 1).trim() : rawSlogan;
+              const part2 = dotIndex > -1 ? rawSlogan.slice(dotIndex + 1).trim() : '';
 
-                <span className="text-emerald-700/50 text-xs sm:text-sm font-light select-none">✦</span>
+              return [1, 2].map((loopIdx) => (
+                <div key={loopIdx} className="flex shrink-0 items-center gap-6 sm:gap-10 pr-6 sm:pr-10">
+                  {/* Cụm 1: Icon Chó Vàng 8K + Câu 1 */}
+                  <div className="flex items-center gap-2 sm:gap-2.5">
+                    <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 text-white shadow-xs shadow-amber-500/30 ring-1.5 ring-amber-400/60 shrink-0 transform hover:scale-110 transition-transform">
+                      <Dog className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
+                    </span>
+                    <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
+                      {part1}
+                    </span>
+                  </div>
 
-                <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
-                  {config.slogan_dau_trang_noi_dung ||
-                    'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.'}
-                </span>
+                  {/* Cụm 2: Icon Mèo Cưng 8K + Câu 2 (nếu có) */}
+                  {part2 ? (
+                    <div className="flex items-center gap-2 sm:gap-2.5">
+                      <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-300 text-white shadow-xs shadow-emerald-600/30 ring-1.5 ring-emerald-400/60 shrink-0 transform hover:scale-110 transition-transform">
+                        <Cat className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
+                      </span>
+                      <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
+                        {part2}
+                      </span>
+                    </div>
+                  ) : null}
 
-                <span className="text-emerald-700/50 text-xs sm:text-sm font-light select-none">✦</span>
-              </div>
-            ))}
+                  {/* Dấu chân thú cưng 8K */}
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100/90 text-[#2D5A27] shrink-0 shadow-2xs">
+                    <PawPrint className="w-3 h-3 fill-emerald-600/40 text-[#2D5A27]" />
+                  </span>
+
+                  <span className="text-emerald-700/40 text-xs sm:text-sm font-light select-none">✦</span>
+
+                  {/* Lặp lại để chuỗi chạy dày dặn không bị trống trên màn hình lớn */}
+                  <div className="flex items-center gap-2 sm:gap-2.5">
+                    <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 text-white shadow-xs shadow-amber-500/30 ring-1.5 ring-amber-400/60 shrink-0 transform hover:scale-110 transition-transform">
+                      <Dog className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
+                    </span>
+                    <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
+                      {part1}
+                    </span>
+                  </div>
+
+                  {part2 ? (
+                    <div className="flex items-center gap-2 sm:gap-2.5">
+                      <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-300 text-white shadow-xs shadow-emerald-600/30 ring-1.5 ring-emerald-400/60 shrink-0 transform hover:scale-110 transition-transform">
+                        <Cat className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] text-white drop-shadow-xs" />
+                      </span>
+                      <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
+                        {part2}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100/90 text-[#2D5A27] shrink-0 shadow-2xs">
+                    <PawPrint className="w-3 h-3 fill-emerald-600/40 text-[#2D5A27]" />
+                  </span>
+
+                  <span className="text-emerald-700/40 text-xs sm:text-sm font-light select-none">✦</span>
+                </div>
+              ));
+            })()}
           </div>
         </div>
       </div>
