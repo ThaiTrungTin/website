@@ -2974,34 +2974,40 @@ export default function AdminDashboardPage() {
                   </span>
                 </button>
 
-                {/* Sub-menu khi đang ở tab FAQs */}
-                {activeTab === 'faqs' && (
-                  <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => setFaqSubTab('list')}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                        faqSubTab === 'list'
-                          ? 'bg-emerald-800/80 text-amber-300 font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <span>• Danh sách câu hỏi ({faqs.length})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFaqSubTab('support_panel')}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                        faqSubTab === 'support_panel'
-                          ? 'bg-emerald-800/80 text-amber-300 font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <PhoneCall className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <span>Bạn cần hỗ trợ? (Song ngữ)</span>
-                    </button>
-                  </div>
-                )}
+                {/* Luôn hiển thị đổ xuống 2 mục con theo yêu cầu */}
+                <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('faqs');
+                      setFaqSubTab('list');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'faqs' && faqSubTab === 'list'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span>• Danh sách câu hỏi ({faqs.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('faqs');
+                      setFaqSubTab('support_panel');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'faqs' && faqSubTab === 'support_panel'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <PhoneCall className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Bạn cần hỗ trợ?</span>
+                  </button>
+                </div>
               </div>
 
               {/* Menu 6: Reviews */}
@@ -5891,7 +5897,7 @@ export default function AdminDashboardPage() {
                   }`}
                 >
                   <PhoneCall className="w-4 h-4 text-emerald-600" />
-                  <span>Mục "Bạn Cần Pet M&M Hỗ Trợ?" (Song Ngữ)</span>
+                  <span>Mục "Bạn Cần Pet M&M Hỗ Trợ?"</span>
                 </button>
               </div>
 
@@ -6058,7 +6064,7 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* SUBTAB 2: CÀI ĐẶT MỤC "BẠN CẦN PET M&M HỖ TRỢ?" (SONG NGỮ) */}
+              {/* SUBTAB 2: CÀI ĐẶT MỤC "BẠN CẦN PET M&M HỖ TRỢ?" */}
               {faqSubTab === 'support_panel' && (
                 <div className="space-y-4">
                   {/* Header Card với nút Lưu Cài Đặt */}
@@ -6066,7 +6072,7 @@ export default function AdminDashboardPage() {
                     <div>
                       <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                         <PhoneCall className="w-5 h-5 text-emerald-600" />
-                        <span>Cài Đặt Mục &ldquo;Bạn Cần Pet M&amp;M Hỗ Trợ?&rdquo; (Song Ngữ)</span>
+                        <span>Cài Đặt Mục &ldquo;Bạn Cần Pet M&amp;M Hỗ Trợ?&rdquo;</span>
                       </h1>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Tùy chỉnh tiêu đề và 3 thẻ liên hệ hiển thị ngoài Trang Chủ &amp; sidebar Chi Nhánh / Cẩm Nang
