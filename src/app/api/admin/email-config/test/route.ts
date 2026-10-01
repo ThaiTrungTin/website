@@ -14,25 +14,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const config = await getSmtpConfig();
+    let bodyData: any = null;
+    try {
+      bodyData = await req.json();
+    } catch {
+      // no body or invalid json
+    }
 
-    if (!config.smtp_password || !config.smtp_password.trim()) {
+    const dbConfig = await getSmtpConfig();
+    const smtpEmail = bodyData?.smtp_email?.trim() || dbConfig.smtp_email || 'thaitrtin@gmail.com';
+    const smtpPassword = bodyData?.smtp_password?.trim() || dbConfig.smtp_password || '';
+    const smtpSenderName = bodyData?.smtp_sender_name?.trim() || dbConfig.smtp_sender_name || 'Bệnh Viện Thú Y Pet M&M';
+    const targetEmail = bodyData?.smtp_notify_email?.trim() || dbConfig.smtp_notify_email || smtpEmail;
+
+    if (!smtpPassword) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Chưa có Mật khẩu ứng dụng Google (16 chữ số). Vui lòng nhập và bấm "Lưu Cấu Hình" trước khi gửi thử nghiệm!',
+          message: 'Chưa có Mật khẩu ứng dụng Google (16 chữ số). Vui lòng nhập Mật khẩu ứng dụng trước khi gửi thử nghiệm!',
         },
         { status: 400 }
       );
     }
 
-    const targetEmail = config.smtp_notify_email || config.smtp_email || 'thaitrtin@gmail.com';
+    const activeConfig = {
+      smtp_email: smtpEmail,
+      smtp_password: smtpPassword,
+      smtp_sender_name: smtpSenderName,
+      smtp_notify_email: targetEmail,
+    };
 
-    await sendTestEmail(targetEmail);
+    console.log(`[Test Email API] Đang gửi thư thử nghiệm từ ${smtpEmail} tới ${targetEmail}...`);
+    const info = await sendTestEmail(targetEmail, activeConfig);
 
     return NextResponse.json({
       success: true,
-      message: `Đã gửi email thử nghiệm thành công tới "${targetEmail}"! Vui lòng kiểm tra hộp thư của bạn.`,
+      message: `Đã gửi thư thử nghiệm thành công từ "${smtpEmail}" tới "${targetEmail}"! Vui lòng kiểm tra Hộp thư đến (và cả mục Thư rác/Spam nếu chưa thấy).`,
+      detail: {
+        to: targetEmail,
+        from: smtpEmail,
+        messageId: info.messageId,
+      },
     });
   } catch (err: any) {
     console.error('Lỗi kiểm tra gửi mail:', err);

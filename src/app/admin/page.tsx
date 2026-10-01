@@ -953,6 +953,8 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch('/api/admin/email-config/test', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(smtpForm),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -3616,65 +3618,67 @@ export default function AdminDashboardPage() {
               {configSubTab === 'about' && (
                 <form onSubmit={handleSaveConfig} className="space-y-6">
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
-                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút Dịch AI theo đúng mẫu Ảnh 2 */}
-                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200">
+                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút Dịch AI nằm chung hàng */}
+                    <div className="pb-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200 shrink-0">
                           <Heart className="w-4 h-4" />
                         </div>
-                        <div className="text-xs font-bold text-slate-900">
-                          Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)
-                        </div>
-                        <div className="text-[11px] text-slate-500">
-                          Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 leading-tight">
+                            Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Tab Ngôn ngữ */}
-                      <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Tab Ngôn ngữ */}
+                        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setAboutSubLang('vi')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              aboutSubLang === 'vi'
+                                ? 'bg-[#2D5A27] text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Tiếng Việt</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAboutSubLang('en')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              aboutSubLang === 'en'
+                                ? 'bg-[#2D5A27] text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <UKFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>English</span>
+                          </button>
+                        </div>
+
+                        {/* Nút Chuyển đổi ENG */}
                         <button
                           type="button"
-                          onClick={() => setAboutSubLang('vi')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                            aboutSubLang === 'vi'
-                              ? 'bg-[#2D5A27] text-white shadow-xs'
-                              : 'text-slate-600 hover:text-slate-900'
-                          }`}
+                          onClick={handleAutoTranslateAbout}
+                          disabled={isTranslatingAbout}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                          title="Tự động dịch toàn bộ nội dung Giới thiệu Tiếng Việt sang Tiếng Anh bằng AI"
                         >
-                          <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                          <span>Tiếng Việt</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAboutSubLang('en')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                            aboutSubLang === 'en'
-                              ? 'bg-[#2D5A27] text-white shadow-xs'
-                              : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          <UKFlag className="w-4 h-3 rounded-[2px]" />
-                          <span>English</span>
+                          {isTranslatingAbout ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isTranslatingAbout ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
                         </button>
                       </div>
-
-                      {/* Nút Chuyển đổi ENG */}
-                      <button
-                        type="button"
-                        onClick={handleAutoTranslateAbout}
-                        disabled={isTranslatingAbout}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
-                        title="Tự động dịch toàn bộ nội dung Giới thiệu Tiếng Việt sang Tiếng Anh bằng AI"
-                      >
-                        {isTranslatingAbout ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isTranslatingAbout ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
-                      </button>
                     </div>
 
                     {/* CÁC TRƯỜNG DỮ LIỆU TIẾNG VIỆT */}
@@ -4199,64 +4203,66 @@ export default function AdminDashboardPage() {
               {configSubTab === 'slogans' && (
                 <form onSubmit={handleSaveConfig} className="space-y-6">
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
-                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200">
+                    <div className="pb-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200 shrink-0">
                           <Globe className="w-4 h-4" />
                         </div>
-                        <div className="text-xs font-bold text-slate-900">
-                          Khẩu Hiệu &amp; Slogan Hệ Thống
-                        </div>
-                        <div className="text-[11px] text-slate-500">
-                          Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 leading-tight">
+                            Khẩu Hiệu &amp; Slogan Hệ Thống
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Tab Ngôn ngữ */}
-                      <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Tab Ngôn ngữ */}
+                        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setSloganSubLang('vi')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              sloganSubLang === 'vi'
+                                ? 'bg-[#2D5A27] text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Tiếng Việt</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSloganSubLang('en')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              sloganSubLang === 'en'
+                                ? 'bg-[#2D5A27] text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <UKFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>English</span>
+                          </button>
+                        </div>
+
+                        {/* Nút Chuyển đổi ENG */}
                         <button
                           type="button"
-                          onClick={() => setSloganSubLang('vi')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                            sloganSubLang === 'vi'
-                              ? 'bg-[#2D5A27] text-white shadow-xs'
-                              : 'text-slate-600 hover:text-slate-900'
-                          }`}
+                          onClick={handleAutoTranslateSlogans}
+                          disabled={isTranslatingSlogans}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                          title="Tự động dịch toàn bộ khẩu hiệu Tiếng Việt sang Tiếng Anh bằng AI"
                         >
-                          <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                          <span>Tiếng Việt</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSloganSubLang('en')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                            sloganSubLang === 'en'
-                              ? 'bg-[#2D5A27] text-white shadow-xs'
-                              : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          <UKFlag className="w-4 h-3 rounded-[2px]" />
-                          <span>English</span>
+                          {isTranslatingSlogans ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isTranslatingSlogans ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
                         </button>
                       </div>
-
-                      {/* Nút Chuyển đổi ENG */}
-                      <button
-                        type="button"
-                        onClick={handleAutoTranslateSlogans}
-                        disabled={isTranslatingSlogans}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
-                        title="Tự động dịch toàn bộ khẩu hiệu Tiếng Việt sang Tiếng Anh bằng AI"
-                      >
-                        {isTranslatingSlogans ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isTranslatingSlogans ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
-                      </button>
                     </div>
                   </div>
 

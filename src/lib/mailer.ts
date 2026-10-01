@@ -51,8 +51,12 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
 }
 
 // Tạo transporter gửi mail
-export async function createMailerTransport() {
-  const config = await getSmtpConfig();
+export async function createMailerTransport(overrideConfig?: Partial<SmtpConfig>) {
+  const baseConfig = await getSmtpConfig();
+  const config: SmtpConfig = {
+    ...baseConfig,
+    ...overrideConfig,
+  };
 
   if (!config.smtp_password || !config.smtp_password.trim()) {
     throw new Error('Chưa cấu hình Mật khẩu ứng dụng Google (App Password). Vui lòng thiết lập trong trang Admin!');
@@ -78,15 +82,17 @@ export async function sendMail({
   subject,
   html,
   text,
+  overrideConfig,
 }: {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  overrideConfig?: Partial<SmtpConfig>;
 }) {
-  const { transporter, config } = await createMailerTransport();
+  const { transporter, config } = await createMailerTransport(overrideConfig);
 
-  const senderString = `"${config.smtp_sender_name}" <${config.smtp_email}>`;
+  const senderString = `"${config.smtp_sender_name}" <${config.smtp_email.trim()}>`;
 
   const info = await transporter.sendMail({
     from: senderString,
@@ -95,6 +101,8 @@ export async function sendMail({
     text: text || subject,
     html,
   });
+
+  console.log(`[SMTP Mailer] Đã gửi thư tới ${to} - MessageID: ${info.messageId} - Phản hồi: ${info.response}`);
 
   return info;
 }
@@ -186,24 +194,28 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
 }
 
 // GỬI EMAIL THỬ NGHIỆM KẾT NỐI
-export async function sendTestEmail(toEmail: string) {
+export async function sendTestEmail(toEmail: string, overrideConfig?: Partial<SmtpConfig>) {
   const subject = `[Pet M&M] Thử nghiệm cấu hình Gmail SMTP thành công!`;
 
   const html = `
   <!DOCTYPE html>
   <html>
   <head><meta charset="utf-8"></head>
-  <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: sans-serif;">
+  <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
     <div style="max-width: 520px; margin: 30px auto; background: #ffffff; border-radius: 20px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
       <div style="text-align: center; margin-bottom: 20px;">
         <span style="display: inline-block; padding: 4px 12px; background: #dcfce7; color: #15803d; border-radius: 9999px; font-size: 11px; font-weight: bold;">KẾT NỐI THÀNH CÔNG</span>
         <h2 style="color: #0f172a; margin: 12px 0 6px 0;">Xin Chúc Mừng!</h2>
         <p style="color: #64748b; font-size: 13px; margin: 0;">Máy chủ gửi thư Gmail SMTP của bạn đã hoạt động hoàn hảo.</p>
       </div>
-      <div style="background: #f8fafc; border-radius: 12px; padding: 16px; font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 20px;">
-        <div>✓ Đã kích hoạt gửi mã OTP bảo mật không giới hạn.</div>
-        <div>✓ Sẵn sàng gửi thư xác nhận lịch hẹn vé khám cho khách hàng.</div>
+      <div style="background: #f8fafc; border-radius: 12px; padding: 16px; font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 16px;">
+        <div style="margin-bottom: 6px;">✓ <strong>Email gửi:</strong> ${overrideConfig?.smtp_email || 'thaitrtin@gmail.com'}</div>
+        <div style="margin-bottom: 6px;">✓ <strong>Email nhận:</strong> ${toEmail}</div>
+        <div style="margin-bottom: 6px;">✓ Đã kích hoạt tính năng gửi mã OTP bảo mật và thông báo đặt lịch hẹn khám.</div>
         <div>✓ Thời gian kiểm tra: ${new Date().toLocaleString('vi-VN')}</div>
+      </div>
+      <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 12px 16px; font-size: 12px; color: #92400e; line-height: 1.5; margin-bottom: 20px;">
+        💡 <strong>Mẹo quan trọng:</strong> Nếu bạn tìm thấy email này trong mục <strong>Thư rác (Spam)</strong> hoặc tab <strong>Quảng cáo / Cập nhật</strong>, vui lòng bấm nút <em>"Báo cáo không phải thư rác" (Not Spam)</em> để các email sau luôn vào Hộp thư chính.
       </div>
       <p style="text-align: center; font-size: 11px; color: #94a3b8; margin: 0;">
         Hệ Thống Quản Trị Y Tế & Resort Thú Cưng Pet M&M
@@ -217,6 +229,7 @@ export async function sendTestEmail(toEmail: string) {
     to: toEmail,
     subject,
     html,
-    text: 'Thử nghiệm cấu hình Gmail SMTP cho Pet M&M thành công!',
+    text: `Thử nghiệm cấu hình Gmail SMTP cho Pet M&M thành công! Đã gửi tới ${toEmail} lúc ${new Date().toLocaleString('vi-VN')}`,
+    overrideConfig,
   });
 }
