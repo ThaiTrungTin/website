@@ -204,10 +204,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, translation: translated });
     }
 
+    // Tự động map nếu body.texts được truyền dưới dạng đối tượng { key: "value" }
+    const fieldMap = (body.fields && typeof body.fields === 'object')
+      ? body.fields
+      : (body.texts && typeof body.texts === 'object' && !Array.isArray(body.texts))
+      ? body.texts
+      : null;
+
     // 3. Dịch hàng loạt các trường đối tượng: { fields: { key1: "val1", key2: "val2" } }
-    if (body.fields && typeof body.fields === 'object') {
+    if (fieldMap) {
       const translatedFields: Record<string, string> = {};
-      const entries = Object.entries(body.fields);
+      const entries = Object.entries(fieldMap);
 
       await Promise.all(
         entries.map(async ([key, val]) => {
