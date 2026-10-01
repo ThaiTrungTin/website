@@ -1,19 +1,9 @@
 import type { NextConfig } from "next";
 
-const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
-
 const nextConfig: NextConfig = {
-  // Chỉ export tĩnh và đặt basePath khi deploy qua GitHub Pages (GitHub Actions)
-  ...(isGithubActions
-    ? {
-        output: 'export' as const,
-        basePath: '/website',
-        trailingSlash: true,
-      }
-    : {}),
   images: {
     qualities: [75, 90, 95],
-    unoptimized: isGithubActions,
+    unoptimized: false,
     remotePatterns: [
       {
         protocol: 'https',
