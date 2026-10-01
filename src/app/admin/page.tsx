@@ -7967,6 +7967,22 @@ export default function AdminDashboardPage() {
                 </select>
               </div>
 
+              {/* Hình ảnh chân dung bác sĩ / nhân sự */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Ảnh chân dung:
+                </label>
+                <AdminImageInput
+                  value={editingMember.hinh_anh || ''}
+                  onChange={(url) => setEditingMember((prev) => ({ ...prev, hinh_anh: url }))}
+                  folder="general"
+                  label=""
+                  uploadButtonLabel="Tải Ảnh"
+                  pasteButtonLabel="Dán Ảnh"
+                  onNotification={showNotification}
+                />
+              </div>
+
               {/* Language Switch Tabs & AI Translate Button */}
               <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100/80 rounded-xl border border-slate-200">
                 <div className="flex items-center gap-1">

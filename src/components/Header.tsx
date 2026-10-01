@@ -99,6 +99,7 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
             {/* Hotline Button */}
             <a
               href={`tel:${hotlineRaw}`}
+              suppressHydrationWarning
               className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold text-[#2D5A27] bg-emerald-50 hover:bg-emerald-100 transition-all duration-300 border border-emerald-200/80 shadow-sm group"
             >
               <span className="relative flex h-2 w-2">
@@ -106,7 +107,7 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
               </span>
               <PhoneCall className="w-3.5 h-3.5 text-[#2D5A27] animate-phone-ring" />
-              <strong className="text-slate-900 font-black tracking-wide">{hotlineDisplay}</strong>
+              <strong suppressHydrationWarning className="text-slate-900 font-black tracking-wide">{hotlineDisplay}</strong>
             </a>
 
             {/* Booking CTA Button */}

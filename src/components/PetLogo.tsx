@@ -32,6 +32,7 @@ export default function PetLogo({
         <img
           src={logoUrl}
           alt="Pet M&M Logo"
+          suppressHydrationWarning
           className="w-full h-full object-contain relative z-10"
           onError={(e) => {
             (e.target as HTMLImageElement).src = '/logo-favicon.png';
