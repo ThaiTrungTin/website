@@ -583,6 +583,9 @@ Tích hợp cơ sở dữ liệu đám mây **Supabase (PostgreSQL)** và xây d
   - `quy_trinh_en`: mảng `string[]` phân tách theo từng dòng.
 - Sửa lỗi trước đây khiến bản dịch tiếng Anh bị mất sạch khi bấm Lưu Dịch Vụ.
 
+### 4. Khắc Phục Lỗi Build Vercel (Error: supabaseKey is required)
+- Tạo module `src/lib/supabaseAdmin.ts` với cơ chế lazy-init qua Proxy và fallback an toàn sang Anon Key, ngăn chặn lỗi crash biên dịch tại bước `Collecting page data` trên Vercel khi chưa cấu hình `SUPABASE_SERVICE_ROLE_KEY`.
+
 
 
 
