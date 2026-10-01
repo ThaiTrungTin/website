@@ -455,6 +455,7 @@ export default function AdminDashboardPage() {
   const [featuresEnInput, setFeaturesEnInput] = useState('');
   const [branchLangTab, setBranchLangTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingBranch, setIsTranslatingBranch] = useState(false);
+  const [isTranslatingBranchArticle, setIsTranslatingBranchArticle] = useState(false);
 
   const loadBranches = async () => {
     setBranchesLoading(true);
@@ -531,6 +532,7 @@ export default function AdminDashboardPage() {
         gio_hoat_dong: editingBranch.gio_hoat_dong || '',
         thong_tin_do_xe: editingBranch.thong_tin_do_xe || '',
         tien_ich: featuresInput || '',
+        bai_viet_chi_tiet: editingBranch.bai_viet_chi_tiet || '',
       };
       const res = await fetch('/api/admin/translate', {
         method: 'POST',
@@ -550,15 +552,47 @@ export default function AdminDashboardPage() {
           bang_cap_bac_si_en: data.translations.bang_cap_bac_si || (prev as any).bang_cap_bac_si_en,
           gio_hoat_dong_en: data.translations.gio_hoat_dong || (prev as any).gio_hoat_dong_en,
           thong_tin_do_xe_en: data.translations.thong_tin_do_xe || (prev as any).thong_tin_do_xe_en,
+          bai_viet_chi_tiet_en: data.translations.bai_viet_chi_tiet || (prev as any).bai_viet_chi_tiet_en,
         } as any : null));
         if (data.translations.tien_ich) setFeaturesEnInput(data.translations.tien_ich);
         setBranchLangTab('en');
-        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh thành công!');
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh (kèm toàn bộ bài viết chi tiết) thành công!');
       } else throw new Error(data.error || 'Dịch thất bại');
     } catch (err: any) {
       showNotification('error', `Lỗi dịch: ${err.message}`);
     } finally {
       setIsTranslatingBranch(false);
+    }
+  };
+
+  const handleTranslateBranchArticleOnly = async () => {
+    const content = editingBranch?.bai_viet_chi_tiet;
+    if (!content || !content.trim()) {
+      showNotification('error', 'Chưa có nội dung bài viết chi tiết Tiếng Việt để dịch!');
+      return;
+    }
+    setIsTranslatingBranchArticle(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content }),
+      });
+      const data = await res.json();
+      if (data.success && data.translation) {
+        setEditingBranch((prev) => (prev ? {
+          ...prev,
+          bai_viet_chi_tiet_en: data.translation,
+        } as any : null));
+        setBranchLangTab('en');
+        showNotification('success', 'Đã chuyển đổi bài viết chi tiết sang Tiếng Anh thành công!');
+      } else {
+        throw new Error(data.error || 'Dịch bài viết thất bại');
+      }
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch bài viết: ${err.message}`);
+    } finally {
+      setIsTranslatingBranchArticle(false);
     }
   };
 
@@ -6369,22 +6403,38 @@ export default function AdminDashboardPage() {
 
                   {/* Bài viết chi tiết (TipTap RichTextEditor) */}
                   <div className="pt-3 border-t border-slate-200">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
                         <span>Bài viết giới thiệu chi tiết chi nhánh (Tiếng Việt):</span>
                       </label>
-                      {editingBranch.id && (
-                        <Link
-                          href={`/chi-nhanh/${editingBranch.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleTranslateBranchArticleOnly}
+                          disabled={isTranslatingBranchArticle}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                          title="Tự động dịch riêng nội dung bài viết này sang Tiếng Anh bằng AI"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Xem trang ngoài web</span>
-                        </Link>
-                      )}
+                          {isTranslatingBranchArticle ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          <span>{isTranslatingBranchArticle ? 'Đang dịch bài viết...' : 'Dịch bài viết sang ENG'}</span>
+                        </button>
+                        {editingBranch.id && (
+                          <Link
+                            href={`/chi-nhanh/${editingBranch.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Xem trang ngoài web</span>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                     <RichTextEditor
                       value={editingBranch.bai_viet_chi_tiet || ''}
@@ -6548,11 +6598,25 @@ export default function AdminDashboardPage() {
 
                   {/* Bài viết chi tiết EN (TipTap RichTextEditor) */}
                   <div className="pt-3 border-t border-slate-200">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
                         <span>Branch Detailed Introduction (English):</span>
                       </label>
+                      <button
+                        type="button"
+                        onClick={handleTranslateBranchArticleOnly}
+                        disabled={isTranslatingBranchArticle}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                        title="Tự động dịch lại bài viết chi tiết từ bản Tiếng Việt"
+                      >
+                        {isTranslatingBranchArticle ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3 h-3" />
+                        )}
+                        <span>{isTranslatingBranchArticle ? 'Đang dịch bài viết...' : 'Tự động dịch từ bản Tiếng Việt'}</span>
+                      </button>
                     </div>
                     <RichTextEditor
                       value={(editingBranch as any).bai_viet_chi_tiet_en || ''}
