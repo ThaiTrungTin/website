@@ -89,6 +89,16 @@ export default function BookingSection({
   const [note, setNote] = useState('');
 
   const [coverImage, setCoverImage] = useState(DEFAULT_COVER_IMAGE);
+  const [rightColConfig, setRightColConfig] = useState({
+    titleVi: 'Chăm Sóc Y Khoa Tiêu Chuẩn 5 Sao',
+    titleEn: 'Fear-Free & High-Standard Medical Care',
+    descVi: 'Đội ngũ bác sĩ thú y chính quy, quy trình Fear-Free giảm căng thẳng tuyệt đối cho các bé cưng.',
+    descEn: 'Experienced veterinarians dedicated to safeguarding your pet’s health with compassion and cutting-edge equipment.',
+    commit1Vi: 'Khám đúng giờ theo lịch hẹn, không bốc số',
+    commit1En: 'Zero waiting time with priority booking',
+    commit2Vi: 'Gửi phiếu tiếp nhận tự động qua Gmail',
+    commit2En: 'Automated email confirmation sent to Gmail',
+  });
   const [dbBranches, setDbBranches] = useState<ChiNhanhRecord[]>([]);
   const [dbServices, setDbServices] = useState<DichVuRecord[]>([]);
 
@@ -106,7 +116,7 @@ export default function BookingSection({
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Tải chi nhánh, dịch vụ và ảnh bìa từ database
+  // Tải chi nhánh, dịch vụ và cấu hình Cột Phải / ảnh bìa từ database
   useEffect(() => {
     async function loadData() {
       try {
@@ -131,14 +141,27 @@ export default function BookingSection({
           setDbServices(sData);
         }
 
-        // Tải ảnh bìa lịch hẹn cấu hình trong bảng cau_hinh
+        // Tải cấu hình form đặt lịch trong bảng cau_hinh
         const { data: cfgData } = await supabase
           .from('cau_hinh')
-          .select('logo_favicon')
+          .select('*')
           .eq('id', 'booking_config')
           .maybeSingle();
-        if (cfgData?.logo_favicon && cfgData.logo_favicon.trim()) {
-          setCoverImage(cfgData.logo_favicon.trim());
+
+        if (cfgData) {
+          if (cfgData.logo_favicon && cfgData.logo_favicon.trim()) {
+            setCoverImage(cfgData.logo_favicon.trim());
+          }
+          setRightColConfig((prev) => ({
+            titleVi: cfgData.slogan_cuoi_trang_tieu_de?.trim() || prev.titleVi,
+            titleEn: cfgData.slogan_cuoi_trang_tieu_de_en?.trim() || prev.titleEn,
+            descVi: cfgData.slogan_cuoi_trang_noi_dung?.trim() || prev.descVi,
+            descEn: cfgData.slogan_cuoi_trang_noi_dung_en?.trim() || prev.descEn,
+            commit1Vi: cfgData.gioi_thieu_cam_ket_phu?.trim() || prev.commit1Vi,
+            commit1En: cfgData.gioi_thieu_cam_ket_phu_en?.trim() || prev.commit1En,
+            commit2Vi: cfgData.gioi_thieu_trich_dan?.trim() || prev.commit2Vi,
+            commit2En: cfgData.gioi_thieu_trich_dan_en?.trim() || prev.commit2En,
+          }));
         }
       } catch (err) {
         console.warn('Lỗi tải dữ liệu cho form đặt lịch:', err);
@@ -146,12 +169,38 @@ export default function BookingSection({
     }
     loadData();
 
-    // Lắng nghe cập nhật ảnh bìa realtime từ Admin
+    // Lắng nghe cập nhật ảnh bìa và cấu hình cột phải realtime từ Admin
     const handleCoverUpdate = (e: any) => {
-      if (e?.detail?.url) setCoverImage(e.detail.url);
+      if (e?.detail) {
+        if (e.detail.url) setCoverImage(e.detail.url);
+        if (e.detail.titleVi) {
+          setRightColConfig({
+            titleVi: e.detail.titleVi,
+            titleEn: e.detail.titleEn || e.detail.titleVi,
+            descVi: e.detail.descVi,
+            descEn: e.detail.descEn || e.detail.descVi,
+            commit1Vi: e.detail.commit1Vi,
+            commit1En: e.detail.commit1En || e.detail.commit1Vi,
+            commit2Vi: e.detail.commit2Vi,
+            commit2En: e.detail.commit2En || e.detail.commit2Vi,
+          });
+        }
+      }
     };
     window.addEventListener('petmm_booking_cover_updated', handleCoverUpdate);
-    return () => window.removeEventListener('petmm_booking_cover_updated', handleCoverUpdate);
+
+    // Lắng nghe chọn nhanh dịch vụ từ ngoài vào
+    const handleSelectService = (e: any) => {
+      if (e?.detail?.service) {
+        setService(e.detail.service);
+      }
+    };
+    window.addEventListener('petmm_select_service', handleSelectService);
+
+    return () => {
+      window.removeEventListener('petmm_booking_cover_updated', handleCoverUpdate);
+      window.removeEventListener('petmm_select_service', handleSelectService);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -387,18 +436,9 @@ export default function BookingSection({
               <div>
                 {/* Form Header trong Modal hoặc On-page */}
                 <div className="mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-[#2D5A27] text-[11px] font-bold border border-emerald-200/70 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-                    <span>{isEn ? 'Online Appointment' : 'Đặt Lịch Hẹn Trực Tuyến'}</span>
-                  </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                     {isEn ? 'Pet Healthcare & Spa Booking' : 'Đặt Lịch Khám & Chăm Sóc Thú Cưng'}
                   </h3>
-                  <p className="text-xs text-slate-500 font-light mt-1">
-                    {isEn
-                      ? 'Fast registration in 1 minute. Free cancellation anytime.'
-                      : 'Đăng ký nhanh trong 1 phút, nhận xác nhận qua Email & SMS.'}
-                  </p>
                 </div>
 
                 {errorMsg && (
@@ -431,7 +471,7 @@ export default function BookingSection({
                           type="text"
                           value={ownerName}
                           onChange={(e) => setOwnerName(e.target.value)}
-                          placeholder={isEn ? 'e.g. John Doe' : 'VD: Nguyễn Văn A'}
+                          placeholder=""
                           required
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900"
                         />
@@ -448,7 +488,7 @@ export default function BookingSection({
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder={isEn ? 'e.g. 0364 605 544' : 'VD: 0364 605 544'}
+                          placeholder=""
                           required
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900"
                         />
@@ -459,7 +499,7 @@ export default function BookingSection({
                   {/* Gmail / Email nhận xác nhận (Full Row) */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      {isEn ? 'Gmail / Email (to receive confirmation)' : 'Gmail / Email (để gửi mail xác nhận)'}
+                      {isEn ? 'Gmail / Email' : 'Gmail / Email'}
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -467,7 +507,7 @@ export default function BookingSection({
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder={isEn ? 'e.g. yourname@gmail.com' : 'VD: yourname@gmail.com'}
+                        placeholder=""
                         className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900"
                       />
                     </div>
@@ -485,7 +525,7 @@ export default function BookingSection({
                           type="text"
                           value={petName}
                           onChange={(e) => setPetName(e.target.value)}
-                          placeholder={isEn ? 'e.g. Milo, Luna...' : 'VD: Lu, Miu, Bông...'}
+                          placeholder=""
                           required
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900"
                         />
@@ -563,7 +603,7 @@ export default function BookingSection({
                             <>
                               <optgroup label={isEn ? 'Veterinary & Medicine' : 'Thú Y & Y Tế'}>
                                 {dbServices
-                                  .filter((s) => s.nhom_dich_vu === 'medical')
+                                   .filter((s) => s.nhom_dich_vu === 'medical')
                                   .map((s) => (
                                     <option key={s.id} value={(isEn && s.ten_dich_vu_en) || s.ten_dich_vu}>
                                       {(isEn && s.ten_dich_vu_en) || s.ten_dich_vu}
@@ -608,7 +648,7 @@ export default function BookingSection({
                     </div>
                   </div>
 
-                  {/* Ngày hẹn & Khung giờ (DROPLIST) */}
+                  {/* Ngày hẹn & Khung giờ */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -629,7 +669,7 @@ export default function BookingSection({
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Time Slot (Droplist)' : 'Khung giờ hẹn (Droplist)'} <span className="text-rose-500">*</span>
+                        {isEn ? 'Time Slot' : 'Khung giờ hẹn'} <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
                         <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -675,11 +715,7 @@ export default function BookingSection({
                       rows={2}
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
-                      placeholder={
-                        isEn
-                          ? 'e.g. Vaccination booster, regular health check, itchy skin...'
-                          : 'VD: Khám tổng quát, tiêm nhắc vắc-xin, bé có biểu hiện ngứa ngáy...'
-                      }
+                      placeholder=""
                       className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition resize-none text-slate-900"
                     />
                   </div>
@@ -704,15 +740,13 @@ export default function BookingSection({
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                         {isEn ? 'Confidential 100%' : 'Bảo mật thông tin'}
                       </span>
-                      <span>•</span>
-                      <span>{isEn ? 'Instant SMS & Email alert' : 'Xác nhận qua SMS & Email'}</span>
                     </div>
                   </div>
                 </form>
               </div>
             </div>
 
-            {/* CỘT PHẢI: ẢNH BÌA ĐẶT LỊCH (LƯU VÀO DTB, ĐƯỢC CHÈN/THAY TỪ ADMIN) */}
+            {/* CỘT PHẢI: ẢNH BÌA & THÔNG TIN CẤU HÌNH THIẾT KẾ TỪ ADMIN */}
             <div className="hidden lg:flex lg:col-span-5 relative min-h-[560px] bg-slate-900 overflow-hidden flex-col justify-between p-8 text-white">
               {/* Ảnh nền */}
               <img
@@ -734,23 +768,21 @@ export default function BookingSection({
               <div className="relative z-10 space-y-4">
                 <div>
                   <h4 className="font-editorial text-2xl font-normal text-white leading-tight">
-                    {isEn ? 'Fear-Free & High-Standard Medical Care' : 'Chăm Sóc Y Khoa Tiêu Chuẩn 5 Sao'}
+                    {isEn ? rightColConfig.titleEn : rightColConfig.titleVi}
                   </h4>
                   <p className="text-xs text-slate-300 font-light mt-1.5 leading-relaxed">
-                    {isEn
-                      ? 'Experienced veterinarians dedicated to safeguarding your pet’s health with compassion and cutting-edge equipment.'
-                      : 'Đội ngũ bác sĩ thú y chính quy, quy trình Fear-Free giảm căng thẳng tuyệt đối cho các bé cưng.'}
+                    {isEn ? rightColConfig.descEn : rightColConfig.descVi}
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-slate-200">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>{isEn ? 'Zero waiting time with priority booking' : 'Khám đúng giờ theo lịch hẹn, không bốc số'}</span>
+                    <span>{isEn ? rightColConfig.commit1En : rightColConfig.commit1Vi}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>{isEn ? 'Automated email & SMS confirmation' : 'Gửi phiếu tiếp nhận tự động qua Gmail'}</span>
+                    <span>{isEn ? rightColConfig.commit2En : rightColConfig.commit2Vi}</span>
                   </div>
                 </div>
 

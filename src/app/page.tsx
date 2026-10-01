@@ -12,22 +12,30 @@ import KnowledgeSection from '@/components/KnowledgeSection';
 import FaqSection from '@/components/FaqSection';
 import Footer from '@/components/Footer';
 import MobileStickyBar from '@/components/MobileStickyBar';
-import BookingModal from '@/components/BookingModal';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 
 export default function HomePage() {
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [preselectedService, setPreselectedService] = useState<string | undefined>(undefined);
 
-  const handleOpenBookingModal = (serviceTitle?: string) => {
-    setPreselectedService(serviceTitle);
-    setIsBookingModalOpen(true);
+  const handleScrollToBooking = (serviceTitle?: string) => {
+    if (serviceTitle) {
+      setPreselectedService(serviceTitle);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('petmm_select_service', { detail: { service: serviceTitle } }));
+      }
+    }
+    if (typeof window !== 'undefined') {
+      const bookingEl = document.getElementById('booking');
+      if (bookingEl) {
+        bookingEl.scrollIntoView({ behavior: 'smooth' });
+        window.history.pushState(null, '', '#booking');
+      }
+    }
   };
 
   const handleSelectServiceFromCard = (serviceTitle: string) => {
-    // Open modal with this service pre-selected
-    handleOpenBookingModal(serviceTitle);
+    handleScrollToBooking(serviceTitle);
   };
 
   return (
@@ -36,12 +44,12 @@ export default function HomePage() {
       className="min-h-screen flex flex-col bg-white text-slate-900 selection:bg-[#FFB800] selection:text-slate-900 overflow-x-clip w-full"
     >
       {/* 1. Header & Navigation */}
-      <Header onOpenBookingModal={handleOpenBookingModal} />
+      <Header onOpenBookingModal={handleScrollToBooking} />
 
       {/* Main Content Sections */}
       <main className="flex-1">
         {/* Hero Banner Section */}
-        <HeroSection onOpenBookingModal={handleOpenBookingModal} />
+        <HeroSection onOpenBookingModal={handleScrollToBooking} />
 
         {/* 1. Về Pet M&M (Giới thiệu & Triết lý y đức lên đầu) */}
         <AboutSection />
@@ -69,23 +77,13 @@ export default function HomePage() {
       <Footer />
 
       {/* Mobile-First Bottom Sticky Action Bar */}
-      <MobileStickyBar onOpenBookingModal={handleOpenBookingModal} />
+      <MobileStickyBar onOpenBookingModal={handleScrollToBooking} />
 
       {/* Floating Action Contact Widgets (Zalo, Messenger, Hotline 24/7) */}
       <FloatingContactWidgets />
 
       {/* Floating Page Scroll Buttons (Scroll to Top & Scroll to Bottom on Mobile & Laptop) */}
       <ScrollNavigationButtons />
-
-      {/* Booking Modal Popup */}
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => {
-          setIsBookingModalOpen(false);
-          setPreselectedService(undefined);
-        }}
-        preselectedService={preselectedService}
-      />
     </div>
   );
 }

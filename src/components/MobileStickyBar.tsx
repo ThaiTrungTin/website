@@ -6,7 +6,7 @@ import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface MobileStickyBarProps {
-  onOpenBookingModal: () => void;
+  onOpenBookingModal?: () => void;
 }
 
 export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarProps) {
@@ -14,6 +14,19 @@ export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarP
   const { t } = useLanguage();
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
+
+  const handleBookingClick = () => {
+    if (typeof window !== 'undefined') {
+      const isHomePage = window.location.pathname === '/' || window.location.pathname === '';
+      const bookingEl = document.getElementById('booking');
+      if (isHomePage && bookingEl) {
+        bookingEl.scrollIntoView({ behavior: 'smooth' });
+        window.history.pushState(null, '', '#booking');
+      } else {
+        window.location.href = '/#booking';
+      }
+    }
+  };
 
   return (
     <aside
@@ -32,8 +45,8 @@ export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarP
 
         {/* Button 2: Đặt Lịch Nhanh */}
         <button
-          onClick={onOpenBookingModal}
-          className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-black bg-gradient-to-r from-[#FFB800] to-[#E5A600] text-slate-950 shadow-md shadow-amber-500/25 active:scale-95 transition-all text-center leading-none"
+          onClick={handleBookingClick}
+          className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-black bg-gradient-to-r from-[#FFB800] to-[#E5A600] text-slate-950 shadow-md shadow-amber-500/25 active:scale-95 transition-all text-center leading-none cursor-pointer"
         >
           <CalendarCheck className="w-4 h-4 text-slate-950 shrink-0" />
           <span>{t('btn_book_short', 'Đặt Lịch')}</span>

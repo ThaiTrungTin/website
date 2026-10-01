@@ -1456,42 +1456,131 @@ export default function AdminDashboardPage() {
   const [isSavingBookingCover, setIsSavingBookingCover] = useState(false);
   const [isSendingConfirmEmail, setIsSendingConfirmEmail] = useState(false);
 
+  // Quản lý Cửa sổ (Modal) Thiết kế Cột Phải & Ảnh Bìa Form Đặt Lịch
+  const [isBookingDesignModalOpen, setIsBookingDesignModalOpen] = useState(false);
+  const [bookingDesignLangTab, setBookingDesignLangTab] = useState<'vi' | 'en'>('vi');
+  const [bookingDesignPreviewLang, setBookingDesignPreviewLang] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingBookingDesign, setIsTranslatingBookingDesign] = useState(false);
+  const [bookingDesignForm, setBookingDesignForm] = useState({
+    coverImage: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&q=80&w=1200',
+    titleVi: 'Chăm Sóc Y Khoa Tiêu Chuẩn 5 Sao',
+    titleEn: 'Fear-Free & High-Standard Medical Care',
+    descVi: 'Đội ngũ bác sĩ thú y chính quy, quy trình Fear-Free giảm căng thẳng tuyệt đối cho các bé cưng.',
+    descEn: 'Experienced veterinarians dedicated to safeguarding your pet’s health with compassion and cutting-edge equipment.',
+    commit1Vi: 'Khám đúng giờ theo lịch hẹn, không bốc số',
+    commit1En: 'Zero waiting time with priority booking',
+    commit2Vi: 'Gửi phiếu tiếp nhận tự động qua Gmail',
+    commit2En: 'Automated email confirmation sent to Gmail',
+  });
+
+  const handleAutoTranslateBookingDesign = async () => {
+    setIsTranslatingBookingDesign(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        title: bookingDesignForm.titleVi || '',
+        desc: bookingDesignForm.descVi || '',
+        commit1: bookingDesignForm.commit1Vi || '',
+        commit2: bookingDesignForm.commit2Vi || '',
+      };
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setBookingDesignForm((prev) => ({
+          ...prev,
+          titleEn: data.translations.title ?? prev.titleEn,
+          descEn: data.translations.desc ?? prev.descEn,
+          commit1En: data.translations.commit1 ?? prev.commit1En,
+          commit2En: data.translations.commit2 ?? prev.commit2En,
+        }));
+        setBookingDesignLangTab('en');
+        setBookingDesignPreviewLang('en');
+        showNotification('success', 'Đã chuyển đổi nội dung Cột Phải sang Tiếng Anh thành công!');
+      } else {
+        throw new Error(data.error || 'Dịch thất bại');
+      }
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingBookingDesign(false);
+    }
+  };
+
   const loadBookingCover = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('cau_hinh')
-        .select('logo_favicon')
+        .select('*')
         .eq('id', 'booking_config')
         .maybeSingle();
-      if (data?.logo_favicon && data.logo_favicon.trim()) {
-        setBookingCoverImage(data.logo_favicon.trim());
+
+      if (data) {
+        if (data.logo_favicon?.trim()) {
+          setBookingCoverImage(data.logo_favicon.trim());
+        }
+        setBookingDesignForm((prev) => ({
+          coverImage: data.logo_favicon?.trim() || prev.coverImage,
+          titleVi: data.slogan_cuoi_trang_tieu_de?.trim() || prev.titleVi,
+          titleEn: data.slogan_cuoi_trang_tieu_de_en?.trim() || prev.titleEn,
+          descVi: data.slogan_cuoi_trang_noi_dung?.trim() || prev.descVi,
+          descEn: data.slogan_cuoi_trang_noi_dung_en?.trim() || prev.descEn,
+          commit1Vi: data.gioi_thieu_cam_ket_phu?.trim() || prev.commit1Vi,
+          commit1En: data.gioi_thieu_cam_ket_phu_en?.trim() || prev.commit1En,
+          commit2Vi: data.gioi_thieu_trich_dan?.trim() || prev.commit2Vi,
+          commit2En: data.gioi_thieu_trich_dan_en?.trim() || prev.commit2En,
+        }));
       }
     } catch (err) {
-      console.warn('Lỗi tải ảnh bìa lịch hẹn:', err);
+      console.warn('Lỗi tải cấu hình thiết kế form lịch hẹn:', err);
     }
   }, []);
 
-  const handleSaveBookingCover = async () => {
+  const handleSaveBookingDesign = async () => {
     setIsSavingBookingCover(true);
     try {
-      const { error } = await supabase.from('cau_hinh').upsert([
-        {
-          id: 'booking_config',
-          logo_favicon: bookingCoverImage.trim(),
-          ngay_cap_nhat: new Date().toISOString(),
-        },
-      ]);
+      const payload = {
+        id: 'booking_config',
+        logo_favicon: bookingDesignForm.coverImage.trim(),
+        slogan_cuoi_trang_tieu_de: bookingDesignForm.titleVi.trim(),
+        slogan_cuoi_trang_tieu_de_en: bookingDesignForm.titleEn.trim(),
+        slogan_cuoi_trang_noi_dung: bookingDesignForm.descVi.trim(),
+        slogan_cuoi_trang_noi_dung_en: bookingDesignForm.descEn.trim(),
+        gioi_thieu_cam_ket_phu: bookingDesignForm.commit1Vi.trim(),
+        gioi_thieu_cam_ket_phu_en: bookingDesignForm.commit1En.trim(),
+        gioi_thieu_trich_dan: bookingDesignForm.commit2Vi.trim(),
+        gioi_thieu_trich_dan_en: bookingDesignForm.commit2En.trim(),
+        ngay_cap_nhat: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('cau_hinh').upsert([payload]);
       if (error) throw error;
-      showNotification('success', 'Đã lưu ảnh bìa form đặt lịch thành công!');
+
+      setBookingCoverImage(bookingDesignForm.coverImage.trim());
+      showNotification('success', 'Đã lưu thiết kế Cột Phải & Ảnh Bìa form đặt lịch thành công!');
+      setIsBookingDesignModalOpen(false);
+
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('petmm_booking_cover_updated', {
-            detail: { url: bookingCoverImage.trim() },
+            detail: {
+              url: bookingDesignForm.coverImage.trim(),
+              titleVi: bookingDesignForm.titleVi.trim(),
+              titleEn: bookingDesignForm.titleEn.trim(),
+              descVi: bookingDesignForm.descVi.trim(),
+              descEn: bookingDesignForm.descEn.trim(),
+              commit1Vi: bookingDesignForm.commit1Vi.trim(),
+              commit1En: bookingDesignForm.commit1En.trim(),
+              commit2Vi: bookingDesignForm.commit2Vi.trim(),
+              commit2En: bookingDesignForm.commit2En.trim(),
+            },
           })
         );
       }
     } catch (err: any) {
-      showNotification('error', `Lỗi lưu ảnh bìa: ${err.message}`);
+      showNotification('error', `Lỗi lưu thiết kế: ${err.message}`);
     } finally {
       setIsSavingBookingCover(false);
     }
@@ -2971,7 +3060,10 @@ export default function AdminDashboardPage() {
                 if (activeTab === 'banners') loadBanners();
                 if (activeTab === 'branches') loadBranches();
                 if (activeTab === 'services') loadServices();
-                if (activeTab === 'appointments') loadAppointments();
+                if (activeTab === 'appointments') {
+                  loadAppointments();
+                  loadBookingCover();
+                }
                 if (activeTab === 'faqs') loadFaqs();
                 if (activeTab === 'reviews') loadReviews();
                 if (activeTab === 'team') loadTeamMembers();
@@ -4996,8 +5088,8 @@ export default function AdminDashboardPage() {
           {/* ===================================================== */}
           {activeTab === 'appointments' && (
             <div className="space-y-4">
-              {/* Header Card với ô tìm kiếm & Bộ lọc trạng thái */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {/* Header Card với ô tìm kiếm & Nút Bật Cửa Sổ Thiết Kế Trực Quan */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                     <CalendarDays className="w-5 h-5 text-[#2D5A27]" />
@@ -5008,93 +5100,31 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="relative min-w-[200px] sm:min-w-[260px]">
+                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                  <div className="relative min-w-[200px] sm:min-w-[240px]">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Tìm mã lịch, tên khách, SĐT, thú cưng..."
+                      placeholder="Tìm mã lịch, tên khách, SĐT..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full text-xs pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
-                </div>
-              </div>
 
-              {/* Cấu Hình Ảnh Bìa Form Đặt Lịch Hẹn (Modal & Trang Chủ) */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2D5A27] border border-emerald-200 flex items-center justify-center shrink-0">
-                      <ImageIcon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                        <span>Ảnh Bìa Form Đặt Lịch Hẹn (Modal &amp; Trang Chủ)</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-[#2D5A27] font-semibold">Cột Phải</span>
-                      </h2>
-                      <p className="text-xs text-slate-500 font-light mt-0.5">
-                        Ảnh hiển thị ở nửa bên phải của form đặt lịch trực tuyến. Thay đổi sẽ lưu vào Database và cập nhật ngay lập tức.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 w-full md:w-auto">
-                    <button
-                      type="button"
-                      disabled={isSavingBookingCover}
-                      onClick={handleSaveBookingCover}
-                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D5A27] hover:bg-emerald-800 transition shadow-sm cursor-pointer disabled:opacity-50"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{isSavingBookingCover ? 'Đang lưu...' : 'Lưu Ảnh Bìa'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBookingCoverImage('https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&q=80&w=1200');
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
-                      title="Dùng ảnh mặc định của hệ thống"
-                    >
-                      Mặc Định
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-4 items-center">
-                  <div className="md:col-span-8">
-                    <AdminImageInput
-                      value={bookingCoverImage}
-                      onChange={(url) => setBookingCoverImage(url)}
-                      folder="banners"
-                      label="Đường dẫn hoặc tải ảnh bìa mới (hỗ trợ JPG, PNG, WEBP, dán từ clipboard)"
-                      uploadButtonLabel="Tải Ảnh Lên"
-                      pasteButtonLabel="Dán Ảnh (Ctrl+V)"
-                      onNotification={showNotification}
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <div className="relative h-28 sm:h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner group">
-                      {bookingCoverImage ? (
-                        <>
-                          <img
-                            src={bookingCoverImage}
-                            alt="Preview Ảnh Bìa Lịch Hẹn"
-                            className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end p-2.5">
-                            <span className="text-[10px] text-white font-medium">Xem trước ảnh bìa thực tế</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-                          <ImageIcon className="w-6 h-6 mb-1" />
-                          <span>Chưa có ảnh bìa</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBookingDesignLangTab('vi');
+                      setBookingDesignPreviewLang('vi');
+                      setIsBookingDesignModalOpen(true);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#2D5A27] via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 shadow-md shadow-emerald-950/20 hover:shadow-lg transition cursor-pointer whitespace-nowrap shrink-0"
+                    title="Mở cửa sổ thiết kế Ảnh bìa, tiêu đề 5 sao và các cam kết y khoa Fear-Free"
+                  >
+                    <SlidersHorizontal className="w-4 h-4 text-[#FFB800]" />
+                    <span>Thiết Kế Cột Phải</span>
+                  </button>
                 </div>
               </div>
 
@@ -7669,6 +7699,406 @@ export default function AdminDashboardPage() {
                 {isFaqSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 <span>{isFaqSaving ? 'Đang lưu vào Supabase...' : 'Lưu Câu Hỏi'}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 4.5. CỬA SỔ (MODAL) THIẾT KẾ CỘT PHẢI & ẢNH BÌA FORM ĐẶT LỊCH */}
+      {/* ========================================================= */}
+      {isBookingDesignModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 via-white to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#2D5A27] to-emerald-800 text-white flex items-center justify-center shadow-sm">
+                  <Sparkles className="w-5 h-5 text-[#FFB800]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <span>Cửa Sổ Thiết Kế Cột Phải &amp; Ảnh Bìa Form Đặt Lịch</span>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#2D5A27] font-bold border border-emerald-300">
+                      Live Preview
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-light mt-0.5">
+                    Thiết kế trực quan ảnh bìa, tiêu đề 5 sao, mô tả Fear-Free và các cam kết tiếp nhận khách hàng (song ngữ VI/EN).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBookingDesignModalOpen(false)}
+                className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: 2 Cột (Trái: Công cụ cài đặt — Phải: Live Preview trực quan) */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-50/40">
+              {/* CỘT TRÁI: FORM CÀI ĐẶT THIẾT KẾ */}
+              <div className="lg:col-span-7 space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                {/* Thanh chuyển đổi ngôn ngữ & Nút Chuyển đổi ENG */}
+                <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBookingDesignLangTab('vi');
+                          setBookingDesignPreviewLang('vi');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          bookingDesignLangTab === 'vi'
+                            ? 'bg-[#2D5A27] text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                        <span>Bản Tiếng Việt</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBookingDesignLangTab('en');
+                          setBookingDesignPreviewLang('en');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          bookingDesignLangTab === 'en'
+                            ? 'bg-[#2D5A27] text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <UKFlag className="w-4 h-3 rounded-[2px]" />
+                        <span>Bản English</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAutoTranslateBookingDesign}
+                    disabled={isTranslatingBookingDesign}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
+                    title="Dịch tự động sang Tiếng Anh y khoa bằng AI"
+                  >
+                    {isTranslatingBookingDesign ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isTranslatingBookingDesign ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                  </button>
+                </div>
+
+                {/* Ảnh bìa form đặt lịch (dùng chung cho cả 2 ngôn ngữ) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1.5 flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
+                    <span>Ảnh Bìa Form Đặt Lịch</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <AdminImageInput
+                    value={bookingDesignForm.coverImage}
+                    onChange={(url) =>
+                      setBookingDesignForm((prev) => ({ ...prev, coverImage: url }))
+                    }
+                    folder="banners"
+                    label="Đường dẫn ảnh hoặc tải ảnh bìa mới (hỗ trợ JPG, PNG, WEBP, Ctrl+V)"
+                    uploadButtonLabel="Tải Ảnh Lên"
+                    pasteButtonLabel="Dán Ảnh"
+                    onNotification={showNotification}
+                  />
+                </div>
+
+                {/* Nội dung theo tab ngôn ngữ đang chọn */}
+                {bookingDesignLangTab === 'vi' ? (
+                  /* TAB TIẾNG VIỆT */
+                  <div className="space-y-3.5 pt-2 border-t border-slate-100 animate-in fade-in duration-150">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <Star className="w-4 h-4 text-[#FFB800]" />
+                        <span>Tiêu Đề Lớn (Tiếng Việt)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingDesignForm.titleVi}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, titleVi: e.target.value }))
+                        }
+                        placeholder="VD: Chăm Sóc Y Khoa Tiêu Chuẩn 5 Sao"
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <Heart className="w-4 h-4 text-rose-500" />
+                        <span>Mô Tả Quy Trình Fear-Free &amp; Y Khoa (Tiếng Việt)</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={bookingDesignForm.descVi}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, descVi: e.target.value }))
+                        }
+                        placeholder="VD: Đội ngũ bác sĩ thú y chính quy, quy trình Fear-Free giảm căng thẳng tuyệt đối cho các bé cưng."
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50 resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Cam Kết 1 - Khám Đúng Giờ (Tiếng Việt)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingDesignForm.commit1Vi}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, commit1Vi: e.target.value }))
+                        }
+                        placeholder="VD: Khám đúng giờ theo lịch hẹn, không bốc số"
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <Mail className="w-4 h-4 text-emerald-600" />
+                        <span>Cam Kết 2 - Tiếp Nhận Qua Gmail (Tiếng Việt)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingDesignForm.commit2Vi}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, commit2Vi: e.target.value }))
+                        }
+                        placeholder="VD: Gửi phiếu tiếp nhận tự động qua Gmail"
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* TAB TIẾNG ANH */
+                  <div className="space-y-3.5 pt-2 border-t border-slate-100 animate-in fade-in duration-150">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <Star className="w-4 h-4 text-[#FFB800]" />
+                        <span>Main Title (English)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingDesignForm.titleEn}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, titleEn: e.target.value }))
+                        }
+                        placeholder="e.g. Fear-Free & High-Standard Medical Care"
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <Heart className="w-4 h-4 text-rose-500" />
+                        <span>Fear-Free & Medical Description (English)</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={bookingDesignForm.descEn}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, descEn: e.target.value }))
+                        }
+                        placeholder="e.g. Experienced veterinarians dedicated to safeguarding your pet's health..."
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50 resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Commitment 1 - Priority Booking (English)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingDesignForm.commit1En}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, commit1En: e.target.value }))
+                        }
+                        placeholder="e.g. Zero waiting time with priority booking"
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                        <Mail className="w-4 h-4 text-emerald-600" />
+                        <span>Commitment 2 - Confirmation via Gmail (English)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingDesignForm.commit2En}
+                        onChange={(e) =>
+                          setBookingDesignForm((prev) => ({ ...prev, commit2En: e.target.value }))
+                        }
+                        placeholder="e.g. Automated email confirmation sent to Gmail"
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27] outline-none text-slate-900 bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* CỘT PHẢI: LIVE PREVIEW THỜI GIAN THỰC */}
+              <div className="lg:col-span-5 flex flex-col">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Eye className="w-4 h-4 text-[#2D5A27]" />
+                    <span>Xem Trước Trực Quan (Live Preview)</span>
+                  </span>
+                  <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-lg text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setBookingDesignPreviewLang('vi')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition cursor-pointer flex items-center gap-1 ${
+                        bookingDesignPreviewLang === 'vi'
+                          ? 'bg-white text-[#2D5A27] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <VietnamFlag className="w-3.5 h-2.5 rounded-xs" />
+                      <span>VI</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBookingDesignPreviewLang('en')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition cursor-pointer flex items-center gap-1 ${
+                        bookingDesignPreviewLang === 'en'
+                          ? 'bg-white text-[#2D5A27] shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <UKFlag className="w-3.5 h-2.5 rounded-xs" />
+                      <span>EN</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Khung mô phỏng Cột Phải thực tế */}
+                <div className="relative flex-1 min-h-[460px] rounded-3xl bg-slate-900 overflow-hidden flex flex-col justify-between p-6 sm:p-7 text-white shadow-2xl border border-slate-700">
+                  {/* Ảnh nền */}
+                  <img
+                    src={bookingDesignForm.coverImage || bookingCoverImage}
+                    alt="Cover Preview"
+                    className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/50 to-slate-900/30" />
+
+                  {/* Huy hiệu đỉnh */}
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold shadow-lg">
+                      <span className="w-2 h-2 rounded-full bg-[#FFB800] animate-pulse" />
+                      <span>Pet M&amp;M Medical Center</span>
+                    </div>
+                  </div>
+
+                  {/* Thông tin hỗ trợ và cam kết dưới đáy ảnh bìa */}
+                  <div className="relative z-10 space-y-3.5">
+                    <div>
+                      <h4 className="font-editorial text-xl sm:text-2xl font-normal text-white leading-tight">
+                        {bookingDesignPreviewLang === 'en'
+                          ? (bookingDesignForm.titleEn || bookingDesignForm.titleVi)
+                          : (bookingDesignForm.titleVi || 'Chăm Sóc Y Khoa Tiêu Chuẩn 5 Sao')}
+                      </h4>
+                      <p className="text-xs text-slate-300 font-light mt-1.5 leading-relaxed">
+                        {bookingDesignPreviewLang === 'en'
+                          ? (bookingDesignForm.descEn || bookingDesignForm.descVi)
+                          : (bookingDesignForm.descVi || 'Đội ngũ bác sĩ thú y chính quy, quy trình Fear-Free giảm căng thẳng tuyệt đối cho các bé cưng.')}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-slate-200">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>
+                          {bookingDesignPreviewLang === 'en'
+                            ? (bookingDesignForm.commit1En || bookingDesignForm.commit1Vi)
+                            : (bookingDesignForm.commit1Vi || 'Khám đúng giờ theo lịch hẹn, không bốc số')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>
+                          {bookingDesignPreviewLang === 'en'
+                            ? (bookingDesignForm.commit2En || bookingDesignForm.commit2Vi)
+                            : (bookingDesignForm.commit2Vi || 'Gửi phiếu tiếp nhận tự động qua Gmail')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                          <PhoneCall className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="text-[9px] text-slate-300 font-light uppercase tracking-wider">
+                            Hotline Tư Vấn 24/7
+                          </div>
+                          <div className="text-xs font-bold text-white font-mono">0364 605 544</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-400">Gọi Ngay →</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/70">
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingDesignForm({
+                    coverImage: '/about_consultation.jpg',
+                    titleVi: 'Chăm Sóc Y Khoa Tiêu Chuẩn 5 Sao',
+                    titleEn: 'Fear-Free & High-Standard Medical Care',
+                    descVi: 'Đội ngũ bác sĩ thú y chính quy, quy trình Fear-Free giảm căng thẳng tuyệt đối cho các bé cưng.',
+                    descEn: 'Experienced veterinarians dedicated to safeguarding your pet’s health with compassion and cutting-edge equipment.',
+                    commit1Vi: 'Khám đúng giờ theo lịch hẹn, không bốc số',
+                    commit1En: 'Zero waiting time with priority booking',
+                    commit2Vi: 'Gửi phiếu tiếp nhận tự động qua Gmail',
+                    commit2En: 'Automated email confirmation sent to Gmail',
+                  });
+                  showNotification('success', 'Đã khôi phục các câu chữ chuẩn theo tiêu chuẩn y khoa 5 sao!');
+                }}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer"
+              >
+                Khôi Phục Mẫu Chuẩn 5 Sao
+              </button>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsBookingDesignModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingBookingCover}
+                  onClick={handleSaveBookingDesign}
+                  className="flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#2D5A27] via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 shadow-md transition cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingBookingCover ? 'Đang lưu vào Database...' : 'Lưu & Áp Dụng Ngay'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

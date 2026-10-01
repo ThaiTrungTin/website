@@ -46,6 +46,21 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
   const zaloUrl = config.link_zalo || 'https://zalo.me/0903599339';
   const messengerUrl = config.link_messenger || 'https://m.me/petmm';
 
+  const handleBookingClick = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setIsMobileMenuOpen(false);
+    if (typeof window !== 'undefined') {
+      const isHomePage = window.location.pathname === '/' || window.location.pathname === '';
+      const bookingEl = document.getElementById('booking');
+      if (isHomePage && bookingEl) {
+        bookingEl.scrollIntoView({ behavior: 'smooth' });
+        window.history.pushState(null, '', '#booking');
+      } else {
+        window.location.href = '/#booking';
+      }
+    }
+  };
+
   useEffect(() => {
     let lastScrolled = false;
     const handleScroll = () => {
@@ -112,7 +127,7 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
 
             {/* Booking CTA Button - Fixed width & concise label across languages */}
             <button
-              onClick={() => onOpenBookingModal?.()}
+              onClick={handleBookingClick}
               className="flex items-center justify-center gap-2 w-[124px] py-2.5 rounded-2xl font-bold text-xs bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
             >
               <CalendarCheck className="w-4 h-4 text-[#FFB800] shrink-0" />
@@ -124,8 +139,8 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
           <div className="flex items-center gap-2 lg:hidden">
             <LanguageSwitcher variant="light" showIcon={false} />
             <button
-              onClick={() => onOpenBookingModal?.()}
-              className="relative overflow-hidden sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs bg-gradient-to-r from-[#FFB800] to-amber-400 text-slate-950 shadow-md"
+              onClick={handleBookingClick}
+              className="relative overflow-hidden sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs bg-gradient-to-r from-[#FFB800] to-amber-400 text-slate-950 shadow-md cursor-pointer"
             >
               <div className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none animate-button-gleam" />
               <CalendarCheck className="w-3.5 h-3.5" />
@@ -376,11 +391,8 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
             </div>
 
             <button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                onOpenBookingModal?.();
-              }}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-xl shadow-emerald-950/20"
+              onClick={handleBookingClick}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-xl shadow-emerald-950/20 cursor-pointer"
             >
               <CalendarCheck className="w-4 h-4 text-[#FFB800]" />
               <span>{t('btn_book_short', 'Đặt Lịch')}</span>

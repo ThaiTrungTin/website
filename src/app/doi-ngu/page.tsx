@@ -16,7 +16,6 @@ import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 import { getAssetUrl } from '@/lib/assets';
 import Header from '@/components/Header';
-import BookingModal from '@/components/BookingModal';
 import { useLanguage } from '@/context/LanguageContext';
 
 // Component Avatar mặc định Facebook silhouette khi để trống ảnh
@@ -553,12 +552,10 @@ export default function DoiNguYTePage() {
   const bacSiList = team.filter((m) => m.phan_loai === 'bac_si');
   const dieuDuongList = team.filter((m) => m.phan_loai === 'dieu_duong');
 
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [preselectedService, setPreselectedService] = useState<string | undefined>(undefined);
-
-  const handleOpenBookingModal = (serviceTitle?: string) => {
-    setPreselectedService(serviceTitle);
-    setIsBookingModalOpen(true);
+  const handleOpenBookingModal = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/#booking';
+    }
   };
 
   const totalCount = team.length > 0 ? team.length : 12;
@@ -702,13 +699,6 @@ export default function DoiNguYTePage() {
       <Footer />
       <FloatingContactWidgets />
       <ScrollNavigationButtons />
-
-      {/* 5. BOOKING MODAL */}
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        preselectedService={preselectedService}
-      />
     </div>
   );
 }

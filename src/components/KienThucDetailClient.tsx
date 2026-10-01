@@ -25,7 +25,6 @@ import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 import Header from '@/components/Header';
-import BookingModal from '@/components/BookingModal';
 
 interface Props {
   article: BaiVietRecord;
@@ -36,8 +35,11 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
   const { language } = useLanguage();
   const isEn = language === 'en';
 
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const handleOpenBookingModal = () => setIsBookingModalOpen(true);
+  const handleOpenBookingModal = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/#booking';
+    }
+  };
 
   const title = (isEn && article.tieu_de_en) ? article.tieu_de_en : article.tieu_de;
   const category = (isEn && article.chuyen_muc_en)
@@ -371,11 +373,10 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
         </div>
       </div>
 
-      {/* ── 4. FOOTER, FLOATING WIDGETS & BOOKING MODAL ── */}
+      {/* ── 4. FOOTER, FLOATING WIDGETS & NAVIGATION ── */}
       <Footer />
       <FloatingContactWidgets />
       <ScrollNavigationButtons />
-      <BookingModal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} />
     </div>
   );
 }

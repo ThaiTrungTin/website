@@ -617,7 +617,17 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           {/* 2 CTA Buttons (Đưa lên ngay dưới Tiêu đề chính) */}
           <div className="flex flex-row items-center gap-2 sm:gap-4 max-w-sm sm:max-w-none animate-slogan-cta mb-2 sm:mb-4">
             <button
-              onClick={() => onOpenBookingModal()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  const bookingEl = document.getElementById('booking');
+                  if (bookingEl) {
+                    bookingEl.scrollIntoView({ behavior: 'smooth' });
+                    window.history.pushState(null, '', '#booking');
+                  } else {
+                    window.location.href = '/#booking';
+                  }
+                }
+              }}
               className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-[11px] sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer whitespace-nowrap"
             >
               <CalendarCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FFB800]" />

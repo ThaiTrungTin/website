@@ -13,7 +13,6 @@ import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 import Header from '@/components/Header';
-import BookingModal from '@/components/BookingModal';
 
 interface Props {
   branch: ChiNhanhRecord;
@@ -32,12 +31,10 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
   const { language } = useLanguage();
   const isEn = language === 'en';
 
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [preselectedService, setPreselectedService] = useState<string | undefined>(undefined);
-
-  const handleOpenBookingModal = (serviceTitle?: string) => {
-    setPreselectedService(serviceTitle);
-    setIsBookingModalOpen(true);
+  const handleOpenBookingModal = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/#booking';
+    }
   };
 
   const branchName = (isEn && branch.ten_chi_nhanh_en) ? branch.ten_chi_nhanh_en : branch.ten_chi_nhanh;
@@ -365,13 +362,6 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
       {/* ── 5. WIDGET LIÊN HỆ & NÚT CUỘN ĐẦU TRANG / CUỐI TRANG ── */}
       <FloatingContactWidgets />
       <ScrollNavigationButtons />
-
-      {/* ── 6. CỬA SỔ ĐẶT LỊCH HẸN KHÁM BỆNH (BOOKING MODAL) ── */}
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        preselectedService={preselectedService}
-      />
     </div>
   );
 }
