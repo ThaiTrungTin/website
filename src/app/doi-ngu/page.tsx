@@ -4,20 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Stethoscope,
-  Award,
-  Heart,
-  CalendarCheck,
-  PhoneCall,
-  CheckCircle2,
   Sparkles,
   ArrowLeft,
-  User,
-  GraduationCap,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { supabase, DoiNguRecord, DoiNguPhanLoai } from '@/lib/supabase';
+import { supabase, DoiNguRecord } from '@/lib/supabase';
 import ConsultationSidebar from '@/components/ConsultationSidebar';
 import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
@@ -25,6 +17,7 @@ import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 import { getAssetUrl } from '@/lib/assets';
 import Header from '@/components/Header';
 import BookingModal from '@/components/BookingModal';
+import { useLanguage } from '@/context/LanguageContext';
 
 // Component Avatar mặc định Facebook silhouette khi để trống ảnh
 function DefaultFacebookAvatar() {
@@ -52,6 +45,7 @@ function CategorySwipeSection({
   items: DoiNguRecord[];
   isTwoColumnDesktop?: boolean;
 }) {
+  const { isEn, t } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -134,7 +128,7 @@ function CategorySwipeSection({
           <button
             type="button"
             onClick={scrollPrev}
-            aria-label="Xem bác sĩ trước"
+            aria-label={t('team_prev_doctor', 'Xem bác sĩ trước')}
             className="md:hidden absolute left-1.5 top-24 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-lg border border-slate-200/90 flex items-center justify-center transition-all active:scale-90 cursor-pointer backdrop-blur-xs"
           >
             <ChevronLeft className="w-4 h-4 text-slate-800" />
@@ -146,7 +140,7 @@ function CategorySwipeSection({
           <button
             type="button"
             onClick={scrollNext}
-            aria-label="Xem tiếp bác sĩ sau"
+            aria-label={t('team_next_doctor', 'Xem tiếp bác sĩ sau')}
             className="md:hidden absolute right-1.5 top-24 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-lg border border-slate-200/90 flex items-center justify-center transition-all active:scale-90 cursor-pointer backdrop-blur-xs"
           >
             <ChevronRight className="w-4 h-4 text-slate-800" />
@@ -160,8 +154,13 @@ function CategorySwipeSection({
             isTwoColumnDesktop ? 'md:grid-cols-2' : 'md:grid-cols-3'
           } md:gap-5 md:pb-0 md:overflow-visible`}
         >
-        {items.map((doctor, idx) => (
-          isTwoColumnDesktop ? (
+        {items.map((doctor, idx) => {
+          const doctorName = (isEn && doctor.ho_ten_en) ? doctor.ho_ten_en : doctor.ho_ten;
+          const doctorTitle = (isEn && doctor.chuc_danh_en) ? doctor.chuc_danh_en : doctor.chuc_danh;
+          const doctorRole = (isEn && doctor.hoc_vi_chuc_vu_en) ? doctor.hoc_vi_chuc_vu_en : doctor.hoc_vi_chuc_vu;
+          const doctorDesc = (isEn && doctor.mo_ta_en) ? doctor.mo_ta_en : doctor.mo_ta;
+
+          return isTwoColumnDesktop ? (
             /* Style cho Chuyên gia tư vấn (2 cột rộng) */
             <div
               key={doctor.id}
@@ -177,7 +176,7 @@ function CategorySwipeSection({
                 {doctor.hinh_anh ? (
                   <Image
                     src={getAssetUrl(doctor.hinh_anh)}
-                    alt={doctor.ho_ten}
+                    alt={doctorName}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                     sizes="(max-width: 640px) 300px, 120px"
@@ -189,22 +188,22 @@ function CategorySwipeSection({
 
               {/* Thông tin bên phải */}
               <div className="flex-1 min-w-0">
-                {doctor.chuc_danh && (
+                {doctorTitle && (
                   <span className="block text-[11px] font-bold uppercase tracking-wider text-[#2D5A27] mb-1">
-                    {doctor.chuc_danh}
+                    {doctorTitle}
                   </span>
                 )}
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
-                  {doctor.ho_ten}
+                  {doctorName}
                 </h3>
-                {doctor.hoc_vi_chuc_vu && (
+                {doctorRole && (
                   <p className="text-xs text-slate-700 font-medium mt-0.5">
-                    {doctor.hoc_vi_chuc_vu}
+                    {doctorRole}
                   </p>
                 )}
-                {doctor.mo_ta && (
+                {doctorDesc && (
                   <p className="text-xs text-slate-600 leading-relaxed font-light mt-2.5">
-                    {doctor.mo_ta}
+                    {doctorDesc}
                   </p>
                 )}
               </div>
@@ -225,7 +224,7 @@ function CategorySwipeSection({
                 {doctor.hinh_anh ? (
                   <Image
                     src={getAssetUrl(doctor.hinh_anh)}
-                    alt={doctor.ho_ten}
+                    alt={doctorName}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                     sizes="(max-width: 640px) 280px, 33vw"
@@ -238,30 +237,30 @@ function CategorySwipeSection({
               {/* Nội dung thông tin thẻ */}
               <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between text-left">
                 <div>
-                  {doctor.chuc_danh && (
+                  {doctorTitle && (
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-[#2D5A27] mb-1">
-                      {doctor.chuc_danh}
+                      {doctorTitle}
                     </span>
                   )}
                   <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
-                    {doctor.ho_ten}
+                    {doctorName}
                   </h3>
-                  {doctor.hoc_vi_chuc_vu && (
+                  {doctorRole && (
                     <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                      {doctor.hoc_vi_chuc_vu}
+                      {doctorRole}
                     </p>
                   )}
                 </div>
 
-                {doctor.mo_ta && (
+                {doctorDesc && (
                   <p className="text-xs text-slate-600 leading-relaxed font-light mt-3 pt-3 border-t border-slate-100">
-                    {doctor.mo_ta}
+                    {doctorDesc}
                   </p>
                 )}
               </div>
             </div>
-          )
-        ))}
+          );
+        })}
         </div>
       </div>
 
@@ -273,7 +272,7 @@ function CategorySwipeSection({
               key={i}
               type="button"
               onClick={() => scrollToItem(i)}
-              aria-label={`Chuyển đến bác sĩ ${i + 1}`}
+              aria-label={`${t('team_goto_doctor', 'Chuyển đến bác sĩ')} ${i + 1}`}
               className={`h-1.5 rounded-full transition-all cursor-pointer ${
                 activeIndex === i ? 'w-5 bg-[#2D5A27]' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
               }`}
@@ -285,42 +284,57 @@ function CategorySwipeSection({
   );
 }
 
-// Danh sách đội ngũ mẫu dự phòng chuẩn xác
+// Danh sách đội ngũ mẫu dự phòng chuẩn xác (Bao gồm dữ liệu song ngữ Anh - Việt)
 const FALLBACK_TEAM: DoiNguRecord[] = [
   // 1. Lãnh đạo chuyên môn
   {
     id: '1',
     ho_ten: 'TS. BSTY. Vương Tuấn Phong',
+    ho_ten_en: 'Dr. Vuong Tuan Phong, DVM, Ph.D.',
     chuc_danh: 'NHÀ SÁNG LẬP · PET M&M',
+    chuc_danh_en: 'CO-FOUNDER · PET M&M',
     hoc_vi_chuc_vu: 'Tiến sĩ Thú y · Giám Đốc Điều Hành',
+    hoc_vi_chuc_vu_en: 'Ph.D. in Veterinary Medicine · CEO',
     phan_loai: 'lanh_dao',
     hinh_anh: '/about_team_entrance.jpg',
     mo_ta:
       'Phụ trách định hướng phát triển, vận hành hệ thống và kết nối nguồn lực chuyên môn. Tiến sĩ ĐH Hokkaido, học bổng MEXT Nhật Bản.',
+    mo_ta_en:
+      'In charge of strategic development, system operations, and specialized clinical resources. Ph.D. from Hokkaido University, Japanese MEXT Scholarship recipient.',
     thu_tu: 1,
     kich_hoat: true,
   },
   {
     id: '2',
     ho_ten: 'PGS. BSTY. Bùi Khánh Linh',
+    ho_ten_en: 'Assoc. Prof. Bui Khanh Linh, DVM, Ph.D.',
     chuc_danh: 'NHÀ SÁNG LẬP · PET M&M',
+    chuc_danh_en: 'CO-FOUNDER · PET M&M',
     hoc_vi_chuc_vu: 'Phó Giáo Sư Thú Y · Viện Trưởng Nghiên Cứu',
+    hoc_vi_chuc_vu_en: 'Assoc. Prof. of Vet Medicine · Research Director',
     phan_loai: 'lanh_dao',
     hinh_anh: '/about_consultation.jpg',
     mo_ta:
       'Xây dựng nền tảng hợp tác quốc tế, tinh thần đào tạo và định hướng phát triển bền vững dựa trên tiến bộ khoa học công nghệ cho Pet M&M.',
+    mo_ta_en:
+      'Establishes international cooperation frameworks, continuous clinical training, and sustainable development driven by scientific and technological advancements at Pet M&M.',
     thu_tu: 2,
     kich_hoat: true,
   },
   {
     id: '3',
     ho_ten: 'BS. CKI Nguyễn Minh Tuấn',
+    ho_ten_en: 'Dr. Nguyen Minh Tuan, DVM',
     chuc_danh: 'GIÁM ĐỐC CHUYÊN MÔN',
+    chuc_danh_en: 'CHIEF MEDICAL DIRECTOR',
     hoc_vi_chuc_vu: 'Bác Sĩ Chuyên Khoa I · Ngoại Khoa',
+    hoc_vi_chuc_vu_en: 'Specialist Level I · Surgery & Orthopedics',
     phan_loai: 'lanh_dao',
     hinh_anh: '/about_surgery.jpg',
     mo_ta:
       'Hơn 15 năm kinh nghiệm điều hành và phẫu thuật vi phẫu. Đặt nền móng cho hệ thống chuyên môn y khoa thú y chuẩn mực theo tinh thần y đức.',
+    mo_ta_en:
+      'Over 15 years of leadership and microsurgical experience. Pioneered high-standard veterinary clinical systems rooted in dedication and medical ethics.',
     thu_tu: 3,
     kich_hoat: true,
   },
@@ -329,24 +343,34 @@ const FALLBACK_TEAM: DoiNguRecord[] = [
   {
     id: '4',
     ho_ten: 'GS. Tetsuya Nakade',
+    ho_ten_en: 'Prof. Tetsuya Nakade',
     chuc_danh: 'CHUYÊN GIA TƯ VẤN CHẨN ĐOÁN HÌNH ẢNH',
+    chuc_danh_en: 'DIAGNOSTIC IMAGING CONSULTANT',
     hoc_vi_chuc_vu: 'Giáo sư danh dự · ĐH Rakuno Gakuen, Nhật Bản',
+    hoc_vi_chuc_vu_en: 'Professor Emeritus · Rakuno Gakuen University, Japan',
     phan_loai: 'chuyen_gia',
     hinh_anh: '/about_consultation.jpg',
     mo_ta:
       'Định hướng chuyên môn trong việc sử dụng dữ liệu hình ảnh, thiết bị chẩn đoán và đánh giá ca bệnh theo hướng khoa học, chính xác hơn.',
+    mo_ta_en:
+      'Provides specialized guidance in advanced diagnostic imaging, modern imaging equipment, and scientific clinical case evaluations.',
     thu_tu: 1,
     kich_hoat: true,
   },
   {
     id: '5',
     ho_ten: 'PGS. BSTY. Sử Thanh Long',
+    ho_ten_en: 'Assoc. Prof. Su Thanh Long, DVM, Ph.D.',
     chuc_danh: 'CỐ VẤN CHUYÊN MÔN CAO CẤP',
-    hoc_vi_chuc_vu: 'Giám đốc Bệnh viện Thú cưng Quốc Tế',
+    chuc_danh_en: 'SENIOR MEDICAL ADVISOR',
+    hoc_vi_chuc_vu: 'Giám đốc Bệnh viện Thú y Quốc Tế',
+    hoc_vi_chuc_vu_en: 'Director of International Veterinary Hospital',
     phan_loai: 'chuyen_gia',
     hinh_anh: '/about_team_entrance.jpg',
     mo_ta:
       'Đặt nền móng cho hệ sinh thái y tế thú cưng trên nền tảng học thuật, đào tạo và chuyên môn thú y theo tinh thần khoa học, chuẩn mực.',
+    mo_ta_en:
+      'Lays the foundation for our veterinary healthcare ecosystem on academic rigor, clinical excellence, and ethical medical standards.',
     thu_tu: 2,
     kich_hoat: true,
   },
@@ -355,48 +379,68 @@ const FALLBACK_TEAM: DoiNguRecord[] = [
   {
     id: '6',
     ho_ten: 'BS. Đỗ Trung Nguyên',
+    ho_ten_en: 'Dr. Do Trung Nguyen, DVM',
     chuc_danh: 'BÁC SĨ THÚ Y',
+    chuc_danh_en: 'VETERINARY DOCTOR',
     hoc_vi_chuc_vu: 'Bác Sĩ Điều Trị Nội Khoa & Tiêu Hóa',
+    hoc_vi_chuc_vu_en: 'Internal Medicine & Gastroenterology Specialist',
     phan_loai: 'bac_si',
     hinh_anh: '/about_consultation.jpg',
     mo_ta:
       'Tốt nghiệp chính quy ngành Thú Y, tận tâm và giàu kinh nghiệm trong chẩn đoán, điều trị bệnh nội khoa và hồi phục thể trạng.',
+    mo_ta_en:
+      'Formally trained in Veterinary Medicine, devoted and experienced in diagnosing and treating complex internal diseases and physical recovery.',
     thu_tu: 1,
     kich_hoat: true,
   },
   {
     id: '7',
     ho_ten: 'BSTY. Nguyễn Thị Thu Hiền',
+    ho_ten_en: 'Dr. Nguyen Thi Thu Hien, DVM',
     chuc_danh: 'BÁC SĨ THÚ Y',
+    chuc_danh_en: 'VETERINARY DOCTOR',
     hoc_vi_chuc_vu: 'Bác Sĩ Chuyên Khoa Da Liễu & Dinh Dưỡng',
+    hoc_vi_chuc_vu_en: 'Dermatology & Clinical Nutrition Specialist',
     phan_loai: 'bac_si',
     hinh_anh: '/about_team_entrance.jpg',
     mo_ta:
       'Chứng chỉ Fear-Free quốc tế, chuyên gia tư vấn dinh dưỡng và phác đồ điều trị da liễu dứt điểm cho thú cưng.',
+    mo_ta_en:
+      'International Fear-Free certified, specialized in clinical nutritional counseling and definitive dermatological protocols for pets.',
     thu_tu: 2,
     kich_hoat: true,
   },
   {
     id: '8',
     ho_ten: 'BS. Kiều Quang Kiên',
+    ho_ten_en: 'Dr. Kieu Quang Kien, DVM',
     chuc_danh: 'BÁC SĨ THÚ Y',
+    chuc_danh_en: 'VETERINARY DOCTOR',
     hoc_vi_chuc_vu: 'Bác Sĩ Ngoại Khoa & Phẫu Thuật',
+    hoc_vi_chuc_vu_en: 'Surgeon & Orthopedic Specialist',
     phan_loai: 'bac_si',
     hinh_anh: '/about_surgery.jpg',
     mo_ta:
       'Chuyên trách phẫu thuật mô mềm, chỉnh hình và gắp dị vật nội soi cấp cứu 24/7 với kỹ thuật xâm lấn tối thiểu.',
+    mo_ta_en:
+      'Specialized in soft-tissue surgery, orthopedic trauma, and 24/7 endoscopic emergency foreign body retrieval with minimally invasive techniques.',
     thu_tu: 3,
     kich_hoat: true,
   },
   {
     id: '9',
     ho_ten: 'ThS. BS Trần Mai Anh',
+    ho_ten_en: 'Dr. Tran Mai Anh, M.V.M',
     chuc_danh: 'BÁC SĨ THÚ Y',
-    hoc_vi_chuc_vu: 'Thạc Sĩ Thú Y · Nhãn Khoa',
+    chuc_danh_en: 'VETERINARY DOCTOR',
+    hoc_vi_chuc_vu: 'Thạc Sĩ Y Học Thú Y · Nhãn Khoa',
+    hoc_vi_chuc_vu_en: 'Master of Vet Medicine · Ophthalmology',
     phan_loai: 'bac_si',
     hinh_anh: '/about_consultation.jpg',
     mo_ta:
       'Chuyên gia nhãn khoa và siêu âm tim mạch Doppler. Từng tu nghiệp chuyên ngành thú y thú cảnh tại Bangkok, Thái Lan.',
+    mo_ta_en:
+      'Specialist in veterinary ophthalmology and Doppler cardiac ultrasound. Completed advanced clinical training in small animal practice in Bangkok, Thailand.',
     thu_tu: 4,
     kich_hoat: true,
   },
@@ -405,43 +449,66 @@ const FALLBACK_TEAM: DoiNguRecord[] = [
   {
     id: '10',
     ho_ten: 'ĐD. Bùi Văn Hướng',
+    ho_ten_en: 'Nurse Bui Van Huong',
     chuc_danh: 'ĐIỀU DƯỠNG TRƯỞNG',
+    chuc_danh_en: 'HEAD VETERINARY NURSE',
     hoc_vi_chuc_vu: 'Trưởng Nhóm Chăm Sóc Hậu Phẫu & ICU',
+    hoc_vi_chuc_vu_en: 'Head of Post-Operative Care & ICU Team',
     phan_loai: 'dieu_duong',
     hinh_anh: '/about_team_entrance.jpg',
     mo_ta:
       'Hơn 7 năm kinh nghiệm theo dõi sinh hiệu, chăm sóc đặc biệt sau phẫu thuật và luôn nhẹ nhàng, yêu thương các bé cưng.',
+    mo_ta_en:
+      'Over 7 years of intensive experience in vital sign monitoring, post-operative critical care, and gentle, loving handling of pets.',
     thu_tu: 1,
     kich_hoat: true,
   },
   {
     id: '11',
     ho_ten: 'ĐD. Lê Thị Kim Yến',
+    ho_ten_en: 'Therapist Le Thi Kim Yen',
     chuc_danh: 'KỸ THUẬT VIÊN SPA & THỦY LIỆU',
+    chuc_danh_en: 'SPA & HYDROTHERAPY SPECIALIST',
     hoc_vi_chuc_vu: 'Chuyên Viên Trị Liệu Thảo Mộc',
+    hoc_vi_chuc_vu_en: 'Herbal & Ozone Therapy Practitioner',
     phan_loai: 'dieu_duong',
     hinh_anh: '/pet_golden_spa.jpg',
     mo_ta:
       'Chuyên gia massage thư giãn cơ bắp, thủy liệu khoáng ấm ozone và cắt tỉa tạo kiểu Fear-Free không gây căng thẳng.',
+    mo_ta_en:
+      'Expert in muscle relaxation massage, warm ozone mineral hydrotherapy, and stress-free Fear-Free certified grooming.',
     thu_tu: 2,
     kich_hoat: true,
   },
   {
     id: '12',
     ho_ten: 'ĐD. Trần Hoàng Nam',
+    ho_ten_en: 'Tech. Tran Hoang Nam',
     chuc_danh: 'ĐIỀU DƯỠNG VIÊN',
+    chuc_danh_en: 'VETERINARY TECHNICIAN',
     hoc_vi_chuc_vu: 'Kỹ Thuật Viên Xét Nghiệm & Hỗ Trợ Khám',
+    hoc_vi_chuc_vu_en: 'Clinical Laboratory & Diagnostics Technician',
     phan_loai: 'dieu_duong',
     hinh_anh: '/about_surgery.jpg',
     mo_ta:
       'Vận hành máy sinh hóa tự động, hỗ trợ bác sĩ lấy mẫu xét nghiệm chuẩn xác và chăm sóc thú cưng nằm viện nội trú.',
+    mo_ta_en:
+      'Operates automated biochemistry analyzers, assists veterinarians with precision sampling, and provides dedicated in-patient care.',
     thu_tu: 3,
     kich_hoat: true,
   },
 ];
 
 export default function DoiNguYTePage() {
+  const { isEn, t } = useLanguage();
   const [team, setTeam] = useState<DoiNguRecord[]>(FALLBACK_TEAM);
+
+  // Cập nhật tab title theo ngôn ngữ khi vào trang
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.title = isEn ? 'Pet M&M - Medical & Veterinary Team' : 'Pet M&M - Đội Ngũ Bác Sĩ & Y Tế';
+    }
+  }, [isEn]);
 
   // Tải danh sách đội ngũ từ Supabase và lắng nghe realtime
   useEffect(() => {
@@ -493,6 +560,8 @@ export default function DoiNguYTePage() {
     setIsBookingModalOpen(true);
   };
 
+  const totalCount = team.length > 0 ? team.length : 12;
+
   return (
     <div className="min-h-screen bg-[#F8FAF7] text-slate-900 flex flex-col selection:bg-[#2D5A27] selection:text-white pt-[60px] sm:pt-[68px]">
       {/* 0. LUXURY MAIN NAVBAR (Cố định trên cùng khi cuộn) */}
@@ -502,7 +571,7 @@ export default function DoiNguYTePage() {
       <div className="relative w-full h-64 sm:h-80 md:h-[400px] overflow-hidden bg-slate-900">
         <Image
           src={getAssetUrl('/about_team_entrance.jpg')}
-          alt="Đội ngũ bác sĩ và chuyên gia Pet M&M"
+          alt={t('team_hero_title', 'Đội Ngũ Bác Sĩ & Y Tế Pet M&M')}
           fill
           priority
           className="object-cover object-center"
@@ -512,13 +581,15 @@ export default function DoiNguYTePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 border border-white/30 mb-3 shadow-xs">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>HỘI ĐỒNG Y KHOA CHUYÊN MÔN CAO</span>
+              <span>{t('team_hero_badge', 'HỘI ĐỒNG Y KHOA CHUYÊN MÔN CAO')}</span>
             </span>
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-editorial font-bold text-white drop-shadow-md leading-tight">
-              Đội Ngũ Bác Sĩ &amp; Y Tế Pet M&amp;M
+              {t('team_hero_title', 'Đội Ngũ Bác Sĩ & Y Tế Pet M&M')}
             </h1>
             <p className="text-white/85 text-xs sm:text-sm mt-2 max-w-2xl font-light leading-relaxed">
-              Quy tụ hơn {team.length > 0 ? team.length : 12}+ chuyên gia, bác sĩ thú y và điều dưỡng tốt nghiệp chính quy, luôn bảo vệ sinh mệnh các bé cưng bằng trái tim và y đức cao nhất.
+              {isEn
+                ? `Bringing together over ${totalCount}+ certified specialists, veterinarians, and nurses dedicated to protecting pet lives with utmost devotion and medical ethics.`
+                : `Quy tụ hơn ${totalCount}+ chuyên gia, bác sĩ thú y và điều dưỡng tốt nghiệp chính quy, luôn bảo vệ sinh mệnh các bé cưng bằng trái tim và y đức cao nhất.`}
             </p>
           </div>
         </div>
@@ -531,18 +602,18 @@ export default function DoiNguYTePage() {
             <li>
               <Link href="/" className="text-slate-500 hover:text-[#2D5A27] transition font-medium flex items-center gap-1">
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Trang chủ</span>
+                <span>{t('team_breadcrumb_home', 'Trang chủ')}</span>
               </Link>
             </li>
             <li className="text-slate-300 select-none">›</li>
             <li>
               <Link href="/#about" className="text-slate-500 hover:text-[#2D5A27] transition font-medium">
-                Về Pet M&amp;M
+                {t('team_breadcrumb_about', 'Về Pet M&M')}
               </Link>
             </li>
             <li className="text-slate-300 select-none">›</li>
             <li>
-              <span className="text-[#2D5A27] font-bold">Đội ngũ y tế</span>
+              <span className="text-[#2D5A27] font-bold">{t('team_breadcrumb_team', 'Đội ngũ y tế')}</span>
             </li>
           </ol>
 
@@ -553,7 +624,7 @@ export default function DoiNguYTePage() {
                 href="#lanh-dao"
                 className="px-3 py-1 rounded-full bg-slate-100 hover:bg-[#2D5A27] hover:text-white transition text-slate-700 whitespace-nowrap font-medium"
               >
-                Lãnh đạo chuyên môn ({lanhDaoList.length})
+                {t('team_category_lanh_dao_short', 'Lãnh đạo chuyên môn')} ({lanhDaoList.length})
               </a>
             )}
             {chuyenGiaList.length > 0 && (
@@ -561,7 +632,7 @@ export default function DoiNguYTePage() {
                 href="#chuyen-gia"
                 className="px-3 py-1 rounded-full bg-slate-100 hover:bg-[#2D5A27] hover:text-white transition text-slate-700 whitespace-nowrap font-medium"
               >
-                Chuyên gia tư vấn ({chuyenGiaList.length})
+                {t('team_category_chuyen_gia_short', 'Chuyên gia tư vấn')} ({chuyenGiaList.length})
               </a>
             )}
             {bacSiList.length > 0 && (
@@ -569,7 +640,7 @@ export default function DoiNguYTePage() {
                 href="#bac-si"
                 className="px-3 py-1 rounded-full bg-slate-100 hover:bg-[#2D5A27] hover:text-white transition text-slate-700 whitespace-nowrap font-medium"
               >
-                Bác sĩ thú y ({bacSiList.length})
+                {t('team_category_bac_si_short', 'Bác sĩ thú y')} ({bacSiList.length})
               </a>
             )}
             {dieuDuongList.length > 0 && (
@@ -577,7 +648,7 @@ export default function DoiNguYTePage() {
                 href="#dieu-duong"
                 className="px-3 py-1 rounded-full bg-slate-100 hover:bg-[#2D5A27] hover:text-white transition text-slate-700 whitespace-nowrap font-medium"
               >
-                Điều dưỡng &amp; Chăm sóc ({dieuDuongList.length})
+                {t('team_category_dieu_duong_short', 'Điều dưỡng & Chăm sóc')} ({dieuDuongList.length})
               </a>
             )}
           </div>
@@ -592,14 +663,14 @@ export default function DoiNguYTePage() {
             {/* HẠNG MỤC 1: ĐỘI NGŨ LÃNH ĐẠO CHUYÊN MÔN */}
             <CategorySwipeSection
               id="lanh-dao"
-              title="Đội ngũ Lãnh đạo chuyên môn"
+              title={t('team_category_lanh_dao', 'Đội ngũ Lãnh đạo chuyên môn')}
               items={lanhDaoList}
             />
 
             {/* HẠNG MỤC 2: ĐỘI NGŨ CHUYÊN GIA TƯ VẤN */}
             <CategorySwipeSection
               id="chuyen-gia"
-              title="Đội ngũ Chuyên gia Tư vấn"
+              title={t('team_category_chuyen_gia', 'Đội ngũ Chuyên gia Tư vấn')}
               items={chuyenGiaList}
               isTwoColumnDesktop
             />
@@ -607,21 +678,21 @@ export default function DoiNguYTePage() {
             {/* HẠNG MỤC 3: ĐỘI NGŨ BÁC SĨ THÚ Y */}
             <CategorySwipeSection
               id="bac-si"
-              title="Đội ngũ Bác sĩ Thú y"
+              title={t('team_category_bac_si', 'Đội ngũ Bác sĩ Thú y')}
               items={bacSiList}
             />
 
             {/* HẠNG MỤC 4: ĐỘI NGŨ ĐIỀU DƯỠNG & CHĂM SÓC */}
             <CategorySwipeSection
               id="dieu-duong"
-              title="Đội ngũ Điều dưỡng & Chăm sóc"
+              title={t('team_category_dieu_duong', 'Đội ngũ Điều dưỡng & Chăm sóc')}
               items={dieuDuongList}
             />
           </div>
 
           {/* CỘT PHẢI (4 CỘT): SIDEBAR TƯ VẤN & ĐẶT LỊCH HẸN BÁC SĨ */}
           <div className="lg:col-span-4 space-y-6">
-            <ConsultationSidebar branchName="Hội Đồng Y Khoa Pet M&M" />
+            <ConsultationSidebar branchName={t('team_sidebar_board', 'Hội Đồng Y Khoa Pet M&M')} />
           </div>
         </div>
       </div>

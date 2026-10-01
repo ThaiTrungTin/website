@@ -489,4 +489,140 @@ export const translations: TranslationDict = {
     vi: 'Hotline 24/7, đội ngũ trực đêm 365 ngày sẵn sàng tiếp nhận',
     en: '24/7 Hotline, night team on duty 365 days ready to assist',
   },
+
+  // Team Page (Đội ngũ y tế - view con nhân sự)
+  team_hero_badge: {
+    vi: 'HỘI ĐỒNG Y KHOA CHUYÊN MÔN CAO',
+    en: 'HIGH-LEVEL MEDICAL ADVISORY BOARD',
+  },
+  team_hero_title: {
+    vi: 'Đội Ngũ Bác Sĩ & Y Tế Pet M&M',
+    en: 'Pet M&M Medical & Veterinary Team',
+  },
+  team_hero_desc_prefix: {
+    vi: 'Quy tụ hơn',
+    en: 'Bringing together over',
+  },
+  team_hero_desc_suffix: {
+    vi: '+ chuyên gia, bác sĩ thú y và điều dưỡng tốt nghiệp chính quy, luôn bảo vệ sinh mệnh các bé cưng bằng trái tim và y đức cao nhất.',
+    en: '+ certified specialists, veterinarians, and nurses dedicated to protecting pet lives with utmost devotion and medical ethics.',
+  },
+  team_breadcrumb_home: {
+    vi: 'Trang chủ',
+    en: 'Home',
+  },
+  team_breadcrumb_about: {
+    vi: 'Về Pet M&M',
+    en: 'About Pet M&M',
+  },
+  team_breadcrumb_team: {
+    vi: 'Đội ngũ y tế',
+    en: 'Medical Team',
+  },
+  team_category_lanh_dao: {
+    vi: 'Đội ngũ Lãnh đạo chuyên môn',
+    en: 'Executive Medical Leadership',
+  },
+  team_category_lanh_dao_short: {
+    vi: 'Lãnh đạo chuyên môn',
+    en: 'Medical Leadership',
+  },
+  team_category_chuyen_gia: {
+    vi: 'Đội ngũ Chuyên gia Tư vấn',
+    en: 'Advisory Specialists Board',
+  },
+  team_category_chuyen_gia_short: {
+    vi: 'Chuyên gia tư vấn',
+    en: 'Advisory Specialists',
+  },
+  team_category_bac_si: {
+    vi: 'Đội ngũ Bác sĩ Thú y',
+    en: 'Veterinary Doctors Team',
+  },
+  team_category_bac_si_short: {
+    vi: 'Bác sĩ thú y',
+    en: 'Veterinary Doctors',
+  },
+  team_category_dieu_duong: {
+    vi: 'Đội ngũ Điều dưỡng & Chăm sóc',
+    en: 'Nursing & Care Team',
+  },
+  team_category_dieu_duong_short: {
+    vi: 'Điều dưỡng & Chăm sóc',
+    en: 'Nursing & Care',
+  },
+  team_prev_doctor: {
+    vi: 'Xem bác sĩ trước',
+    en: 'Previous doctor',
+  },
+  team_next_doctor: {
+    vi: 'Xem tiếp bác sĩ sau',
+    en: 'Next doctor',
+  },
+  team_goto_doctor: {
+    vi: 'Chuyển đến bác sĩ',
+    en: 'Go to doctor',
+  },
+
+  // Consultation Sidebar
+  consult_board_default: {
+    vi: 'Hội Đồng Y Khoa Pet M&M',
+    en: 'Pet M&M Medical Board',
+  },
+  consult_title_free: {
+    vi: 'Nhận tư vấn miễn phí',
+    en: 'Get Free Consultation',
+  },
+  consult_title_free_part1: {
+    vi: 'Nhận tư vấn',
+    en: 'Get',
+  },
+  consult_title_free_part2: {
+    vi: 'miễn phí',
+    en: 'free consultation',
+  },
+  consult_desc: {
+    vi: 'Điền thông tin để đội ngũ Pet M&M liên hệ tư vấn cho bạn',
+    en: 'Leave your details and the Pet M&M team will contact you shortly',
+  },
+  consult_fullname: {
+    vi: 'Họ và tên',
+    en: 'Full name',
+  },
+  consult_fullname_placeholder: {
+    vi: 'Nhập họ và tên',
+    en: 'Enter your full name',
+  },
+  consult_phone: {
+    vi: 'Số điện thoại',
+    en: 'Phone number',
+  },
+  consult_phone_placeholder: {
+    vi: 'Nhập số điện thoại',
+    en: 'Enter phone number',
+  },
+  consult_submit: {
+    vi: 'Gửi yêu cầu tư vấn',
+    en: 'Request Consultation',
+  },
+  consult_sending: {
+    vi: 'Đang gửi...',
+    en: 'Sending...',
+  },
+  consult_or_call: {
+    vi: 'Hoặc gọi hotline:',
+    en: 'Or call hotline:',
+  },
+  consult_success_title: {
+    vi: 'Đã gửi thành công!',
+    en: 'Submitted Successfully!',
+  },
+  consult_success_desc: {
+    vi: 'Tin nhắn Zalo đã được mở. Đội ngũ Pet M&M sẽ liên hệ lại với bạn sớm nhất.',
+    en: 'Zalo message has been opened. Pet M&M team will contact you as soon as possible.',
+  },
+  consult_retry: {
+    vi: 'Gửi lại',
+    en: 'Submit another request',
+  },
 };

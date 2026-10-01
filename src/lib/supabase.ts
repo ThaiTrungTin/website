@@ -211,11 +211,15 @@ export type DoiNguPhanLoai = 'lanh_dao' | 'chuyen_gia' | 'bac_si' | 'dieu_duong'
 export interface DoiNguRecord {
   id: string;
   ho_ten: string;
+  ho_ten_en?: string | null;
   chuc_danh?: string | null;
+  chuc_danh_en?: string | null;
   hoc_vi_chuc_vu?: string | null;
+  hoc_vi_chuc_vu_en?: string | null;
   phan_loai: DoiNguPhanLoai;
   hinh_anh?: string | null;
   mo_ta?: string | null;
+  mo_ta_en?: string | null;
   thu_tu?: number | null;
   kich_hoat?: boolean | null;
   ngay_tao?: string;

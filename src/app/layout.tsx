@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng",
+  title: "PetM&M - Trang Chủ",
   description:
     "Hệ thống Bệnh viện Thú Y & Spa Chăm Sóc Thú Cưng Pet M&M chuẩn y khoa quốc tế tại TP.HCM. Hotline 24/7, phẫu thuật ngoại khoa, tiêm phòng vaccine và khách sạn thú cưng 5 sao.",
   keywords: [
@@ -67,9 +67,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
         <link rel="dns-prefetch" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
-        <Script
-          id="system-init"
-          strategy="afterInteractive"
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -81,8 +79,8 @@ export default function RootLayout({
                     if (cfg) {
                       var isEn = lang === 'en';
                       var title = isEn
-                        ? (cfg.tieu_de_trang_en || 'PetM&M — Veterinary Hospital & Clinic')
-                        : (cfg.tieu_de_trang || 'PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng');
+                        ? (cfg.tieu_de_trang_en || 'PetM&M - Homepage')
+                        : (cfg.tieu_de_trang || 'PetM&M - Trang Chủ');
                       if (title) document.title = title;
                     }
                   }

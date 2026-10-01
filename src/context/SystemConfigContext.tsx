@@ -6,8 +6,8 @@ import { supabase, CauHinhRecord } from '@/lib/supabase';
 const DEFAULT_CONFIG: CauHinhRecord = {
   id: 'system',
   logo_favicon: '/logo-favicon.png',
-  tieu_de_trang: 'PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng',
-  tieu_de_trang_en: 'PetM&M — Veterinary Hospital & Clinic',
+  tieu_de_trang: '',
+  tieu_de_trang_en: '',
   hotline: '0903 599 339',
   hotline_hien_thi: '0903 599 339',
   link_zalo: 'https://zalo.me/0903599339',
@@ -51,10 +51,23 @@ const SystemConfigContext = createContext<SystemConfigContextType>({
 });
 
 export function SystemConfigProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<CauHinhRecord>(DEFAULT_CONFIG);
+  // Nạp ngay từ localStorage ở lượt render đầu tiên, loại bỏ hoàn toàn độ trễ
+  const [config, setConfig] = useState<CauHinhRecord>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('petmm_system_config_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_CONFIG, ...parsed };
+          }
+        }
+      } catch {}
+    }
+    return DEFAULT_CONFIG;
+  });
   const [loading, setLoading] = useState(false);
 
-  // Đọc ngay lập tức từ bộ nhớ cache client để không bị giật hay trễ
   useEffect(() => {
     try {
       const cached = localStorage.getItem('petmm_system_config_cache');
@@ -89,6 +102,19 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
           } catch {}
           return merged;
         });
+
+        // Cập nhật document.title trực tiếp ngay tức thì từ dữ liệu DB
+        if (typeof window !== 'undefined') {
+          try {
+            const lang = (localStorage.getItem('petmm_language') as string) || 'vi';
+            const pageTitle = lang === 'en'
+              ? (data.tieu_de_trang_en?.trim() || 'PetM&M - Homepage')
+              : (data.tieu_de_trang?.trim() || 'PetM&M - Trang Chủ');
+            if (pageTitle) {
+              document.title = pageTitle;
+            }
+          } catch {}
+        }
       }
     } catch (err) {
       console.warn('Không thể tải cấu hình:', err);

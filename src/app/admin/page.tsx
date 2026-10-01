@@ -1646,6 +1646,8 @@ export default function AdminDashboardPage() {
   const [editingMember, setEditingMember] = useState<Partial<DoiNguRecord> | null>(null);
   const [isCreatingNewMember, setIsCreatingNewMember] = useState(false);
   const [isMemberSaving, setIsMemberSaving] = useState(false);
+  const [memberModalTab, setMemberModalTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingMember, setIsTranslatingMember] = useState(false);
   const [teamCategoryFilter, setTeamCategoryFilter] = useState<'all' | 'lanh_dao' | 'chuyen_gia' | 'bac_si' | 'dieu_duong'>('all');
 
   const loadTeamMembers = useCallback(async () => {
@@ -1668,13 +1670,18 @@ export default function AdminDashboardPage() {
 
   const handleAddNewMember = () => {
     const nextOrder = teamMembers.length > 0 ? Math.max(...teamMembers.map((m) => m.thu_tu || 0)) + 1 : 1;
+    setMemberModalTab('vi');
     setEditingMember({
       ho_ten: '',
+      ho_ten_en: '',
       chuc_danh: teamCategoryFilter === 'dieu_duong' ? 'ĐIỀU DƯỠNG' : teamCategoryFilter === 'chuyen_gia' ? 'CHUYÊN GIA TƯ VẤN' : teamCategoryFilter === 'lanh_dao' ? 'NHÀ SÁNG LẬP · PET M&M' : 'BÁC SĨ THÚ Y',
+      chuc_danh_en: '',
       hoc_vi_chuc_vu: '',
+      hoc_vi_chuc_vu_en: '',
       phan_loai: teamCategoryFilter !== 'all' ? teamCategoryFilter : 'bac_si',
       hinh_anh: '',
       mo_ta: '',
+      mo_ta_en: '',
       thu_tu: nextOrder,
       kich_hoat: true,
     });
@@ -1682,6 +1689,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleEditMember = (member: DoiNguRecord) => {
+    setMemberModalTab('vi');
     setEditingMember({ ...member });
     setIsCreatingNewMember(false);
   };
@@ -1716,6 +1724,48 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleTranslateMember = async () => {
+    if (!editingMember) return;
+    if (!editingMember.ho_ten && !editingMember.chuc_danh && !editingMember.hoc_vi_chuc_vu && !editingMember.mo_ta) {
+      showNotification('error', 'Chưa có nội dung tiếng Việt để dịch');
+      return;
+    }
+    setIsTranslatingMember(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            ho_ten: editingMember.ho_ten || '',
+            chuc_danh: editingMember.chuc_danh || '',
+            hoc_vi_chuc_vu: editingMember.hoc_vi_chuc_vu || '',
+            mo_ta: editingMember.mo_ta || '',
+          },
+          context: 'veterinary doctor, medical specialist, clinic team member profile',
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingMember((prev: any) => ({
+          ...prev,
+          ho_ten_en: data.translations.ho_ten || prev?.ho_ten_en || prev?.ho_ten,
+          chuc_danh_en: data.translations.chuc_danh || prev?.chuc_danh_en || '',
+          hoc_vi_chuc_vu_en: data.translations.hoc_vi_chuc_vu || prev?.hoc_vi_chuc_vu_en || '',
+          mo_ta_en: data.translations.mo_ta || prev?.mo_ta_en || '',
+        }));
+        setMemberModalTab('en');
+        showNotification('success', 'Đã tự động dịch thông tin nhân sự sang Tiếng Anh!');
+      } else {
+        throw new Error(data.error || 'Dịch tự động thất bại');
+      }
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch tự động: ${err.message}`);
+    } finally {
+      setIsTranslatingMember(false);
+    }
+  };
+
   const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMember) return;
@@ -1728,11 +1778,15 @@ export default function AdminDashboardPage() {
     try {
       const payload = {
         ho_ten: editingMember.ho_ten.trim(),
+        ho_ten_en: editingMember.ho_ten_en?.trim() || null,
         chuc_danh: editingMember.chuc_danh?.trim() || 'BÁC SĨ THÚ Y',
+        chuc_danh_en: editingMember.chuc_danh_en?.trim() || null,
         hoc_vi_chuc_vu: editingMember.hoc_vi_chuc_vu?.trim() || '',
+        hoc_vi_chuc_vu_en: editingMember.hoc_vi_chuc_vu_en?.trim() || null,
         phan_loai: editingMember.phan_loai || 'bac_si',
         hinh_anh: editingMember.hinh_anh?.trim() || '',
         mo_ta: editingMember.mo_ta?.trim() || '',
+        mo_ta_en: editingMember.mo_ta_en?.trim() || null,
         thu_tu: Number(editingMember.thu_tu) || 0,
         kich_hoat: editingMember.kich_hoat !== false,
         ngay_cap_nhat: new Date().toISOString(),
@@ -7913,76 +7967,167 @@ export default function AdminDashboardPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Họ và tên: *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingMember.ho_ten || ''}
-                    onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten: e.target.value }))}
-                    placeholder="Nhập họ và tên"
-                    required
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
+              {/* Language Switch Tabs & AI Translate Button */}
+              <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100/80 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-1">
+                  <div className="flex bg-white rounded-lg p-0.5 shadow-2xs border border-slate-200/80">
+                    <button
+                      type="button"
+                      onClick={() => setMemberModalTab('vi')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        memberModalTab === 'vi'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản Tiếng Việt</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberModalTab('en')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        memberModalTab === 'en'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <UKFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản English</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thẻ chức danh:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingMember.chuc_danh || ''}
-                    onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh: e.target.value }))}
-                    placeholder="BÁC SĨ THÚ Y"
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none uppercase"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={handleTranslateMember}
+                  disabled={isTranslatingMember}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động toàn bộ thông tin nhân sự sang Tiếng Anh y khoa bằng AI"
+                >
+                  {isTranslatingMember ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingMember ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Học vị / Chức vụ:
-                </label>
-                <input
-                  type="text"
-                  value={editingMember.hoc_vi_chuc_vu || ''}
-                  onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu: e.target.value }))}
-                  placeholder="Học vị, chức danh công tác"
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
+              {memberModalTab === 'vi' ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Họ và tên (Tiếng Việt): <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingMember.ho_ten || ''}
+                        onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten: e.target.value }))}
+                        placeholder="Nhập họ và tên"
+                        required
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
 
-              {/* Hình ảnh chân dung */}
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Ảnh chân dung:
-                </label>
-                <AdminImageInput
-                  value={editingMember.hinh_anh || ''}
-                  onChange={(url) => setEditingMember((prev) => ({ ...prev, hinh_anh: url }))}
-                  folder="general"
-                  label=""
-                  uploadButtonLabel="Tải Ảnh"
-                  pasteButtonLabel="Dán Ảnh"
-                  onNotification={showNotification}
-                />
-              </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Thẻ chức danh (Tiếng Việt):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingMember.chuc_danh || ''}
+                        onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh: e.target.value }))}
+                        placeholder="BÁC SĨ THÚ Y"
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none uppercase"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Giới thiệu tóm tắt:
-                </label>
-                <textarea
-                  rows={4}
-                  value={editingMember.mo_ta || ''}
-                  onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta: e.target.value }))}
-                  placeholder="Nội dung giới thiệu năng lực chuyên môn"
-                  className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Học vị / Chức vụ (Tiếng Việt):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingMember.hoc_vi_chuc_vu || ''}
+                      onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu: e.target.value }))}
+                      placeholder="Học vị, chức danh công tác"
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Giới thiệu tóm tắt (Tiếng Việt):
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={editingMember.mo_ta || ''}
+                      onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta: e.target.value }))}
+                      placeholder="Nội dung giới thiệu năng lực chuyên môn"
+                      className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Full Name (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingMember.ho_ten_en || ''}
+                        onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten_en: e.target.value }))}
+                        placeholder="e.g. Dr. Nguyen Minh Tuan, DVM"
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Title Badge (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingMember.chuc_danh_en || ''}
+                        onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh_en: e.target.value }))}
+                        placeholder="e.g. VETERINARY DOCTOR"
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Degree / Position (English):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingMember.hoc_vi_chuc_vu_en || ''}
+                      onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu_en: e.target.value }))}
+                      placeholder="e.g. Specialist Level I · Surgery & Orthopedics"
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Summary Bio (English):
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={editingMember.mo_ta_en || ''}
+                      onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta_en: e.target.value }))}
+                      placeholder="Professional experience and clinical competence summary in English..."
+                      className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
                 <div>

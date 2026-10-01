@@ -10,7 +10,9 @@ export default function DynamicFavicon() {
 
   // Dynamic Browser Tab Title reacting to language and admin config
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+
+    const applyTitle = () => {
       let titleVi = config.tieu_de_trang;
       let titleEn = config.tieu_de_trang_en;
 
@@ -19,19 +21,36 @@ export default function DynamicFavicon() {
           const cached = localStorage.getItem('petmm_system_config_cache');
           if (cached) {
             const parsed = JSON.parse(cached);
-            if (parsed.tieu_de_trang) titleVi = parsed.tieu_de_trang;
-            if (parsed.tieu_de_trang_en) titleEn = parsed.tieu_de_trang_en;
+            if (parsed.tieu_de_trang && !titleVi) titleVi = parsed.tieu_de_trang;
+            if (parsed.tieu_de_trang_en && !titleEn) titleEn = parsed.tieu_de_trang_en;
           }
         } catch {}
       }
 
       const isEn = language === 'en';
       const pageTitle = isEn
-        ? (titleEn?.trim() || 'PetM&M — Veterinary Hospital & Clinic')
-        : (titleVi?.trim() || 'PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng');
+        ? (titleEn?.trim() || 'PetM&M - Homepage')
+        : (titleVi?.trim() || 'PetM&M - Trang Chủ');
 
-      document.title = pageTitle;
-    }
+      if (pageTitle && document.title !== pageTitle) {
+        document.title = pageTitle;
+      }
+    };
+
+    applyTitle();
+
+    // Dùng timer nhiều nhịp để ngăn chặn Next.js App Router hydration đè lại metadata cũ
+    const timers = [
+      setTimeout(applyTitle, 50),
+      setTimeout(applyTitle, 150),
+      setTimeout(applyTitle, 400),
+      setTimeout(applyTitle, 1000),
+      setTimeout(applyTitle, 2000),
+    ];
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
   }, [language, config.tieu_de_trang, config.tieu_de_trang_en]);
 
   useEffect(() => {
