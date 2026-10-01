@@ -46,6 +46,7 @@ import {
   HelpCircle,
   Tag,
   Heart,
+  MessageSquareHeart,
   CalendarDays,
   CalendarCheck,
   CalendarX,
@@ -56,7 +57,7 @@ import {
   BookOpen,
   LogOut,
 } from 'lucide-react';
-import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord } from '@/lib/supabase';
+import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
 import { VietnamFlag, UKFlag } from '@/components/FlagIcons';
@@ -1423,9 +1424,125 @@ export default function AdminDashboardPage() {
   const [faqModalTab, setFaqModalTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingFaq, setIsTranslatingFaq] = useState(false);
 
+  // Quản lý Sub-Tab FAQ & Cấu hình mục "Bạn cần Pet M&M hỗ trợ?"
+  const [faqSubTab, setFaqSubTab] = useState<'list' | 'support_panel'>('list');
+  const [supportPanelData, setSupportPanelData] = useState<SupportPanelConfig>(DEFAULT_SUPPORT_CONFIG);
+  const [supportPanelLoading, setSupportPanelLoading] = useState(false);
+  const [isSavingSupportPanel, setIsSavingSupportPanel] = useState(false);
+  const [isTranslatingSupport, setIsTranslatingSupport] = useState(false);
+  const [supportPanelTab, setSupportPanelTab] = useState<'vi' | 'en'>('vi');
+
+  const loadSupportPanelConfig = async () => {
+    try {
+      setSupportPanelLoading(true);
+      const { data, error } = await supabase
+        .from('cau_hinh')
+        .select('*')
+        .eq('id', 'support_panel')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Lỗi tải cấu hình support_panel:', error);
+        return;
+      }
+
+      if (data && data.slogan_cuoi_trang_noi_dung) {
+        try {
+          const parsed = JSON.parse(data.slogan_cuoi_trang_noi_dung);
+          setSupportPanelData({ ...DEFAULT_SUPPORT_CONFIG, ...parsed });
+        } catch {
+          setSupportPanelData(DEFAULT_SUPPORT_CONFIG);
+        }
+      }
+    } catch (err: any) {
+      console.error('Lỗi loadSupportPanelConfig:', err);
+    } finally {
+      setSupportPanelLoading(false);
+    }
+  };
+
+  const handleAutoTranslateSupport = async () => {
+    if (!supportPanelData.tieu_de_vi?.trim() && !supportPanelData.mo_ta_vi?.trim()) {
+      showNotification('error', 'Vui lòng nhập ít nhất tiêu đề hoặc mô tả tiếng Việt trước khi dịch!');
+      return;
+    }
+    setIsTranslatingSupport(true);
+    try {
+      const textsToTranslate: Record<string, string> = {
+        tieu_de: supportPanelData.tieu_de_vi || '',
+        mo_ta: supportPanelData.mo_ta_vi || '',
+        card1_title: supportPanelData.card1_title_vi || '',
+        card1_desc: supportPanelData.card1_desc_vi || '',
+        card2_title: supportPanelData.card2_title_vi || '',
+        card2_desc: supportPanelData.card2_desc_vi || '',
+        card3_title: supportPanelData.card3_title_vi || '',
+        card3_desc: supportPanelData.card3_desc_vi || '',
+      };
+
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts: textsToTranslate }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.translations) {
+        throw new Error(data.error || 'Dịch tự động thất bại');
+      }
+
+      setSupportPanelData((prev) => ({
+        ...prev,
+        tieu_de_en: data.translations.tieu_de || prev.tieu_de_en,
+        mo_ta_en: data.translations.mo_ta || prev.mo_ta_en,
+        card1_title_en: data.translations.card1_title || prev.card1_title_en,
+        card1_desc_en: data.translations.card1_desc || prev.card1_desc_en,
+        card2_title_en: data.translations.card2_title || prev.card2_title_en,
+        card2_desc_en: data.translations.card2_desc || prev.card2_desc_en,
+        card3_title_en: data.translations.card3_title || prev.card3_title_en,
+        card3_desc_en: data.translations.card3_desc || prev.card3_desc_en,
+      }));
+
+      showNotification('success', 'Đã dùng AI dịch sang tiếng Anh thành công!');
+      setSupportPanelTab('en');
+    } catch (err: any) {
+      console.error('Lỗi dịch support panel:', err);
+      showNotification('error', `Lỗi dịch AI: ${err.message}`);
+    } finally {
+      setIsTranslatingSupport(false);
+    }
+  };
+
+  const handleSaveSupportPanel = async () => {
+    setIsSavingSupportPanel(true);
+    try {
+      const jsonStr = JSON.stringify(supportPanelData);
+      const { error } = await supabase.from('cau_hinh').upsert({
+        id: 'support_panel',
+        tieu_de_trang: supportPanelData.tieu_de_vi,
+        tieu_de_trang_en: supportPanelData.tieu_de_en,
+        slogan_cuoi_trang_noi_dung: jsonStr,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('petmm_support_config_updated', { detail: supportPanelData }));
+      }
+
+      showNotification('success', 'Đã lưu cấu hình mục "Bạn cần Pet M&M hỗ trợ?" thành công!');
+    } catch (err: any) {
+      console.error('Lỗi lưu support panel:', err);
+      showNotification('error', `Lỗi lưu: ${err.message}`);
+    } finally {
+      setIsSavingSupportPanel(false);
+    }
+  };
+
   const loadFaqs = async () => {
     try {
       setFaqsLoading(true);
+      loadSupportPanelConfig();
       const { data, error } = await supabase
         .from('cau_hoi_thuong_gap')
         .select('*')
@@ -5719,163 +5836,700 @@ export default function AdminDashboardPage() {
           {/* ===================================================== */}
           {activeTab === 'faqs' && (
             <div className="space-y-4">
-              {/* Header Card với ô tìm kiếm & Nút "+ Thêm Câu Hỏi" */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <HelpCircle className="w-5 h-5 text-[#2D5A27]" />
-                    <span>Quản Lý Câu Hỏi Thường Gặp (FAQ)</span>
-                  </h1>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Hệ thống câu hỏi &amp; giải đáp y khoa hiển thị dạng Accordion ngoài trang chủ ({faqs.length} câu hỏi)
-                  </p>
-                </div>
+              {/* Sub-tab Navigation: FAQ vs Cấu hình Support Panel */}
+              <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl w-fit border border-slate-200/80 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setFaqSubTab('list')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    faqSubTab === 'list'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <HelpCircle className="w-4 h-4 text-[#2D5A27]" />
+                  <span>Danh Sách Câu Hỏi FAQ ({faqs.length})</span>
+                </button>
 
-                <div className="flex items-center gap-3">
-                  <div className="relative min-w-[200px] sm:min-w-[260px]">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm câu hỏi, nội dung, danh mục..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleAddNewFaq}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Thêm Câu Hỏi</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setFaqSubTab('support_panel')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    faqSubTab === 'support_panel'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <PhoneCall className="w-4 h-4 text-emerald-600" />
+                  <span>Mục "Bạn Cần Pet M&M Hỗ Trợ?" (Song Ngữ)</span>
+                </button>
               </div>
 
-              {/* Table Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                {faqsLoading ? (
-                  <div className="p-12 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
-                    <RefreshCw className="w-5 h-5 animate-spin text-[#2D5A27]" />
-                    <span>Đang tải danh sách câu hỏi...</span>
+              {/* SUBTAB 1: DANH SÁCH CÂU HỎI FAQ */}
+              {faqSubTab === 'list' && (
+                <div className="space-y-4">
+                  {/* Header Card với ô tìm kiếm & Nút "+ Thêm Câu Hỏi" */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <HelpCircle className="w-5 h-5 text-[#2D5A27]" />
+                        <span>Quản Lý Câu Hỏi Thường GẶP (FAQ)</span>
+                      </h1>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Hệ thống câu hỏi &amp; giải đáp y khoa hiển thị dạng Accordion ngoài trang chủ ({faqs.length} câu hỏi)
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="relative min-w-[200px] sm:min-w-[260px]">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm câu hỏi, nội dung, danh mục..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddNewFaq}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Thêm Câu Hỏi</span>
+                      </button>
+                    </div>
                   </div>
-                ) : filteredFaqs.length === 0 ? (
-                  <div className="p-12 text-center text-slate-500 text-xs">
-                    <HelpCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-700">Không tìm thấy câu hỏi nào</p>
-                    <p className="mt-1 text-slate-400">Thử tìm kiếm với từ khóa khác hoặc bấm "+ Thêm Câu Hỏi" ở trên</p>
+
+                  {/* Table Card */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    {faqsLoading ? (
+                      <div className="p-12 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
+                        <RefreshCw className="w-5 h-5 animate-spin text-[#2D5A27]" />
+                        <span>Đang tải danh sách câu hỏi...</span>
+                      </div>
+                    ) : filteredFaqs.length === 0 ? (
+                      <div className="p-12 text-center text-slate-500 text-xs">
+                        <HelpCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-700">Không tìm thấy câu hỏi nào</p>
+                        <p className="mt-1 text-slate-400">Thử tìm kiếm với từ khóa khác hoặc bấm "+ Thêm Câu Hỏi" ở trên</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                              <th className="py-3 px-4 w-12 text-center">#</th>
+                              <th className="py-3 px-4 w-44">Danh Mục</th>
+                              <th className="py-3 px-4 min-w-[240px]">Câu Hỏi</th>
+                              <th className="py-3 px-4 min-w-[320px]">Câu Trả Lời</th>
+                              <th className="py-3 px-4 w-28 text-center">Trạng Thái</th>
+                              <th className="py-3 px-4 w-28 text-right">Thao Tác</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredFaqs.map((faq, index) => (
+                              <tr key={faq.id} className="hover:bg-slate-50/60 transition">
+                                <td className="py-3.5 px-4 text-center font-mono text-slate-400 font-medium">
+                                  {faq.thu_tu || index + 1}
+                                </td>
+
+                                <td className="py-3.5 px-4">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
+                                    <Tag className="w-3 h-3 text-[#2D5A27]" />
+                                    <span>{faq.chuyen_muc || 'Chung'}</span>
+                                  </span>
+                                  {faq.chuyen_muc_en && (
+                                    <p className="text-[10px] text-slate-400 italic mt-1">
+                                      EN: {faq.chuyen_muc_en}
+                                    </p>
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-4">
+                                  <p className="font-bold text-slate-900 leading-snug">
+                                    {faq.cau_hoi}
+                                  </p>
+                                  {faq.cau_hoi_en ? (
+                                    <p className="text-[11px] text-[#2D5A27] font-medium italic mt-1 line-clamp-1">
+                                      EN: {faq.cau_hoi_en}
+                                    </p>
+                                  ) : (
+                                    <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">
+                                      Chưa có tiếng Anh
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-4">
+                                  <p className="text-slate-600 line-clamp-2 leading-relaxed whitespace-pre-line">
+                                    {faq.cau_tra_loi}
+                                  </p>
+                                  {faq.cau_tra_loi_en && (
+                                    <p className="text-[11px] text-slate-400 italic mt-1 line-clamp-2">
+                                      EN: {faq.cau_tra_loi_en}
+                                    </p>
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-4 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleFaqActive(faq)}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                                      faq.kich_hoat !== false
+                                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
+                                    }`}
+                                  >
+                                    {faq.kich_hoat !== false ? (
+                                      <>
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                        <span>Hiển thị</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X className="w-3 h-3 text-slate-400" />
+                                        <span>Đang ẩn</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditFaq(faq)}
+                                      className="p-1.5 rounded-lg border border-slate-200 hover:border-[#2D5A27] hover:bg-emerald-50 text-slate-600 hover:text-[#2D5A27] transition cursor-pointer"
+                                      title="Chỉnh sửa câu hỏi"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteFaq(faq)}
+                                      className="p-1.5 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition cursor-pointer"
+                                      title="Xóa câu hỏi"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                          <th className="py-3 px-4 w-12 text-center">#</th>
-                          <th className="py-3 px-4 w-44">Danh Mục</th>
-                          <th className="py-3 px-4 min-w-[240px]">Câu Hỏi</th>
-                          <th className="py-3 px-4 min-w-[320px]">Câu Trả Lời</th>
-                          <th className="py-3 px-4 w-28 text-center">Trạng Thái</th>
-                          <th className="py-3 px-4 w-28 text-right">Thao Tác</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredFaqs.map((faq, index) => (
-                          <tr key={faq.id} className="hover:bg-slate-50/60 transition">
-                            <td className="py-3.5 px-4 text-center font-mono text-slate-400 font-medium">
-                              {faq.thu_tu || index + 1}
-                            </td>
+                </div>
+              )}
 
-                            <td className="py-3.5 px-4">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
-                                <Tag className="w-3 h-3 text-[#2D5A27]" />
-                                <span>{faq.chuyen_muc || 'Chung'}</span>
-                              </span>
-                              {faq.chuyen_muc_en && (
-                                <p className="text-[10px] text-slate-400 italic mt-1">
-                                  EN: {faq.chuyen_muc_en}
-                                </p>
-                              )}
-                            </td>
+              {/* SUBTAB 2: CÀI ĐẶT MỤC "BẠN CẦN PET M&M HỖ TRỢ?" (SONG NGỮ) */}
+              {faqSubTab === 'support_panel' && (
+                <div className="space-y-6">
+                  {/* Header Card với các nút hành động */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                      <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <PhoneCall className="w-5 h-5 text-emerald-600" />
+                        <span>Cấu Hình Mục &ldquo;Bạn Cần Pet M&amp;M Hỗ Trợ?&rdquo; (Song Ngữ)</span>
+                      </h1>
+                      <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                        Cấu hình nội dung tiêu đề, lời dẫn và 3 thẻ liên hệ (Zalo, Hotline cấp cứu 24/7, Tư vấn chuyên sâu). Dữ liệu này được đồng bộ tức thì ra ngoài <strong>Trang Chủ</strong> và sidebar của <strong>Chi Nhánh</strong> &amp; <strong>Kiến Thức Cẩm Nang</strong>, lưu trữ trong bảng <code className="px-1 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px]">cau_hinh</code> (id: <code className="text-emerald-700 font-semibold font-mono text-[11px]">support_panel</code>).
+                      </p>
+                    </div>
 
-                            <td className="py-3.5 px-4">
-                              <p className="font-bold text-slate-900 leading-snug">
-                                {faq.cau_hoi}
-                              </p>
-                              {faq.cau_hoi_en ? (
-                                <p className="text-[11px] text-[#2D5A27] font-medium italic mt-1 line-clamp-1">
-                                  EN: {faq.cau_hoi_en}
-                                </p>
-                              ) : (
-                                <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">
-                                  Chưa có tiếng Anh
-                                </span>
-                              )}
-                            </td>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleAutoTranslateSupport}
+                        disabled={isTranslatingSupport}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer disabled:opacity-50"
+                        title="Dùng AI tự động dịch từ cột Tiếng Việt sang Tiếng Anh"
+                      >
+                        <Sparkles className={`w-4 h-4 ${isTranslatingSupport ? 'animate-spin' : ''}`} />
+                        <span>{isTranslatingSupport ? 'Đang Dịch AI...' : 'AI Dịch Sang Tiếng Anh'}</span>
+                      </button>
 
-                            <td className="py-3.5 px-4">
-                              <p className="text-slate-600 line-clamp-2 leading-relaxed whitespace-pre-line">
-                                {faq.cau_tra_loi}
-                              </p>
-                              {faq.cau_tra_loi_en && (
-                                <p className="text-[11px] text-slate-400 italic mt-1 line-clamp-2">
-                                  EN: {faq.cau_tra_loi_en}
-                                </p>
-                              )}
-                            </td>
-
-                            <td className="py-3.5 px-4 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleFaqActive(faq)}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
-                                  faq.kich_hoat !== false
-                                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
-                                }`}
-                              >
-                                {faq.kich_hoat !== false ? (
-                                  <>
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    <span>Hiển thị</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <X className="w-3 h-3 text-slate-400" />
-                                    <span>Đang ẩn</span>
-                                  </>
-                                )}
-                              </button>
-                            </td>
-
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditFaq(faq)}
-                                  className="p-1.5 rounded-lg border border-slate-200 hover:border-[#2D5A27] hover:bg-emerald-50 text-slate-600 hover:text-[#2D5A27] transition cursor-pointer"
-                                  title="Chỉnh sửa câu hỏi"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteFaq(faq)}
-                                  className="p-1.5 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition cursor-pointer"
-                                  title="Xóa câu hỏi"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                      <button
+                        type="button"
+                        onClick={handleSaveSupportPanel}
+                        disabled={isSavingSupportPanel}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-sm transition shrink-0 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSavingSupportPanel ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        <span>{isSavingSupportPanel ? 'Đang Lưu...' : 'Lưu Cài Đặt Vào Database'}</span>
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Grid Form Cấu hình Song Ngữ */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* CỘT TRÁI: TIẾNG VIỆT 🇻🇳 */}
+                    <div className="bg-white rounded-2xl border-2 border-emerald-100 p-5 shadow-xs space-y-5">
+                      <div className="flex items-center justify-between border-b border-emerald-50 pb-3">
+                        <div className="flex items-center gap-2">
+                          <VietnamFlag className="w-5 h-3.5 rounded-xs shadow-xs" />
+                          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                            Nội Dung Tiếng Việt (Mặc Định)
+                          </h2>
+                        </div>
+                        <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Tiếng Việt
+                        </span>
+                      </div>
+
+                      {/* 1. Tiêu đề & Lời dẫn chung */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                          <span>1. Tiêu Đề &amp; Lời Dẫn Chung</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Tiêu đề chính:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.tieu_de_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, tieu_de_vi: e.target.value }))
+                            }
+                            placeholder="Ví dụ: Bạn cần Pet M&M hỗ trợ?"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Lời dẫn mô tả:
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={supportPanelData.mo_ta_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, mo_ta_vi: e.target.value }))
+                            }
+                            placeholder="Chọn cách liên hệ phù hợp với nhu cầu của bạn."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 2. Thẻ 1: Zalo OA */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <CalendarDays className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>2. Thẻ 1: Đặt Lịch &amp; Nhắn Zalo OA</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Tiêu đề thẻ 1:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.card1_title_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card1_title_vi: e.target.value }))
+                            }
+                            placeholder="Đặt lịch dịch vụ qua Zalo OA"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Nội dung hướng dẫn thẻ 1:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={supportPanelData.card1_desc_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card1_desc_vi: e.target.value }))
+                            }
+                            placeholder="Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 3. Thẻ 2: Hotline Cấp Cứu 24/7 */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-rose-50/40 border border-rose-200/60">
+                        <h3 className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                          <PhoneCall className="w-3.5 h-3.5 text-rose-600" />
+                          <span>3. Thẻ 2: Hotline Cấp Cứu 24/7</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Tiêu đề thẻ 2:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.card2_title_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card2_title_vi: e.target.value }))
+                            }
+                            placeholder="Gọi trực tiếp hotline cấp cứu 24/7"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Nội dung hướng dẫn thẻ 2:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={supportPanelData.card2_desc_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card2_desc_vi: e.target.value }))
+                            }
+                            placeholder="Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                          />
+                        </div>
+                        <p className="text-[11px] text-rose-700/80 italic">
+                          * Số điện thoại hiển thị được lấy tự động từ Cấu hình liên hệ chung ({globalConfig.hotline_hien_thi || globalConfig.hotline || '0903 599 339'}).
+                        </p>
+                      </div>
+
+                      {/* 4. Thẻ 3: Chăm Sóc Đặc Thù */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <MessageSquareHeart className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>4. Thẻ 3: Trao Đổi Nhu Cầu Chăm Sóc Đặc Thù</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Tiêu đề thẻ 3:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.card3_title_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card3_title_vi: e.target.value }))
+                            }
+                            placeholder="Trao đổi nhu cầu chăm sóc đặc thù"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Nội dung hướng dẫn thẻ 3:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={supportPanelData.card3_desc_vi || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card3_desc_vi: e.target.value }))
+                            }
+                            placeholder="Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CỘT PHẢI: TIẾNG ANH 🇬🇧 */}
+                    <div className="bg-white rounded-2xl border-2 border-indigo-100 p-5 shadow-xs space-y-5">
+                      <div className="flex items-center justify-between border-b border-indigo-50 pb-3">
+                        <div className="flex items-center gap-2">
+                          <UKFlag className="w-5 h-3.5 rounded-xs shadow-xs" />
+                          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                            English Translation (Tiếng Anh)
+                          </h2>
+                        </div>
+                        <span className="text-[11px] font-semibold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                          English (EN)
+                        </span>
+                      </div>
+
+                      {/* 1. Tiêu đề & Lời dẫn chung EN */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                          <span>1. Title &amp; Description (EN)</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Title in English:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.tieu_de_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, tieu_de_en: e.target.value }))
+                            }
+                            placeholder="Need Pet M&M support?"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Description in English:
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={supportPanelData.mo_ta_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, mo_ta_en: e.target.value }))
+                            }
+                            placeholder="Choose the contact method that suits your needs."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 2. Thẻ 1 EN */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <CalendarDays className="w-3.5 h-3.5 text-indigo-700" />
+                          <span>2. Card 1: Book via Zalo OA (EN)</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Card 1 title:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.card1_title_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card1_title_en: e.target.value }))
+                            }
+                            placeholder="Book via Zalo OA"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Card 1 description:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={supportPanelData.card1_desc_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card1_desc_en: e.target.value }))
+                            }
+                            placeholder="Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 3. Thẻ 2 EN */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-rose-50/40 border border-rose-200/60">
+                        <h3 className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                          <PhoneCall className="w-3.5 h-3.5 text-rose-600" />
+                          <span>3. Card 2: 24/7 Emergency Hotline (EN)</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Card 2 title:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.card2_title_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card2_title_en: e.target.value }))
+                            }
+                            placeholder="Call 24/7 Emergency Hotline"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Card 2 description:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={supportPanelData.card2_desc_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card2_desc_en: e.target.value }))
+                            }
+                            placeholder="When your pet has difficulty breathing, seizures, severe pain, bleeding, vomiting, diarrhea, suspected poisoning, or needs emergency assistance."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                          />
+                        </div>
+                        <p className="text-[11px] text-rose-700/80 italic">
+                          * Hotline number is automatically loaded from system contact settings ({globalConfig.hotline_hien_thi || globalConfig.hotline || '0903 599 339'}).
+                        </p>
+                      </div>
+
+                      {/* 4. Thẻ 3 EN */}
+                      <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <MessageSquareHeart className="w-3.5 h-3.5 text-indigo-700" />
+                          <span>4. Card 3: Special Care Consultation (EN)</span>
+                        </h3>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Card 3 title:
+                          </label>
+                          <input
+                            type="text"
+                            value={supportPanelData.card3_title_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card3_title_en: e.target.value }))
+                            }
+                            placeholder="Special Care Consultation"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Card 3 description:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={supportPanelData.card3_desc_en || ''}
+                            onChange={(e) =>
+                              setSupportPanelData((prev) => ({ ...prev, card3_desc_en: e.target.value }))
+                            }
+                            placeholder="Send your pet's medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs."
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LIVE PREVIEW SECTION */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                      <div>
+                        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Xem Trước Thực Tế (Live Preview)</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Hình ảnh mô phỏng bảng hỗ trợ hiển thị trên trang chủ và view con
+                        </p>
+                      </div>
+
+                      {/* Nút chuyển chế độ xem ngôn ngữ */}
+                      <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setSupportPanelTab('vi')}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            supportPanelTab === 'vi'
+                              ? 'bg-white text-emerald-800 shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <VietnamFlag className="w-4 h-3 rounded-xs" />
+                          <span>Tiếng Việt</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSupportPanelTab('en')}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            supportPanelTab === 'en'
+                              ? 'bg-white text-indigo-800 shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <UKFlag className="w-4 h-3 rounded-xs" />
+                          <span>English</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Khung mô phỏng hiển thị ngoài Client */}
+                    <div className="max-w-xl mx-auto p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/90 shadow-lg">
+                      <h3 className="font-editorial text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                        {supportPanelTab === 'en' ? (
+                          <>
+                            {(supportPanelData.tieu_de_en || 'Need Pet M&M support?').replace(/support\?$/i, '').trim()}{' '}
+                            <span className="italic font-light text-[#2D5A27]">
+                              {/support\?$/i.test(supportPanelData.tieu_de_en || '') ? 'support?' : ''}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            {(supportPanelData.tieu_de_vi || 'Bạn cần Pet M&M hỗ trợ?').replace(/hỗ trợ\?$/i, '').trim()}{' '}
+                            <span className="italic font-light text-[#2D5A27]">
+                              {/hỗ trợ\?$/i.test(supportPanelData.tieu_de_vi || '') ? 'hỗ trợ?' : ''}
+                            </span>
+                          </>
+                        )}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-600 mb-6 font-light">
+                        {supportPanelTab === 'en'
+                          ? supportPanelData.mo_ta_en || 'Choose the contact method that suits your needs.'
+                          : supportPanelData.mo_ta_vi || 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.'}
+                      </p>
+
+                      <div className="space-y-3.5">
+                        {/* Thẻ 1 */}
+                        <div className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-300 transition-all duration-300 shadow-xs">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 text-[#2D5A27] shadow-sm">
+                            <CalendarDays className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm sm:text-base text-slate-900">
+                              {supportPanelTab === 'en'
+                                ? supportPanelData.card1_title_en || 'Book via Zalo OA'
+                                : supportPanelData.card1_title_vi || 'Đặt lịch dịch vụ qua Zalo OA'}
+                            </h4>
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
+                              {supportPanelTab === 'en'
+                                ? supportPanelData.card1_desc_en || 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.'
+                                : supportPanelData.card1_desc_vi || 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Thẻ 2 */}
+                        <div className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-rose-200 transition-all duration-300 shadow-xs">
+                          <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center shrink-0 text-rose-700 shadow-sm">
+                            <PhoneCall className="w-6 h-6 animate-pulse" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm sm:text-base text-slate-900">
+                              {supportPanelTab === 'en'
+                                ? supportPanelData.card2_title_en || 'Call 24/7 Emergency Hotline'
+                                : supportPanelData.card2_title_vi || 'Gọi trực tiếp hotline cấp cứu 24/7'}
+                            </h4>
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
+                              {supportPanelTab === 'en'
+                                ? supportPanelData.card2_desc_en || 'When your pet has difficulty breathing, seizures, severe pain, bleeding, vomiting, diarrhea, suspected poisoning, or needs emergency assistance.'
+                                : supportPanelData.card2_desc_vi || 'Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.'}
+                            </p>
+                            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold">
+                              <span>Hotline: {globalConfig.hotline_hien_thi || globalConfig.hotline || '0903 599 339'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Thẻ 3 */}
+                        <div className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-300 transition-all duration-300 shadow-xs">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 text-[#2D5A27] shadow-sm">
+                            <MessageSquareHeart className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm sm:text-base text-slate-900">
+                              {supportPanelTab === 'en'
+                                ? supportPanelData.card3_title_en || 'Special Care Consultation'
+                                : supportPanelData.card3_title_vi || 'Trao đổi nhu cầu chăm sóc đặc thù'}
+                            </h4>
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
+                              {supportPanelTab === 'en'
+                                ? supportPanelData.card3_desc_en || "Send your pet's medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs."
+                                : supportPanelData.card3_desc_vi || 'Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

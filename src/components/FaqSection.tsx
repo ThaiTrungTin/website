@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
-import { supabase, CauHoiThuongGapRecord } from '@/lib/supabase';
+import { supabase, CauHoiThuongGapRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { faqData } from '@/data/faqData';
@@ -37,6 +37,7 @@ export default function FaqSection() {
   const [faqs, setFaqs] = useState<CauHoiThuongGapRecord[]>(FALLBACK_FAQS);
   const [openId, setOpenId] = useState<string | null>(FALLBACK_FAQS[0]?.id || null);
   const [loading, setLoading] = useState(false);
+  const [supportConfig, setSupportConfig] = useState<SupportPanelConfig>(DEFAULT_SUPPORT_CONFIG);
 
   // Tải danh sách FAQ từ Supabase
   const fetchFaqs = useCallback(async () => {
@@ -48,24 +49,50 @@ export default function FaqSection() {
         .eq('kich_hoat', true)
         .order('thu_tu', { ascending: true });
 
-      if (error) {
-        console.warn('Lỗi tải câu hỏi thường gặp từ Supabase, dùng mặc định:', error.message);
-        return;
-      }
-
-      if (data && data.length > 0) {
+      if (!error && data && data.length > 0) {
         setFaqs(data as CauHoiThuongGapRecord[]);
-        // Mở sẵn câu đầu tiên nếu chưa chọn câu nào
-        if (!openId) {
-          setOpenId(data[0].id);
-        }
       }
     } catch (err) {
-      console.warn('Không thể kết nối Supabase cho FAQ:', err);
+      console.warn('Lỗi khi tải FAQ, dùng dữ liệu mặc định:', err);
     } finally {
       setLoading(false);
     }
-  }, [openId]);
+  }, []);
+
+  // Tải cấu hình mục Hỗ Trợ từ Supabase
+  const fetchSupportConfig = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cau_hinh')
+        .select('*')
+        .eq('id', 'support_panel')
+        .maybeSingle();
+
+      if (!error && data?.slogan_cuoi_trang_noi_dung) {
+        try {
+          const parsed = JSON.parse(data.slogan_cuoi_trang_noi_dung);
+          if (parsed && typeof parsed === 'object') {
+            setSupportConfig((prev) => ({ ...prev, ...parsed }));
+          }
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Lỗi tải supportConfig:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFaqs();
+    fetchSupportConfig();
+
+    const handleSupportUpdate = (e: any) => {
+      if (e?.detail) setSupportConfig((prev) => ({ ...prev, ...e.detail }));
+    };
+    window.addEventListener('petmm_support_config_updated', handleSupportUpdate);
+    return () => window.removeEventListener('petmm_support_config_updated', handleSupportUpdate);
+  }, [fetchFaqs, fetchSupportConfig]);
+
+
 
   useEffect(() => {
     fetchFaqs();
@@ -190,10 +217,24 @@ export default function FaqSection() {
               <div className="absolute -top-24 -right-24 w-52 h-52 bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" />
 
               <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mb-2">
-                {isEn ? 'Need Pet M&M ' : 'Bạn cần Pet M&M '}<span className="italic font-light text-[#2D5A27]">{isEn ? 'support?' : 'hỗ trợ?'}</span>
+                {isEn ? (
+                  <>
+                    {(supportConfig.tieu_de_en || 'Need Pet M&M support?').replace(/support\?$/i, '').trim()}{' '}
+                    <span className="italic font-light text-[#2D5A27]">
+                      {/support\?$/i.test(supportConfig.tieu_de_en || '') ? 'support?' : ''}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {(supportConfig.tieu_de_vi || 'Bạn cần Pet M&M hỗ trợ?').replace(/hỗ trợ\?$/i, '').trim()}{' '}
+                    <span className="italic font-light text-[#2D5A27]">
+                      {/hỗ trợ\?$/i.test(supportConfig.tieu_de_vi || '') ? 'hỗ trợ?' : ''}
+                    </span>
+                  </>
+                )}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 mb-6 font-light">
-                {isEn ? 'Choose the contact method that suits your needs.' : 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.'}
+                {isEn ? (supportConfig.mo_ta_en || 'Choose the contact method that suits your needs.') : (supportConfig.mo_ta_vi || 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.')}
               </p>
 
               {/* 3 Thẻ liên hệ trực tiếp */}
@@ -211,14 +252,12 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#2D5A27] transition-colors">
-                        {isEn ? 'Book via Zalo OA' : 'Đặt lịch dịch vụ qua Zalo OA'}
+                        {isEn ? (supportConfig.card1_title_en || 'Book via Zalo OA') : (supportConfig.card1_title_vi || 'Đặt lịch dịch vụ qua Zalo OA')}
                       </h4>
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      {isEn
-                        ? 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.'
-                        : 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.'}
+                      {isEn ? (supportConfig.card1_desc_en || 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.') : (supportConfig.card1_desc_vi || 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.')}
                     </p>
                   </div>
                 </a>
@@ -234,14 +273,12 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-rose-700 transition-colors">
-                        {isEn ? 'Call 24/7 Emergency Hotline' : 'Gọi trực tiếp hotline cấp cứu 24/7'}
+                        {isEn ? (supportConfig.card2_title_en || 'Call 24/7 Emergency Hotline') : (supportConfig.card2_title_vi || 'Gọi trực tiếp hotline cấp cứu 24/7')}
                       </h4>
                       <PhoneCall className="w-3.5 h-3.5 text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      {isEn
-                        ? 'When your pet has difficulty breathing, seizures, severe pain, bleeding, vomiting, diarrhea, suspected poisoning, or needs emergency assistance.'
-                        : 'Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.'}
+                      {isEn ? (supportConfig.card2_desc_en || 'When your pet has difficulty breathing, seizures, severe pain, bleeding, vomiting, diarrhea, suspected poisoning, or needs emergency assistance.') : (supportConfig.card2_desc_vi || 'Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.')}
                     </p>
                     <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold">
                       <span>Hotline: {hotlineDisplay}</span>
@@ -262,14 +299,12 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#2D5A27] transition-colors">
-                        {isEn ? 'Special Care Consultation' : 'Trao đổi nhu cầu chăm sóc đặc thù'}
+                        {isEn ? (supportConfig.card3_title_en || 'Special Care Consultation') : (supportConfig.card3_title_vi || 'Trao đổi nhu cầu chăm sóc đặc thù')}
                       </h4>
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      {isEn
-                        ? 'Send your pet\'s medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs.'
-                        : 'Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.'}
+                      {isEn ? (supportConfig.card3_desc_en || 'Send your pet\'s medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs.') : (supportConfig.card3_desc_vi || 'Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.')}
                     </p>
                   </div>
                 </a>

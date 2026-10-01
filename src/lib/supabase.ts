@@ -171,6 +171,44 @@ export interface CauHoiThuongGapRecord {
   ngay_cap_nhat?: string;
 }
 
+export interface SupportPanelConfig {
+  tieu_de_vi: string;
+  tieu_de_en: string;
+  mo_ta_vi: string;
+  mo_ta_en: string;
+  card1_title_vi: string;
+  card1_title_en: string;
+  card1_desc_vi: string;
+  card1_desc_en: string;
+  card2_title_vi: string;
+  card2_title_en: string;
+  card2_desc_vi: string;
+  card2_desc_en: string;
+  card3_title_vi: string;
+  card3_title_en: string;
+  card3_desc_vi: string;
+  card3_desc_en: string;
+}
+
+export const DEFAULT_SUPPORT_CONFIG: SupportPanelConfig = {
+  tieu_de_vi: 'Bạn cần Pet M&M hỗ trợ?',
+  tieu_de_en: 'Need Pet M&M support?',
+  mo_ta_vi: 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.',
+  mo_ta_en: 'Choose the contact method that suits your needs.',
+  card1_title_vi: 'Đặt lịch dịch vụ qua Zalo OA',
+  card1_title_en: 'Book via Zalo OA',
+  card1_desc_vi: 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.',
+  card1_desc_en: 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.',
+  card2_title_vi: 'Gọi trực tiếp hotline cấp cứu 24/7',
+  card2_title_en: 'Call 24/7 Emergency Hotline',
+  card2_desc_vi: 'Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.',
+  card2_desc_en: 'When your pet has difficulty breathing, seizures, severe pain, bleeding, vomiting, diarrhea, suspected poisoning, or needs emergency assistance.',
+  card3_title_vi: 'Trao đổi nhu cầu chăm sóc đặc thù',
+  card3_title_en: 'Special Care Consultation',
+  card3_desc_vi: 'Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.',
+  card3_desc_en: "Send your pet's medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs.",
+};
+
 export interface LichHenRecord {
   id: string;
   ma_lich_hen: string;
