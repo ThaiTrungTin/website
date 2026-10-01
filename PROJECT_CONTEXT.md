@@ -1,8 +1,8 @@
 # PET M&M — SỔ TAY NGỮ CẢNH DỰ ÁN (PROJECT CONTEXT)
 
 > 🆔 **MÃ CUỘC TRÒ CHUYỆN (CONVERSATION ID)**:
-> - **Phiên hiện tại (Latest)**: `43991119-8237-4895-a7ff-c47117034f65`
-> - **Phiên trước**: `32d76e44-7eef-4ed7-8eb1-25e266118dec`
+> - **Phiên hiện tại (Latest)**: `94636bed-0ada-4ce6-a927-5858feaf34b7`
+> - **Phiên trước**: `43991119-8237-4895-a7ff-c47117034f65`
 > - **Phiên khởi tạo (Origin)**: `dcd00ee0-4028-4c4b-8357-a1ca0d04d25d`
 > 
 > *Dành cho AI Agent*: Đọc file này khi bắt đầu một phiên làm việc mới để nắm toàn bộ bối cảnh, thẩm mỹ, các linh kiện đã hoàn thành và kế hoạch phát triển backend tiếp theo mà không cần người dùng phải giải thích lại.
@@ -544,6 +544,45 @@ Tích hợp cơ sở dữ liệu đám mây **Supabase (PostgreSQL)** và xây d
 - **Kích hoạt `prefetch={true}` & Soft Navigation**:
   - Bổ sung `prefetch={true}` trên toàn bộ các thẻ `<Link>` tại trang chủ ([`KnowledgeSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/KnowledgeSection.tsx)), menu đa tầng ([`NavDesktopMenu.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/NavDesktopMenu.tsx)), ngăn kéo menu mobile ([`Header.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/Header.tsx)) và sidebar chi nhánh ([`ChiNhanhDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ChiNhanhDetailClient.tsx)).
   - Next.js tự động tải trước gói dữ liệu trong nền ngay khi link xuất hiện trên màn hình, giúp việc nhấp chuột chuyển trang đạt phản hồi tức thì.
+
+---
+
+## 22. ĐỒNG BỘ GIAO DIỆN SONG NGỮ & DỊCH THUẬT TRIỆT ĐỂ CHO QUẢN LÝ DANH MỤC DỊCH VỤ (SERVICES MANAGEMENT)
+- **Tập tin liên quan**:
+  - Trang Quản trị: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - API Dịch tự động: [`src/app/api/admin/translate/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/translate/route.ts)
+  - Cấu trúc dữ liệu & Types: [`src/lib/supabase.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/supabase.ts)
+  - Hiển thị dịch vụ Frontend: [`src/components/ServicesSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ServicesSection.tsx)
+
+### 1. Đồng Bộ 100% Bố Cục Giao Diện Giữa Tab Tiếng Việt và Tab English Trong Modal Dịch Vụ
+- **Cấu trúc song sinh (Twin Layout)**: Cả 2 tab `Bản Tiếng Việt` và `Bản English` có cấu trúc lưới đối xứng hoàn toàn:
+  - **Hàng 1 (2 cột)**: Tên gói dịch vụ (Tiếng Việt / English) * | Phụ đề & Thông điệp ngắn (Tiếng Việt / English).
+  - **Hàng 2 (2 cột)**: Huy hiệu nổi bật góc ảnh (Tiếng Việt / English) | Chi phí tham khảo (Tiếng Việt / English).
+  - **Hàng 3 (1 cột)**: Thời lượng ước tính (Tiếng Việt / English).
+  - **Hàng 4 (1 cột)**: Mô tả chi tiết nội dung dịch vụ (Tiếng Việt / English - textarea 3 dòng).
+  - **Hàng 5 (2 cột song song)**: Tiện ích & Cam kết chuẩn mực y khoa (Tiếng Việt / English, mỗi dòng một mục, font-mono) | Quy trình thực hiện (Tiếng Việt / English, mỗi dòng một bước, font-mono).
+- **Tách riêng khối cài đặt dùng chung**: Các trường dữ liệu phi ngôn ngữ được chuyển xuống dưới đường kẻ phân cách:
+  - Nhóm phân loại dịch vụ: * (`Thú Y & Y Tế Chuyên Sâu` / `Chăm Sóc & Lưu Trú 5 Sao`).
+  - Thứ tự sắp xếp.
+  - Hình ảnh dịch vụ (`AdminImageInput`) tích hợp upload + dán ảnh trực tiếp từ clipboard, kèm 2 khung preview (ảnh nhỏ ở danh sách 16x16 và ảnh lớn ở khung chi tiết).
+  - Hai checkbox trạng thái: `Đánh dấu là gói nổi bật 5★` và `Kích hoạt hiển thị trên web`.
+- Không bị tình trạng mất trường hoặc bố cục xô lệch khi chuyển đổi giữa tab Tiếng Việt và English.
+
+### 2. Dịch Tự Động AI Triệt Để & Bảo Toàn Định Dạng Xuống Dòng
+- **Bảo toàn 100% ngắt dòng từng mục**:
+  - Danh sách Tiện ích (`serviceFeaturesInput`) và Quy trình thực hiện (`serviceWorkflowInput`) được tách mảng theo từng dòng riêng rẽ (`split('\n')`), dịch song song qua endpoint API `{ texts: [...] }`.
+  - Kết quả trả về được ghép lại bằng ký tự xuống dòng `\n`, triệt tiêu hoàn toàn lỗi dính chữ hoặc dồn tất cả các gạch đầu dòng thành một câu dài.
+- **Tự động điền & chuyển tab**:
+  - Điền trọn vẹn toàn bộ các trường `_en` (`ten_dich_vu_en`, `phu_de_en`, `huy_hieu_en`, `gia_tham_khao_en`, `thoi_luong_en`, `mo_ta_en`, `serviceFeaturesEnInput`, `serviceWorkflowEnInput`).
+  - Tự động kích hoạt chuyển sang tab `Bản English` ngay khi hoàn tất để quản trị viên dễ dàng duyệt lại.
+
+### 3. Đồng Bộ Toàn Diện Lưu Trữ Supabase
+- Hàm `handleSaveService` đã bổ sung lưu trữ đầy đủ các trường `_en` vào bảng `dich_vu`:
+  - `ten_dich_vu_en`, `phu_de_en`, `huy_hieu_en`, `gia_tham_khao_en`, `thoi_luong_en`, `mo_ta_en`.
+  - `tien_ich_en`: mảng `string[]` phân tách theo từng dòng.
+  - `quy_trinh_en`: mảng `string[]` phân tách theo từng dòng.
+- Sửa lỗi trước đây khiến bản dịch tiếng Anh bị mất sạch khi bấm Lưu Dịch Vụ.
+
 
 
 
