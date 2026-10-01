@@ -67,7 +67,9 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
         <link rel="dns-prefetch" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
-        <script
+        <Script
+          id="petmm-early-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
