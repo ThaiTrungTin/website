@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -64,63 +63,6 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <head>
-        <link rel="preconnect" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
-        <link rel="dns-prefetch" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
-        <Script
-          id="petmm-early-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var path = window.location.pathname || '';
-                  var lang = localStorage.getItem('petmm_language') || 'vi';
-                  var isEn = lang === 'en';
-
-                  if (path.indexOf('/doi-ngu') !== -1) {
-                    document.title = isEn ? 'Medical & Veterinary Team | Pet M&M' : 'Đội Ngũ Bác Sĩ & Y Tế | Pet M&M';
-                    return;
-                  }
-                  if (path.indexOf('/admin') !== -1) {
-                    document.title = isEn ? 'Admin Portal | Pet M&M' : 'Quản Trị Hệ Thống | Pet M&M';
-                    return;
-                  }
-                  if (path !== '/' && path !== '') {
-                    return;
-                  }
-
-                  var cached = localStorage.getItem('petmm_system_config_cache');
-                  if (cached) {
-                    var cfg = JSON.parse(cached);
-                    if (cfg) {
-                      var title = isEn
-                        ? (cfg.tieu_de_trang_en || 'PetM&M - Homepage')
-                        : (cfg.tieu_de_trang || 'PetM&M - Trang Chủ');
-                      if (title) document.title = title;
-                    }
-                  }
-                } catch (e) {}
-                try {
-                  var observer = new MutationObserver(function(mutations) {
-                    for (var i = 0; i < mutations.length; i++) {
-                      var m = mutations[i];
-                      if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked') {
-                        m.target.removeAttribute('bis_skin_checked');
-                      }
-                    }
-                  });
-                  observer.observe(document.documentElement, {
-                    attributes: true,
-                    subtree: true,
-                    attributeFilter: ['bis_skin_checked']
-                  });
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="antialiased min-h-screen bg-[#0B150A] text-slate-900" suppressHydrationWarning>
         <SystemConfigProvider>
           <LanguageProvider>

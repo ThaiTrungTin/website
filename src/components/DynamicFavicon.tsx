@@ -113,5 +113,26 @@ export default function DynamicFavicon() {
     }
   }, [config.logo_favicon]);
 
+  // Ngăn chặn extension chèn thuộc tính bis_skin_checked gây hydration mismatch
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const observer = new MutationObserver((mutations) => {
+        for (let i = 0; i < mutations.length; i++) {
+          const m = mutations[i];
+          if (m.type === 'attributes' && m.attributeName === 'bis_skin_checked') {
+            (m.target as HTMLElement).removeAttribute('bis_skin_checked');
+          }
+        }
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['bis_skin_checked'],
+      });
+      return () => observer.disconnect();
+    } catch {}
+  }, []);
+
   return null;
 }

@@ -32,7 +32,7 @@ interface BookingSectionProps {
   onSuccess?: () => void;
 }
 
-const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&q=80&w=1200';
+const DEFAULT_COVER_IMAGE = '/about_consultation.jpg';
 
 const TIME_SLOTS = [
   '08:00 - 08:30',
@@ -715,13 +715,10 @@ export default function BookingSection({
             {/* CỘT PHẢI: ẢNH BÌA ĐẶT LỊCH (LƯU VÀO DTB, ĐƯỢC CHÈN/THAY TỪ ADMIN) */}
             <div className="hidden lg:flex lg:col-span-5 relative min-h-[560px] bg-slate-900 overflow-hidden flex-col justify-between p-8 text-white">
               {/* Ảnh nền */}
-              <Image
+              <img
                 src={coverImage || DEFAULT_COVER_IMAGE}
                 alt="Pet M&M Veterinary Clinic"
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                className="object-cover object-center scale-105 transition-transform duration-700 hover:scale-100"
+                className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-700 hover:scale-100"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/50 to-slate-900/30" />
 
