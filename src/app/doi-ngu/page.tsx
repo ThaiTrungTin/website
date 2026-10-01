@@ -506,7 +506,8 @@ export default function DoiNguYTePage() {
   // Cập nhật tab title theo ngôn ngữ khi vào trang
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      document.title = isEn ? 'Pet M&M - Medical & Veterinary Team' : 'Pet M&M - Đội Ngũ Bác Sĩ & Y Tế';
+      const pageTitle = isEn ? 'Medical & Veterinary Team | Pet M&M' : 'Đội Ngũ Bác Sĩ & Y Tế | Pet M&M';
+      document.title = pageTitle;
     }
   }, [isEn]);
 

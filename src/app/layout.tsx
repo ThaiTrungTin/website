@@ -72,12 +72,26 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  var path = window.location.pathname || '';
                   var lang = localStorage.getItem('petmm_language') || 'vi';
+                  var isEn = lang === 'en';
+
+                  if (path.indexOf('/doi-ngu') !== -1) {
+                    document.title = isEn ? 'Medical & Veterinary Team | Pet M&M' : 'Đội Ngũ Bác Sĩ & Y Tế | Pet M&M';
+                    return;
+                  }
+                  if (path.indexOf('/admin') !== -1) {
+                    document.title = isEn ? 'Admin Portal | Pet M&M' : 'Quản Trị Hệ Thống | Pet M&M';
+                    return;
+                  }
+                  if (path !== '/' && path !== '') {
+                    return;
+                  }
+
                   var cached = localStorage.getItem('petmm_system_config_cache');
                   if (cached) {
                     var cfg = JSON.parse(cached);
                     if (cfg) {
-                      var isEn = lang === 'en';
                       var title = isEn
                         ? (cfg.tieu_de_trang_en || 'PetM&M - Homepage')
                         : (cfg.tieu_de_trang || 'PetM&M - Trang Chủ');

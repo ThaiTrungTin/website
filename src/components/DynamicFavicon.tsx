@@ -1,18 +1,43 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function DynamicFavicon() {
   const { config } = useSystemConfig();
   const { language } = useLanguage();
+  const pathname = usePathname();
 
-  // Dynamic Browser Tab Title reacting to language and admin config
+  // Dynamic Browser Tab Title reacting to language, admin config, and current page route
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const applyTitle = () => {
+    const isEn = language === 'en';
+
+    // 1. Đối với trang chi tiết chi nhánh hoặc bài viết kiến thức:
+    // Để component chi tiết tự quản lý tiêu đề theo tên chi nhánh / tiêu đề bài viết
+    if (pathname?.startsWith('/chi-nhanh') || pathname?.startsWith('/kien-thuc')) {
+      return;
+    }
+
+    const getTargetTitle = () => {
+      // 2. View con Đội ngũ nhân sự / bác sĩ (/doi-ngu)
+      if (pathname === '/doi-ngu' || pathname?.startsWith('/doi-ngu')) {
+        return isEn
+          ? 'Medical & Veterinary Team | Pet M&M'
+          : 'Đội Ngũ Bác Sĩ & Y Tế | Pet M&M';
+      }
+
+      // 3. Trang Quản trị hệ thống (/admin)
+      if (pathname === '/admin' || pathname?.startsWith('/admin')) {
+        return isEn
+          ? 'Admin Portal | Pet M&M'
+          : 'Quản Trị Hệ Thống | Pet M&M';
+      }
+
+      // 4. Trang chủ (/) và các đường dẫn gốc
       let titleVi = config.tieu_de_trang;
       let titleEn = config.tieu_de_trang_en;
 
@@ -27,11 +52,13 @@ export default function DynamicFavicon() {
         } catch {}
       }
 
-      const isEn = language === 'en';
-      const pageTitle = isEn
+      return isEn
         ? (titleEn?.trim() || 'PetM&M - Homepage')
         : (titleVi?.trim() || 'PetM&M - Trang Chủ');
+    };
 
+    const applyTitle = () => {
+      const pageTitle = getTargetTitle();
       if (pageTitle && document.title !== pageTitle) {
         document.title = pageTitle;
       }
@@ -51,7 +78,7 @@ export default function DynamicFavicon() {
     return () => {
       timers.forEach(clearTimeout);
     };
-  }, [language, config.tieu_de_trang, config.tieu_de_trang_en]);
+  }, [pathname, language, config.tieu_de_trang, config.tieu_de_trang_en]);
 
   useEffect(() => {
     const rawFavicon = config.logo_favicon?.trim();

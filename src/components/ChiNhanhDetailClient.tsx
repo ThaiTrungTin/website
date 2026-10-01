@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, Phone, Clock, Navigation, BookOpen, ArrowRight } from 'lucide-react';
 import { ChiNhanhRecord } from '@/lib/supabase';
@@ -44,6 +44,21 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
   const branchArea = (isEn && branch.khu_vuc_en) ? branch.khu_vuc_en : branch.khu_vuc;
   const branchAddress = (isEn && branch.dia_chi_en) ? branch.dia_chi_en : branch.dia_chi;
   const branchHours = (isEn && branch.gio_hoat_dong_en) ? branch.gio_hoat_dong_en : branch.gio_hoat_dong;
+
+  // Cập nhật tab title theo tên chi nhánh và ngôn ngữ
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const name = (isEn && branch.ten_chi_nhanh_en) ? branch.ten_chi_nhanh_en : branch.ten_chi_nhanh;
+    const targetTitle = `${name || (isEn ? 'Branch Detail' : 'Chi Nhánh')} | Pet M&M`;
+    const apply = () => {
+      if (document.title !== targetTitle) {
+        document.title = targetTitle;
+      }
+    };
+    apply();
+    const timers = [setTimeout(apply, 100), setTimeout(apply, 400), setTimeout(apply, 1000)];
+    return () => timers.forEach(clearTimeout);
+  }, [isEn, branch.ten_chi_nhanh, branch.ten_chi_nhanh_en]);
 
   const heroImg = branch.anh_dai_dien;
   const heroPos = branch.can_chinh_anh || '50% 50%';

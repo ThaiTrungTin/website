@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Calendar,
@@ -49,6 +49,21 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
     : (article.tac_gia || (isEn ? 'Pet M&M Veterinary Medical Board' : 'Hội Đồng Y Khoa Bệnh Viện Thú Y Pet M&M'));
   const readTime = (isEn && article.thoi_gian_doc_en) ? article.thoi_gian_doc_en : article.thoi_gian_doc;
   const heroImg = article.hinh_anh || '/about_consultation.jpg';
+
+  // Cập nhật tab title theo tiêu đề bài viết và ngôn ngữ
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const currentTitle = (isEn && article.tieu_de_en) ? article.tieu_de_en : article.tieu_de;
+    const targetTitle = `${currentTitle || (isEn ? 'Pet Care Article' : 'Cẩm Nang Kiến Thức')} | Pet M&M`;
+    const apply = () => {
+      if (document.title !== targetTitle) {
+        document.title = targetTitle;
+      }
+    };
+    apply();
+    const timers = [setTimeout(apply, 100), setTimeout(apply, 400), setTimeout(apply, 1000)];
+    return () => timers.forEach(clearTimeout);
+  }, [isEn, article.tieu_de, article.tieu_de_en]);
 
   // Legacy Markdown renderer fallback nếu không phải HTML
   const isHtmlContent = (content?: string | null) => {
