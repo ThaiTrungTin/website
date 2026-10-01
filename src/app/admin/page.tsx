@@ -3418,7 +3418,16 @@ export default function AdminDashboardPage() {
                                 2
                               </span>
                               <div className="leading-relaxed">
-                                <strong className="text-slate-900">Tìm Mật khẩu ứng dụng:</strong> Gõ từ khóa <em>&ldquo;Mật khẩu ứng dụng&rdquo;</em> trên thanh tìm kiếm của tài khoản Google, hoặc truy cập nhanh tại link bên dưới.
+                                <strong className="text-slate-900">Truy cập Mật khẩu ứng dụng:</strong> Nhấp vào link trực tiếp{' '}
+                                <a
+                                  href="https://myaccount.google.com/apppasswords"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-700 font-semibold underline hover:text-blue-900 inline-flex items-center gap-0.5"
+                                >
+                                  myaccount.google.com/apppasswords <ExternalLink className="w-3 h-3 inline" />
+                                </a>{' '}
+                                (hoặc tìm kiếm từ khóa <em>&ldquo;Mật khẩu ứng dụng&rdquo;</em> trong tài khoản Google).
                               </div>
                             </div>
 
@@ -3431,18 +3440,6 @@ export default function AdminDashboardPage() {
                                 <strong className="text-slate-900">Tạo mã Key 16 chữ cái:</strong> Đặt tên ứng dụng là <em>PetMM Website</em> và bấm <strong>Tạo</strong>. Google sẽ cấp cho bạn một chuỗi <strong>16 chữ cái</strong> (Key). Hãy sao chép chuỗi này và dán vào ô <strong>Khóa bí mật / Key</strong> bên cạnh rồi bấm <strong>Lưu</strong>!
                               </div>
                             </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-amber-200/70">
-                            <a
-                              href="https://myaccount.google.com/apppasswords"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-950 hover:underline cursor-pointer"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Mở trang tạo Mật khẩu ứng dụng của Google ↗</span>
-                            </a>
                           </div>
                         </div>
 
