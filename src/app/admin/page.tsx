@@ -1013,20 +1013,28 @@ export default function AdminDashboardPage() {
     setEditingService({
       id: `service-${Date.now()}`,
       ten_dich_vu: '',
+      ten_dich_vu_en: '',
       phu_de: '',
+      phu_de_en: '',
       nhom_dich_vu: 'medical',
       huy_hieu: '',
+      huy_hieu_en: '',
       mo_ta: '',
+      mo_ta_en: '',
       hinh_anh: '/services_bg.jpg',
       can_chinh_anh: '50% 50%',
       gia_tham_khao: '',
+      gia_tham_khao_en: '',
       thoi_luong: '',
+      thoi_luong_en: '',
       tien_ich: [],
+      tien_ich_en: [],
       quy_trinh: [],
+      quy_trinh_en: [],
       noi_bat: false,
       thu_tu: nextOrder,
       kich_hoat: true,
-    });
+    } as any);
     setServiceFeaturesInput('');
     setServiceWorkflowInput('');
     setServiceFeaturesEnInput('');
@@ -1056,6 +1064,16 @@ export default function AdminDashboardPage() {
     }
     setIsTranslatingService(true);
     try {
+      const featureLines = serviceFeaturesInput
+        .split('\n')
+        .map((f) => f.trim())
+        .filter(Boolean);
+
+      const workflowLines = serviceWorkflowInput
+        .split('\n')
+        .map((w) => w.trim())
+        .filter(Boolean);
+
       const fieldsToTranslate: Record<string, string> = {
         ten_dich_vu: editingService.ten_dich_vu || '',
         phu_de: editingService.phu_de || '',
@@ -1063,32 +1081,59 @@ export default function AdminDashboardPage() {
         gia_tham_khao: editingService.gia_tham_khao || '',
         thoi_luong: editingService.thoi_luong || '',
         mo_ta: editingService.mo_ta || '',
-        tien_ich: serviceFeaturesInput || '',
-        quy_trinh: serviceWorkflowInput || '',
       };
-      const res = await fetch('/api/admin/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: fieldsToTranslate }),
-      });
-      const data = await res.json();
-      if (data.success && data.translations) {
-        setEditingService((prev) => (prev ? {
-          ...prev,
-          ten_dich_vu_en: data.translations.ten_dich_vu || (prev as any).ten_dich_vu_en,
-          phu_de_en: data.translations.phu_de || (prev as any).phu_de_en,
-          huy_hieu_en: data.translations.huy_hieu || (prev as any).huy_hieu_en,
-          gia_tham_khao_en: data.translations.gia_tham_khao || (prev as any).gia_tham_khao_en,
-          thoi_luong_en: data.translations.thoi_luong || (prev as any).thoi_luong_en,
-          mo_ta_en: data.translations.mo_ta || (prev as any).mo_ta_en,
-        } as any : null));
-        if (data.translations.tien_ich) setServiceFeaturesEnInput(data.translations.tien_ich);
-        if (data.translations.quy_trinh) setServiceWorkflowEnInput(data.translations.quy_trinh);
-        setServiceLangTab('en');
-        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh y khoa thành công!');
-      } else throw new Error(data.error || 'Dịch tự động thất bại');
+
+      const [fieldsRes, featsRes, workRes] = await Promise.all([
+        fetch('/api/admin/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: fieldsToTranslate }),
+        }).then((r) => r.json()),
+        featureLines.length > 0
+          ? fetch('/api/admin/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ texts: featureLines }),
+            }).then((r) => r.json())
+          : Promise.resolve({ success: true, translations: [] }),
+        workflowLines.length > 0
+          ? fetch('/api/admin/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ texts: workflowLines }),
+            }).then((r) => r.json())
+          : Promise.resolve({ success: true, translations: [] }),
+      ]);
+
+      if (fieldsRes.success && fieldsRes.translations) {
+        setEditingService((prev) =>
+          prev
+            ? ({
+                ...prev,
+                ten_dich_vu_en: fieldsRes.translations.ten_dich_vu || (prev as any).ten_dich_vu_en || '',
+                phu_de_en: fieldsRes.translations.phu_de || (prev as any).phu_de_en || '',
+                huy_hieu_en: fieldsRes.translations.huy_hieu || (prev as any).huy_hieu_en || '',
+                gia_tham_khao_en: fieldsRes.translations.gia_tham_khao || (prev as any).gia_tham_khao_en || '',
+                thoi_luong_en: fieldsRes.translations.thoi_luong || (prev as any).thoi_luong_en || '',
+                mo_ta_en: fieldsRes.translations.mo_ta || (prev as any).mo_ta_en || '',
+              } as any)
+            : null
+        );
+      }
+
+      if (featsRes.success && Array.isArray(featsRes.translations) && featsRes.translations.length > 0) {
+        setServiceFeaturesEnInput(featsRes.translations.join('\n'));
+      }
+
+      if (workRes.success && Array.isArray(workRes.translations) && workRes.translations.length > 0) {
+        setServiceWorkflowEnInput(workRes.translations.join('\n'));
+      }
+
+      setServiceLangTab('en');
+      showNotification('success', 'Đã chuyển đổi toàn bộ thông tin dịch vụ sang Tiếng Anh thành công!');
     } catch (err: any) {
-      showNotification('error', `Lỗi dịch tự động: ${err.message}`);
+      console.error('Lỗi dịch dịch vụ:', err);
+      showNotification('error', `Lỗi chuyển đổi ngôn ngữ: ${err.message}`);
     } finally {
       setIsTranslatingService(false);
     }
@@ -1148,18 +1193,36 @@ export default function AdminDashboardPage() {
         .map((w) => w.trim())
         .filter(Boolean);
 
+      const parsedFeaturesEn = serviceFeaturesEnInput
+        .split('\n')
+        .map((f) => f.trim())
+        .filter(Boolean);
+
+      const parsedWorkflowEn = serviceWorkflowEnInput
+        .split('\n')
+        .map((w) => w.trim())
+        .filter(Boolean);
+
       const payload: Partial<DichVuRecord> = {
         ten_dich_vu: editingService.ten_dich_vu,
+        ten_dich_vu_en: (editingService as any).ten_dich_vu_en || null,
         phu_de: editingService.phu_de || null,
+        phu_de_en: (editingService as any).phu_de_en || null,
         nhom_dich_vu: editingService.nhom_dich_vu || 'medical',
         huy_hieu: editingService.huy_hieu || null,
+        huy_hieu_en: (editingService as any).huy_hieu_en || null,
         mo_ta: editingService.mo_ta || null,
+        mo_ta_en: (editingService as any).mo_ta_en || null,
         hinh_anh: editingService.hinh_anh || '/services_bg.jpg',
         can_chinh_anh: editingService.can_chinh_anh || '50% 50%',
         gia_tham_khao: editingService.gia_tham_khao || null,
+        gia_tham_khao_en: (editingService as any).gia_tham_khao_en || null,
         thoi_luong: editingService.thoi_luong || null,
+        thoi_luong_en: (editingService as any).thoi_luong_en || null,
         tien_ich: parsedFeatures,
+        tien_ich_en: parsedFeaturesEn,
         quy_trinh: parsedWorkflow,
+        quy_trinh_en: parsedWorkflowEn,
         noi_bat: !!editingService.noi_bat,
         thu_tu: Number(editingService.thu_tu) || 0,
         kich_hoat: editingService.kich_hoat !== undefined ? editingService.kich_hoat : true,
@@ -6769,279 +6832,350 @@ export default function AdminDashboardPage() {
               </div>
 
               {serviceLangTab === 'vi' ? (
-              <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tên gói dịch vụ: <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editingService.ten_dich_vu || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, ten_dich_vu: e.target.value }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Nhóm phân loại: <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={editingService.nhom_dich_vu || 'medical'}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, nhom_dich_vu: e.target.value as any }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
-                  >
-                    <option value="medical">Nhóm 1: Thú Y &amp; Y Tế Chuyên Sâu</option>
-                    <option value="care">Nhóm 2: Chăm Sóc &amp; Lưu Trú 5 Sao</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Phụ đề / Thông điệp ngắn:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingService.phu_de || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, phu_de: e.target.value }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Huy hiệu nổi bật (Hiển thị góc ảnh &amp; danh sách):
-                  </label>
-                  <input
-                    type="text"
-                    value={editingService.huy_hieu || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, huy_hieu: e.target.value }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Chi phí tham khảo:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingService.gia_tham_khao || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, gia_tham_khao: e.target.value }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thời lượng ước tính:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingService.thoi_luong || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, thoi_luong: e.target.value }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Hình ảnh dịch vụ (Dùng chung cho cả list và khung chi tiết) */}
-              <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <AdminImageInput
-                  value={editingService.hinh_anh || ''}
-                  onChange={(url) => setEditingService((prev) => (prev ? { ...prev, hinh_anh: url } : null))}
-                  folder="services"
-                  label="Hình ảnh dịch vụ (Dùng chung cho ảnh nhỏ ở danh sách và ảnh lớn ở khung chi tiết):"
-                  uploadButtonLabel="Tải File"
-                  pasteButtonLabel="Dán Ảnh"
-                  onNotification={showNotification}
-                />
-
-                {editingService.hinh_anh && (
-                  <div className="pt-2 flex items-center gap-4">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs">
-                        <img
-                          src={editingService.hinh_anh}
-                          alt="Thumbnail preview"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-[10px] text-slate-500 mt-1 block">Ảnh ở danh sách</span>
+                /* TAB TIẾNG VIỆT */
+                <div className="space-y-4">
+                  {/* Hàng 1: Tên gói dịch vụ & Phụ đề */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tên gói dịch vụ (Tiếng Việt): <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingService.ten_dich_vu || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, ten_dich_vu: e.target.value } : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="VD: Phẫu Thuật Ngoại Khoa & Triệt Sản An Toàn..."
+                      />
                     </div>
 
-                    <div className="flex-1">
-                      <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs relative">
-                        <img
-                          src={editingService.hinh_anh}
-                          alt="Hero preview"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-[10px] text-slate-500 mt-1 block">Ảnh ở khung chi tiết lớn</span>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Phụ đề / Thông điệp ngắn (Tiếng Việt):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingService.phu_de || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, phu_de: e.target.value } : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="VD: Phòng phẫu thuật áp lực dương vô trùng 100%..."
+                      />
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Mô tả chi tiết */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mô tả chi tiết nội dung dịch vụ:
-                </label>
-                <textarea
-                  rows={3}
-                  value={editingService.mo_ta || ''}
-                  onChange={(e) => setEditingService((prev) => ({ ...prev, mo_ta: e.target.value }))}
-                  className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
+                  {/* Hàng 2: Huy hiệu nổi bật & Chi phí tham khảo */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Huy hiệu nổi bật (Tiếng Việt):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingService.huy_hieu || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, huy_hieu: e.target.value } : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="VD: Vô Trùng Chuẩn Y Khoa..."
+                      />
+                    </div>
 
-              {/* Tiện ích & Quy trình */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tiện ích &amp; Cam kết chuẩn mực y khoa (Mỗi dòng một mục):
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={serviceFeaturesInput}
-                    onChange={(e) => setServiceFeaturesInput(e.target.value)}
-                    className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">Xuống dòng để phân tách các tiện ích.</p>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Chi phí tham khảo (Tiếng Việt):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingService.gia_tham_khao || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, gia_tham_khao: e.target.value } : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="VD: Từ 500.000đ hoặc Liên hệ..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hàng 3: Thời lượng ước tính */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Thời lượng ước tính (Tiếng Việt):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingService.thoi_luong || ''}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, thoi_luong: e.target.value } : null))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="VD: 45 - 60 phút hoặc Theo ca phẫu thuật..."
+                    />
+                  </div>
+
+                  {/* Hàng 4: Mô tả chi tiết nội dung dịch vụ */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Mô tả chi tiết nội dung dịch vụ (Tiếng Việt):
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editingService.mo_ta || ''}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, mo_ta: e.target.value } : null))}
+                      className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none"
+                      placeholder="Mô tả tóm tắt giải pháp y khoa và giá trị gói dịch vụ mang lại cho thú cưng..."
+                    />
+                  </div>
+
+                  {/* Hàng 5: Tiện ích & Quy trình (2 cột song song) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tiện ích &amp; Cam kết chuẩn mực y khoa (Tiếng Việt, mỗi dòng một mục):
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={serviceFeaturesInput}
+                        onChange={(e) => setServiceFeaturesInput(e.target.value)}
+                        className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono resize-none"
+                        placeholder="VD:&#10;Hệ thống máy thở gây mê Isoflurane tự động&#10;Giám sát nhịp tim và SpO2 liên tục&#10;Hậu phẫu phòng chăm sóc tích cực 24/7"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">Xuống dòng để phân tách các tiện ích.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Quy trình thực hiện (Tiếng Việt, mỗi dòng một bước):
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={serviceWorkflowInput}
+                        onChange={(e) => setServiceWorkflowInput(e.target.value)}
+                        className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono resize-none"
+                        placeholder="VD:&#10;Bước 1: Khám tiền mê & xét nghiệm đông máu&#10;Bước 2: Tiến hành phẫu thuật vô trùng tuyệt đối&#10;Bước 3: Hồi sức và theo dõi tại phòng ICU"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">Xuống dòng để phân tách từng bước 1, 2, 3...</p>
+                    </div>
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Quy trình thực hiện (Mỗi dòng một bước):
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={serviceWorkflowInput}
-                    onChange={(e) => setServiceWorkflowInput(e.target.value)}
-                    className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">Xuống dòng để phân tách từng bước 1, 2, 3...</p>
-                </div>
-              </div>
-
-              {/* Tùy chọn thứ tự & trạng thái */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thứ tự sắp xếp:
-                  </label>
-                  <input
-                    type="number"
-                    value={editingService.thu_tu || 0}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, thu_tu: parseInt(e.target.value) || 0 }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="service_noi_bat"
-                    checked={editingService.noi_bat || false}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, noi_bat: e.target.checked }))}
-                    className="w-4 h-4 text-[#2D5A27] rounded border-slate-300 focus:ring-[#2D5A27]"
-                  />
-                  <label htmlFor="service_noi_bat" className="text-xs font-semibold text-slate-800 cursor-pointer">
-                    Đánh dấu là gói nổi bật 5★
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="service_kich_hoat"
-                    checked={editingService.kich_hoat !== undefined && editingService.kich_hoat !== null ? Boolean(editingService.kich_hoat) : true}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
-                    className="w-4 h-4 text-[#2D5A27] rounded border-slate-300 focus:ring-[#2D5A27]"
-                  />
-                  <label htmlFor="service_kich_hoat" className="text-xs font-semibold text-slate-800 cursor-pointer">
-                    Kích hoạt hiển thị trên web
-                  </label>
-                </div>
-              </div>
-              </div>
               ) : (
-              /* TAB TIẾNG ANH */
-              <div className="space-y-4">
+                /* TAB TIẾNG ANH (BỐ CỤC Y CHANG 100% BẢN TIẾNG VIỆT) */
+                <div className="space-y-4">
+                  {/* Hàng 1: Tên gói dịch vụ & Phụ đề */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tên gói dịch vụ (English): <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingService as any).ten_dich_vu_en || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, ten_dich_vu_en: e.target.value } as any : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Surgical Care & Safe Neutering Procedures..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Phụ đề / Thông điệp ngắn (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingService as any).phu_de_en || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, phu_de_en: e.target.value } as any : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. 100% Sterile positive pressure operating suites..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Huy hiệu nổi bật & Chi phí tham khảo */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Huy hiệu nổi bật (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingService as any).huy_hieu_en || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, huy_hieu_en: e.target.value } as any : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Hospital Grade Sterile..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Chi phí tham khảo (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingService as any).gia_tham_khao_en || ''}
+                        onChange={(e) => setEditingService((prev) => (prev ? { ...prev, gia_tham_khao_en: e.target.value } as any : null))}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. From 500,000 VND or Contact us..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hàng 3: Thời lượng ước tính */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Thời lượng ước tính (English):
+                    </label>
+                    <input
+                      type="text"
+                      value={(editingService as any).thoi_luong_en || ''}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, thoi_luong_en: e.target.value } as any : null))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. 45 - 60 minutes or Upon surgery case..."
+                    />
+                  </div>
+
+                  {/* Hàng 4: Mô tả chi tiết nội dung dịch vụ */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Mô tả chi tiết nội dung dịch vụ (English):
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={(editingService as any).mo_ta_en || ''}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, mo_ta_en: e.target.value } as any : null))}
+                      className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none"
+                      placeholder="Describe the medical solution and 5-star value delivered to pets..."
+                    />
+                  </div>
+
+                  {/* Hàng 5: Tiện ích & Quy trình (2 cột song song) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tiện ích &amp; Cam kết chuẩn mực y khoa (English, mỗi dòng một mục):
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={serviceFeaturesEnInput}
+                        onChange={(e) => setServiceFeaturesEnInput(e.target.value)}
+                        className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono resize-none"
+                        placeholder="e.g.&#10;Automated Isoflurane inhalation anesthesia system&#10;Continuous vital sign and SpO2 monitoring&#10;24/7 specialized postoperative ICU recovery"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">Xuống dòng để phân tách các tiện ích (One per line).</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Quy trình thực hiện (English, mỗi dòng một bước):
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={serviceWorkflowEnInput}
+                        onChange={(e) => setServiceWorkflowEnInput(e.target.value)}
+                        className="w-full text-xs p-3.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono resize-none"
+                        placeholder="e.g.&#10;Step 1: Pre-anesthetic evaluation & blood coagulation profile&#10;Step 2: Strict aseptic surgical procedure&#10;Step 3: ICU post-operative recovery and monitoring"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">Xuống dòng để phân tách từng bước 1, 2, 3... (One per line).</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* KHỐI CÀI ĐẶT DÙNG CHUNG (KHÔNG PHỤ THUỘC NGÔN NGỮ) */}
+              <div className="pt-4 border-t border-slate-200 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <Stethoscope className="w-3.5 h-3.5 text-[#2D5A27]" />
+                  <span>Cài đặt phân loại &amp; Hình ảnh dịch vụ (Dùng chung cho cả 2 ngôn ngữ)</span>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Service Name (EN): <span className="text-rose-500">*</span>
+                      Nhóm phân loại dịch vụ: <span className="text-rose-500">*</span>
                     </label>
-                    <input type="text" value={(editingService as any).ten_dich_vu_en || ''}
-                      onChange={(e) => setEditingService((prev) => ({ ...prev, ten_dich_vu_en: e.target.value } as any))}
-                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                      placeholder="e.g. Specialized Veterinary Surgery..." />
+                    <select
+                      value={editingService.nhom_dich_vu || 'medical'}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, nhom_dich_vu: e.target.value as any } : null))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                    >
+                      <option value="medical">Nhóm 1: Thú Y &amp; Y Tế Chuyên Sâu</option>
+                      <option value="care">Nhóm 2: Chăm Sóc &amp; Lưu Trú 5 Sao</option>
+                    </select>
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Subtitle (EN):</label>
-                    <input type="text" value={(editingService as any).phu_de_en || ''}
-                      onChange={(e) => setEditingService((prev) => ({ ...prev, phu_de_en: e.target.value } as any))}
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Thứ tự sắp xếp:
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.thu_tu || 0}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, thu_tu: parseInt(e.target.value) || 0 } : null))}
                       className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                      placeholder="e.g. Premium 5-Star Experience..." />
+                    />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Badge (EN):</label>
-                    <input type="text" value={(editingService as any).huy_hieu_en || ''}
-                      onChange={(e) => setEditingService((prev) => ({ ...prev, huy_hieu_en: e.target.value } as any))}
-                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                      placeholder="e.g. Advanced Surgery..." />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Price Reference (EN):</label>
-                    <input type="text" value={(editingService as any).gia_tham_khao_en || ''}
-                      onChange={(e) => setEditingService((prev) => ({ ...prev, gia_tham_khao_en: e.target.value } as any))}
-                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                      placeholder="e.g. From 2,000,000 VND..." />
-                  </div>
+
+                {/* Hình ảnh dịch vụ (Dùng chung cho cả list và khung chi tiết) */}
+                <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                  <AdminImageInput
+                    value={editingService.hinh_anh || ''}
+                    onChange={(url) => setEditingService((prev) => (prev ? { ...prev, hinh_anh: url } : null))}
+                    folder="services"
+                    label="Hình ảnh dịch vụ (Dùng chung cho ảnh nhỏ ở danh sách và ảnh lớn ở khung chi tiết):"
+                    uploadButtonLabel="Tải File"
+                    pasteButtonLabel="Dán Ảnh"
+                    onNotification={showNotification}
+                  />
+
+                  {editingService.hinh_anh && (
+                    <div className="pt-2 flex items-center gap-4">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs">
+                          <img
+                            src={editingService.hinh_anh}
+                            alt="Thumbnail preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-[10px] text-slate-500 mt-1 block">Ảnh ở danh sách</span>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs relative">
+                          <img
+                            src={editingService.hinh_anh}
+                            alt="Hero preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-[10px] text-slate-500 mt-1 block">Ảnh ở khung chi tiết lớn</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (EN):</label>
-                  <input type="text" value={(editingService as any).thoi_luong_en || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, thoi_luong_en: e.target.value } as any))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    placeholder="e.g. 60-120 minutes..." />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Description (EN):</label>
-                  <textarea value={(editingService as any).mo_ta_en || ''}
-                    onChange={(e) => setEditingService((prev) => ({ ...prev, mo_ta_en: e.target.value } as any))}
-                    rows={4}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none"
-                    placeholder="Describe this service in English..." />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Features / Amenities (EN) <span className="text-slate-500 font-normal">(one per line)</span>:</label>
-                  <textarea value={serviceFeaturesEnInput}
-                    onChange={(e) => setServiceFeaturesEnInput(e.target.value)}
-                    rows={4}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none font-mono"
-                    placeholder="e.g.&#10;Advanced imaging equipment&#10;Board-certified veterinarians&#10;24/7 post-op monitoring" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Workflow / Process (EN) <span className="text-slate-500 font-normal">(one per line)</span>:</label>
-                  <textarea value={serviceWorkflowEnInput}
-                    onChange={(e) => setServiceWorkflowEnInput(e.target.value)}
-                    rows={4}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none font-mono"
-                    placeholder="e.g.&#10;Initial consultation&#10;Diagnostic testing&#10;Treatment plan..." />
+
+                {/* Checkboxes trạng thái */}
+                <div className="flex flex-wrap items-center gap-6 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="service_noi_bat"
+                      checked={editingService.noi_bat || false}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, noi_bat: e.target.checked } : null))}
+                      className="w-4 h-4 text-[#2D5A27] rounded border-slate-300 focus:ring-[#2D5A27]"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">
+                      Đánh dấu là gói nổi bật 5★
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="service_kich_hoat"
+                      checked={editingService.kich_hoat !== undefined && editingService.kich_hoat !== null ? Boolean(editingService.kich_hoat) : true}
+                      onChange={(e) => setEditingService((prev) => (prev ? { ...prev, kich_hoat: e.target.checked } : null))}
+                      className="w-4 h-4 text-[#2D5A27] rounded border-slate-300 focus:ring-[#2D5A27]"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">
+                      Kích hoạt hiển thị trên web
+                    </span>
+                  </label>
                 </div>
               </div>
-              )}
             </div>
 
             {/* Modal Footer */}
