@@ -455,7 +455,6 @@ export default function AdminDashboardPage() {
   const [featuresEnInput, setFeaturesEnInput] = useState('');
   const [branchLangTab, setBranchLangTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingBranch, setIsTranslatingBranch] = useState(false);
-  const [isTranslatingBranchArticle, setIsTranslatingBranchArticle] = useState(false);
 
   const loadBranches = async () => {
     setBranchesLoading(true);
@@ -565,36 +564,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleTranslateBranchArticleOnly = async () => {
-    const content = editingBranch?.bai_viet_chi_tiet;
-    if (!content || !content.trim()) {
-      showNotification('error', 'Chưa có nội dung bài viết chi tiết Tiếng Việt để dịch!');
-      return;
-    }
-    setIsTranslatingBranchArticle(true);
-    try {
-      const res = await fetch('/api/admin/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: content }),
-      });
-      const data = await res.json();
-      if (data.success && data.translation) {
-        setEditingBranch((prev) => (prev ? {
-          ...prev,
-          bai_viet_chi_tiet_en: data.translation,
-        } as any : null));
-        setBranchLangTab('en');
-        showNotification('success', 'Đã chuyển đổi bài viết chi tiết sang Tiếng Anh thành công!');
-      } else {
-        throw new Error(data.error || 'Dịch bài viết thất bại');
-      }
-    } catch (err: any) {
-      showNotification('error', `Lỗi dịch bài viết: ${err.message}`);
-    } finally {
-      setIsTranslatingBranchArticle(false);
-    }
-  };
 
   const handleSaveBranch = async () => {
     if (!editingBranch?.ten_chi_nhanh || !editingBranch?.dia_chi) {
@@ -6250,23 +6219,24 @@ export default function AdminDashboardPage() {
                   onClick={handleAutoTranslateBranch}
                   disabled={isTranslatingBranch}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
-                  title="Dịch tự động sang Tiếng Anh bằng AI"
+                  title="Dịch tự động toàn bộ thông tin chi nhánh và bài viết sang Tiếng Anh bằng AI"
                 >
                   {isTranslatingBranch ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Sparkles className="w-3.5 h-3.5" />
                   )}
-                  <span>{isTranslatingBranch ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                  <span>{isTranslatingBranch ? 'Đang chuyển đổi toàn bộ...' : 'Chuyển đổi ENG'}</span>
                 </button>
               </div>
 
               {branchLangTab === 'vi' ? (
+                /* TAB 1: BẢN TIẾNG VIỆT */
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Tên chi nhánh đầy đủ: *
+                        Tên chi nhánh đầy đủ (Tiếng Việt): <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -6279,7 +6249,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Tên ngắn (hiển thị trên thẻ):
+                        Tên ngắn hiển thị trên thẻ (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6294,7 +6264,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Khu vực / Quận huyện:
+                        Khu vực / Quận huyện (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6307,7 +6277,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Khẩu hiệu chi nhánh:
+                        Khẩu hiệu chi nhánh (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6321,7 +6291,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Địa chỉ chi nhánh: *
+                      Địa chỉ chi nhánh (Tiếng Việt): <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -6335,7 +6305,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Bác sĩ phụ trách:
+                        Bác sĩ phụ trách (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6348,7 +6318,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Bằng cấp / Chuyên khoa:
+                        Bằng cấp / Chuyên khoa (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6363,7 +6333,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Giờ hoạt động:
+                        Giờ hoạt động (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6376,7 +6346,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Thông tin đỗ xe:
+                        Thông tin đỗ xe (Tiếng Việt):
                       </label>
                       <input
                         type="text"
@@ -6390,7 +6360,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Danh sách tiện ích / dịch vụ nổi bật (mỗi dòng một ý):
+                      Danh sách tiện ích / dịch vụ nổi bật (Tiếng Việt, mỗi dòng một ý):
                     </label>
                     <textarea
                       value={featuresInput}
@@ -6403,38 +6373,22 @@ export default function AdminDashboardPage() {
 
                   {/* Bài viết chi tiết (TipTap RichTextEditor) */}
                   <div className="pt-3 border-t border-slate-200">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
                         <span>Bài viết giới thiệu chi tiết chi nhánh (Tiếng Việt):</span>
                       </label>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleTranslateBranchArticleOnly}
-                          disabled={isTranslatingBranchArticle}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
-                          title="Tự động dịch riêng nội dung bài viết này sang Tiếng Anh bằng AI"
+                      {editingBranch.id && (
+                        <Link
+                          href={`/chi-nhanh/${editingBranch.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
                         >
-                          {isTranslatingBranchArticle ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3 h-3" />
-                          )}
-                          <span>{isTranslatingBranchArticle ? 'Đang dịch bài viết...' : 'Dịch bài viết sang ENG'}</span>
-                        </button>
-                        {editingBranch.id && (
-                          <Link
-                            href={`/chi-nhanh/${editingBranch.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>Xem trang ngoài web</span>
-                          </Link>
-                        )}
-                      </div>
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Xem trang ngoài web</span>
+                        </Link>
+                      )}
                     </div>
                     <RichTextEditor
                       value={editingBranch.bai_viet_chi_tiet || ''}
@@ -6456,12 +6410,12 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               ) : (
-                /* TAB TIẾNG ANH */
+                /* TAB 2: BẢN TIẾNG ANH (ENGLISH) - BỐ CỤC ĐỒNG BỘ Y CHANG TIẾNG VIỆT */
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Branch Full Name (English): <span className="text-rose-500">*</span>
+                        Tên chi nhánh đầy đủ (English): <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -6474,7 +6428,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Short Name (English):
+                        Tên ngắn hiển thị trên thẻ (English):
                       </label>
                       <input
                         type="text"
@@ -6489,7 +6443,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Area / District (English):
+                        Khu vực / Quận huyện (English):
                       </label>
                       <input
                         type="text"
@@ -6502,7 +6456,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Slogan (English):
+                        Khẩu hiệu chi nhánh (English):
                       </label>
                       <input
                         type="text"
@@ -6516,7 +6470,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Address (English): <span className="text-rose-500">*</span>
+                      Địa chỉ chi nhánh (English): <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -6530,7 +6484,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Chief Veterinarian (English):
+                        Bác sĩ phụ trách (English):
                       </label>
                       <input
                         type="text"
@@ -6543,7 +6497,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Degree / Specialty (English):
+                        Bằng cấp / Chuyên khoa (English):
                       </label>
                       <input
                         type="text"
@@ -6558,7 +6512,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Operating Hours (English):
+                        Giờ hoạt động (English):
                       </label>
                       <input
                         type="text"
@@ -6571,7 +6525,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Parking Info (English):
+                        Thông tin đỗ xe (English):
                       </label>
                       <input
                         type="text"
@@ -6585,7 +6539,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Features / Amenities (English, one per line):
+                      Danh sách tiện ích / dịch vụ nổi bật (English, mỗi dòng một ý):
                     </label>
                     <textarea
                       value={featuresEnInput}
@@ -6598,25 +6552,22 @@ export default function AdminDashboardPage() {
 
                   {/* Bài viết chi tiết EN (TipTap RichTextEditor) */}
                   <div className="pt-3 border-t border-slate-200">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
-                        <span>Branch Detailed Introduction (English):</span>
+                        <span>Bài viết giới thiệu chi tiết chi nhánh (English):</span>
                       </label>
-                      <button
-                        type="button"
-                        onClick={handleTranslateBranchArticleOnly}
-                        disabled={isTranslatingBranchArticle}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
-                        title="Tự động dịch lại bài viết chi tiết từ bản Tiếng Việt"
-                      >
-                        {isTranslatingBranchArticle ? (
-                          <RefreshCw className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-3 h-3" />
-                        )}
-                        <span>{isTranslatingBranchArticle ? 'Đang dịch bài viết...' : 'Tự động dịch từ bản Tiếng Việt'}</span>
-                      </button>
+                      {editingBranch.id && (
+                        <Link
+                          href={`/chi-nhanh/${editingBranch.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Xem trang ngoài web</span>
+                        </Link>
+                      )}
                     </div>
                     <RichTextEditor
                       value={(editingBranch as any).bai_viet_chi_tiet_en || ''}
