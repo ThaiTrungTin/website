@@ -897,6 +897,40 @@ export default function AdminDashboardPage() {
   const [isSmtpTesting, setIsSmtpTesting] = useState(false);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
 
+  // Cấu hình Template Email song ngữ gửi cho khách hàng
+  const [emailTemplateForm, setEmailTemplateForm] = useState<{
+    logoUrl: string;
+    subjectVi: string;
+    bannerTitleVi: string;
+    bannerSubtitleVi: string;
+    introVi: string;
+    checklistVi: string;
+    footerVi: string;
+    subjectEn: string;
+    bannerTitleEn: string;
+    bannerSubtitleEn: string;
+    introEn: string;
+    checklistEn: string;
+    footerEn: string;
+  }>({
+    logoUrl: '',
+    subjectVi: '[Pet M&M] Xác Nhận Lịch Hẹn #{booking_code} cho bé {pet_name}',
+    bannerTitleVi: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
+    bannerSubtitleVi: 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc',
+    introVi: 'Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>{pet_name}</strong> tại Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.',
+    checklistVi: `• Vui lòng đến trước 5 - 10 phút để bé được kiểm tra sinh hiệu ban đầu.\n• Ba mẹ nhớ đeo xích hoặc dùng túi/balo vận chuyển cho bé để đảm bảo an toàn.\n• Nếu cần xét nghiệm máu hoặc phẫu thuật, vui lòng nhịn ăn cho bé trước 6 - 8 tiếng.`,
+    footerVi: 'Nếu cần thay đổi giờ hẹn hoặc cần tư vấn khẩn cấp, vui lòng liên hệ ngay:',
+    subjectEn: '[Pet M&M] Appointment Confirmed - Code #{booking_code} for {pet_name}',
+    bannerTitleEn: 'PetM&M Veterinary Clinic & Animal Hospital',
+    bannerSubtitleEn: 'Appointment Booking Receipt',
+    introEn: 'Thank you for booking an appointment for <strong>{pet_name}</strong> at PetM&M Pet Hospital Clinic. Our veterinary team has received your request and is ready to provide the best care.',
+    checklistEn: `• Please arrive 5-10 minutes prior to your time slot for check-in.\n• Please leash dogs or keep cats in carriers for maximum safety.\n• If your pet needs fasting for blood tests or surgery, please refrain from feeding 6-8 hours in advance.`,
+    footerEn: 'If you need to change your appointment or have an urgent query, please call our 24/7 hotline:',
+  });
+  const [templateLangTab, setTemplateLangTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingTemplate, setIsTranslatingTemplate] = useState(false);
+  const [isTemplateSaving, setIsTemplateSaving] = useState(false);
+
   const loadSmtpConfig = useCallback(async () => {
     setIsSmtpLoading(true);
     try {
@@ -906,13 +940,19 @@ export default function AdminDashboardPage() {
         setSmtpForm((prev) => ({
           ...prev,
           smtp_email: data.config.smtp_email || 'thaitrtin@gmail.com',
-          smtp_sender_name: data.config.smtp_sender_name || 'Bệnh Viện Thú Y Pet M&M 5★',
+          smtp_sender_name: data.config.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
           smtp_notify_email: data.config.smtp_notify_email || 'thaitrtin@gmail.com',
           hasPassword: Boolean(data.config.hasPassword),
         }));
       }
+      if (data.success && data.template) {
+        setEmailTemplateForm((prev) => ({
+          ...prev,
+          ...data.template,
+        }));
+      }
     } catch (err: any) {
-      console.error('Lỗi tải cấu hình SMTP:', err);
+      console.error('Lỗi tải cấu hình SMTP & Template:', err);
     } finally {
       setIsSmtpLoading(false);
     }
@@ -958,6 +998,99 @@ export default function AdminDashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(smtpForm),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Gửi thư thử nghiệm thất bại!');
+        return;
+      }
+      showNotification('success', data.message || 'Đã gửi thư thử nghiệm thành công! Vui lòng kiểm tra Gmail.');
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Gửi thử thất bại'));
+    } finally {
+      setIsSmtpTesting(false);
+    }
+  };
+
+  // Lưu cấu hình Mẫu Email Template
+  const handleSaveEmailTemplate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsTemplateSaving(true);
+    try {
+      const res = await fetch('/api/admin/email-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template: emailTemplateForm,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Không thể lưu mẫu email!');
+        return;
+      }
+      showNotification('success', 'Đã lưu cấu hình Mẫu Thư Xác Nhận Lịch Hẹn thành công!');
+      loadSmtpConfig();
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
+    } finally {
+      setIsTemplateSaving(false);
+    }
+  };
+
+  // Dịch mẫu email sang Tiếng Anh bằng AI
+  const handleTranslateEmailTemplate = async () => {
+    setIsTranslatingTemplate(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            subject: emailTemplateForm.subjectVi,
+            bannerTitle: emailTemplateForm.bannerTitleVi,
+            bannerSubtitle: emailTemplateForm.bannerSubtitleVi,
+            intro: emailTemplateForm.introVi,
+            checklist: emailTemplateForm.checklistVi,
+            footer: emailTemplateForm.footerVi,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEmailTemplateForm((prev) => ({
+          ...prev,
+          subjectEn: data.translations.subject || prev.subjectEn,
+          bannerTitleEn: data.translations.bannerTitle || prev.bannerTitleEn,
+          bannerSubtitleEn: data.translations.bannerSubtitle || prev.bannerSubtitleEn,
+          introEn: data.translations.intro || prev.introEn,
+          checklistEn: data.translations.checklist || prev.checklistEn,
+          footerEn: data.translations.footer || prev.footerEn,
+        }));
+        setTemplateLangTab('en');
+        showNotification('success', 'Đã dịch mẫu email sang Tiếng Anh bằng AI thành công!');
+      } else {
+        showNotification('error', data.error || 'Không thể dịch bằng AI');
+      }
+    } catch (err: any) {
+      showNotification('error', 'Lỗi dịch AI: ' + (err.message || 'Thất bại'));
+    } finally {
+      setIsTranslatingTemplate(false);
+    }
+  };
+
+  // Gửi thử nghiệm mẫu email theo ngôn ngữ đang chọn
+  const handleTestTemplateEmail = async () => {
+    setIsSmtpTesting(true);
+    try {
+      const res = await fetch('/api/admin/email-config/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...smtpForm,
+          isEn: templateLangTab === 'en',
+          template: emailTemplateForm,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -3703,6 +3836,7 @@ export default function AdminDashboardPage() {
 
               {/* NHÁNH: CẤU HÌNH GMAIL SMTP & EMAIL TIẾP NHẬN */}
               {configSubTab === 'email' && (
+                <>
                 <form onSubmit={handleSaveSmtp} className="space-y-6">
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
                     {/* Header Thẻ */}
@@ -3914,6 +4048,261 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 </form>
+
+                {/* THẺ 2: CÀI ĐẶT MẪU EMAIL XÁC NHẬN GỬI KHÁCH HÀNG (SONG NGỮ VIỆT - ANH & LOGO) */}
+                <form onSubmit={handleSaveEmailTemplate} className="space-y-6 pt-2">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút AI Dịch nằm chung hàng */}
+                    <div className="pb-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span>Mẫu Email Xác Nhận Đặt Lịch Hẹn (Gửi Cho Khách Hàng)</span>
+                            <span className="text-[11px] font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              Song Ngữ VI / EN
+                            </span>
+                          </h2>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Tự động gửi email tiếng Việt khi khách dùng tiếng Việt trên website, và gửi email tiếng Anh khi khách dùng tiếng Anh.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Nút chuyển đổi ngôn ngữ & Dịch AI */}
+                      <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+                        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setTemplateLangTab('vi')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              templateLangTab === 'vi'
+                                ? 'bg-white text-[#2D5A27] shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <span>🇻🇳 Bản Tiếng Việt</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTemplateLangTab('en')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              templateLangTab === 'en'
+                                ? 'bg-white text-[#2D5A27] shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <span>🇬🇧 Bản English</span>
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleTranslateEmailTemplate}
+                          disabled={isTranslatingTemplate}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold shadow-2xs transition cursor-pointer"
+                          title="Tự động dịch các nội dung tiếng Việt sang tiếng Anh bằng AI"
+                        >
+                          {isTranslatingTemplate ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                          )}
+                          <span>{isTranslatingTemplate ? 'Đang dịch...' : 'Dịch sang ENG bằng AI'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* KHỐI 1: CẤU HÌNH LOGO HIỂN THỊ TRONG EMAIL */}
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+                      <div className="w-full sm:w-2/3">
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          🖼️ Logo Hiển Thị Đầu Thư (Email Header Logo):
+                        </label>
+                        <input
+                          type="text"
+                          value={emailTemplateForm.logoUrl || ''}
+                          onChange={(e) => setEmailTemplateForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
+                          placeholder="/logo_petmm_full.png hoặc link ảnh online https://..."
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
+                        />
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Để trống sẽ tự động nhúng logo chuẩn của viện (đính kèm trực tiếp không bị Gmail chặn ảnh).
+                        </p>
+                      </div>
+                      <div className="w-full sm:w-1/3 flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900 border border-slate-700 min-h-[70px]">
+                        <span className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Xem trước Logo:</span>
+                        <img
+                          src={emailTemplateForm.logoUrl || '/logo_petmm_full.png'}
+                          alt="Logo Preview"
+                          className="max-h-10 max-w-[160px] object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/logo-favicon.png';
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* KHỐI 2: CÁC TRƯỜNG NỘI DUNG THEO TAB NGÔN NGỮ */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Tiêu đề Email (Subject) */}
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Tiêu đề Email (Email Subject) {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                        </label>
+                        <input
+                          type="text"
+                          value={templateLangTab === 'vi' ? emailTemplateForm.subjectVi : emailTemplateForm.subjectEn}
+                          onChange={(e) =>
+                            setEmailTemplateForm((prev) => ({
+                              ...prev,
+                              [templateLangTab === 'vi' ? 'subjectVi' : 'subjectEn']: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Tiêu đề Header Banner */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Tiêu đề Banner Header {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                        </label>
+                        <input
+                          type="text"
+                          value={templateLangTab === 'vi' ? emailTemplateForm.bannerTitleVi : emailTemplateForm.bannerTitleEn}
+                          onChange={(e) =>
+                            setEmailTemplateForm((prev) => ({
+                              ...prev,
+                              [templateLangTab === 'vi' ? 'bannerTitleVi' : 'bannerTitleEn']: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Phụ đề Banner */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Phụ đề Banner {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                        </label>
+                        <input
+                          type="text"
+                          value={templateLangTab === 'vi' ? emailTemplateForm.bannerSubtitleVi : emailTemplateForm.bannerSubtitleEn}
+                          onChange={(e) =>
+                            setEmailTemplateForm((prev) => ({
+                              ...prev,
+                              [templateLangTab === 'vi' ? 'bannerSubtitleVi' : 'bannerSubtitleEn']: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Lời nhắn mở đầu / Cảm ơn */}
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Lời cảm ơn / Thông điệp mở đầu {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={templateLangTab === 'vi' ? emailTemplateForm.introVi : emailTemplateForm.introEn}
+                          onChange={(e) =>
+                            setEmailTemplateForm((prev) => ({
+                              ...prev,
+                              [templateLangTab === 'vi' ? 'introVi' : 'introEn']: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none"
+                        />
+                      </div>
+
+                      {/* Lưu ý chuẩn bị trước khi đến (Checklist) */}
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Lưu ý chuẩn bị trước khi đến (Mỗi dòng 1 lưu ý) {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={templateLangTab === 'vi' ? emailTemplateForm.checklistVi : emailTemplateForm.checklistEn}
+                          onChange={(e) =>
+                            setEmailTemplateForm((prev) => ({
+                              ...prev,
+                              [templateLangTab === 'vi' ? 'checklistVi' : 'checklistEn']: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-sans"
+                        />
+                      </div>
+
+                      {/* Lời nhắn chân thư */}
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Lời nhắn chân thư / Hotline {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                        </label>
+                        <input
+                          type="text"
+                          value={templateLangTab === 'vi' ? emailTemplateForm.footerVi : emailTemplateForm.footerEn}
+                          onChange={(e) =>
+                            setEmailTemplateForm((prev) => ({
+                              ...prev,
+                              [templateLangTab === 'vi' ? 'footerVi' : 'footerEn']: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* HƯỚNG DẪN THẺ ĐỘNG (TAGS) */}
+                    <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                      <div className="font-bold mb-1 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Các thẻ biến động tự thay thế thông minh:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-[11px] font-mono mt-1.5">
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{booking_code}"} : Mã đặt lịch</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{pet_name}"} : Tên bé cưng</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{owner_name}"} : Tên chủ nuôi</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{branch_name}"} : Cơ sở tiếp đón</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{service}"} : Tên dịch vụ</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{date_time}"} : Ngày & Khung giờ</span>
+                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{hotline}"} : Hotline phòng khám</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nút lưu mẫu thư & gửi thử */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p className="text-xs text-slate-500">
+                      Khách hàng đang xem web bằng ngôn ngữ nào sẽ nhận được email theo đúng ngôn ngữ đó.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={handleTestTemplateEmail}
+                        disabled={isSmtpTesting || isTemplateSaving}
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                        title="Gửi 1 email mẫu theo ngôn ngữ đang chọn tới Email nhận thông báo để kiểm tra"
+                      >
+                        {isSmtpTesting ? <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" /> : <Send className="w-4 h-4 text-emerald-600" />}
+                        <span>Gửi Thử Mẫu ({templateLangTab === 'en' ? 'English' : 'Tiếng Việt'})</span>
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={isTemplateSaving || isSmtpTesting}
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                      >
+                        {isTemplateSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <span>{isTemplateSaving ? 'Đang lưu...' : 'Lưu Mẫu Email'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+                </>
               )}
 
               {/* NHÁNH 2: GIỚI THIỆU & TRIẾT LÝ */}

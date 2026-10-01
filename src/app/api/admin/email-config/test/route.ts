@@ -24,8 +24,10 @@ export async function POST(req: NextRequest) {
     const dbConfig = await getSmtpConfig();
     const smtpEmail = bodyData?.smtp_email?.trim() || dbConfig.smtp_email || 'thaitrtin@gmail.com';
     const smtpPassword = bodyData?.smtp_password?.trim() || dbConfig.smtp_password || '';
-    const smtpSenderName = bodyData?.smtp_sender_name?.trim() || dbConfig.smtp_sender_name || 'Bệnh Viện Thú Y Pet M&M';
+    const smtpSenderName = bodyData?.smtp_sender_name?.trim() || dbConfig.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
     const targetEmail = bodyData?.smtp_notify_email?.trim() || dbConfig.smtp_notify_email || smtpEmail;
+    const isEn = Boolean(bodyData?.isEn);
+    const customTemplate = bodyData?.template;
 
     if (!smtpPassword) {
       return NextResponse.json(
@@ -44,16 +46,20 @@ export async function POST(req: NextRequest) {
       smtp_notify_email: targetEmail,
     };
 
-    console.log(`[Test Email API] Đang gửi thư thử nghiệm từ ${smtpEmail} tới ${targetEmail}...`);
-    const info = await sendTestEmail(targetEmail, activeConfig);
+    console.log(`[Test Email API] Đang gửi thư thử nghiệm (${isEn ? 'English' : 'Tiếng Việt'}) từ ${smtpEmail} tới ${targetEmail}...`);
+    const info = await sendTestEmail(targetEmail, activeConfig, {
+      isEn,
+      customTemplate,
+    });
 
     return NextResponse.json({
       success: true,
-      message: `Đã gửi thư thử nghiệm thành công từ "${smtpEmail}" tới "${targetEmail}"! Vui lòng kiểm tra Hộp thư đến (và cả mục Thư rác/Spam nếu chưa thấy).`,
+      message: `Đã gửi mẫu email (${isEn ? 'English' : 'Tiếng Việt'}) thử nghiệm thành công tới "${targetEmail}"! Vui lòng kiểm tra Hộp thư đến (và cả mục Thư rác/Spam nếu chưa thấy).`,
       detail: {
         to: targetEmail,
         from: smtpEmail,
         messageId: info.messageId,
+        language: isEn ? 'en' : 'vi',
       },
     });
   } catch (err: any) {

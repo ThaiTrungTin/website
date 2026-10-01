@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -6,6 +8,92 @@ export interface SmtpConfig {
   smtp_password?: string;
   smtp_sender_name: string;
   smtp_notify_email: string;
+}
+
+export interface EmailTemplateConfig {
+  logoUrl?: string;
+  // Tiếng Việt
+  subjectVi: string;
+  bannerTitleVi: string;
+  bannerSubtitleVi: string;
+  introVi: string;
+  checklistVi: string;
+  footerVi: string;
+  // Tiếng Anh
+  subjectEn: string;
+  bannerTitleEn: string;
+  bannerSubtitleEn: string;
+  introEn: string;
+  checklistEn: string;
+  footerEn: string;
+}
+
+export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateConfig = {
+  logoUrl: '',
+  // TIẾNG VIỆT
+  subjectVi: '[Pet M&M] Xác Nhận Lịch Hẹn #{booking_code} cho bé {pet_name}',
+  bannerTitleVi: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
+  bannerSubtitleVi: 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc',
+  introVi: 'Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>{pet_name}</strong> tại Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.',
+  checklistVi: `• Vui lòng đến trước 5 - 10 phút để bé được kiểm tra sinh hiệu ban đầu.
+• Ba mẹ nhớ đeo xích hoặc dùng túi/balo vận chuyển cho bé để đảm bảo an toàn.
+• Nếu cần xét nghiệm máu hoặc phẫu thuật, vui lòng nhịn ăn cho bé trước 6 - 8 tiếng.`,
+  footerVi: 'Nếu cần thay đổi giờ hẹn hoặc cần tư vấn khẩn cấp, vui lòng liên hệ ngay:',
+
+  // TIẾNG ANH
+  subjectEn: '[Pet M&M] Appointment Confirmed - Code #{booking_code} for {pet_name}',
+  bannerTitleEn: 'PetM&M Veterinary Clinic & Animal Hospital',
+  bannerSubtitleEn: 'Appointment Booking Receipt',
+  introEn: 'Thank you for booking an appointment for <strong>{pet_name}</strong> at PetM&M Pet Hospital Clinic. Our veterinary team has received your request and is ready to provide the best care.',
+  checklistEn: `• Please arrive 5-10 minutes prior to your time slot for check-in.
+• Please leash dogs or keep cats in carriers for maximum safety.
+• If your pet needs fasting for blood tests or surgery, please refrain from feeding 6-8 hours in advance.`,
+  footerEn: 'If you need to change your appointment or have an urgent query, please call our 24/7 hotline:',
+};
+
+// Lấy cấu hình Template email từ bảng cau_hinh
+export async function getEmailTemplateConfig(): Promise<EmailTemplateConfig> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('cau_hinh')
+      .select('*')
+      .eq('id', 'email_template')
+      .maybeSingle();
+
+    if (error || !data) {
+      return DEFAULT_EMAIL_TEMPLATE;
+    }
+
+    if (data.slogan_cuoi_trang_noi_dung) {
+      try {
+        const parsed = JSON.parse(data.slogan_cuoi_trang_noi_dung);
+        return {
+          ...DEFAULT_EMAIL_TEMPLATE,
+          ...parsed,
+        };
+      } catch {}
+    }
+
+    return {
+      logoUrl: data.logo_favicon || DEFAULT_EMAIL_TEMPLATE.logoUrl,
+      subjectVi: data.tieu_de_trang || DEFAULT_EMAIL_TEMPLATE.subjectVi,
+      bannerTitleVi: data.slogan_dau_trang_tieu_de || DEFAULT_EMAIL_TEMPLATE.bannerTitleVi,
+      bannerSubtitleVi: data.slogan_dau_trang_noi_dung || DEFAULT_EMAIL_TEMPLATE.bannerSubtitleVi,
+      introVi: data.gioi_thieu_mo_ta || DEFAULT_EMAIL_TEMPLATE.introVi,
+      checklistVi: data.gioi_thieu_cam_ket_phu || DEFAULT_EMAIL_TEMPLATE.checklistVi,
+      footerVi: data.gioi_thieu_trich_dan || DEFAULT_EMAIL_TEMPLATE.footerVi,
+
+      subjectEn: data.tieu_de_trang_en || DEFAULT_EMAIL_TEMPLATE.subjectEn,
+      bannerTitleEn: data.slogan_dau_trang_tieu_de_en || DEFAULT_EMAIL_TEMPLATE.bannerTitleEn,
+      bannerSubtitleEn: data.slogan_dau_trang_noi_dung_en || DEFAULT_EMAIL_TEMPLATE.bannerSubtitleEn,
+      introEn: data.gioi_thieu_mo_ta_en || DEFAULT_EMAIL_TEMPLATE.introEn,
+      checklistEn: data.gioi_thieu_cam_ket_phu_en || DEFAULT_EMAIL_TEMPLATE.checklistEn,
+      footerEn: data.gioi_thieu_trich_dan_en || DEFAULT_EMAIL_TEMPLATE.footerEn,
+    };
+  } catch (err) {
+    console.error('Lỗi đọc cấu hình template email:', err);
+    return DEFAULT_EMAIL_TEMPLATE;
+  }
 }
 
 // Lấy cấu hình SMTP từ bảng cau_hinh
@@ -75,18 +163,30 @@ export async function createMailerTransport(overrideConfig?: Partial<SmtpConfig>
   return { transporter, config };
 }
 
+// Helper thay thế các biến động {booking_code}, {pet_name}, {owner_name}...
+function replacePlaceholders(template: string, data: Record<string, string>): string {
+  if (!template) return '';
+  let result = template;
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'gi'), value || '');
+  }
+  return result;
+}
+
 // Gửi email chung
 export async function sendMail({
   to,
   subject,
   html,
   text,
+  attachments,
   overrideConfig,
 }: {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: any[];
   overrideConfig?: Partial<SmtpConfig>;
 }) {
   const { transporter, config } = await createMailerTransport(overrideConfig);
@@ -99,6 +199,7 @@ export async function sendMail({
     subject,
     text: text || subject,
     html,
+    attachments,
   });
 
   console.log(`[SMTP Mailer] Đã gửi thư tới ${to} - MessageID: ${info.messageId} - Phản hồi: ${info.response}`);
@@ -128,7 +229,7 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
                 <div style="display: inline-block; padding: 6px 16px; background-color: rgba(255, 184, 0, 0.15); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 9999px; margin-bottom: 12px;">
                   <span style="color: #FFB800; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">BẢO MẬT HỆ THỐNG</span>
                 </div>
-                <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">Bệnh Viện Thú Y Pet M&M</h1>
+                <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</h1>
                 <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">Yêu cầu khôi phục mật khẩu tài khoản quản trị</p>
               </td>
             </tr>
@@ -162,7 +263,7 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
 
                 <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
                   Trân trọng,<br>
-                  <strong>Đội ngũ Kỹ thuật & Bảo mật Pet M&M</strong>
+                  <strong>Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</strong>
                 </p>
               </td>
             </tr>
@@ -171,8 +272,8 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
             <tr>
               <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center;">
                 <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">
-                  Bệnh Viện Thú Y & Resort Nghỉ Dưỡng Thú Cưng Pet M&M<br>
-                  Hotline Cấp Cứu 24/7: 0903 599 339 • TP. Thủ Đức, TP. Hồ Chí Minh
+                  Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M<br>
+                  Hotline Cấp Cứu 24/7: 0364 605 544 • TP. Thủ Đức, TP. Hồ Chí Minh
                 </p>
               </td>
             </tr>
@@ -193,47 +294,36 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
 }
 
 // GỬI EMAIL THỬ NGHIỆM KẾT NỐI
-export async function sendTestEmail(toEmail: string, overrideConfig?: Partial<SmtpConfig>) {
-  const subject = `[Pet M&M] Thử nghiệm cấu hình Gmail SMTP thành công!`;
+export async function sendTestEmail(
+  toEmail: string,
+  overrideConfig?: Partial<SmtpConfig>,
+  testOptions?: { isEn?: boolean; customTemplate?: Partial<EmailTemplateConfig> }
+) {
+  const isEn = Boolean(testOptions?.isEn);
+  const templateCfg = {
+    ...(await getEmailTemplateConfig()),
+    ...(testOptions?.customTemplate || {}),
+  };
 
-  const html = `
-  <!DOCTYPE html>
-  <html>
-  <head><meta charset="utf-8"></head>
-  <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <div style="max-width: 520px; margin: 30px auto; background: #ffffff; border-radius: 20px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <span style="display: inline-block; padding: 4px 12px; background: #dcfce7; color: #15803d; border-radius: 9999px; font-size: 11px; font-weight: bold;">KẾT NỐI THÀNH CÔNG</span>
-        <h2 style="color: #0f172a; margin: 12px 0 6px 0;">Xin Chúc Mừng!</h2>
-        <p style="color: #64748b; font-size: 13px; margin: 0;">Máy chủ gửi thư Gmail SMTP của bạn đã hoạt động hoàn hảo.</p>
-      </div>
-      <div style="background: #f8fafc; border-radius: 12px; padding: 16px; font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 16px;">
-        <div style="margin-bottom: 6px;">✓ <strong>Email gửi:</strong> ${overrideConfig?.smtp_email || 'thaitrtin@gmail.com'}</div>
-        <div style="margin-bottom: 6px;">✓ <strong>Email nhận:</strong> ${toEmail}</div>
-        <div style="margin-bottom: 6px;">✓ Đã kích hoạt tính năng gửi mã OTP bảo mật và thông báo đặt lịch hẹn khám.</div>
-        <div>✓ Thời gian kiểm tra: ${new Date().toLocaleString('vi-VN')}</div>
-      </div>
-      <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 12px 16px; font-size: 12px; color: #92400e; line-height: 1.5; margin-bottom: 20px;">
-        💡 <strong>Mẹo quan trọng:</strong> Nếu bạn tìm thấy email này trong mục <strong>Thư rác (Spam)</strong> hoặc tab <strong>Quảng cáo / Cập nhật</strong>, vui lòng bấm nút <em>"Báo cáo không phải thư rác" (Not Spam)</em> để các email sau luôn vào Hộp thư chính.
-      </div>
-      <p style="text-align: center; font-size: 11px; color: #94a3b8; margin: 0;">
-        Hệ Thống Quản Trị Y Tế & Resort Thú Cưng Pet M&M
-      </p>
-    </div>
-  </body>
-  </html>
-  `;
+  const sampleBooking = {
+    bookingCode: 'PMM-' + Math.floor(100000 + Math.random() * 900000),
+    ownerName: isEn ? 'Alex Johnson' : 'Nguyễn Văn An',
+    petName: isEn ? 'Milo' : 'Bé Đậu',
+    petType: 'dog',
+    branchName: isEn ? 'Pet M&M District 2 Clinic' : 'Cơ sở Thảo Điền - TP. Thủ Đức',
+    service: isEn ? 'General Health Check & Vaccination' : 'Khám sức khỏe tổng quát & Tiêm phòng',
+    dateTime: `09:00 - 09:30, ${isEn ? 'Date' : 'Ngày'} ${new Date().toLocaleDateString('vi-VN')}`,
+    note: isEn ? 'Pet has slight itching on left ear' : 'Bé hơi ngứa tai trái, cần soi tai',
+    isEn,
+  };
 
-  return sendMail({
-    to: toEmail,
-    subject,
-    html,
-    text: `Thử nghiệm cấu hình Gmail SMTP cho Pet M&M thành công! Đã gửi tới ${toEmail} lúc ${new Date().toLocaleString('vi-VN')}`,
-    overrideConfig,
+  return sendBookingConfirmationEmail({
+    toEmail,
+    ...sampleBooking,
   });
 }
 
-// GỬI EMAIL XÁC NHẬN ĐẶT LỊCH HẸN CHO KHÁCH HÀNG
+// GỬI EMAIL XÁC NHẬN ĐẶT LỊCH HẸN CHO KHÁCH HÀNG (HỖ TRỢ SONG NGỮ VIỆT / ANH & LOGO)
 export async function sendBookingConfirmationEmail({
   toEmail,
   bookingCode,
@@ -257,13 +347,85 @@ export async function sendBookingConfirmationEmail({
   note?: string;
   isEn?: boolean;
 }) {
+  const templateCfg = await getEmailTemplateConfig();
+
   const petTypeDisplay = isEn
     ? (petType === 'cat' ? 'Cat' : petType === 'dog' ? 'Dog' : 'Other Pet')
     : (petType === 'cat' ? 'Mèo' : petType === 'dog' ? 'Chó' : 'Loài khác');
 
-  const subject = isEn
-    ? `[Pet M&M] Appointment Confirmed - Code #${bookingCode} for ${petName}`
-    : `[Pet M&M] Xác Nhận Lịch Hẹn #${bookingCode} cho bé ${petName}`;
+  const formattedDate = formatDateDMY(dateTime);
+
+  const vars: Record<string, string> = {
+    booking_code: bookingCode,
+    code: bookingCode,
+    owner_name: ownerName,
+    pet_name: petName,
+    pet_type: petTypeDisplay,
+    branch_name: branchName,
+    service: service || (isEn ? 'General Health Consultation' : 'Khám tổng quát'),
+    date_time: formattedDate,
+    hotline: '0364 605 544',
+  };
+
+  // Chọn nội dung song ngữ theo ngôn ngữ khách đang dùng trên web
+  const subject = replacePlaceholders(
+    isEn ? templateCfg.subjectEn : templateCfg.subjectVi,
+    vars
+  );
+  const bannerTitle = replacePlaceholders(
+    isEn ? templateCfg.bannerTitleEn : templateCfg.bannerTitleVi,
+    vars
+  );
+  const bannerSubtitle = replacePlaceholders(
+    isEn ? templateCfg.bannerSubtitleEn : templateCfg.bannerSubtitleVi,
+    vars
+  );
+  const introText = replacePlaceholders(
+    isEn ? templateCfg.introEn : templateCfg.introVi,
+    vars
+  );
+  const checklistRaw = isEn ? templateCfg.checklistEn : templateCfg.checklistVi;
+  const footerNote = replacePlaceholders(
+    isEn ? templateCfg.footerEn : templateCfg.footerVi,
+    vars
+  );
+
+  // Xử lý danh sách checklist thành các dòng HTML
+  const checklistHtml = checklistRaw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<div style="margin-bottom: 6px; line-height: 1.5;">${line}</div>`)
+    .join('');
+
+  // Xử lý Logo trong email:
+  // Nếu có logoUrl dạng online (http/https) thì dùng trực tiếp
+  // Nếu không có hoặc link local, nhúng logo_petmm_full.png dưới dạng inline CID
+  let logoHtml = '';
+  const attachments: any[] = [];
+
+  if (templateCfg.logoUrl && templateCfg.logoUrl.startsWith('http')) {
+    logoHtml = `
+      <div style="text-align: center; margin-bottom: 14px;">
+        <img src="${templateCfg.logoUrl}" alt="Pet M&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
+      </div>
+    `;
+  } else {
+    // Thử tìm logo cục bộ trong thư mục public
+    const localLogoPath = path.join(process.cwd(), 'public', 'logo_petmm_full.png');
+    if (fs.existsSync(localLogoPath)) {
+      attachments.push({
+        filename: 'logo_petmm.png',
+        path: localLogoPath,
+        cid: 'petmm_logo_img',
+      });
+      logoHtml = `
+        <div style="text-align: center; margin-bottom: 14px;">
+          <img src="cid:petmm_logo_img" alt="Pet M&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
+        </div>
+      `;
+    }
+  }
 
   const html = `
   <!DOCTYPE html>
@@ -277,14 +439,15 @@ export async function sendBookingConfirmationEmail({
             <!-- Header Banner -->
             <tr>
               <td style="background: linear-gradient(135deg, #0B150A 0%, #173812 100%); padding: 36px 32px; text-align: center;">
+                ${logoHtml}
                 <div style="display: inline-block; padding: 6px 16px; background-color: rgba(255, 184, 0, 0.15); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 9999px; margin-bottom: 12px;">
                   <span style="color: #FFB800; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
                     ${isEn ? 'VETERINARY APPOINTMENT' : 'LỊCH HẸN TRỰC TUYẾN'}
                   </span>
                 </div>
-                <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</h1>
+                <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">${bannerTitle}</h1>
                 <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">
-                  ${isEn ? 'Appointment Booking Receipt' : 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc'}
+                  ${bannerSubtitle}
                 </p>
               </td>
             </tr>
@@ -293,9 +456,7 @@ export async function sendBookingConfirmationEmail({
             <tr>
               <td style="padding: 32px;">
                 <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">
-                  ${isEn
-                    ? `Thank you for booking an appointment for <strong>${petName}</strong> at PetM&M Pet Hospital Clinic. Our veterinary team has received your request and is ready to provide the best care.`
-                    : `Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>${petName}</strong> tại Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.`}
+                  ${introText}
                 </p>
 
                 <!-- Boarding Pass Box -->
@@ -320,7 +481,7 @@ export async function sendBookingConfirmationEmail({
                           </tr>
                           <tr>
                             <td style="color: #64748b;">${isEn ? 'Schedule:' : 'Thời gian hẹn:'}</td>
-                            <td><strong style="color: #2D5A27;">${formatDateDMY(dateTime)}</strong></td>
+                            <td><strong style="color: #2D5A27;">${formattedDate}</strong></td>
                           </tr>
                           <tr>
                             <td style="color: #64748b;">${isEn ? 'Branch:' : 'Cơ sở tiếp đón:'}</td>
@@ -342,20 +503,19 @@ export async function sendBookingConfirmationEmail({
                   </table>
                 </div>
 
-                <!-- Helpful Tips -->
+                <!-- Helpful Tips (Checklist) -->
+                ${checklistHtml ? `
                 <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 14px 18px; margin-bottom: 24px;">
-                  <p style="margin: 0; font-size: 12px; color: #065f46; line-height: 1.6;">
-                    📌 <strong>${isEn ? 'Preparation Advice:' : 'Lưu ý chuẩn bị trước khi đến:'}</strong><br>
-                    ${isEn
-                      ? '• Please arrive 5-10 minutes prior to your time slot for check-in.<br>• Please leash dogs or keep cats in carriers for maximum safety.<br>• If your pet needs fasting for blood tests or surgery, please refrain from feeding 6-8 hours in advance.'
-                      : '• Vui lòng đến trước 5 - 10 phút để bé được kiểm tra sinh hiệu ban đầu.<br>• Ba mẹ nhớ đeo xích hoặc dùng túi/balo vận chuyển cho bé để đảm bảo an toàn.<br>• Nếu cần xét nghiệm máu hoặc phẫu thuật, vui lòng nhịn ăn cho bé trước 6 - 8 tiếng.'}
+                  <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #065f46;">
+                    📌 ${isEn ? 'Preparation Advice:' : 'Lưu ý chuẩn bị trước khi đến:'}
                   </p>
-                </div>
+                  <div style="font-size: 12px; color: #065f46;">
+                    ${checklistHtml}
+                  </div>
+                </div>` : ''}
 
                 <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
-                  ${isEn
-                    ? 'If you need to change your appointment or have an urgent query, please call our 24/7 hotline:'
-                    : 'Nếu cần thay đổi giờ hẹn hoặc cần tư vấn khẩn cấp, vui lòng liên hệ ngay:'}
+                  ${footerNote}
                   <br>
                   <strong style="color: #2D5A27; font-size: 16px;">📞 0364 605 544</strong> (${isEn ? 'Emergency 24/7' : 'Hotline 24/7'})
                 </p>
@@ -383,6 +543,7 @@ export async function sendBookingConfirmationEmail({
     to: toEmail,
     subject,
     html,
-    text: `Lịch hẹn #${bookingCode} cho bé ${petName} tại ${branchName} lúc ${formatDateDMY(dateTime)} đã được tiếp nhận. Hotline hỗ trợ: 0364 605 544.`,
+    text: `${subject} - Lịch hẹn cho bé ${petName} tại ${branchName} lúc ${formattedDate}. Hotline: 0364 605 544.`,
+    attachments,
   });
 }
