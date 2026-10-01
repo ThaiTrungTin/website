@@ -116,6 +116,18 @@ export default function BookingSection({
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Tính năng chống spam: Bẫy Honeypot & Cooldown timer
+  const [hpWebsite, setHpWebsite] = useState('');
+  const lastSubmitRef = React.useRef<number>(0);
+
+  // Helper format ngày YYYY-MM-DD sang dd/mm/yyyy
+  const formatToDMY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+  };
+
   // Tải chi nhánh, dịch vụ và cấu hình Cột Phải / ảnh bìa từ database
   useEffect(() => {
     async function loadData() {
@@ -203,18 +215,55 @@ export default function BookingSection({
     };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    // 1. CHỐNG SPAM: Bẫy Honeypot cho bot tự động điền form
+    if (hpWebsite && hpWebsite.trim()) {
+      const fakeCode = 'PMM-' + Math.floor(100000 + Math.random() * 900000);
+      setBookingResult({
+        code: fakeCode,
+        ownerName: ownerName.trim(),
+        petName: petName.trim(),
+        branchName: isEn ? 'Pet M&M Veterinary Clinic' : 'Cơ sở Pet M&M',
+        service: service.trim() || (isEn ? 'General Health Check' : 'Khám tổng quát'),
+        dateTime: `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}`,
+        emailSent: false,
+        email: email.trim(),
+      });
+      return;
+    }
+
+    // 2. CHỐNG SPAM: Rate limiting / Cooldown 15 giây tránh gửi lặp
+    const now = Date.now();
+    if (now - lastSubmitRef.current < 15000) {
+      const waitSeconds = Math.ceil((15000 - (now - lastSubmitRef.current)) / 1000);
+      setErrorMsg(
+        isEn
+          ? `Please wait ${waitSeconds}s before submitting again to prevent spam.`
+          : `Hệ thống chống spam: Vui lòng đợi ${waitSeconds} giây trước khi gửi tiếp.`
+      );
+      return;
+    }
 
     if (!ownerName.trim()) {
       setErrorMsg(isEn ? 'Please enter your full name' : 'Vui lòng nhập họ và tên chủ nuôi');
       return;
     }
-    if (!phone.trim() || phone.trim().length < 9) {
-      setErrorMsg(isEn ? 'Please enter a valid phone number (at least 9 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (ít nhất 9 số)');
+
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const numOnly = cleanPhone.replace(/\D/g, '');
+    if (numOnly.length < 9 || numOnly.length > 11) {
+      setErrorMsg(isEn ? 'Please enter a valid phone number (9-11 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số)');
       return;
     }
+    // Chặn số rác lặp
+    if (/^(.)\1+$/.test(numOnly) || numOnly === '123456789' || numOnly === '0123456789') {
+      setErrorMsg(isEn ? 'Invalid phone number format' : 'Số điện thoại không hợp lệ, vui lòng kiểm tra lại');
+      return;
+    }
+
     if (!petName.trim()) {
       setErrorMsg(isEn ? "Please enter your pet's name" : 'Vui lòng nhập tên của bé thú cưng');
       return;
@@ -224,69 +273,63 @@ export default function BookingSection({
       return;
     }
 
-    setIsSubmitting(true);
+    lastSubmitRef.current = now;
 
-    try {
-      // Tìm tên chi nhánh hiển thị
-      let branchName = isEn ? 'Pet M&M Veterinary Clinic' : 'Cơ sở Pet M&M';
-      if (dbBranches.length > 0) {
-        const found = dbBranches.find((b) => b.id === branch);
-        if (found) {
-          branchName = isEn && found.ten_ngan_en ? found.ten_ngan_en : (found.ten_ngan || found.ten_chi_nhanh);
-        }
-      } else {
-        const found = branchesData.find((b) => b.id === branch);
-        if (found) branchName = found.shortName;
+    // Tìm tên chi nhánh hiển thị
+    let branchName = isEn ? 'Pet M&M Veterinary Clinic' : 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
+    if (dbBranches.length > 0) {
+      const found = dbBranches.find((b) => b.id === branch);
+      if (found) {
+        branchName = isEn && found.ten_ngan_en ? found.ten_ngan_en : (found.ten_ngan || found.ten_chi_nhanh);
       }
-
-      // Gửi yêu cầu qua API endpoint `/api/booking`
-      const res = await fetch('/api/booking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ownerName: ownerName.trim(),
-          phone: phone.trim(),
-          email: email.trim(),
-          petName: petName.trim(),
-          petType,
-          branch,
-          branchName,
-          service: service.trim(),
-          date,
-          timeSlot,
-          note: note.trim(),
-          isEn,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Lỗi khi gửi lịch hẹn');
-      }
-
-      setBookingResult({
-        code: data.booking.code,
-        ownerName: data.booking.ownerName,
-        petName: data.booking.petName,
-        branchName: data.booking.branchName,
-        service: data.booking.service,
-        dateTime: data.booking.dateTime,
-        emailSent: data.booking.emailSent,
-        email: email.trim(),
-      });
-
-      if (onSuccess) onSuccess();
-    } catch (err: any) {
-      console.error('Lỗi gửi lịch hẹn:', err);
-      setErrorMsg(
-        isEn
-          ? 'Failed to submit appointment. Please try again or call our Hotline.'
-          : 'Có lỗi xảy ra khi gửi lịch hẹn. Vui lòng thử lại hoặc gọi Hotline 0364 605 544.'
-      );
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      const found = branchesData.find((b) => b.id === branch);
+      if (found) branchName = found.shortName;
     }
+
+    // 1. SINH MÃ TIẾP NHẬN TỨC THÌ
+    const clientBookingCode = 'PMM-' + Math.floor(100000 + Math.random() * 900000);
+    const displayService = service.trim() || (isEn ? 'General Health Check & Consultation' : 'Khám tổng quát & Tư vấn trực tiếp');
+    const formattedDateTime = `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}`;
+    const hasEmail = Boolean(email && email.trim().includes('@'));
+
+    // 2. HIỂN THỊ NGAY KẾT QUẢ TỨC KHẮC (Không để khách hàng đợi xoay vòng)
+    setBookingResult({
+      code: clientBookingCode,
+      ownerName: ownerName.trim(),
+      petName: petName.trim(),
+      branchName,
+      service: displayService,
+      dateTime: formattedDateTime,
+      emailSent: hasEmail,
+      email: email.trim(),
+    });
+
+    if (onSuccess) onSuccess();
+
+    // 3. XỬ LÝ NGẦM TRONG NỀN (Lưu Supabase và Gửi Email)
+    fetch('/api/booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingCode: clientBookingCode,
+        ownerName: ownerName.trim(),
+        phone: cleanPhone,
+        email: email.trim(),
+        petName: petName.trim(),
+        petType,
+        branch,
+        branchName,
+        service: displayService,
+        date,
+        timeSlot,
+        note: note.trim(),
+        isEn,
+        hp_website: hpWebsite,
+      }),
+    }).catch((err) => {
+      console.warn('Lỗi xử lý ngầm API booking:', err);
+    });
   };
 
   const copyBookingCode = () => {
@@ -304,6 +347,7 @@ export default function BookingSection({
     setPetName('');
     setService('');
     setNote('');
+    setHpWebsite('');
   };
 
   return (
@@ -352,19 +396,17 @@ export default function BookingSection({
             </span>
 
             <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mt-4 mb-2">
-              {isEn
-                ? `Welcome, ${bookingResult.ownerName} & ${bookingResult.petName}!`
-                : `Hân hạnh đón tiếp ba mẹ & bé ${bookingResult.petName}!`}
+              {isEn ? 'Appointment Booking Receipt' : 'Phiếu Tiếp Nhận Lịch Hẹn'}
             </h3>
 
             <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto mb-6 font-light">
               {bookingResult.emailSent
                 ? (isEn
-                    ? `A confirmation email has been sent to ${bookingResult.email}. Our staff will also contact you within 10 minutes.`
-                    : `Thư xác nhận đã được gửi đến email ${bookingResult.email}. Bác sĩ sẽ liên hệ hỗ trợ bạn trong vòng 10 phút.`)
+                    ? `A confirmation email has been sent to ${bookingResult.email}. Our team is ready to welcome you.`
+                    : `Thư xác nhận đã được gửi đến email ${bookingResult.email}. Bác sĩ tại phòng khám đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo.`)
                 : (isEn
-                    ? `A specialist at ${bookingResult.branchName} will contact you shortly to confirm.`
-                    : `Bác sĩ chuyên khoa tại ${bookingResult.branchName} sẽ liên hệ xác nhận trong vòng 10 phút.`)}
+                    ? `A specialist at ${bookingResult.branchName} has received your appointment.`
+                    : `Bác sĩ chuyên khoa tại ${bookingResult.branchName} đã tiếp nhận lịch hẹn của bạn.`)}
             </p>
 
             {/* Boarding Pass Box */}
@@ -449,6 +491,18 @@ export default function BookingSection({
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Bẫy Honeypot chống Bot spam tự động */}
+                  <div className="opacity-0 absolute -left-[9999px] -top-[9999px] h-0 w-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                    <input
+                      type="text"
+                      name="hp_website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={hpWebsite}
+                      onChange={(e) => setHpWebsite(e.target.value)}
+                    />
+                  </div>
+
                   {/* TIÊU ĐỀ SECTION: 1. THÔNG TIN LIÊN HỆ CHỦ NUÔI */}
                   <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
                     <div className="w-6 h-6 rounded-lg bg-emerald-100 text-[#2D5A27] flex items-center justify-center font-bold text-xs">

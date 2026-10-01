@@ -21,7 +21,7 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
       return {
         smtp_email: 'thaitrtin@gmail.com',
         smtp_password: '',
-        smtp_sender_name: 'Bệnh Viện Thú Y Pet M&M',
+        smtp_sender_name: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
         smtp_notify_email: 'thaitrtin@gmail.com',
       };
     }
@@ -29,7 +29,7 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
     return {
       smtp_email: data.smtp_email || 'thaitrtin@gmail.com',
       smtp_password: data.smtp_password || '',
-      smtp_sender_name: data.smtp_sender_name || 'Bệnh Viện Thú Y Pet M&M',
+      smtp_sender_name: data.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
       smtp_notify_email: data.smtp_notify_email || 'thaitrtin@gmail.com',
     };
   } catch (err) {
@@ -37,10 +37,16 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
     return {
       smtp_email: 'thaitrtin@gmail.com',
       smtp_password: '',
-      smtp_sender_name: 'Bệnh Viện Thú Y Pet M&M',
+      smtp_sender_name: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
       smtp_notify_email: 'thaitrtin@gmail.com',
     };
   }
+}
+
+// Chuyển định dạng ngày YYYY-MM-DD sang dd/mm/yyyy
+export function formatDateDMY(dateStr: string): string {
+  if (!dateStr) return '';
+  return dateStr.replace(/(\d{4})-(\d{2})-(\d{2})/g, '$3/$2/$1');
 }
 
 // Tạo transporter gửi mail
@@ -276,7 +282,7 @@ export async function sendBookingConfirmationEmail({
                     ${isEn ? 'VETERINARY APPOINTMENT' : 'LỊCH HẸN TRỰC TUYẾN'}
                   </span>
                 </div>
-                <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">Bệnh Viện Thú Y Pet M&M</h1>
+                <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</h1>
                 <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">
                   ${isEn ? 'Appointment Booking Receipt' : 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc'}
                 </p>
@@ -286,13 +292,10 @@ export async function sendBookingConfirmationEmail({
             <!-- Content Body -->
             <tr>
               <td style="padding: 32px;">
-                <p style="margin: 0 0 12px 0; font-size: 15px; color: #1e293b; line-height: 1.6;">
-                  ${isEn ? 'Dear' : 'Kính gửi ba mẹ'} <strong>${ownerName}</strong>,
-                </p>
                 <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">
                   ${isEn
-                    ? `Thank you for booking an appointment for <strong>${petName}</strong> at Pet M&M. We look forward to providing the best care for your furry family member.`
-                    : `Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>${petName}</strong> tại Hệ thống Bệnh Viện Thú Y Pet M&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.`}
+                    ? `Thank you for booking an appointment for <strong>${petName}</strong> at PetM&M Pet Hospital Clinic. Our veterinary team has received your request and is ready to provide the best care.`
+                    : `Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>${petName}</strong> tại Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.`}
                 </p>
 
                 <!-- Boarding Pass Box -->
@@ -317,7 +320,7 @@ export async function sendBookingConfirmationEmail({
                           </tr>
                           <tr>
                             <td style="color: #64748b;">${isEn ? 'Schedule:' : 'Thời gian hẹn:'}</td>
-                            <td><strong style="color: #2D5A27;">${dateTime}</strong></td>
+                            <td><strong style="color: #2D5A27;">${formatDateDMY(dateTime)}</strong></td>
                           </tr>
                           <tr>
                             <td style="color: #64748b;">${isEn ? 'Branch:' : 'Cơ sở tiếp đón:'}</td>
@@ -363,8 +366,8 @@ export async function sendBookingConfirmationEmail({
             <tr>
               <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center;">
                 <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.6;">
-                  Hệ Thống Bệnh Viện Thú Y & Resort Nghỉ Dưỡng Chuẩn Quốc Tế Pet M&M<br>
-                  TP. Thủ Đức, TP. Hồ Chí Minh • Website: <a href="https://petmm.vn" style="color: #2D5A27; text-decoration: none;">petmm.vn</a>
+                  Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M<br>
+                  Hotline: 0364 605 544
                 </p>
               </td>
             </tr>
@@ -380,6 +383,6 @@ export async function sendBookingConfirmationEmail({
     to: toEmail,
     subject,
     html,
-    text: `Lịch hẹn #${bookingCode} cho bé ${petName} tại ${branchName} lúc ${dateTime} đã được tiếp nhận. Hotline hỗ trợ: 0364 605 544.`,
+    text: `Lịch hẹn #${bookingCode} cho bé ${petName} tại ${branchName} lúc ${formatDateDMY(dateTime)} đã được tiếp nhận. Hotline hỗ trợ: 0364 605 544.`,
   });
 }
