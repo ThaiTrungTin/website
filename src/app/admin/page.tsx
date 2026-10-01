@@ -872,6 +872,12 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (configSubTab === 'email') {
+      loadSmtpConfig();
+    }
+  }, [configSubTab, loadSmtpConfig]);
+
   const handleSaveSmtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!smtpForm.smtp_email) {
@@ -3343,6 +3349,224 @@ export default function AdminDashboardPage() {
                       {isConfigSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                       <span>{isConfigSaving ? 'Đang lưu...' : 'Lưu Hotline & Mạng Xã Hội'}</span>
                     </button>
+                  </div>
+                </form>
+              )}
+
+              {/* NHÁNH: CẤU HÌNH GMAIL SMTP & EMAIL TIẾP NHẬN */}
+              {configSubTab === 'email' && (
+                <form onSubmit={handleSaveSmtp} className="space-y-6">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+                    {/* Header Thẻ */}
+                    <div className="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200 shrink-0">
+                          <Mail className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span>Máy Chủ Gửi Thư &amp; Email Tiếp Nhận (Gmail SMTP)</span>
+                          </h2>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Cấu hình máy chủ gửi thư tự động và hộp thư tiếp nhận thông báo đặt lịch khám bệnh.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 self-start sm:self-auto">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Gmail SSL (Cổng 465)
+                      </span>
+                    </div>
+
+                    {isSmtpLoading ? (
+                      <div className="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" />
+                        <span>Đang tải thông tin cấu hình email...</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        {/* CỘT TRÁI: HƯỚNG DẪN 3 BƯỚC LẤY KEY (MẬT KHẨU ỨNG DỤNG GOOGLE) */}
+                        <div className="lg:col-span-5 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-amber-50/80 border border-amber-200/90 rounded-2xl p-5 space-y-4">
+                          <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                            <KeyRound className="w-4 h-4 text-amber-600" />
+                            <span>HƯỚNG DẪN 3 BƯỚC LẤY KEY (MẬT KHẨU ỨNG DỤNG)</span>
+                          </div>
+
+                          <div className="space-y-3.5 text-xs text-slate-700">
+                            {/* Bước 1 */}
+                            <div className="flex items-start gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                1
+                              </span>
+                              <div className="leading-relaxed">
+                                <strong className="text-slate-900">Bật Xác minh 2 bước:</strong> Đăng nhập tài khoản Google tại{' '}
+                                <a
+                                  href="https://myaccount.google.com/security"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-700 font-semibold underline hover:text-blue-900 inline-flex items-center gap-0.5"
+                                >
+                                  myaccount.google.com <ExternalLink className="w-3 h-3 inline" />
+                                </a>
+                                , vào mục <strong>Bảo mật</strong> và kích hoạt <strong>Xác minh 2 bước</strong> (bắt buộc).
+                              </div>
+                            </div>
+
+                            {/* Bước 2 */}
+                            <div className="flex items-start gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                2
+                              </span>
+                              <div className="leading-relaxed">
+                                <strong className="text-slate-900">Tìm Mật khẩu ứng dụng:</strong> Gõ từ khóa <em>&ldquo;Mật khẩu ứng dụng&rdquo;</em> trên thanh tìm kiếm của tài khoản Google, hoặc truy cập nhanh tại link bên dưới.
+                              </div>
+                            </div>
+
+                            {/* Bước 3 */}
+                            <div className="flex items-start gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                3
+                              </span>
+                              <div className="leading-relaxed">
+                                <strong className="text-slate-900">Tạo mã Key 16 chữ cái:</strong> Đặt tên ứng dụng là <em>PetMM Website</em> và bấm <strong>Tạo</strong>. Google sẽ cấp cho bạn một chuỗi <strong>16 chữ cái</strong> (Key). Hãy sao chép chuỗi này và dán vào ô <strong>Khóa bí mật / Key</strong> bên cạnh rồi bấm <strong>Lưu</strong>!
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-amber-200/70">
+                            <a
+                              href="https://myaccount.google.com/apppasswords"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-950 hover:underline cursor-pointer"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Mở trang tạo Mật khẩu ứng dụng của Google ↗</span>
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* CỘT PHẢI: FORM CẤU HÌNH GỒM MAIL NHẬN + KEY + GMAIL GỬI */}
+                        <div className="lg:col-span-7 space-y-4">
+                          {/* 1. Mail nhận thông báo */}
+                          <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/70 space-y-1.5">
+                            <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                              <Mail className="w-4 h-4 text-[#2D5A27]" />
+                              <span>Email Tiếp Nhận Thông Báo Đặt Lịch (Mail nhận): *</span>
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={smtpForm.smtp_notify_email}
+                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_email: e.target.value }))}
+                              placeholder="thaitrtin@gmail.com"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white shadow-2xs"
+                            />
+                            <p className="text-[11px] text-emerald-800">
+                              Mỗi khi khách hàng gửi form đặt lịch hẹn, hệ thống sẽ tự động gửi thư báo chi tiết ca khám tới hòm thư này.
+                            </p>
+                          </div>
+
+                          {/* 2. Tài khoản Gmail gửi thư */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Tài khoản Gmail gửi thư (Sender Email): *
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={smtpForm.smtp_email}
+                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_email: e.target.value }))}
+                              placeholder="thaitrtin@gmail.com"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Địa chỉ Gmail dùng để đăng nhập máy chủ SMTP và gửi thư đi.
+                            </p>
+                          </div>
+
+                          {/* 3. Mật khẩu ứng dụng 16 chữ cái (Key) */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs font-semibold text-slate-700">
+                                Khóa Bí Mật / Mật Khẩu Ứng Dụng Google (Key 16 chữ cái): *
+                              </label>
+                              {smtpForm.hasPassword && (
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  <span>Đã cấu hình mã khóa</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showSmtpPassword ? 'text' : 'password'}
+                                value={smtpForm.smtp_password}
+                                onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_password: e.target.value }))}
+                                placeholder={smtpForm.hasPassword ? '•••• •••• •••• •••• (Đã lưu, nhập mới nếu muốn đổi)' : 'Nhập mã khóa 16 chữ cái (ví dụ: abcd efgh ijkl mnop)'}
+                                className="w-full text-xs px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 text-slate-800 font-mono tracking-wider focus:border-[#2D5A27] focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                title={showSmtpPassword ? 'Ẩn mã khóa' : 'Hiện mã khóa'}
+                              >
+                                {showSmtpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Mã 16 chữ cái do Google cấp (xem hướng dẫn 3 bước ở khung bên trái).
+                            </p>
+                          </div>
+
+                          {/* 4. Tên người gửi hiển thị */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Tên người gửi hiển thị (Sender Display Name):
+                            </label>
+                            <input
+                              type="text"
+                              value={smtpForm.smtp_sender_name}
+                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_sender_name: e.target.value }))}
+                              placeholder="Bệnh Viện Thú Y Pet M&M 5★"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Tên phòng khám sẽ hiển thị trong hộp thư đến của khách hàng.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nút Submit Lưu & Nút Gửi Thử Nghiệm */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p className="text-xs text-slate-500">
+                      Mật khẩu được lưu trữ an toàn trong database và sử dụng giao thức mã hóa SSL khi gửi.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={handleTestSmtp}
+                        disabled={isSmtpTesting || isSmtpSaving}
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                        title="Gửi 1 email thử nghiệm đến địa chỉ Email nhận thông báo để kiểm tra kết nối"
+                      >
+                        {isSmtpTesting ? <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" /> : <Send className="w-4 h-4 text-blue-600" />}
+                        <span>{isSmtpTesting ? 'Đang gửi thư thử...' : 'Gửi Thư Thử Nghiệm'}</span>
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={isSmtpSaving || isSmtpTesting}
+                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                      >
+                        {isSmtpSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <span>{isSmtpSaving ? 'Đang lưu...' : 'Lưu Cấu Hình Email'}</span>
+                      </button>
+                    </div>
                   </div>
                 </form>
               )}
