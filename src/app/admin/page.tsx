@@ -446,6 +446,9 @@ export default function AdminDashboardPage() {
   const [editingBranch, setEditingBranch] = useState<Partial<ChiNhanhRecord> | null>(null);
   const [isCreatingNewBranch, setIsCreatingNewBranch] = useState(false);
   const [featuresInput, setFeaturesInput] = useState('');
+  const [featuresEnInput, setFeaturesEnInput] = useState('');
+  const [branchLangTab, setBranchLangTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingBranch, setIsTranslatingBranch] = useState(false);
 
   const loadBranches = async () => {
     setBranchesLoading(true);
@@ -485,6 +488,8 @@ export default function AdminDashboardPage() {
       kich_hoat: true,
     });
     setFeaturesInput('');
+    setFeaturesEnInput('');
+    setBranchLangTab('vi');
     setIsCreatingNewBranch(true);
   };
 
@@ -497,6 +502,58 @@ export default function AdminDashboardPage() {
       ? JSON.parse(branch.tien_ich)
       : [];
     setFeaturesInput(feats.join('\n'));
+    const featsEn = Array.isArray((branch as any).tien_ich_en) ? (branch as any).tien_ich_en : [];
+    setFeaturesEnInput(featsEn.join('\n'));
+    setBranchLangTab('vi');
+  };
+
+  const handleAutoTranslateBranch = async () => {
+    if (!editingBranch?.ten_chi_nhanh) {
+      showNotification('error', 'Vui lòng nhập Tên chi nhánh Tiếng Việt trước khi dịch!');
+      return;
+    }
+    setIsTranslatingBranch(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        ten_chi_nhanh: editingBranch.ten_chi_nhanh || '',
+        ten_ngan: editingBranch.ten_ngan || '',
+        khu_vuc: editingBranch.khu_vuc || '',
+        khau_hieu: editingBranch.khau_hieu || '',
+        dia_chi: editingBranch.dia_chi || '',
+        bac_si_phu_trach: editingBranch.bac_si_phu_trach || '',
+        bang_cap_bac_si: editingBranch.bang_cap_bac_si || '',
+        gio_hoat_dong: editingBranch.gio_hoat_dong || '',
+        thong_tin_do_xe: editingBranch.thong_tin_do_xe || '',
+        tien_ich: featuresInput || '',
+      };
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingBranch((prev) => (prev ? {
+          ...prev,
+          ten_chi_nhanh_en: data.translations.ten_chi_nhanh || (prev as any).ten_chi_nhanh_en,
+          ten_ngan_en: data.translations.ten_ngan || (prev as any).ten_ngan_en,
+          khu_vuc_en: data.translations.khu_vuc || (prev as any).khu_vuc_en,
+          khau_hieu_en: data.translations.khau_hieu || (prev as any).khau_hieu_en,
+          dia_chi_en: data.translations.dia_chi || (prev as any).dia_chi_en,
+          bac_si_phu_trach_en: data.translations.bac_si_phu_trach || (prev as any).bac_si_phu_trach_en,
+          bang_cap_bac_si_en: data.translations.bang_cap_bac_si || (prev as any).bang_cap_bac_si_en,
+          gio_hoat_dong_en: data.translations.gio_hoat_dong || (prev as any).gio_hoat_dong_en,
+          thong_tin_do_xe_en: data.translations.thong_tin_do_xe || (prev as any).thong_tin_do_xe_en,
+        } as any : null));
+        if (data.translations.tien_ich) setFeaturesEnInput(data.translations.tien_ich);
+        setBranchLangTab('en');
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingBranch(false);
+    }
   };
 
   const handleSaveBranch = async () => {
@@ -589,6 +646,63 @@ export default function AdminDashboardPage() {
   const { config: globalConfig, refreshConfig } = useSystemConfig();
   const [configForm, setConfigForm] = useState<CauHinhRecord>(globalConfig);
   const [isConfigSaving, setIsConfigSaving] = useState(false);
+  const [isTranslatingAbout, setIsTranslatingAbout] = useState(false);
+  const [isTranslatingSlogans, setIsTranslatingSlogans] = useState(false);
+  const [isTranslatingAboutSlide, setIsTranslatingAboutSlide] = useState(false);
+
+  const handleAutoTranslateAbout = async () => {
+    setIsTranslatingAbout(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        phi_ly: (configForm as any).phi_ly || '',
+        lich_su: (configForm as any).lich_su || '',
+        tam_nhin: (configForm as any).tam_nhin || '',
+        su_menh: (configForm as any).su_menh || '',
+      };
+      const res = await fetch('/api/admin/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fieldsToTranslate }) });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setConfigForm((prev) => ({
+          ...prev,
+          phi_ly_en: data.translations.phi_ly || (prev as any).phi_ly_en,
+          lich_su_en: data.translations.lich_su || (prev as any).lich_su_en,
+          tam_nhin_en: data.translations.tam_nhin || (prev as any).tam_nhin_en,
+          su_menh_en: data.translations.su_menh || (prev as any).su_menh_en,
+        } as any));
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingAbout(false);
+    }
+  };
+
+  const handleAutoTranslateSlogans = async () => {
+    setIsTranslatingSlogans(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        slogan_chinh: (configForm as any).slogan_chinh || '',
+        slogan_phu: (configForm as any).slogan_phu || '',
+        slogan_hero: (configForm as any).slogan_hero || '',
+      };
+      const res = await fetch('/api/admin/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fieldsToTranslate }) });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setConfigForm((prev) => ({
+          ...prev,
+          slogan_chinh_en: data.translations.slogan_chinh || (prev as any).slogan_chinh_en,
+          slogan_phu_en: data.translations.slogan_phu || (prev as any).slogan_phu_en,
+          slogan_hero_en: data.translations.slogan_hero || (prev as any).slogan_hero_en,
+        } as any));
+        showNotification('success', 'Đã chuyển đổi Slogan sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingSlogans(false);
+    }
+  };
 
   useEffect(() => {
     setConfigForm(globalConfig);
@@ -636,6 +750,10 @@ export default function AdminDashboardPage() {
   const serviceImgFileInputRef = useRef<HTMLInputElement>(null);
   const [serviceFeaturesInput, setServiceFeaturesInput] = useState('');
   const [serviceWorkflowInput, setServiceWorkflowInput] = useState('');
+  const [serviceFeaturesEnInput, setServiceFeaturesEnInput] = useState('');
+  const [serviceWorkflowEnInput, setServiceWorkflowEnInput] = useState('');
+  const [serviceLangTab, setServiceLangTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingService, setIsTranslatingService] = useState(false);
 
   const loadServices = async () => {
     setServicesLoading(true);
@@ -676,6 +794,9 @@ export default function AdminDashboardPage() {
     });
     setServiceFeaturesInput('');
     setServiceWorkflowInput('');
+    setServiceFeaturesEnInput('');
+    setServiceWorkflowEnInput('');
+    setServiceLangTab('vi');
     setIsCreatingNewService(true);
   };
 
@@ -686,6 +807,56 @@ export default function AdminDashboardPage() {
     const workflow = Array.isArray(service.quy_trinh) ? service.quy_trinh : [];
     setServiceFeaturesInput(feats.join('\n'));
     setServiceWorkflowInput(workflow.join('\n'));
+    const featsEn = Array.isArray((service as any).tien_ich_en) ? (service as any).tien_ich_en : [];
+    const workflowEn = Array.isArray((service as any).quy_trinh_en) ? (service as any).quy_trinh_en : [];
+    setServiceFeaturesEnInput(featsEn.join('\n'));
+    setServiceWorkflowEnInput(workflowEn.join('\n'));
+    setServiceLangTab('vi');
+  };
+
+  const handleAutoTranslateService = async () => {
+    if (!editingService?.ten_dich_vu) {
+      showNotification('error', 'Vui lòng nhập Tên gói dịch vụ Tiếng Việt trước khi dịch!');
+      return;
+    }
+    setIsTranslatingService(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        ten_dich_vu: editingService.ten_dich_vu || '',
+        phu_de: editingService.phu_de || '',
+        huy_hieu: editingService.huy_hieu || '',
+        gia_tham_khao: editingService.gia_tham_khao || '',
+        thoi_luong: editingService.thoi_luong || '',
+        mo_ta: editingService.mo_ta || '',
+        tien_ich: serviceFeaturesInput || '',
+        quy_trinh: serviceWorkflowInput || '',
+      };
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingService((prev) => (prev ? {
+          ...prev,
+          ten_dich_vu_en: data.translations.ten_dich_vu || (prev as any).ten_dich_vu_en,
+          phu_de_en: data.translations.phu_de || (prev as any).phu_de_en,
+          huy_hieu_en: data.translations.huy_hieu || (prev as any).huy_hieu_en,
+          gia_tham_khao_en: data.translations.gia_tham_khao || (prev as any).gia_tham_khao_en,
+          thoi_luong_en: data.translations.thoi_luong || (prev as any).thoi_luong_en,
+          mo_ta_en: data.translations.mo_ta || (prev as any).mo_ta_en,
+        } as any : null));
+        if (data.translations.tien_ich) setServiceFeaturesEnInput(data.translations.tien_ich);
+        if (data.translations.quy_trinh) setServiceWorkflowEnInput(data.translations.quy_trinh);
+        setServiceLangTab('en');
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh y khoa thành công!');
+      } else throw new Error(data.error || 'Dịch tự động thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch tự động: ${err.message}`);
+    } finally {
+      setIsTranslatingService(false);
+    }
   };
 
   const handleServiceImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1299,6 +1470,8 @@ export default function AdminDashboardPage() {
   const [isCreatingNewArticle, setIsCreatingNewArticle] = useState(false);
   const [isArticleSaving, setIsArticleSaving] = useState(false);
   const [articleCategoryFilter, setArticleCategoryFilter] = useState<string>('all');
+  const [articleLangTab, setArticleLangTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingArticle, setIsTranslatingArticle] = useState(false);
 
   const loadArticles = useCallback(async () => {
     setArticlesLoading(true);
@@ -1347,6 +1520,46 @@ export default function AdminDashboardPage() {
   const handleEditArticle = (article: BaiVietRecord) => {
     setEditingArticle({ ...article });
     setIsCreatingNewArticle(false);
+    setArticleLangTab('vi');
+  };
+
+  const handleAutoTranslateArticle = async () => {
+    if (!editingArticle?.tieu_de) {
+      showNotification('error', 'Vui lòng nhập Tiêu đề Tiếng Việt trước khi dịch!');
+      return;
+    }
+    setIsTranslatingArticle(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        tieu_de: editingArticle.tieu_de || '',
+        mo_ta_ngan: editingArticle.mo_ta_ngan || '',
+        noi_dung: editingArticle.noi_dung || '',
+        chuyen_muc: editingArticle.chuyen_muc || '',
+        tac_gia: editingArticle.tac_gia || '',
+      };
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingArticle((prev) => (prev ? {
+          ...prev,
+          tieu_de_en: data.translations.tieu_de || (prev as any).tieu_de_en,
+          mo_ta_ngan_en: data.translations.mo_ta_ngan || (prev as any).mo_ta_ngan_en,
+          noi_dung_en: data.translations.noi_dung || (prev as any).noi_dung_en,
+          chuyen_muc_en: data.translations.chuyen_muc || (prev as any).chuyen_muc_en,
+          tac_gia_en: data.translations.tac_gia || (prev as any).tac_gia_en,
+        } as any : null));
+        setArticleLangTab('en');
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingArticle(false);
+    }
   };
 
   const handleToggleArticleActive = async (article: BaiVietRecord) => {
@@ -5309,6 +5522,32 @@ export default function AdminDashboardPage() {
 
             {/* Modal Body Form */}
             <div className="p-6 overflow-y-auto space-y-5">
+              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
+              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <button type="button" onClick={() => setServiceLangTab('vi')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${serviceLangTab === 'vi' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
+                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản Tiếng Việt</span>
+                    </button>
+                    <button type="button" onClick={() => setServiceLangTab('en')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${serviceLangTab === 'en' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
+                      <UKFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản English</span>
+                    </button>
+                  </div>
+                </div>
+                <button type="button" onClick={handleAutoTranslateService} disabled={isTranslatingService}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động sang Tiếng Anh y khoa bằng AI">
+                  {isTranslatingService ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  <span>{isTranslatingService ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
+              </div>
+
+              {serviceLangTab === 'vi' ? (
+              <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -5510,6 +5749,77 @@ export default function AdminDashboardPage() {
                   </label>
                 </div>
               </div>
+              </div>
+              ) : (
+              /* TAB TIẾNG ANH */
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Service Name (EN): <span className="text-rose-500">*</span>
+                    </label>
+                    <input type="text" value={(editingService as any).ten_dich_vu_en || ''}
+                      onChange={(e) => setEditingService((prev) => ({ ...prev, ten_dich_vu_en: e.target.value } as any))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. Specialized Veterinary Surgery..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Subtitle (EN):</label>
+                    <input type="text" value={(editingService as any).phu_de_en || ''}
+                      onChange={(e) => setEditingService((prev) => ({ ...prev, phu_de_en: e.target.value } as any))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. Premium 5-Star Experience..." />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Badge (EN):</label>
+                    <input type="text" value={(editingService as any).huy_hieu_en || ''}
+                      onChange={(e) => setEditingService((prev) => ({ ...prev, huy_hieu_en: e.target.value } as any))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. Advanced Surgery..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Price Reference (EN):</label>
+                    <input type="text" value={(editingService as any).gia_tham_khao_en || ''}
+                      onChange={(e) => setEditingService((prev) => ({ ...prev, gia_tham_khao_en: e.target.value } as any))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. From 2,000,000 VND..." />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (EN):</label>
+                  <input type="text" value={(editingService as any).thoi_luong_en || ''}
+                    onChange={(e) => setEditingService((prev) => ({ ...prev, thoi_luong_en: e.target.value } as any))}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    placeholder="e.g. 60-120 minutes..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Description (EN):</label>
+                  <textarea value={(editingService as any).mo_ta_en || ''}
+                    onChange={(e) => setEditingService((prev) => ({ ...prev, mo_ta_en: e.target.value } as any))}
+                    rows={4}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none"
+                    placeholder="Describe this service in English..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Features / Amenities (EN) <span className="text-slate-500 font-normal">(one per line)</span>:</label>
+                  <textarea value={serviceFeaturesEnInput}
+                    onChange={(e) => setServiceFeaturesEnInput(e.target.value)}
+                    rows={4}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none font-mono"
+                    placeholder="e.g.&#10;Advanced imaging equipment&#10;Board-certified veterinarians&#10;24/7 post-op monitoring" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Workflow / Process (EN) <span className="text-slate-500 font-normal">(one per line)</span>:</label>
+                  <textarea value={serviceWorkflowEnInput}
+                    onChange={(e) => setServiceWorkflowEnInput(e.target.value)}
+                    rows={4}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none font-mono"
+                    placeholder="e.g.&#10;Initial consultation&#10;Diagnostic testing&#10;Treatment plan..." />
+                </div>
+              </div>
+              )}
             </div>
 
             {/* Modal Footer */}
