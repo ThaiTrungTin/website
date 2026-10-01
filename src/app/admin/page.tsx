@@ -674,22 +674,37 @@ export default function AdminDashboardPage() {
     setIsTranslatingAbout(true);
     try {
       const fieldsToTranslate: Record<string, string> = {
-        phi_ly: (configForm as any).phi_ly || '',
-        lich_su: (configForm as any).lich_su || '',
-        tam_nhin: (configForm as any).tam_nhin || '',
-        su_menh: (configForm as any).su_menh || '',
+        gioi_thieu_huy_hieu: configForm.gioi_thieu_huy_hieu || '',
+        gioi_thieu_tieu_de_1: configForm.gioi_thieu_tieu_de_1 || '',
+        gioi_thieu_tieu_de_2: configForm.gioi_thieu_tieu_de_2 || '',
+        gioi_thieu_mo_ta: configForm.gioi_thieu_mo_ta || '',
+        gioi_thieu_cam_ket_tieu_de: configForm.gioi_thieu_cam_ket_tieu_de || '',
+        gioi_thieu_cam_ket_phu: configForm.gioi_thieu_cam_ket_phu || '',
+        gioi_thieu_trich_dan: configForm.gioi_thieu_trich_dan || '',
+        gioi_thieu_bac_si_ten: configForm.gioi_thieu_bac_si_ten || '',
+        gioi_thieu_bac_si_chuc_danh: configForm.gioi_thieu_bac_si_chuc_danh || '',
       };
-      const res = await fetch('/api/admin/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fieldsToTranslate }) });
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
       const data = await res.json();
       if (data.success && data.translations) {
         setConfigForm((prev) => ({
           ...prev,
-          phi_ly_en: data.translations.phi_ly || (prev as any).phi_ly_en,
-          lich_su_en: data.translations.lich_su || (prev as any).lich_su_en,
-          tam_nhin_en: data.translations.tam_nhin || (prev as any).tam_nhin_en,
-          su_menh_en: data.translations.su_menh || (prev as any).su_menh_en,
-        } as any));
-        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh thành công!');
+          gioi_thieu_huy_hieu_en: data.translations.gioi_thieu_huy_hieu ?? prev.gioi_thieu_huy_hieu_en,
+          gioi_thieu_tieu_de_1_en: data.translations.gioi_thieu_tieu_de_1 ?? prev.gioi_thieu_tieu_de_1_en,
+          gioi_thieu_tieu_de_2_en: data.translations.gioi_thieu_tieu_de_2 ?? prev.gioi_thieu_tieu_de_2_en,
+          gioi_thieu_mo_ta_en: data.translations.gioi_thieu_mo_ta ?? prev.gioi_thieu_mo_ta_en,
+          gioi_thieu_cam_ket_tieu_de_en: data.translations.gioi_thieu_cam_ket_tieu_de ?? prev.gioi_thieu_cam_ket_tieu_de_en,
+          gioi_thieu_cam_ket_phu_en: data.translations.gioi_thieu_cam_ket_phu ?? prev.gioi_thieu_cam_ket_phu_en,
+          gioi_thieu_trich_dan_en: data.translations.gioi_thieu_trich_dan ?? prev.gioi_thieu_trich_dan_en,
+          gioi_thieu_bac_si_ten_en: data.translations.gioi_thieu_bac_si_ten ?? prev.gioi_thieu_bac_si_ten_en,
+          gioi_thieu_bac_si_chuc_danh_en: data.translations.gioi_thieu_bac_si_chuc_danh ?? prev.gioi_thieu_bac_si_chuc_danh_en,
+        }));
+        setAboutSubLang('en');
+        showNotification('success', 'Đã chuyển đổi Giới thiệu sang Tiếng Anh thành công!');
       } else throw new Error(data.error || 'Dịch thất bại');
     } catch (err: any) {
       showNotification('error', `Lỗi dịch: ${err.message}`);
@@ -702,19 +717,26 @@ export default function AdminDashboardPage() {
     setIsTranslatingSlogans(true);
     try {
       const fieldsToTranslate: Record<string, string> = {
-        slogan_chinh: (configForm as any).slogan_chinh || '',
-        slogan_phu: (configForm as any).slogan_phu || '',
-        slogan_hero: (configForm as any).slogan_hero || '',
+        slogan_dau_trang_tieu_de: configForm.slogan_dau_trang_tieu_de || '',
+        slogan_dau_trang_noi_dung: configForm.slogan_dau_trang_noi_dung || '',
+        slogan_cuoi_trang_tieu_de: configForm.slogan_cuoi_trang_tieu_de || '',
+        slogan_cuoi_trang_noi_dung: configForm.slogan_cuoi_trang_noi_dung || '',
       };
-      const res = await fetch('/api/admin/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fieldsToTranslate }) });
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
       const data = await res.json();
       if (data.success && data.translations) {
         setConfigForm((prev) => ({
           ...prev,
-          slogan_chinh_en: data.translations.slogan_chinh || (prev as any).slogan_chinh_en,
-          slogan_phu_en: data.translations.slogan_phu || (prev as any).slogan_phu_en,
-          slogan_hero_en: data.translations.slogan_hero || (prev as any).slogan_hero_en,
-        } as any));
+          slogan_dau_trang_tieu_de_en: data.translations.slogan_dau_trang_tieu_de ?? prev.slogan_dau_trang_tieu_de_en,
+          slogan_dau_trang_noi_dung_en: data.translations.slogan_dau_trang_noi_dung ?? prev.slogan_dau_trang_noi_dung_en,
+          slogan_cuoi_trang_tieu_de_en: data.translations.slogan_cuoi_trang_tieu_de ?? prev.slogan_cuoi_trang_tieu_de_en,
+          slogan_cuoi_trang_noi_dung_en: data.translations.slogan_cuoi_trang_noi_dung ?? prev.slogan_cuoi_trang_noi_dung_en,
+        }));
+        setSloganSubLang('en');
         showNotification('success', 'Đã chuyển đổi Slogan sang Tiếng Anh thành công!');
       } else throw new Error(data.error || 'Dịch thất bại');
     } catch (err: any) {
@@ -732,11 +754,66 @@ export default function AdminDashboardPage() {
     if (e && e.preventDefault) e.preventDefault();
     setIsConfigSaving(true);
     try {
-      const payload = {
-        ...configForm,
+      // Whitelist các cột thực tế tồn tại trong bảng cau_hinh trên Supabase
+      const VALID_CAU_HINH_COLUMNS = [
+        'id',
+        'hotline',
+        'hotline_hien_thi',
+        'link_zalo',
+        'link_facebook',
+        'link_messenger',
+        'email',
+        'dia_chi_chinh',
+        'ngay_cap_nhat',
+        'slogan_dau_trang_tieu_de',
+        'slogan_dau_trang_noi_dung',
+        'slogan_cuoi_trang_tieu_de',
+        'slogan_cuoi_trang_noi_dung',
+        'giay_phep',
+        'gioi_thieu_huy_hieu',
+        'gioi_thieu_tieu_de_1',
+        'gioi_thieu_tieu_de_2',
+        'gioi_thieu_mo_ta',
+        'gioi_thieu_cam_ket_tieu_de',
+        'gioi_thieu_cam_ket_phu',
+        'gioi_thieu_trich_dan',
+        'gioi_thieu_bac_si_ten',
+        'gioi_thieu_bac_si_chuc_danh',
+        'thong_ke_nam_thanh_lap',
+        'thong_ke_nam_thanh_lap_nhan',
+        'thong_ke_khach_hang',
+        'thong_ke_khach_hang_nhan',
+        'link_tiktok',
+        'logo_favicon',
+        'gioi_thieu_huy_hieu_en',
+        'gioi_thieu_tieu_de_1_en',
+        'gioi_thieu_tieu_de_2_en',
+        'gioi_thieu_mo_ta_en',
+        'gioi_thieu_cam_ket_tieu_de_en',
+        'gioi_thieu_cam_ket_phu_en',
+        'gioi_thieu_trich_dan_en',
+        'gioi_thieu_bac_si_ten_en',
+        'gioi_thieu_bac_si_chuc_danh_en',
+        'thong_ke_nam_thanh_lap_nhan_en',
+        'thong_ke_khach_hang_nhan_en',
+        'slogan_cuoi_trang_tieu_de_en',
+        'slogan_cuoi_trang_noi_dung_en',
+        'tieu_de_trang',
+        'tieu_de_trang_en',
+        'slogan_dau_trang_tieu_de_en',
+        'slogan_dau_trang_noi_dung_en',
+      ];
+
+      const payload: Record<string, any> = {
         id: 'system',
         ngay_cap_nhat: new Date().toISOString(),
       };
+
+      for (const col of VALID_CAU_HINH_COLUMNS) {
+        if (col in configForm && (configForm as any)[col] !== undefined) {
+          payload[col] = (configForm as any)[col];
+        }
+      }
 
       const { error } = await supabase.from('cau_hinh').upsert([payload]);
       if (error) throw error;
@@ -3274,102 +3351,67 @@ export default function AdminDashboardPage() {
               {/* NHÁNH 2: GIỚI THIỆU & TRIẾT LÝ (SONG NGỮ VIỆT - ANH & AI DỊCH THUẬT) */}
               {configSubTab === 'about' && (
                 <form onSubmit={handleSaveConfig} className="space-y-6">
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
-                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút Dịch AI */}
-                    <div className="pb-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Heart className="w-5 h-5 text-[#2D5A27]" />
-                          <h2 className="text-base font-bold text-slate-900">
-                            Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)
-                          </h2>
-                          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            Database Supabase
-                          </span>
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
+                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút Dịch AI theo đúng mẫu Ảnh 2 */}
+                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200">
+                          <Heart className="w-4 h-4" />
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Hỗ trợ song ngữ (Tiếng Việt &amp; English). Dữ liệu được lưu trực tiếp vào Database Supabase.
-                        </p>
-                      </div>
-
-                      {/* Bộ nút chuyển ngôn ngữ & Nút Dịch AI */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Tab Ngôn ngữ */}
-                        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => setAboutSubLang('vi')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                              aboutSubLang === 'vi'
-                                ? 'bg-white text-[#2D5A27] shadow-xs'
-                                : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            <span>🇻🇳</span>
-                            <span>Tiếng Việt</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAboutSubLang('en')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                              aboutSubLang === 'en'
-                                ? 'bg-[#2D5A27] text-white shadow-xs'
-                                : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            <span>🇬🇧</span>
-                            <span>English</span>
-                          </button>
+                        <div className="text-xs font-bold text-slate-900">
+                          Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)
                         </div>
-
-                        {/* Nút Dịch Bằng AI */}
-                        <button
-                          type="button"
-                          onClick={handleAutoTranslateAbout}
-                          disabled={isTranslatingAbout}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
-                          title="Tự động dịch toàn bộ nội dung Tiếng Việt sang Tiếng Anh chuyên ngành Thú y bằng AI"
-                        >
-                          {isTranslatingAbout ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3.5 h-3.5" />
-                          )}
-                          <span>{isTranslatingAbout ? 'AI đang dịch...' : '⚡ Dịch sang English bằng AI'}</span>
-                        </button>
+                        <div className="text-[11px] text-slate-500">
+                          Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
+                        </div>
                       </div>
                     </div>
 
-                    {/* Banner thông báo chế độ chỉnh sửa */}
-                    {aboutSubLang === 'vi' ? (
-                      <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">🇻🇳</span>
-                          <span>
-                            <strong>Bản Tiếng Việt:</strong> Hiển thị mặc định cho khách hàng trong nước.
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-emerald-700 font-medium">Bảng cau_hinh</span>
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">🇬🇧</span>
-                          <span>
-                            <strong>Bản English (Lưu Database):</strong> Hiển thị khi khách quốc tế chọn 🇬🇧 EN trên website.
-                          </span>
-                        </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Tab Ngôn ngữ */}
+                      <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
                         <button
                           type="button"
-                          onClick={handleAutoTranslateAbout}
-                          disabled={isTranslatingAbout}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer"
+                          onClick={() => setAboutSubLang('vi')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            aboutSubLang === 'vi'
+                              ? 'bg-[#2D5A27] text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
                         >
-                          <Sparkles className="w-3 h-3 text-amber-500" />
-                          <span>Đồng bộ lại từ Tiếng Việt bằng AI</span>
+                          <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                          <span>Tiếng Việt</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAboutSubLang('en')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            aboutSubLang === 'en'
+                              ? 'bg-[#2D5A27] text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <UKFlag className="w-4 h-3 rounded-[2px]" />
+                          <span>English</span>
                         </button>
                       </div>
-                    )}
+
+                      {/* Nút Chuyển đổi ENG */}
+                      <button
+                        type="button"
+                        onClick={handleAutoTranslateAbout}
+                        disabled={isTranslatingAbout}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                        title="Tự động dịch toàn bộ nội dung Giới thiệu Tiếng Việt sang Tiếng Anh bằng AI"
+                      >
+                        {isTranslatingAbout ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5" />
+                        )}
+                        <span>{isTranslatingAbout ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                      </button>
+                    </div>
 
                     {/* CÁC TRƯỜNG DỮ LIỆU TIẾNG VIỆT */}
                     {aboutSubLang === 'vi' && (
