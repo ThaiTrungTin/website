@@ -30,6 +30,11 @@ import {
   Menu,
   ChevronRight,
   Sparkles,
+  Save,
+  ShieldCheck,
+  Send,
+  KeyRound,
+  Mail,
   Eye,
   EyeOff,
   Building2,
@@ -60,7 +65,7 @@ import PetLogo from '@/components/PetLogo';
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
 type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config';
-export type ConfigSubTab = 'contact' | 'about' | 'slides' | 'stats' | 'slogans';
+export type ConfigSubTab = 'contact' | 'email' | 'about' | 'slides' | 'stats' | 'slogans';
 
 export default function AdminDashboardPage() {
   // XÁC THỰC QUẢN TRỊ VIÊN (ADMIN AUTHENTICATION)
@@ -582,6 +587,17 @@ export default function AdminDashboardPage() {
         thong_tin_do_xe: editingBranch.thong_tin_do_xe || '',
         link_ggmap_embed: editingBranch.link_ggmap_embed || '',
         link_ggmap_app: editingBranch.link_ggmap_app || '',
+        ten_chi_nhanh_en: (editingBranch as any).ten_chi_nhanh_en || '',
+        ten_ngan_en: (editingBranch as any).ten_ngan_en || '',
+        khu_vuc_en: (editingBranch as any).khu_vuc_en || '',
+        khau_hieu_en: (editingBranch as any).khau_hieu_en || '',
+        dia_chi_en: (editingBranch as any).dia_chi_en || '',
+        bac_si_phu_trach_en: (editingBranch as any).bac_si_phu_trach_en || '',
+        bang_cap_bac_si_en: (editingBranch as any).bang_cap_bac_si_en || '',
+        gio_hoat_dong_en: (editingBranch as any).gio_hoat_dong_en || '',
+        thong_tin_do_xe_en: (editingBranch as any).thong_tin_do_xe_en || '',
+        tien_ich_en: featuresEnInput.split('\n').map((f) => f.trim()).filter((f) => f.length > 0),
+        bai_viet_chi_tiet_en: (editingBranch as any).bai_viet_chi_tiet_en || '',
         tien_ich: parsedFeatures,
         bai_viet_chi_tiet: editingBranch.bai_viet_chi_tiet || '',
         anh_dai_dien: editingBranch.anh_dai_dien || '',
@@ -724,6 +740,7 @@ export default function AdminDashboardPage() {
       await refreshConfig();
       const tabNames: Record<ConfigSubTab, string> = {
         contact: 'Hotline & Mạng xã hội',
+        email: 'Email & Máy Chủ Gửi Thư (SMTP)',
         about: 'Giới thiệu & Triết lý',
         slides: 'Slide ảnh giới thiệu',
         stats: 'Thông số thống kê',
@@ -737,6 +754,89 @@ export default function AdminDashboardPage() {
       setIsConfigSaving(false);
     }
   };
+
+  // -------------------------------------------------------------
+  // CẤU HÌNH EMAIL GỬI THƯ (GMAIL SMTP)
+  // -------------------------------------------------------------
+  const [smtpForm, setSmtpForm] = useState({
+    smtp_email: 'thaitrtin@gmail.com',
+    smtp_password: '',
+    smtp_sender_name: 'Bệnh Viện Thú Y Pet M&M 5★',
+    smtp_notify_email: 'thaitrtin@gmail.com',
+    hasPassword: false,
+  });
+  const [isSmtpLoading, setIsSmtpLoading] = useState(false);
+  const [isSmtpSaving, setIsSmtpSaving] = useState(false);
+  const [isSmtpTesting, setIsSmtpTesting] = useState(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+
+  const loadSmtpConfig = useCallback(async () => {
+    setIsSmtpLoading(true);
+    try {
+      const res = await fetch('/api/admin/email-config');
+      const data = await res.json();
+      if (data.success && data.config) {
+        setSmtpForm((prev) => ({
+          ...prev,
+          smtp_email: data.config.smtp_email || 'thaitrtin@gmail.com',
+          smtp_sender_name: data.config.smtp_sender_name || 'Bệnh Viện Thú Y Pet M&M 5★',
+          smtp_notify_email: data.config.smtp_notify_email || 'thaitrtin@gmail.com',
+          hasPassword: Boolean(data.config.hasPassword),
+        }));
+      }
+    } catch (err: any) {
+      console.error('Lỗi tải cấu hình SMTP:', err);
+    } finally {
+      setIsSmtpLoading(false);
+    }
+  }, []);
+
+  const handleSaveSmtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smtpForm.smtp_email) {
+      showNotification('error', 'Vui lòng nhập địa chỉ Gmail gửi thư!');
+      return;
+    }
+    setIsSmtpSaving(true);
+    try {
+      const res = await fetch('/api/admin/email-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(smtpForm),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Không thể lưu cấu hình email!');
+        return;
+      }
+      showNotification('success', 'Đã lưu cấu hình máy chủ gửi thư Gmail thành công!');
+      loadSmtpConfig();
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
+    } finally {
+      setIsSmtpSaving(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    setIsSmtpTesting(true);
+    try {
+      const res = await fetch('/api/admin/email-config/test', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Gửi thư thử nghiệm thất bại!');
+        return;
+      }
+      showNotification('success', data.message || 'Đã gửi thư thử nghiệm thành công! Vui lòng kiểm tra Gmail.');
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Gửi thử thất bại'));
+    } finally {
+      setIsSmtpTesting(false);
+    }
+  };
+
 
   // -------------------------------------------------------------
   // TAB 4: QUẢN LÝ DỊCH VỤ CHUẨN 5 SAO
@@ -1615,6 +1715,11 @@ export default function AdminDashboardPage() {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, ''),
         chuyen_muc: editingArticle.chuyen_muc?.trim() || 'Y Khoa Dự Phòng',
+        tieu_de_en: (editingArticle as any).tieu_de_en?.trim() || '',
+        mo_ta_ngan_en: (editingArticle as any).mo_ta_ngan_en?.trim() || '',
+        noi_dung_en: (editingArticle as any).noi_dung_en?.trim() || '',
+        chuyen_muc_en: (editingArticle as any).chuyen_muc_en?.trim() || '',
+        tac_gia_en: (editingArticle as any).tac_gia_en?.trim() || '',
         mo_ta_ngan: editingArticle.mo_ta_ngan?.trim() || '',
         noi_dung: editingArticle.noi_dung?.trim() || '',
         hinh_anh: editingArticle.hinh_anh?.trim() || '',
@@ -1908,6 +2013,7 @@ export default function AdminDashboardPage() {
 
   const subTabTitles: Record<ConfigSubTab, string> = {
     contact: 'Hotline & Mạng Xã Hội',
+    email: 'Email & Máy Chủ Gửi Thư (SMTP)',
     about: 'Giới Thiệu & Triết Lý',
     slides: 'Slide Ảnh Giới Thiệu',
     stats: 'Thông Số Thống Kê',
@@ -2267,6 +2373,31 @@ export default function AdminDashboardPage() {
                     }`}
                   />
                   <span>Hotline &amp; Mạng Xã Hội</span>
+                </div>
+              </button>
+
+              
+              {/* Cấu hình Email & SMTP */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('config');
+                  setConfigSubTab('email');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group ' + (
+                  activeTab === 'config' && configSubTab === 'email'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Mail
+                    className={'w-3.5 h-3.5 transition ' + (
+                      activeTab === 'config' && configSubTab === 'email' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    )}
+                  />
+                  <span>Email &amp; Máy Chủ Gửi Thư</span>
                 </div>
               </button>
 
@@ -2880,6 +3011,20 @@ export default function AdminDashboardPage() {
                 >
                   <PhoneCall className="w-3.5 h-3.5" />
                   <span>Hotline &amp; Mạng Xã Hội</span>
+                </button>
+
+                
+                <button
+                  type="button"
+                  onClick={() => setConfigSubTab('email')}
+                  className={'inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ' + (
+                    configSubTab === 'email'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  )}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Email &amp; Máy Chủ Gửi Thư</span>
                 </button>
 
                 <button
@@ -5158,7 +5303,7 @@ export default function AdminDashboardPage() {
       {/* 4. MODAL POPUP FORM: THÊM / CHỈNH SỬA CHI NHÁNH BỆNH VIỆN */}
       {/*    (BẬT NỔI Ở GIỮA MÀN HÌNH ĐÚNG NHƯ ẢNH MẪU YÊU CẦU)     */}
       {/* ========================================================= */}
-      {editingBranch && (
+            {editingBranch && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
@@ -5181,293 +5326,504 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tên chi nhánh đầy đủ: *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.ten_chi_nhanh || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_chi_nhanh: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
+            <div className="p-6 overflow-y-auto space-y-5">
+              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
+              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setBranchLangTab('vi')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        branchLangTab === 'vi'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản Tiếng Việt</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBranchLangTab('en')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        branchLangTab === 'en'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <UKFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản English</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tên ngắn (hiển thị trên thẻ):
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.ten_ngan || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_ngan: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateBranch}
+                  disabled={isTranslatingBranch}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động sang Tiếng Anh bằng AI"
+                >
+                  {isTranslatingBranch ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingBranch ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Địa chỉ chi nhánh: *
-                </label>
-                <input
-                  type="text"
-                  value={editingBranch.dia_chi || ''}
-                  onChange={(e) => setEditingBranch((prev) => ({ ...prev, dia_chi: e.target.value }))}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
+              {branchLangTab === 'vi' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tên chi nhánh đầy đủ: *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.ten_chi_nhanh || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_chi_nhanh: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Bệnh Viện Thú Y Pet M&M - Chi Nhánh Quận 7"
+                      />
+                    </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Khu vực / Quận:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.khu_vuc || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, khu_vuc: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tên ngắn (hiển thị trên thẻ):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.ten_ngan || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_ngan: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Cơ Sở Quận 7"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Khu vực / Quận huyện:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.khu_vuc || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, khu_vuc: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Quận 7, TP. Hồ Chí Minh"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Khẩu hiệu chi nhánh:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.khau_hieu || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, khau_hieu: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Trung tâm Cấp Cứu 24/7 & Hồi Sức Tích Cực"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Địa chỉ chi nhánh: *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingBranch.dia_chi || ''}
+                      onChange={(e) => setEditingBranch((prev) => ({ ...prev, dia_chi: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="Số nhà, tên đường, phường, quận..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Bác sĩ phụ trách:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.bac_si_phu_trach || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, bac_si_phu_trach: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: ThS. BS. Nguyễn Văn A"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Bằng cấp / Chuyên khoa:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.bang_cap_bac_si || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, bang_cap_bac_si: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Chuyên gia Phẫu thuật Ngoại khoa"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Giờ hoạt động:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.gio_hoat_dong || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, gio_hoat_dong: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: 08:00 - 21:00 (Cấp cứu 24/7)"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Thông tin đỗ xe:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingBranch.thong_tin_do_xe || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, thong_tin_do_xe: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Có bãi đỗ xe ô tô & xe máy rộng rãi"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Danh sách tiện ích / dịch vụ nổi bật (mỗi dòng một ý):
+                    </label>
+                    <textarea
+                      value={featuresInput}
+                      onChange={(e) => setFeaturesInput(e.target.value)}
+                      rows={3}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono"
+                      placeholder={"Phòng cấp cứu 24/7 trang bị hiện đại\nKhu lưu chuồng riêng cho chó và mèo\nPhòng phẫu thuật vô trùng chuẩn quốc tế"}
+                    />
+                  </div>
+
+                  {/* Bài viết chi tiết (TipTap RichTextEditor) */}
+                  <div className="pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
+                        <span>Bài viết giới thiệu chi tiết chi nhánh (Tiếng Việt):</span>
+                      </label>
+                      {editingBranch.id && (
+                        <Link
+                          href={`/chi-nhanh/${editingBranch.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Xem trang ngoài web</span>
+                        </Link>
+                      )}
+                    </div>
+                    <RichTextEditor
+                      value={editingBranch.bai_viet_chi_tiet || ''}
+                      onChange={(html) => setEditingBranch((prev) => ({ ...prev, bai_viet_chi_tiet: html }))}
+                      minHeight={340}
+                      onUploadImage={async (file) => {
+                        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                        const filePath = `branches/article_${Date.now()}_${Math.random()
+                          .toString(36)
+                          .substring(2, 6)}.${fileExt}`;
+                        const { error } = await supabase.storage
+                          .from('hinh_anh')
+                          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+                        if (error) throw error;
+                        const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+                        return urlData.publicUrl;
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* TAB TIẾNG ANH */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Branch Full Name (English): <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).ten_chi_nhanh_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_chi_nhanh_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Pet M&M Veterinary Hospital - District 7 Branch"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Short Name (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).ten_ngan_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_ngan_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. District 7 Branch"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Area / District (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).khu_vuc_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, khu_vuc_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. District 7, Ho Chi Minh City"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Slogan (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).khau_hieu_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, khau_hieu_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. 24/7 Emergency & Critical Care Center"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Address (English): <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={(editingBranch as any).dia_chi_en || ''}
+                      onChange={(e) => setEditingBranch((prev) => ({ ...prev, dia_chi_en: e.target.value } as any))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. 123 Nguyen Thi Thap St, District 7..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Chief Veterinarian (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).bac_si_phu_trach_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, bac_si_phu_trach_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Dr. Nguyen Van A, DVM"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Degree / Specialty (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).bang_cap_bac_si_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, bang_cap_bac_si_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Surgical Specialist"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Operating Hours (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).gio_hoat_dong_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, gio_hoat_dong_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. 08:00 - 21:00 (24/7 Emergency)"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Parking Info (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingBranch as any).thong_tin_do_xe_en || ''}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, thong_tin_do_xe_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Spacious car & motorbike parking available"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Features / Amenities (English, one per line):
+                    </label>
+                    <textarea
+                      value={featuresEnInput}
+                      onChange={(e) => setFeaturesEnInput(e.target.value)}
+                      rows={3}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono"
+                      placeholder={"24/7 Emergency ICU with advanced monitors\nSeparate dog & cat hospitalization suites\nSterile laminar-flow surgical theater"}
+                    />
+                  </div>
+
+                  {/* Bài viết chi tiết EN (TipTap RichTextEditor) */}
+                  <div className="pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
+                        <span>Branch Detailed Introduction (English):</span>
+                      </label>
+                    </div>
+                    <RichTextEditor
+                      value={(editingBranch as any).bai_viet_chi_tiet_en || ''}
+                      onChange={(html) => setEditingBranch((prev) => ({ ...prev, bai_viet_chi_tiet_en: html } as any))}
+                      minHeight={340}
+                      onUploadImage={async (file) => {
+                        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                        const filePath = `branches/article_${Date.now()}_${Math.random()
+                          .toString(36)
+                          .substring(2, 6)}.${fileExt}`;
+                        const { error } = await supabase.storage
+                          .from('hinh_anh')
+                          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+                        if (error) throw error;
+                        const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+                        return urlData.publicUrl;
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* COMMON FIELDS (HOTLINE, MAPS, IMAGE, ETC.) */}
+              <div className="pt-4 border-t border-slate-200 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Số điện thoại hotline chi nhánh:
+                    </label>
+                    <input
+                      type="text"
+                      value={editingBranch.so_dien_thoai || ''}
+                      onChange={(e) => setEditingBranch((prev) => ({ ...prev, so_dien_thoai: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="Ví dụ: 090 123 4567"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Link Google Maps App (Chỉ đường trực tiếp):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingBranch.link_ggmap_app || ''}
+                      onChange={(e) => setEditingBranch((prev) => ({ ...prev, link_ggmap_app: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="https://maps.app.goo.gl/..."
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Số điện thoại / Hotline:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.so_dien_thoai || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, so_dien_thoai: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Giờ hoạt động:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.gio_hoat_dong || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, gio_hoat_dong: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Bác sĩ phụ trách cơ sở:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.bac_si_phu_trach || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, bac_si_phu_trach: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Học vị / Bằng cấp bác sĩ:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingBranch.bang_cap_bac_si || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, bang_cap_bac_si: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Thông tin bãi đỗ xe &amp; hỗ trợ:
-                </label>
-                <input
-                  type="text"
-                  value={editingBranch.thong_tin_do_xe || ''}
-                  onChange={(e) => setEditingBranch((prev) => ({ ...prev, thong_tin_do_xe: e.target.value }))}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Link Google Maps Embed (Iframe nhúng bản đồ):
+                    Link Google Maps Embed (iframe bản đồ nhúng):
                   </label>
                   <input
                     type="text"
                     value={editingBranch.link_ggmap_embed || ''}
                     onChange={(e) => setEditingBranch((prev) => ({ ...prev, link_ggmap_embed: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono text-[11px]"
+                    placeholder="https://www.google.com/maps/embed?pb=..."
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Link Google Maps App (Chỉ đường trực tiếp):
+                    Ảnh đại diện chi nhánh:
                   </label>
-                  <input
-                    type="text"
-                    value={editingBranch.link_ggmap_app || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, link_ggmap_app: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                  <AdminImageInput
+                    value={editingBranch.anh_dai_dien || ''}
+                    onChange={(url) => setEditingBranch((prev) => ({ ...prev, anh_dai_dien: url }))}
+                    folder="branches"
+                    label=""
+                    uploadButtonLabel="Tải Ảnh Cơ Sở"
+                    pasteButtonLabel="Dán Link Ảnh"
+                    onNotification={showNotification}
                   />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tiện ích &amp; Trang thiết bị (Mỗi tiện ích trên 1 dòng):
-                </label>
-                <textarea
-                  rows={3}
-                  value={featuresInput}
-                  onChange={(e) => setFeaturesInput(e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-sans"
-                />
-              </div>
-
-              {/* Thứ tự & Trạng thái */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thứ tự sắp xếp:
-                  </label>
-                  <input
-                    type="number"
-                    value={editingBranch.thu_tu || 1}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, thu_tu: parseInt(e.target.value, 10) || 1 }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Trạng thái hoạt động:
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setEditingBranch((prev) => ({ ...prev, kich_hoat: !prev?.kich_hoat }))}
-                    className={`w-full py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                      editingBranch.kich_hoat !== false
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                        : 'bg-slate-100 border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    {editingBranch.kich_hoat !== false ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>Đang mở cửa hoạt động</span>
-                      </>
-                    ) : (
-                      <>
-                        <X className="w-4 h-4 text-slate-400" />
-                        <span>Tạm đóng (Ẩn khỏi web)</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Ảnh bìa chi nhánh */}
-              <div className="pt-3 border-t border-slate-200">
-                <AdminImageInput
-                  value={editingBranch.anh_dai_dien || ''}
-                  onChange={(url) => setEditingBranch((prev) => ({ ...prev, anh_dai_dien: url }))}
-                  folder="branches"
-                  label="Ảnh bìa chi nhánh (Hiển thị đầu trang chi tiết):"
-                  uploadButtonLabel="Tải File"
-                  pasteButtonLabel="Dán Ảnh"
-                  onNotification={showNotification}
-                />
-
-                {editingBranch.anh_dai_dien && (
-                  <div className="mt-2 space-y-2">
-                    <div className="relative w-full h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                      <img
-                        src={editingBranch.anh_dai_dien}
-                        alt="Xem trước ảnh bìa"
-                        className="w-full h-full object-cover"
-                        style={{ objectPosition: editingBranch.can_chinh_anh || '50% 50%' }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                    <div>
+                  {editingBranch.anh_dai_dien && (
+                    <div className="mt-2 flex items-center gap-3">
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">Vị trí ảnh:</label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {['50% 20%', '50% 50%', '50% 80%', '20% 50%', '80% 50%'].map((pos) => (
-                          <button
-                            key={pos}
-                            type="button"
-                            onClick={() => setEditingBranch((prev) => ({ ...prev, can_chinh_anh: pos }))}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
-                              (editingBranch.can_chinh_anh || '50% 50%') === pos
-                                ? 'bg-[#2D5A27] text-white'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                            }`}
-                          >
-                            {pos === '50% 20%'
-                              ? 'Lấy phần trên'
-                              : pos === '50% 50%'
-                              ? 'Chính giữa'
-                              : pos === '50% 80%'
-                              ? 'Lấy phần dưới'
-                              : pos === '20% 50%'
-                              ? 'Lấy bên trái'
-                              : 'Lấy bên phải'}
-                          </button>
-                        ))}
-                      </div>
+                      <select
+                        value={editingBranch.can_chinh_anh || '50% 50%'}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, can_chinh_anh: e.target.value }))}
+                        className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 bg-white"
+                      >
+                        <option value="50% 50%">Giữa (Mặc định)</option>
+                        <option value="50% 20%">Phía Trên</option>
+                        <option value="50% 80%">Phía Dưới</option>
+                      </select>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Bài viết chi tiết (TipTap RichTextEditor) */}
-              <div className="pt-3 border-t border-slate-200">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
-                    <span>Bài viết chi tiết chi nhánh:</span>
-                  </label>
-                  {editingBranch.id && (
-                    <Link
-                      href={`/chi-nhanh/${editingBranch.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Xem trang ngoài web</span>
-                    </Link>
                   )}
                 </div>
-                <RichTextEditor
-                  value={editingBranch.bai_viet_chi_tiet || ''}
-                  onChange={(html) => setEditingBranch((prev) => ({ ...prev, bai_viet_chi_tiet: html }))}
-                  minHeight={340}
-                  onUploadImage={async (file) => {
-                    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-                    const filePath = `branches/article_${Date.now()}_${Math.random()
-                      .toString(36)
-                      .substring(2, 6)}.${fileExt}`;
-                    const { error } = await supabase.storage
-                      .from('hinh_anh')
-                      .upload(filePath, file, { cacheControl: '3600', upsert: true });
-                    if (error) throw error;
-                    const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
-                    return urlData.publicUrl;
-                  }}
-                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Thứ tự hiển thị:
+                    </label>
+                    <input
+                      type="number"
+                      value={editingBranch.thu_tu || 1}
+                      onChange={(e) =>
+                        setEditingBranch((prev) => ({
+                          ...prev,
+                          thu_tu: parseInt(e.target.value, 10) || 1,
+                        }))
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingBranch.kich_hoat !== false}
+                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                        className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
+                      />
+                      <span className="text-xs font-semibold text-slate-700">Kích hoạt chi nhánh ngoài website</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -5476,29 +5832,25 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={() => setEditingBranch(null)}
-                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
               >
                 Hủy Bỏ
               </button>
-
               <button
                 type="button"
-                disabled={isBranchSaving}
                 onClick={handleSaveBranch}
-                className="inline-flex items-center gap-1.5 px-6 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                disabled={isBranchSaving}
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
               >
-                {isBranchSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                <span>{isBranchSaving ? 'Đang lưu vào Supabase...' : 'Lưu Chi Nhánh'}</span>
+                <Check className="w-4 h-4" />
+                <span>{isBranchSaving ? 'Đang lưu...' : 'Lưu Chi Nhánh'}</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 5. MODAL POPUP FORM: THÊM / CHỈNH SỬA DỊCH VỤ CHUẨN 5 SAO */}
-      {/* ========================================================= */}
-      {editingService && (
+{editingService && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
@@ -6797,9 +7149,9 @@ export default function AdminDashboardPage() {
       {/* ========================================================= */}
       {/* 11. MODAL THÊM / CHỈNH SỬA BÀI VIẾT CẨM NANG             */}
       {/* ========================================================= */}
-      {editingArticle && (
+            {editingArticle && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -6820,170 +7172,310 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSaveArticle} className="p-6 overflow-y-auto space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tiêu đề bài viết: *
-                </label>
-                <input
-                  type="text"
-                  value={editingArticle.tieu_de || ''}
-                  onChange={(e) => setEditingArticle((prev) => ({ ...prev, tieu_de: e.target.value }))}
-                  required
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Chuyên mục bài viết:
-                  </label>
-                  <select
-                    value={editingArticle.chuyen_muc || 'Y Khoa Dự Phòng'}
-                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, chuyen_muc: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
-                  >
-                    <option value="Y Khoa Dự Phòng">Y Khoa Dự Phòng</option>
-                    <option value="Sơ Cứu Thú Cưng">Sơ Cứu Thú Cưng</option>
-                    <option value="Chăm Sóc & Spa">Chăm Sóc &amp; Spa</option>
-                    <option value="Dinh Dưỡng Thú Cưng">Dinh Dưỡng Thú Cưng</option>
-                    <option value="Hành Vi & Huấn Luyện">Hành Vi &amp; Huấn Luyện</option>
-                    <option value="Cẩm Nang Tổng Hợp">Cẩm Nang Tổng Hợp</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tác giả / Bác sĩ phụ trách:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingArticle.tac_gia || ''}
-                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, tac_gia: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Ảnh bìa bài viết:
-                </label>
-                <AdminImageInput
-                  value={editingArticle.hinh_anh || ''}
-                  onChange={(url) => setEditingArticle((prev) => ({ ...prev, hinh_anh: url }))}
-                  folder="articles"
-                  label=""
-                  uploadButtonLabel="Tải Ảnh Bìa"
-                  pasteButtonLabel="Dán Link Ảnh"
-                  onNotification={showNotification}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thời gian đọc dự kiến:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingArticle.thoi_gian_doc || ''}
-                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, thoi_gian_doc: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Ngày đăng bài:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingArticle.ngay_dang || ''}
-                    onChange={(e) => setEditingArticle((prev) => ({ ...prev, ngay_dang: e.target.value }))}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tóm tắt ngắn (hiển thị ngoài danh sách thẻ card):
-                </label>
-                <textarea
-                  rows={2}
-                  value={editingArticle.mo_ta_ngan || ''}
-                  onChange={(e) => setEditingArticle((prev) => ({ ...prev, mo_ta_ngan: e.target.value }))}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-200">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
-                    <span>Nội dung chi tiết bài viết:</span>
-                  </label>
-                  {editingArticle.id && (
-                    <Link
-                      href={`/kien-thuc/${editingArticle.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+            <form onSubmit={handleSaveArticle} className="p-6 overflow-y-auto space-y-5">
+              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
+              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setArticleLangTab('vi')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        articleLangTab === 'vi'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
                     >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Xem trang ngoài web</span>
-                    </Link>
-                  )}
+                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản Tiếng Việt</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setArticleLangTab('en')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        articleLangTab === 'en'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <UKFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản English</span>
+                    </button>
+                  </div>
                 </div>
-                <RichTextEditor
-                  value={editingArticle.noi_dung || ''}
-                  onChange={(html) => setEditingArticle((prev) => ({ ...prev, noi_dung: html }))}
-                  minHeight={340}
-                  onUploadImage={async (file) => {
-                    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-                    const filePath = `articles/content_${Date.now()}_${Math.random()
-                      .toString(36)
-                      .substring(2, 6)}.${fileExt}`;
-                    const { error } = await supabase.storage
-                      .from('hinh_anh')
-                      .upload(filePath, file, { cacheControl: '3600', upsert: true });
-                    if (error) throw error;
-                    const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
-                    return urlData.publicUrl;
-                  }}
-                />
+
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateArticle}
+                  disabled={isTranslatingArticle}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động sang Tiếng Anh bằng AI"
+                >
+                  {isTranslatingArticle ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingArticle ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+              {articleLangTab === 'vi' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Tiêu đề bài viết: *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingArticle.tieu_de || ''}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, tieu_de: e.target.value }))}
+                      required
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="Ví dụ: Lịch tiêm phòng đầy đủ cho chó mèo năm 2026..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Chuyên mục bài viết:
+                      </label>
+                      <select
+                        value={editingArticle.chuyen_muc || 'Y Khoa Dự Phòng'}
+                        onChange={(e) => setEditingArticle((prev) => ({ ...prev, chuyen_muc: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
+                      >
+                        <option value="Y Khoa Dự Phòng">Y Khoa Dự Phòng</option>
+                        <option value="Sơ Cứu Thú Cưng">Sơ Cứu Thú Cưng</option>
+                        <option value="Chăm Sóc & Spa">Chăm Sóc &amp; Spa</option>
+                        <option value="Dinh Dưỡng Thú Cưng">Dinh Dưỡng Thú Cưng</option>
+                        <option value="Hành Vi & Huấn Luyện">Hành Vi &amp; Huấn Luyện</option>
+                        <option value="Cẩm Nang Tổng Hợp">Cẩm Nang Tổng Hợp</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tác giả / Bác sĩ phụ trách:
+                      </label>
+                      <input
+                        type="text"
+                        value={editingArticle.tac_gia || ''}
+                        onChange={(e) => setEditingArticle((prev) => ({ ...prev, tac_gia: e.target.value }))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="Ví dụ: Hội Đồng Y Khoa Pet M&M"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Tóm tắt ngắn (hiển thị ngoài danh sách thẻ card):
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editingArticle.mo_ta_ngan || ''}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, mo_ta_ngan: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                      placeholder="Tóm tắt ngắn gọn 1-2 câu về nội dung bài viết..."
+                    />
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
+                        <span>Nội dung chi tiết bài viết (Tiếng Việt):</span>
+                      </label>
+                      {editingArticle.id && (
+                        <Link
+                          href={`/kien-thuc/${editingArticle.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Xem trang ngoài web</span>
+                        </Link>
+                      )}
+                    </div>
+                    <RichTextEditor
+                      value={editingArticle.noi_dung || ''}
+                      onChange={(html) => setEditingArticle((prev) => ({ ...prev, noi_dung: html }))}
+                      minHeight={340}
+                      onUploadImage={async (file) => {
+                        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                        const filePath = `articles/content_${Date.now()}_${Math.random()
+                          .toString(36)
+                          .substring(2, 6)}.${fileExt}`;
+                        const { error } = await supabase.storage
+                          .from('hinh_anh')
+                          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+                        if (error) throw error;
+                        const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+                        return urlData.publicUrl;
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* TAB TIẾNG ANH */
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Article Title (English): <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={(editingArticle as any).tieu_de_en || ''}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, tieu_de_en: e.target.value } as any))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      placeholder="e.g. Comprehensive Vaccination Schedule for Dogs and Cats 2026..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Category (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingArticle as any).chuyen_muc_en || ''}
+                        onChange={(e) => setEditingArticle((prev) => ({ ...prev, chuyen_muc_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Preventive Medicine"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Author / Medical Team (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={(editingArticle as any).tac_gia_en || ''}
+                        onChange={(e) => setEditingArticle((prev) => ({ ...prev, tac_gia_en: e.target.value } as any))}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                        placeholder="e.g. Pet M&M Medical Board"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Short Excerpt (English):
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={(editingArticle as any).mo_ta_ngan_en || ''}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, mo_ta_ngan_en: e.target.value } as any))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                      placeholder="Brief 1-2 sentence overview in English..."
+                    />
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
+                        <span>Detailed Article Content (English):</span>
+                      </label>
+                    </div>
+                    <RichTextEditor
+                      value={(editingArticle as any).noi_dung_en || ''}
+                      onChange={(html) => setEditingArticle((prev) => ({ ...prev, noi_dung_en: html } as any))}
+                      minHeight={340}
+                      onUploadImage={async (file) => {
+                        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                        const filePath = `articles/content_${Date.now()}_${Math.random()
+                          .toString(36)
+                          .substring(2, 6)}.${fileExt}`;
+                        const { error } = await supabase.storage
+                          .from('hinh_anh')
+                          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+                        if (error) throw error;
+                        const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+                        return urlData.publicUrl;
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* COMMON FIELDS */}
+              <div className="pt-4 border-t border-slate-200 space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thứ tự hiển thị:
+                    Ảnh bìa bài viết:
                   </label>
-                  <input
-                    type="number"
-                    value={editingArticle.thu_tu ?? 0}
-                    onChange={(e) =>
-                      setEditingArticle((prev) => ({
-                        ...prev,
-                        thu_tu: parseInt(e.target.value, 10) || 0,
-                      }))
-                    }
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                  <AdminImageInput
+                    value={editingArticle.hinh_anh || ''}
+                    onChange={(url) => setEditingArticle((prev) => ({ ...prev, hinh_anh: url }))}
+                    folder="articles"
+                    label=""
+                    uploadButtonLabel="Tải Ảnh Bìa"
+                    pasteButtonLabel="Dán Link Ảnh"
+                    onNotification={showNotification}
                   />
                 </div>
 
-                <div className="pt-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Thời gian đọc dự kiến:
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={editingArticle.kich_hoat !== false}
-                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
-                      className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
+                      type="text"
+                      value={editingArticle.thoi_gian_doc || ''}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, thoi_gian_doc: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                     />
-                    <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị ngoài website</span>
-                  </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Ngày đăng bài:
+                    </label>
+                    <input
+                      type="text"
+                      value={editingArticle.ngay_dang || ''}
+                      onChange={(e) => setEditingArticle((prev) => ({ ...prev, ngay_dang: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Thứ tự hiển thị:
+                    </label>
+                    <input
+                      type="number"
+                      value={editingArticle.thu_tu ?? 0}
+                      onChange={(e) =>
+                        setEditingArticle((prev) => ({
+                          ...prev,
+                          thu_tu: parseInt(e.target.value, 10) || 0,
+                        }))
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingArticle.kich_hoat !== false}
+                        onChange={(e) => setEditingArticle((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                        className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
+                      />
+                      <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị ngoài website</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
