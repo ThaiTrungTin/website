@@ -30,6 +30,7 @@ import {
   Menu,
   ChevronRight,
   Sparkles,
+  Globe,
   Save,
   ShieldCheck,
   Send,
@@ -662,6 +663,9 @@ export default function AdminDashboardPage() {
   const { config: globalConfig, refreshConfig } = useSystemConfig();
   const [configForm, setConfigForm] = useState<CauHinhRecord>(globalConfig);
   const [isConfigSaving, setIsConfigSaving] = useState(false);
+  const [aboutSubLang, setAboutSubLang] = useState<'vi' | 'en'>('vi');
+  const [sloganSubLang, setSloganSubLang] = useState<'vi' | 'en'>('vi');
+  const [aboutSlideLang, setAboutSlideLang] = useState<'vi' | 'en'>('vi');
   const [isTranslatingAbout, setIsTranslatingAbout] = useState(false);
   const [isTranslatingSlogans, setIsTranslatingSlogans] = useState(false);
   const [isTranslatingAboutSlide, setIsTranslatingAboutSlide] = useState(false);
@@ -1779,6 +1783,40 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  const handleAutoTranslateAboutSlide = async () => {
+    if (!editingAboutSlide?.tieu_de) {
+      showNotification('error', 'Vui lòng nhập Tiêu đề Tiếng Việt trước khi dịch!');
+      return;
+    }
+    setIsTranslatingAboutSlide(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            tieu_de: editingAboutSlide.tieu_de || '',
+            alt_text: editingAboutSlide.alt_text || '',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingAboutSlide((prev) => (prev ? {
+          ...prev,
+          tieu_de_en: data.translations.tieu_de || (prev as any).tieu_de_en,
+          alt_text_en: data.translations.alt_text || (prev as any).alt_text_en,
+        } : null));
+        setAboutSlideLang('en');
+        showNotification('success', 'Đã chuyển đổi Slide sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', 'Lỗi dịch: ' + err.message);
+    } finally {
+      setIsTranslatingAboutSlide(false);
+    }
+  };
+
   const handleAddNewAboutSlide = () => {
     const nextOrder = aboutSlides.length > 0 ? Math.max(...aboutSlides.map((s) => s.thu_tu || 0)) + 1 : 1;
     setEditingAboutSlide({
@@ -1841,6 +1879,8 @@ export default function AdminDashboardPage() {
         duong_dan_anh: editingAboutSlide.duong_dan_anh.trim(),
         tieu_de: editingAboutSlide.tieu_de?.trim() || 'Hình ảnh Bệnh viện Pet M&M',
         alt_text: editingAboutSlide.alt_text?.trim() || 'Đội ngũ chuyên môn',
+        tieu_de_en: (editingAboutSlide as any).tieu_de_en?.trim() || '',
+        alt_text_en: (editingAboutSlide as any).alt_text_en?.trim() || '',
         chuyen_muc: 'gioi_thieu',
         thu_tu: Number(editingAboutSlide.thu_tu) || 0,
         kich_hoat: editingAboutSlide.kich_hoat !== false,
@@ -3231,175 +3271,405 @@ export default function AdminDashboardPage() {
               )}
 
               {/* NHÁNH 2: GIỚI THIỆU & TRIẾT LÝ */}
+              {/* NHÁNH 2: GIỚI THIỆU & TRIẾT LÝ (SONG NGỮ VIỆT - ANH & AI DỊCH THUẬT) */}
               {configSubTab === 'about' && (
                 <form onSubmit={handleSaveConfig} className="space-y-6">
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
-                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút Dịch AI */}
+                    <div className="pb-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                          <Heart className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)</span>
-                        </h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Quản lý tiêu đề, câu chuyện sứ mệnh, cam kết y khoa và bác sĩ đại diện chuyên môn.
+                        <div className="flex items-center gap-2">
+                          <Heart className="w-5 h-5 text-[#2D5A27]" />
+                          <h2 className="text-base font-bold text-slate-900">
+                            Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)
+                          </h2>
+                          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            Database Supabase
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Hỗ trợ song ngữ (Tiếng Việt &amp; English). Dữ liệu được lưu trực tiếp vào Database Supabase.
                         </p>
                       </div>
-                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                        Về Pet M&amp;M
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Huy hiệu trên tiêu đề:
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.gioi_thieu_huy_hieu || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, gioi_thieu_huy_hieu: e.target.value }))
-                          }
-                          placeholder="SỨ MỆNH & TRIẾT LÝ PET M&M"
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                        />
-                      </div>
+                      {/* Bộ nút chuyển ngôn ngữ & Nút Dịch AI */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Tab Ngôn ngữ */}
+                        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setAboutSubLang('vi')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              aboutSubLang === 'vi'
+                                ? 'bg-white text-[#2D5A27] shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <span>🇻🇳</span>
+                            <span>Tiếng Việt</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAboutSubLang('en')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              aboutSubLang === 'en'
+                                ? 'bg-[#2D5A27] text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <span>🇬🇧</span>
+                            <span>English</span>
+                          </button>
+                        </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Dòng tiêu đề chính 1:
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.gioi_thieu_tieu_de_1 || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, gioi_thieu_tieu_de_1: e.target.value }))
-                          }
-                          placeholder="Nâng Tầm Chăm Sóc Y Khoa"
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Dòng tiêu đề 2 (Màu xanh rêu):
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.gioi_thieu_tieu_de_2 || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, gioi_thieu_tieu_de_2: e.target.value }))
-                          }
-                          placeholder="Bằng Trái Tim & Y Đức"
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold text-[#2D5A27] focus:border-[#2D5A27] focus:outline-none"
-                        />
+                        {/* Nút Dịch Bằng AI */}
+                        <button
+                          type="button"
+                          onClick={handleAutoTranslateAbout}
+                          disabled={isTranslatingAbout}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                          title="Tự động dịch toàn bộ nội dung Tiếng Việt sang Tiếng Anh chuyên ngành Thú y bằng AI"
+                        >
+                          {isTranslatingAbout ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isTranslatingAbout ? 'AI đang dịch...' : '⚡ Dịch sang English bằng AI'}</span>
+                        </button>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Nội dung đoạn văn sứ mệnh:
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={configForm.gioi_thieu_mo_ta || ''}
-                        onChange={(e) =>
-                          setConfigForm((prev) => ({ ...prev, gioi_thieu_mo_ta: e.target.value }))
-                        }
-                        placeholder="Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, Pet M&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất."
-                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y leading-relaxed"
-                      />
-                    </div>
+                    {/* Banner thông báo chế độ chỉnh sửa */}
+                    {aboutSubLang === 'vi' ? (
+                      <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🇻🇳</span>
+                          <span>
+                            <strong>Bản Tiếng Việt:</strong> Hiển thị mặc định cho khách hàng trong nước.
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-emerald-700 font-medium">Bảng cau_hinh</span>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🇬🇧</span>
+                          <span>
+                            <strong>Bản English (Lưu Database):</strong> Hiển thị khi khách quốc tế chọn 🇬🇧 EN trên website.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAutoTranslateAbout}
+                          disabled={isTranslatingAbout}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer"
+                        >
+                          <Sparkles className="w-3 h-3 text-amber-500" />
+                          <span>Đồng bộ lại từ Tiếng Việt bằng AI</span>
+                        </button>
+                      </div>
+                    )}
 
-                    <div className="pt-3 border-t border-slate-100 space-y-3">
-                      <h3 className="text-xs font-bold text-slate-800">
-                        Khối &ldquo;Cam Kết Vàng Y Khoa&rdquo; &amp; Bác Sĩ Đại Diện:
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            Tiêu đề khối cam kết:
-                          </label>
-                          <input
-                            type="text"
-                            value={configForm.gioi_thieu_cam_ket_tieu_de || ''}
-                            onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, gioi_thieu_cam_ket_tieu_de: e.target.value }))
-                            }
-                            placeholder="Cam Kết Vàng Y Khoa"
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                          />
+                    {/* CÁC TRƯỜNG DỮ LIỆU TIẾNG VIỆT */}
+                    {aboutSubLang === 'vi' && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Huy hiệu trên tiêu đề:
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_huy_hieu || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_huy_hieu: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">VD: SỨ MỆNH &amp; TRIẾT LÝ PET M&amp;M</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Dòng tiêu đề chính 1:
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_tieu_de_1 || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_tieu_de_1: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">VD: Nâng Tầm Chăm Sóc Y Khoa</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Dòng tiêu đề 2 (Màu xanh rêu):
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_tieu_de_2 || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_tieu_de_2: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold text-[#2D5A27] focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">VD: Bằng Trái Tim &amp; Y Đức</p>
+                          </div>
                         </div>
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            Phụ đề khối cam kết:
+                            Nội dung đoạn văn sứ mệnh:
                           </label>
-                          <input
-                            type="text"
-                            value={configForm.gioi_thieu_cam_ket_phu || ''}
+                          <textarea
+                            rows={4}
+                            value={configForm.gioi_thieu_mo_ta || ''}
                             onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, gioi_thieu_cam_ket_phu: e.target.value }))
+                              setConfigForm((prev) => ({ ...prev, gioi_thieu_mo_ta: e.target.value }))
                             }
-                            placeholder="Bảo vệ sức khỏe trọn đời cho thú cưng"
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y leading-relaxed"
                           />
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Câu trích dẫn tâm niệm y đức:
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.gioi_thieu_trich_dan || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, gioi_thieu_trich_dan: e.target.value }))
-                          }
-                          placeholder="Chúng tôi coi từng nhịp thở, từng ánh mắt của các bé là trách nhiệm và niềm tự hào lớn nhất trong sự nghiệp y khoa của mình."
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 italic focus:border-[#2D5A27] focus:outline-none"
-                        />
-                      </div>
+                        <div className="pt-3 border-t border-slate-100 space-y-3">
+                          <h3 className="text-xs font-bold text-slate-800">
+                            Khối &ldquo;Cam Kết Vàng Y Khoa&rdquo; &amp; Bác Sĩ Đại Diện:
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Tiêu đề khối cam kết:
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_cam_ket_tieu_de || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_cam_ket_tieu_de: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Phụ đề khối cam kết:
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_cam_ket_phu || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_cam_ket_phu: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Câu trích dẫn tâm niệm y đức:
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_trich_dan || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_trich_dan: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 italic focus:border-[#2D5A27] focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Họ tên bác sĩ đại diện:
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_bac_si_ten || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_bac_si_ten: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold text-[#2D5A27] focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Chức danh bác sĩ:
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_bac_si_chuc_danh || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_bac_si_chuc_danh: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CÁC TRƯỜNG DỮ LIỆU TIẾNG ANH (ENGLISH / DATABASE) */}
+                    {aboutSubLang === 'en' && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                              <span>Badge on title (EN):</span>
+                              <span className="text-[10px] text-blue-600 font-normal">gioi_thieu_huy_hieu_en</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_huy_hieu_en || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_huy_hieu_en: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">Ex: MISSION &amp; PHILOSOPHY</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                              <span>Main title line 1 (EN):</span>
+                              <span className="text-[10px] text-blue-600 font-normal">gioi_thieu_tieu_de_1_en</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_tieu_de_1_en || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_tieu_de_1_en: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">Ex: Elevating Veterinary Medicine</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                              <span>Main title line 2 (EN):</span>
+                              <span className="text-[10px] text-blue-600 font-normal">gioi_thieu_tieu_de_2_en</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_tieu_de_2_en || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_tieu_de_2_en: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold text-[#2D5A27] focus:border-[#2D5A27] focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">Ex: With Integrity &amp; Compassion</p>
+                          </div>
+                        </div>
+
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            Họ tên bác sĩ đại diện:
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Mission description (EN):</span>
+                            <span className="text-[10px] text-blue-600 font-normal">gioi_thieu_mo_ta_en</span>
                           </label>
-                          <input
-                            type="text"
-                            value={configForm.gioi_thieu_bac_si_ten || ''}
+                          <textarea
+                            rows={4}
+                            value={configForm.gioi_thieu_mo_ta_en || ''}
                             onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, gioi_thieu_bac_si_ten: e.target.value }))
+                              setConfigForm((prev) => ({ ...prev, gioi_thieu_mo_ta_en: e.target.value }))
                             }
-                            placeholder="BS. CKI Nguyễn Minh Tuấn"
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold text-[#2D5A27] focus:border-[#2D5A27] focus:outline-none"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y leading-relaxed"
                           />
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            Chức danh bác sĩ:
-                          </label>
-                          <input
-                            type="text"
-                            value={configForm.gioi_thieu_bac_si_chuc_danh || ''}
-                            onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, gioi_thieu_bac_si_chuc_danh: e.target.value }))
-                            }
-                            placeholder="Giám Đốc Chuyên Môn Hệ Thống Bệnh Viện Pet M&M"
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                          />
+                        <div className="pt-3 border-t border-slate-100 space-y-3">
+                          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                            <span>Commitment &amp; Doctor Representative (English):</span>
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Commitment title (EN):
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_cam_ket_tieu_de_en || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_cam_ket_tieu_de_en: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Commitment subtitle (EN):
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_cam_ket_phu_en || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_cam_ket_phu_en: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Veterinary medical quote (EN):
+                            </label>
+                            <input
+                              type="text"
+                              value={configForm.gioi_thieu_trich_dan_en || ''}
+                              onChange={(e) =>
+                                setConfigForm((prev) => ({ ...prev, gioi_thieu_trich_dan_en: e.target.value }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 italic focus:border-[#2D5A27] focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Doctor representative name (EN):
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_bac_si_ten_en || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_bac_si_ten_en: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold text-[#2D5A27] focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Doctor title / position (EN):
+                              </label>
+                              <input
+                                type="text"
+                                value={configForm.gioi_thieu_bac_si_chuc_danh_en || ''}
+                                onChange={(e) =>
+                                  setConfigForm((prev) => ({ ...prev, gioi_thieu_bac_si_chuc_danh_en: e.target.value }))
+                                }
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Nút Submit lưu nhánh Giới thiệu */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
                     <p className="text-xs text-slate-500">
-                      Nội dung giới thiệu và sứ mệnh sẽ được cập nhật trên trang chủ ngay sau khi lưu.
+                      Nội dung song ngữ Việt &amp; Anh sẽ được lưu trực tiếp vào bảng <code className="text-emerald-700 font-semibold">cau_hinh</code> trên Supabase.
                     </p>
                     <button
                       type="submit"
@@ -3407,13 +3677,12 @@ export default function AdminDashboardPage() {
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
                     >
                       {isConfigSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      <span>{isConfigSaving ? 'Đang lưu...' : 'Lưu Giới Thiệu & Triết Lý'}</span>
+                      <span>{isConfigSaving ? 'Đang lưu...' : 'Lưu Giới Thiệu & Triết Lý (Cả Việt & Anh)'}</span>
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* NHÁNH 3: SLIDE ẢNH GIỚI THIỆU */}
               {configSubTab === 'slides' && (
                 <div className="space-y-6">
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
@@ -3623,6 +3892,68 @@ export default function AdminDashboardPage() {
               {/* NHÁNH 5: KHẨU HIỆU & SLOGAN */}
               {configSubTab === 'slogans' && (
                 <form onSubmit={handleSaveConfig} className="space-y-6">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
+                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D5A27] flex items-center justify-center border border-emerald-200">
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <div className="text-xs font-bold text-slate-900">
+                          Khẩu Hiệu &amp; Slogan Hệ Thống
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Tab Ngôn ngữ */}
+                      <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setSloganSubLang('vi')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            sloganSubLang === 'vi'
+                              ? 'bg-[#2D5A27] text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                          <span>Tiếng Việt</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSloganSubLang('en')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            sloganSubLang === 'en'
+                              ? 'bg-[#2D5A27] text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <UKFlag className="w-4 h-3 rounded-[2px]" />
+                          <span>English</span>
+                        </button>
+                      </div>
+
+                      {/* Nút Chuyển đổi ENG */}
+                      <button
+                        type="button"
+                        onClick={handleAutoTranslateSlogans}
+                        disabled={isTranslatingSlogans}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                        title="Tự động dịch toàn bộ khẩu hiệu Tiếng Việt sang Tiếng Anh bằng AI"
+                      >
+                        {isTranslatingSlogans ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5" />
+                        )}
+                        <span>{isTranslatingSlogans ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Slogan Đầu Trang */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
                     <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
@@ -3640,36 +3971,79 @@ export default function AdminDashboardPage() {
                       </span>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Tiêu đề khẩu hiệu đầu trang:
-                      </label>
-                      <input
-                        type="text"
-                        value={configForm.slogan_dau_trang_tieu_de || ''}
-                        onChange={(e) =>
-                          setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de: e.target.value }))
-                        }
-                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                      />
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Mẹo: Có thể dùng dấu phẩy &ldquo;,&rdquo; để ngắt câu xuống dòng và làm nổi bật nửa sau in nghiêng màu xanh rêu.
-                      </p>
-                    </div>
+                    {sloganSubLang === 'vi' ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Tiêu đề khẩu hiệu đầu trang (Tiếng Việt):</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={configForm.slogan_dau_trang_tieu_de || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de: e.target.value }))
+                            }
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                          />
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Mẹo: Có thể dùng dấu phẩy &ldquo;,&rdquo; để ngắt câu xuống dòng và làm nổi bật nửa sau in nghiêng màu xanh rêu.
+                          </p>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Nội dung chạy slide chân banner (Sứ mệnh y khoa):
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={configForm.slogan_dau_trang_noi_dung || ''}
-                        onChange={(e) =>
-                          setConfigForm((prev) => ({ ...prev, slogan_dau_trang_noi_dung: e.target.value }))
-                        }
-                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Nội dung chạy slide chân banner (Tiếng Việt):</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={configForm.slogan_dau_trang_noi_dung || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_noi_dung: e.target.value }))
+                            }
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                            <UKFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Tiêu đề khẩu hiệu đầu trang (English):</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={configForm.slogan_dau_trang_tieu_de_en || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de_en: e.target.value }))
+                            }
+                            placeholder="Cherishing Every Breath, Embracing Life with Peace."
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                          />
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Tip: Use a comma &ldquo;,&rdquo; to split into two animated lines.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                            <UKFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Nội dung chạy slide chân banner (English):</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={configForm.slogan_dau_trang_noi_dung_en || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_noi_dung_en: e.target.value }))
+                            }
+                            placeholder="Standardized veterinary medicine combined with natural recovery therapies..."
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Slogan Cuối Trang & Giấy Phép */}
@@ -3689,54 +4063,74 @@ export default function AdminDashboardPage() {
                       </span>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Tiêu đề khẩu hiệu cuối trang:
-                      </label>
-                      <input
-                        type="text"
-                        value={configForm.slogan_cuoi_trang_tieu_de || ''}
-                        onChange={(e) =>
-                          setConfigForm((prev) => ({ ...prev, slogan_cuoi_trang_tieu_de: e.target.value }))
-                        }
-                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                      />
-                    </div>
+                    {sloganSubLang === 'vi' ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Tiêu đề khẩu hiệu cuối trang (Tiếng Việt):</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={configForm.slogan_cuoi_trang_tieu_de || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_cuoi_trang_tieu_de: e.target.value }))
+                            }
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Nội dung mô tả sứ mệnh cuối trang:
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={configForm.slogan_cuoi_trang_noi_dung || ''}
-                        onChange={(e) =>
-                          setConfigForm((prev) => ({ ...prev, slogan_cuoi_trang_noi_dung: e.target.value }))
-                        }
-                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Nội dung mô tả sứ mệnh cuối trang (Tiếng Việt):</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={configForm.slogan_cuoi_trang_noi_dung || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_cuoi_trang_noi_dung: e.target.value }))
+                            }
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                            <UKFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Tiêu đề khẩu hiệu cuối trang (English):</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={configForm.slogan_cuoi_trang_tieu_de_en || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_cuoi_trang_tieu_de_en: e.target.value }))
+                            }
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Số giấy phép hoạt động thú y (Hiển thị hàng pháp lý chân trang):
-                      </label>
-                      <input
-                        type="text"
-                        value={configForm.giay_phep || ''}
-                        onChange={(e) =>
-                          setConfigForm((prev) => ({ ...prev, giay_phep: e.target.value }))
-                        }
-                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-mono focus:border-[#2D5A27] focus:outline-none"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                            <UKFlag className="w-4 h-3 rounded-[2px]" />
+                            <span>Nội dung mô tả sứ mệnh cuối trang (English):</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={configForm.slogan_cuoi_trang_noi_dung_en || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, slogan_cuoi_trang_noi_dung_en: e.target.value }))
+                            }
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Nút Submit lưu nhánh Slogans */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <p className="text-xs text-slate-500">
-                      Khẩu hiệu và giấy phép sẽ được cập nhật tức thì trên toàn bộ trang web.
-                    </p>
+                  <div className="flex justify-end pt-2">
                     <button
                       type="submit"
                       disabled={isConfigSaving}
@@ -7037,7 +7431,7 @@ export default function AdminDashboardPage() {
       {/* ========================================================= */}
       {/* 10. MODAL THÊM / CHỈNH SỬA SLIDE ẢNH KHUNG GIỚI THIỆU     */}
       {/* ========================================================= */}
-      {editingAboutSlide && (
+            {editingAboutSlide && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
@@ -7051,6 +7445,55 @@ export default function AdminDashboardPage() {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* THANH CHUYỂN ĐỔI NGÔN NGỮ (TIẾNG VIỆT & ENGLISH) */}
+            <div className="px-6 pt-4 pb-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                {/* Tab Ngôn ngữ */}
+                <div className="inline-flex p-1 bg-slate-200/80 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setAboutSlideLang('vi')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      aboutSlideLang === 'vi'
+                        ? 'bg-[#2D5A27] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Tiếng Việt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAboutSlideLang('en')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      aboutSlideLang === 'en'
+                        ? 'bg-[#2D5A27] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <UKFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>English</span>
+                  </button>
+                </div>
+
+                {/* Nút Chuyển đổi ENG */}
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateAboutSlide}
+                  disabled={isTranslatingAboutSlide}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                  title="Tự động dịch Tiêu đề chú thích & Huy hiệu sang Tiếng Anh chuyên ngành Thú y bằng AI"
+                >
+                  {isTranslatingAboutSlide ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingAboutSlide ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSaveAboutSlide} className="p-6 overflow-y-auto space-y-4">
@@ -7069,32 +7512,64 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tiêu đề chú thích ảnh: *
-                </label>
-                <input
-                  type="text"
-                  value={editingAboutSlide.tieu_de || ''}
-                  onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de: e.target.value }))}
-                  required
-                  placeholder="Nhập tiêu đề chú thích ảnh"
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
+              {/* NỘI DUNG TIẾNG VIỆT */}
+              {aboutSlideLang === 'vi' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Tiêu đề chú thích ảnh: *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingAboutSlide.tieu_de || ''}
+                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de: e.target.value }))}
+                      required
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Huy hiệu góc ảnh:
-                </label>
-                <input
-                  type="text"
-                  value={editingAboutSlide.alt_text || ''}
-                  onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text: e.target.value }))}
-                  placeholder="VD: Đội ngũ chuyên môn, Cơ sở vật chất..."
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Huy hiệu góc ảnh:
+                    </label>
+                    <input
+                      type="text"
+                      value={editingAboutSlide.alt_text || ''}
+                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* NỘI DUNG ENGLISH */}
+              {aboutSlideLang === 'en' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Tiêu đề chú thích ảnh (English):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingAboutSlide.tieu_de_en || ''}
+                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de_en: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Huy hiệu góc ảnh (English):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingAboutSlide.alt_text_en || ''}
+                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text_en: e.target.value }))}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-2 gap-4 items-center">
                 <div>
@@ -7138,7 +7613,7 @@ export default function AdminDashboardPage() {
                   className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
-                  <span>{isAboutSlideSaving ? 'Đang lưu...' : 'Lưu Ảnh Slide'}</span>
+                  <span>{isAboutSlideSaving ? 'Đang lưu...' : 'Lưu Slide'}</span>
                 </button>
               </div>
             </form>
