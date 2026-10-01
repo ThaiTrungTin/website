@@ -5,6 +5,40 @@ import { sendBookingConfirmationEmail, sendMail, getSmtpConfig, formatDateDMY } 
 // In-memory rate limiting map chống spam: key = sđt_ip, value = timestamp
 const rateLimitMap = new Map<string, number>();
 
+// In-memory map theo dõi số lượng đặt lịch theo IP trong ngày: key = `${todayVN}_${ip}`, value = count
+const dailyIpCountMap = new Map<string, number>();
+
+function normalizeIp(ip: string): string {
+  if (ip === '::1' || ip === '::ffff:127.0.0.1') return '127.0.0.1';
+  return ip.replace(/^::ffff:/, '');
+}
+
+function getClientIp(req: NextRequest): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0].trim();
+    if (first) return normalizeIp(first);
+  }
+  const realIp = req.headers.get('x-real-ip');
+  if (realIp) return normalizeIp(realIp.trim());
+  const cfConnectingIp = req.headers.get('cf-connecting-ip');
+  if (cfConnectingIp) return normalizeIp(cfConnectingIp.trim());
+  return '127.0.0.1';
+}
+
+function getTodayVN(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -43,6 +77,51 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Xác định IP và ngày theo giờ Việt Nam
+    const clientIp = getClientIp(req);
+    const todayVN = getTodayVN();
+    const dailyIpKey = `${todayVN}_${clientIp}`;
+
+    // ========================================================
+    // TÍNH NĂNG CHỐNG SPAM: GIỚI HẠN 1 IP TỐI ĐA 3 LỊCH HẸN / NGÀY
+    // Không hiển thị bất kỳ dấu hiệu/cảnh báo nào để khách biết trước.
+    // Nếu bắt đầu gửi tới tin thứ 4 mới chặn và báo lỗi song ngữ:
+    // - VI: "Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày"
+    // - EN: "Maximum of 3 appointments allowed per day"
+    // ========================================================
+    let ipTodayCount = dailyIpCountMap.get(dailyIpKey) || 0;
+
+    // Tra cứu thêm số lượng từ Supabase lich_hen nếu bộ nhớ đệm < 3 (phòng khi serverless reload)
+    if (ipTodayCount < 3 && clientIp !== '127.0.0.1' && clientIp !== 'unknown') {
+      try {
+        const startOfDayISO = new Date(`${todayVN}T00:00:00+07:00`).toISOString();
+        const { count, error } = await supabaseAdmin
+          .from('lich_hen')
+          .select('id', { count: 'exact', head: true })
+          .gte('ngay_tao', startOfDayISO)
+          .ilike('ghi_chu', `%[IP: ${clientIp}]%`);
+
+        if (!error && typeof count === 'number') {
+          ipTodayCount = Math.max(ipTodayCount, count);
+          dailyIpCountMap.set(dailyIpKey, ipTodayCount);
+        }
+      } catch (dbErr) {
+        console.warn('Lỗi kiểm tra số lượt IP từ Supabase:', dbErr);
+      }
+    }
+
+    if (ipTodayCount >= 3) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: isEn
+            ? 'Maximum of 3 appointments allowed per day'
+            : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày',
+        },
+        { status: 429 }
+      );
+    }
+
     // Validate bắt buộc
     if (!ownerName || !ownerName.trim()) {
       return NextResponse.json(
@@ -54,7 +133,7 @@ export async function POST(req: NextRequest) {
     const cleanPhone = (phone || '').replace(/\s+/g, '');
     const numOnly = cleanPhone.replace(/\D/g, '');
 
-    // 2. TÍNH NĂNG CHỐNG SPAM 2: Kiểm tra số điện thoại hợp lệ, loại trừ số rác / lặp
+    // 2. TÍNH NĂNG CHỐNG SPAM: Kiểm tra số điện thoại hợp lệ, loại trừ số rác / lặp
     if (numOnly.length < 9 || numOnly.length > 11) {
       return NextResponse.json(
         { success: false, message: isEn ? 'Please enter a valid phone number (9-11 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số)' },
@@ -69,8 +148,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. TÍNH NĂNG CHỐNG SPAM 3: Rate Limiting theo SĐT & IP (Cooldown 15 giây)
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    // 3. TÍNH NĂNG CHỐNG SPAM: Rate Limiting theo SĐT & IP (Cooldown 15 giây)
     const rateLimitKey = `${numOnly}_${clientIp}`;
     const now = Date.now();
     const lastSubmitTime = rateLimitMap.get(rateLimitKey);
@@ -109,11 +187,10 @@ export async function POST(req: NextRequest) {
 
     const cleanEmail = email ? email.trim() : '';
     const cleanNote = note ? note.trim() : '';
+    const ipTag = `[IP: ${clientIp}]`;
 
-    // Gộp email vào ghi chú để lưu trữ an toàn trong Supabase lich_hen
-    const finalGhiChu = cleanEmail
-      ? `[Email: ${cleanEmail}] ${cleanNote}`.trim()
-      : cleanNote;
+    // Gộp email và IP vào ghi chú để lưu trữ an toàn trong Supabase lich_hen
+    const finalGhiChu = `${cleanEmail ? `[Email: ${cleanEmail}] ` : ''}${cleanNote ? `${cleanNote} ` : ''}${ipTag}`.trim();
 
     const displayService = service && service.trim()
       ? service.trim()
@@ -148,6 +225,9 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Cập nhật số lần gửi thành công của IP trong ngày
+    dailyIpCountMap.set(dailyIpKey, ipTodayCount + 1);
 
     // 2. Gửi email xác nhận nếu khách có cung cấp email
     let emailSent = false;

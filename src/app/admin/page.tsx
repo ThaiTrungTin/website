@@ -1721,13 +1721,13 @@ export default function AdminDashboardPage() {
 
   const extractEmailAndNote = (ghiChu?: string | null) => {
     if (!ghiChu) return { email: null, cleanNote: '' };
-    const match = ghiChu.match(/\[Email:\s*([^\]]+)\]/i);
-    if (match) {
-      const email = match[1].trim();
-      const cleanNote = ghiChu.replace(match[0], '').trim();
-      return { email, cleanNote };
-    }
-    return { email: null, cleanNote: ghiChu.trim() };
+    const emailMatch = ghiChu.match(/\[Email:\s*([^\]]+)\]/i);
+    const email = emailMatch ? emailMatch[1].trim() : null;
+    const cleanNote = ghiChu
+      .replace(/\[Email:\s*[^\]]+\]/gi, '')
+      .replace(/\[IP:\s*[^\]]+\]/gi, '')
+      .trim();
+    return { email, cleanNote };
   };
 
   const handleResendConfirmEmail = async (app: LichHenRecord) => {

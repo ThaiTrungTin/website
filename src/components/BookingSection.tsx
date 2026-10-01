@@ -215,6 +215,20 @@ export default function BookingSection({
     };
   }, []);
 
+// Helper lấy ngày hiện tại theo giờ Việt Nam (YYYY-MM-DD)
+const getTodayDateVN = () => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+};
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -235,7 +249,30 @@ export default function BookingSection({
       return;
     }
 
-    // 2. CHỐNG SPAM: Rate limiting / Cooldown 15 giây tránh gửi lặp
+    // ========================================================
+    // TÍNH NĂNG CHỐNG SPAM: GIỚI HẠN TỐI ĐA 3 TIN/NGÀY THEO THIẾT BỊ / IP
+    // Không hiển thị bất kỳ dấu hiệu/cảnh báo nào để khách biết trước.
+    // Nếu bắt đầu gửi tới tin thứ 4 mới chặn và hiển thị thông báo lỗi:
+    // - VI: "Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày"
+    // - EN: "Maximum of 3 appointments allowed per day"
+    // ========================================================
+    const todayVN = getTodayDateVN();
+    const localDailyKey = `petmm_booking_count_${todayVN}`;
+    let localCount = 0;
+    try {
+      localCount = parseInt(localStorage.getItem(localDailyKey) || '0', 10);
+    } catch {}
+
+    if (localCount >= 3) {
+      setErrorMsg(
+        isEn
+          ? 'Maximum of 3 appointments allowed per day'
+          : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày'
+      );
+      return;
+    }
+
+    // 2. CHỐNG SPAM: Rate limiting / Cooldown 15 giây tránh gửi lặp liên tục
     const now = Date.now();
     if (now - lastSubmitRef.current < 15000) {
       const waitSeconds = Math.ceil((15000 - (now - lastSubmitRef.current)) / 1000);
@@ -327,9 +364,28 @@ export default function BookingSection({
         isEn,
         hp_website: hpWebsite,
       }),
-    }).catch((err) => {
-      console.warn('Lỗi xử lý ngầm API booking:', err);
-    });
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok || (data && !data.success)) {
+          // Bị từ chối (ví dụ đã gửi quá 3 tin trên IP này ở tab/trình duyệt khác)
+          setBookingResult(null);
+          setErrorMsg(
+            data?.message ||
+              (isEn
+                ? 'Maximum of 3 appointments allowed per day'
+                : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày')
+          );
+          return;
+        }
+        // Gửi thành công: Tăng bộ đếm trong ngày của thiết bị
+        try {
+          localStorage.setItem(localDailyKey, String(localCount + 1));
+        } catch {}
+      })
+      .catch((err) => {
+        console.warn('Lỗi xử lý ngầm API booking:', err);
+      });
   };
 
   const copyBookingCode = () => {
@@ -337,17 +393,6 @@ export default function BookingSection({
     navigator.clipboard.writeText(bookingResult.code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const resetForm = () => {
-    setBookingResult(null);
-    setOwnerName('');
-    setPhone('');
-    setEmail('');
-    setPetName('');
-    setService('');
-    setNote('');
-    setHpWebsite('');
   };
 
   return (
@@ -453,18 +498,13 @@ export default function BookingSection({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={resetForm}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-800 hover:to-emerald-900 text-white transition shadow-md cursor-pointer"
-              >
-                {isEn ? 'Book Another' : 'Đặt Thêm Lịch Hẹn'}
-              </button>
+            <div className="flex items-center justify-center pt-2">
               <a
                 href="tel:0364605544"
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-800 hover:to-emerald-900 text-white transition shadow-md inline-flex items-center justify-center gap-2.5"
               >
-                Hotline: 0364 605 544
+                <PhoneCall className="w-4 h-4" />
+                <span>{isEn ? 'Clinic Hotline: 0364 605 544' : 'Tổng đài hỗ trợ: 0364 605 544'}</span>
               </a>
             </div>
           </div>
