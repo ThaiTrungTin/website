@@ -226,3 +226,160 @@ export async function sendTestEmail(toEmail: string, overrideConfig?: Partial<Sm
     overrideConfig,
   });
 }
+
+// GỬI EMAIL XÁC NHẬN ĐẶT LỊCH HẸN CHO KHÁCH HÀNG
+export async function sendBookingConfirmationEmail({
+  toEmail,
+  bookingCode,
+  ownerName,
+  petName,
+  petType = 'dog',
+  branchName,
+  service,
+  dateTime,
+  note,
+  isEn = false,
+}: {
+  toEmail: string;
+  bookingCode: string;
+  ownerName: string;
+  petName: string;
+  petType?: string;
+  branchName: string;
+  service?: string;
+  dateTime: string;
+  note?: string;
+  isEn?: boolean;
+}) {
+  const petTypeDisplay = isEn
+    ? (petType === 'cat' ? 'Cat' : petType === 'dog' ? 'Dog' : 'Other Pet')
+    : (petType === 'cat' ? 'Mèo' : petType === 'dog' ? 'Chó' : 'Loài khác');
+
+  const subject = isEn
+    ? `[Pet M&M] Appointment Confirmed - Code #${bookingCode} for ${petName}`
+    : `[Pet M&M] Xác Nhận Lịch Hẹn #${bookingCode} cho bé ${petName}`;
+
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head><meta charset="utf-8"></head>
+  <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 32px 16px;">
+      <tr>
+        <td align="center">
+          <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+            <!-- Header Banner -->
+            <tr>
+              <td style="background: linear-gradient(135deg, #0B150A 0%, #173812 100%); padding: 36px 32px; text-align: center;">
+                <div style="display: inline-block; padding: 6px 16px; background-color: rgba(255, 184, 0, 0.15); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 9999px; margin-bottom: 12px;">
+                  <span style="color: #FFB800; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
+                    ${isEn ? 'VETERINARY APPOINTMENT' : 'LỊCH HẸN TRỰC TUYẾN'}
+                  </span>
+                </div>
+                <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">Bệnh Viện Thú Y Pet M&M</h1>
+                <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">
+                  ${isEn ? 'Appointment Booking Receipt' : 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc'}
+                </p>
+              </td>
+            </tr>
+
+            <!-- Content Body -->
+            <tr>
+              <td style="padding: 32px;">
+                <p style="margin: 0 0 12px 0; font-size: 15px; color: #1e293b; line-height: 1.6;">
+                  ${isEn ? 'Dear' : 'Kính gửi ba mẹ'} <strong>${ownerName}</strong>,
+                </p>
+                <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">
+                  ${isEn
+                    ? `Thank you for booking an appointment for <strong>${petName}</strong> at Pet M&M. We look forward to providing the best care for your furry family member.`
+                    : `Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>${petName}</strong> tại Hệ thống Bệnh Viện Thú Y Pet M&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.`}
+                </p>
+
+                <!-- Boarding Pass Box -->
+                <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 16px; padding: 20px 24px; margin-bottom: 24px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-bottom: 14px; border-bottom: 1px dashed #cbd5e1;">
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
+                          ${isEn ? 'BOOKING CODE' : 'MÃ TIẾP NHẬN'}
+                        </span>
+                        <div style="font-size: 24px; font-weight: 800; color: #2D5A27; font-family: monospace; margin-top: 4px;">
+                          ${bookingCode}
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-top: 14px;">
+                        <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px; color: #334155;">
+                          <tr>
+                            <td width="35%" style="color: #64748b;">${isEn ? 'Pet Name:' : 'Bé thú cưng:'}</td>
+                            <td><strong>${petName}</strong> (${petTypeDisplay})</td>
+                          </tr>
+                          <tr>
+                            <td style="color: #64748b;">${isEn ? 'Schedule:' : 'Thời gian hẹn:'}</td>
+                            <td><strong style="color: #2D5A27;">${dateTime}</strong></td>
+                          </tr>
+                          <tr>
+                            <td style="color: #64748b;">${isEn ? 'Branch:' : 'Cơ sở tiếp đón:'}</td>
+                            <td><strong>${branchName}</strong></td>
+                          </tr>
+                          ${service ? `
+                          <tr>
+                            <td style="color: #64748b;">${isEn ? 'Service:' : 'Dịch vụ yêu cầu:'}</td>
+                            <td>${service}</td>
+                          </tr>` : ''}
+                          ${note ? `
+                          <tr>
+                            <td style="color: #64748b;">${isEn ? 'Notes:' : 'Ghi chú thêm:'}</td>
+                            <td style="font-style: italic; color: #475569;">&ldquo;${note}&rdquo;</td>
+                          </tr>` : ''}
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- Helpful Tips -->
+                <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 14px 18px; margin-bottom: 24px;">
+                  <p style="margin: 0; font-size: 12px; color: #065f46; line-height: 1.6;">
+                    📌 <strong>${isEn ? 'Preparation Advice:' : 'Lưu ý chuẩn bị trước khi đến:'}</strong><br>
+                    ${isEn
+                      ? '• Please arrive 5-10 minutes prior to your time slot for check-in.<br>• Please leash dogs or keep cats in carriers for maximum safety.<br>• If your pet needs fasting for blood tests or surgery, please refrain from feeding 6-8 hours in advance.'
+                      : '• Vui lòng đến trước 5 - 10 phút để bé được kiểm tra sinh hiệu ban đầu.<br>• Ba mẹ nhớ đeo xích hoặc dùng túi/balo vận chuyển cho bé để đảm bảo an toàn.<br>• Nếu cần xét nghiệm máu hoặc phẫu thuật, vui lòng nhịn ăn cho bé trước 6 - 8 tiếng.'}
+                  </p>
+                </div>
+
+                <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
+                  ${isEn
+                    ? 'If you need to change your appointment or have an urgent query, please call our 24/7 hotline:'
+                    : 'Nếu cần thay đổi giờ hẹn hoặc cần tư vấn khẩn cấp, vui lòng liên hệ ngay:'}
+                  <br>
+                  <strong style="color: #2D5A27; font-size: 16px;">📞 0364 605 544</strong> (${isEn ? 'Emergency 24/7' : 'Hotline 24/7'})
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.6;">
+                  Hệ Thống Bệnh Viện Thú Y & Resort Nghỉ Dưỡng Chuẩn Quốc Tế Pet M&M<br>
+                  TP. Thủ Đức, TP. Hồ Chí Minh • Website: <a href="https://petmm.vn" style="color: #2D5A27; text-decoration: none;">petmm.vn</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  return sendMail({
+    to: toEmail,
+    subject,
+    html,
+    text: `Lịch hẹn #${bookingCode} cho bé ${petName} tại ${branchName} lúc ${dateTime} đã được tiếp nhận. Hotline hỗ trợ: 0364 605 544.`,
+  });
+}

@@ -1450,6 +1450,96 @@ export default function AdminDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'cho_xac_nhan' | 'da_xac_nhan' | 'da_kham' | 'da_huy'>('all');
   const [selectedAppointment, setSelectedAppointment] = useState<LichHenRecord | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [bookingCoverImage, setBookingCoverImage] = useState(
+    'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&q=80&w=1200'
+  );
+  const [isSavingBookingCover, setIsSavingBookingCover] = useState(false);
+  const [isSendingConfirmEmail, setIsSendingConfirmEmail] = useState(false);
+
+  const loadBookingCover = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('cau_hinh')
+        .select('logo_favicon')
+        .eq('id', 'booking_config')
+        .maybeSingle();
+      if (data?.logo_favicon && data.logo_favicon.trim()) {
+        setBookingCoverImage(data.logo_favicon.trim());
+      }
+    } catch (err) {
+      console.warn('Lỗi tải ảnh bìa lịch hẹn:', err);
+    }
+  }, []);
+
+  const handleSaveBookingCover = async () => {
+    setIsSavingBookingCover(true);
+    try {
+      const { error } = await supabase.from('cau_hinh').upsert([
+        {
+          id: 'booking_config',
+          logo_favicon: bookingCoverImage.trim(),
+          ngay_cap_nhat: new Date().toISOString(),
+        },
+      ]);
+      if (error) throw error;
+      showNotification('success', 'Đã lưu ảnh bìa form đặt lịch thành công!');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('petmm_booking_cover_updated', {
+            detail: { url: bookingCoverImage.trim() },
+          })
+        );
+      }
+    } catch (err: any) {
+      showNotification('error', `Lỗi lưu ảnh bìa: ${err.message}`);
+    } finally {
+      setIsSavingBookingCover(false);
+    }
+  };
+
+  const extractEmailAndNote = (ghiChu?: string | null) => {
+    if (!ghiChu) return { email: null, cleanNote: '' };
+    const match = ghiChu.match(/\[Email:\s*([^\]]+)\]/i);
+    if (match) {
+      const email = match[1].trim();
+      const cleanNote = ghiChu.replace(match[0], '').trim();
+      return { email, cleanNote };
+    }
+    return { email: null, cleanNote: ghiChu.trim() };
+  };
+
+  const handleResendConfirmEmail = async (app: LichHenRecord) => {
+    const { email, cleanNote } = extractEmailAndNote(app.ghi_chu);
+    if (!email) {
+      showNotification('error', 'Khách hàng này không cung cấp email khi đặt lịch!');
+      return;
+    }
+    setIsSendingConfirmEmail(true);
+    try {
+      const res = await fetch('/api/booking/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toEmail: email,
+          bookingCode: app.ma_lich_hen,
+          ownerName: app.ho_ten_chu,
+          petName: app.ten_thu_cung,
+          petType: app.loai_thu_cung,
+          branchName: app.ten_chi_nhanh || 'Hệ Thống Pet M&M',
+          service: app.dich_vu,
+          dateTime: `${app.gio_hen}, ngày ${app.ngay_hen}`,
+          note: cleanNote,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Lỗi gửi mail');
+      showNotification('success', `Đã gửi lại thư xác nhận thành công tới ${email}!`);
+    } catch (err: any) {
+      showNotification('error', `Không thể gửi mail: ${err.message}`);
+    } finally {
+      setIsSendingConfirmEmail(false);
+    }
+  };
 
   const loadAppointments = useCallback(async () => {
     setAppointmentsLoading(true);
@@ -2163,6 +2253,7 @@ export default function AdminDashboardPage() {
     loadServices();
     loadFaqs();
     loadAppointments();
+    loadBookingCover();
     loadReviews();
     loadTeamMembers();
     loadAboutSlides();
@@ -4931,6 +5022,82 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
+              {/* Cấu Hình Ảnh Bìa Form Đặt Lịch Hẹn (Modal & Trang Chủ) */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2D5A27] border border-emerald-200 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <span>Ảnh Bìa Form Đặt Lịch Hẹn (Modal &amp; Trang Chủ)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-[#2D5A27] font-semibold">Cột Phải</span>
+                      </h2>
+                      <p className="text-xs text-slate-500 font-light mt-0.5">
+                        Ảnh hiển thị ở nửa bên phải của form đặt lịch trực tuyến. Thay đổi sẽ lưu vào Database và cập nhật ngay lập tức.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full md:w-auto">
+                    <button
+                      type="button"
+                      disabled={isSavingBookingCover}
+                      onClick={handleSaveBookingCover}
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D5A27] hover:bg-emerald-800 transition shadow-sm cursor-pointer disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isSavingBookingCover ? 'Đang lưu...' : 'Lưu Ảnh Bìa'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookingCoverImage('https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&q=80&w=1200');
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
+                      title="Dùng ảnh mặc định của hệ thống"
+                    >
+                      Mặc Định
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-4 items-center">
+                  <div className="md:col-span-8">
+                    <AdminImageInput
+                      value={bookingCoverImage}
+                      onChange={(url) => setBookingCoverImage(url)}
+                      folder="banners"
+                      label="Đường dẫn hoặc tải ảnh bìa mới (hỗ trợ JPG, PNG, WEBP, dán từ clipboard)"
+                      uploadButtonLabel="Tải Ảnh Lên"
+                      pasteButtonLabel="Dán Ảnh (Ctrl+V)"
+                      onNotification={showNotification}
+                    />
+                  </div>
+                  <div className="md:col-span-4">
+                    <div className="relative h-28 sm:h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner group">
+                      {bookingCoverImage ? (
+                        <>
+                          <img
+                            src={bookingCoverImage}
+                            alt="Preview Ảnh Bìa Lịch Hẹn"
+                            className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end p-2.5">
+                            <span className="text-[10px] text-white font-medium">Xem trước ảnh bìa thực tế</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                          <ImageIcon className="w-6 h-6 mb-1" />
+                          <span>Chưa có ảnh bìa</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Status Quick Filter Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {[
@@ -4994,6 +5161,7 @@ export default function AdminDashboardPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredAppointments.map((app) => {
+                          const { email, cleanNote } = extractEmailAndNote(app.ghi_chu);
                           const statusBadges: Record<string, { label: string; class: string }> = {
                             cho_xac_nhan: { label: 'Chờ xác nhận', class: 'bg-amber-50 text-amber-800 border-amber-200' },
                             da_xac_nhan: { label: 'Đã xác nhận', class: 'bg-blue-50 text-blue-800 border-blue-200' },
@@ -5015,14 +5183,26 @@ export default function AdminDashboardPage() {
 
                               <td className="py-3 px-4">
                                 <div className="font-bold text-slate-900">{app.ho_ten_chu}</div>
-                                <a
-                                  href={`tel:${app.so_dien_thoai}`}
-                                  className="text-[11px] text-emerald-700 hover:underline font-mono inline-flex items-center gap-1 mt-0.5"
-                                  title="Bấm để gọi nhanh"
-                                >
-                                  <PhoneCall className="w-3 h-3" />
-                                  <span>{app.so_dien_thoai}</span>
-                                </a>
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                  <a
+                                    href={`tel:${app.so_dien_thoai}`}
+                                    className="text-[11px] text-emerald-700 hover:underline font-mono inline-flex items-center gap-1"
+                                    title="Bấm để gọi nhanh"
+                                  >
+                                    <PhoneCall className="w-3 h-3" />
+                                    <span>{app.so_dien_thoai}</span>
+                                  </a>
+                                  {email && (
+                                    <a
+                                      href={`mailto:${email}`}
+                                      className="text-[10px] text-blue-600 hover:underline font-mono inline-flex items-center gap-1"
+                                      title="Bấm để gửi email cho khách"
+                                    >
+                                      <Mail className="w-2.5 h-2.5 text-blue-500" />
+                                      <span className="truncate max-w-[140px]">{email}</span>
+                                    </a>
+                                  )}
+                                </div>
                               </td>
 
                               <td className="py-3 px-4">
@@ -5030,9 +5210,9 @@ export default function AdminDashboardPage() {
                                   <span>{app.loai_thu_cung === 'dog' ? '🐶' : app.loai_thu_cung === 'cat' ? '🐱' : '🐰'}</span>
                                   <span>{app.ten_thu_cung}</span>
                                 </div>
-                                {app.ghi_chu && (
-                                  <div className="text-[11px] text-slate-500 italic max-w-xs truncate mt-0.5" title={app.ghi_chu}>
-                                    &ldquo;{app.ghi_chu}&rdquo;
+                                {cleanNote && (
+                                  <div className="text-[11px] text-slate-500 italic max-w-xs truncate mt-0.5" title={cleanNote}>
+                                    &ldquo;{cleanNote}&rdquo;
                                   </div>
                                 )}
                               </td>
@@ -7532,78 +7712,106 @@ export default function AdminDashboardPage() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-5">
               {/* Card 1: Khách hàng & Liên hệ */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Thông tin chủ nuôi &amp; Liên hệ
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-500">Họ và tên:</span>
-                    <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedAppointment.ho_ten_chu}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Số điện thoại:</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="font-mono font-bold text-slate-900 text-sm">{selectedAppointment.so_dien_thoai}</p>
-                      <a
-                        href={`tel:${selectedAppointment.so_dien_thoai}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition shadow-xs"
-                      >
-                        <PhoneCall className="w-3 h-3" />
-                        <span>Gọi Ngay</span>
-                      </a>
+              {(() => {
+                const { email: customerEmail, cleanNote } = extractEmailAndNote(selectedAppointment.ghi_chu);
+                return (
+                  <>
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Thông tin chủ nuôi &amp; Liên hệ
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="text-slate-500">Họ và tên:</span>
+                          <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedAppointment.ho_ten_chu}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Số điện thoại:</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="font-mono font-bold text-slate-900 text-sm">{selectedAppointment.so_dien_thoai}</p>
+                            <a
+                              href={`tel:${selectedAppointment.so_dien_thoai}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition shadow-xs"
+                            >
+                              <PhoneCall className="w-3 h-3" />
+                              <span>Gọi Ngay</span>
+                            </a>
+                          </div>
+                        </div>
+
+                        {customerEmail && (
+                          <div className="sm:col-span-2 pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <span className="text-slate-500">Gmail / Email xác nhận:</span>
+                              <div className="flex items-center gap-1.5 mt-0.5 font-mono text-blue-700 font-bold text-xs">
+                                <Mail className="w-3.5 h-3.5 text-blue-600" />
+                                <a href={`mailto:${customerEmail}`} className="hover:underline">{customerEmail}</a>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={isSendingConfirmEmail}
+                              onClick={() => handleResendConfirmEmail(selectedAppointment)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>{isSendingConfirmEmail ? 'Đang gửi...' : 'Gửi Lại Email Xác Nhận'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Card 2: Thú cưng & Dịch vụ */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Thông tin thú cưng &amp; Dịch vụ đăng ký
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-500">Tên thú cưng:</span>
-                    <p className="font-bold text-slate-900 text-sm mt-0.5 flex items-center gap-1.5">
-                      <span>{selectedAppointment.loai_thu_cung === 'dog' ? '🐶' : selectedAppointment.loai_thu_cung === 'cat' ? '🐱' : '🐰'}</span>
-                      <span>{selectedAppointment.ten_thu_cung}</span>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Dịch vụ yêu cầu:</span>
-                    <p className="font-bold text-[#2D5A27] text-sm mt-0.5">{selectedAppointment.dich_vu}</p>
-                  </div>
-                  <div className="sm:col-span-2 pt-2 border-t border-slate-200">
-                    <span className="text-slate-500">Cơ sở đăng ký:</span>
-                    <p className="font-semibold text-slate-800 mt-0.5">{selectedAppointment.ten_chi_nhanh || 'Chưa xác định cơ sở'}</p>
-                  </div>
-                </div>
-              </div>
+                    {/* Card 2: Thú cưng & Dịch vụ */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Thông tin thú cưng &amp; Dịch vụ đăng ký
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="text-slate-500">Tên thú cưng:</span>
+                          <p className="font-bold text-slate-900 text-sm mt-0.5 flex items-center gap-1.5">
+                            <span>{selectedAppointment.loai_thu_cung === 'dog' ? '🐶' : selectedAppointment.loai_thu_cung === 'cat' ? '🐱' : '🐰'}</span>
+                            <span>{selectedAppointment.ten_thu_cung}</span>
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Dịch vụ yêu cầu:</span>
+                          <p className="font-bold text-[#2D5A27] text-sm mt-0.5">{selectedAppointment.dich_vu}</p>
+                        </div>
+                        <div className="sm:col-span-2 pt-2 border-t border-slate-200">
+                          <span className="text-slate-500">Cơ sở đăng ký:</span>
+                          <p className="font-semibold text-slate-800 mt-0.5">{selectedAppointment.ten_chi_nhanh || 'Chưa xác định cơ sở'}</p>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Card 3: Thời gian khám & Ghi chú */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Thời gian khám &amp; Yêu cầu đặc thù
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-3">
-                  <div>
-                    <span className="text-slate-500">Khung giờ:</span>
-                    <p className="font-bold text-[#2D5A27] text-base mt-0.5">{selectedAppointment.gio_hen}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Ngày hẹn:</span>
-                    <p className="font-bold text-slate-900 text-base mt-0.5">{selectedAppointment.ngay_hen}</p>
-                  </div>
-                </div>
+                    {/* Card 3: Thời gian khám & Ghi chú */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Thời gian khám &amp; Yêu cầu đặc thù
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-3">
+                        <div>
+                          <span className="text-slate-500">Khung giờ:</span>
+                          <p className="font-bold text-[#2D5A27] text-base mt-0.5">{selectedAppointment.gio_hen}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Ngày hẹn:</span>
+                          <p className="font-bold text-slate-900 text-base mt-0.5">{selectedAppointment.ngay_hen}</p>
+                        </div>
+                      </div>
 
-                <div>
-                  <span className="text-slate-500 text-xs">Ghi chú của khách hàng:</span>
-                  <div className="mt-1 p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed font-light">
-                    {selectedAppointment.ghi_chu || '(Không có ghi chú thêm)'}
-                  </div>
-                </div>
-              </div>
+                      <div>
+                        <span className="text-slate-500 text-xs">Ghi chú của khách hàng:</span>
+                        <div className="mt-1 p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed font-light">
+                          {cleanNote || '(Không có ghi chú thêm)'}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Card 4: Điều hướng trạng thái 1-Click */}
               <div>
