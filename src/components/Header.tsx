@@ -110,13 +110,13 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
               <strong suppressHydrationWarning className="text-slate-900 font-black tracking-wide">{hotlineDisplay}</strong>
             </a>
 
-            {/* Booking CTA Button */}
+            {/* Booking CTA Button - Fixed width & concise label across languages */}
             <button
               onClick={() => onOpenBookingModal?.()}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold text-xs bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+              className="flex items-center justify-center gap-2 w-[124px] py-2.5 rounded-2xl font-bold text-xs bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
             >
-              <CalendarCheck className="w-4 h-4 text-[#FFB800]" />
-              <span>{t('btn_book_appointment', 'Đặt Lịch')}</span>
+              <CalendarCheck className="w-4 h-4 text-[#FFB800] shrink-0" />
+              <span className="whitespace-nowrap">{t('btn_book_short', 'Đặt Lịch')}</span>
             </button>
           </div>
 
@@ -383,7 +383,7 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-xl shadow-emerald-950/20"
             >
               <CalendarCheck className="w-4 h-4 text-[#FFB800]" />
-              <span>{t('btn_book_appointment', 'Đặt Lịch')}</span>
+              <span>{t('btn_book_short', 'Đặt Lịch')}</span>
             </button>
 
             <a
