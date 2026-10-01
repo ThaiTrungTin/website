@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -16,7 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Pet M&M — Bệnh Viện Thú Y & Chăm Sóc Thú Cưng Cao Cấp",
+  title: "PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng",
   description:
     "Hệ thống Bệnh viện Thú Y & Spa Chăm Sóc Thú Cưng Pet M&M chuẩn y khoa quốc tế tại TP.HCM. Hotline 24/7, phẫu thuật ngoại khoa, tiêm phòng vaccine và khách sạn thú cưng 5 sao.",
   keywords: [
@@ -40,9 +41,16 @@ export const metadata: Metadata = {
     locale: "vi_VN",
     type: "website",
   },
+  icons: {
+    icon: '/logo-favicon.png',
+    shortcut: '/logo-favicon.png',
+    apple: '/logo-favicon.png',
+  },
 };
 
 import { SystemConfigProvider } from "@/context/SystemConfigContext";
+import { LanguageProvider } from "@/context/LanguageContext";
+import DynamicFavicon from "@/components/DynamicFavicon";
 
 export default function RootLayout({
   children,
@@ -59,10 +67,26 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
         <link rel="dns-prefetch" href="https://ntkpdadakcyugvivvsjw.supabase.co" />
-        <script
+        <Script
+          id="system-init"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
+                try {
+                  var lang = localStorage.getItem('petmm_language') || 'vi';
+                  var cached = localStorage.getItem('petmm_system_config_cache');
+                  if (cached) {
+                    var cfg = JSON.parse(cached);
+                    if (cfg) {
+                      var isEn = lang === 'en';
+                      var title = isEn
+                        ? (cfg.tieu_de_trang_en || 'PetM&M — Veterinary Hospital & Clinic')
+                        : (cfg.tieu_de_trang || 'PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng');
+                      if (title) document.title = title;
+                    }
+                  }
+                } catch (e) {}
                 try {
                   var observer = new MutationObserver(function(mutations) {
                     for (var i = 0; i < mutations.length; i++) {
@@ -84,7 +108,12 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen bg-[#0B150A] text-slate-900" suppressHydrationWarning>
-        <SystemConfigProvider>{children}</SystemConfigProvider>
+        <SystemConfigProvider>
+          <LanguageProvider>
+            <DynamicFavicon />
+            {children}
+          </LanguageProvider>
+        </SystemConfigProvider>
       </body>
     </html>
   );

@@ -23,6 +23,8 @@ import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 import { getAssetUrl } from '@/lib/assets';
+import Header from '@/components/Header';
+import BookingModal from '@/components/BookingModal';
 
 // Component Avatar mặc định Facebook silhouette khi để trống ảnh
 function DefaultFacebookAvatar() {
@@ -483,8 +485,19 @@ export default function DoiNguYTePage() {
   const bacSiList = team.filter((m) => m.phan_loai === 'bac_si');
   const dieuDuongList = team.filter((m) => m.phan_loai === 'dieu_duong');
 
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [preselectedService, setPreselectedService] = useState<string | undefined>(undefined);
+
+  const handleOpenBookingModal = (serviceTitle?: string) => {
+    setPreselectedService(serviceTitle);
+    setIsBookingModalOpen(true);
+  };
+
   return (
-    <div className="min-h-screen bg-[#F8FAF7] text-slate-900 flex flex-col selection:bg-[#2D5A27] selection:text-white">
+    <div className="min-h-screen bg-[#F8FAF7] text-slate-900 flex flex-col selection:bg-[#2D5A27] selection:text-white pt-[60px] sm:pt-[68px]">
+      {/* 0. LUXURY MAIN NAVBAR (Cố định trên cùng khi cuộn) */}
+      <Header onOpenBookingModal={handleOpenBookingModal} alwaysVisible />
+
       {/* 1. HERO BANNER */}
       <div className="relative w-full h-64 sm:h-80 md:h-[400px] overflow-hidden bg-slate-900">
         <Image
@@ -512,7 +525,7 @@ export default function DoiNguYTePage() {
       </div>
 
       {/* 2. BREADCRUMBS & THANH LỌC NHANH HẠNG MỤC */}
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+      <nav className="bg-white border-b border-slate-200 shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <ol className="flex items-center gap-1.5 text-xs sm:text-sm flex-wrap">
             <li>
@@ -617,6 +630,13 @@ export default function DoiNguYTePage() {
       <Footer />
       <FloatingContactWidgets />
       <ScrollNavigationButtons />
+
+      {/* 5. BOOKING MODAL */}
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        preselectedService={preselectedService}
+      />
     </div>
   );
 }

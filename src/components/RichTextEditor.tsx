@@ -91,8 +91,82 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
 
   if (!editor) return null;
 
-  const currentFontSize = editor.getAttributes('textStyle').fontSize ?? '';
-  const currentFontFamily = editor.getAttributes('textStyle').fontFamily ?? '';
+  const rawFontSize = (editor.getAttributes('textStyle').fontSize as string) ?? '';
+  const rawFontFamily = (editor.getAttributes('textStyle').fontFamily as string) ?? '';
+  const normalizedFamily = rawFontFamily.replace(/['"]/g, '').toLowerCase().trim();
+  const activeFontFamily =
+    FONT_FAMILIES.find((f) => f.value && f.value.replace(/['"]/g, '').toLowerCase().trim() === normalizedFamily)?.value ?? '';
+  const activeFontSize = FONT_SIZES.find((s) => s === rawFontSize) ?? '';
+
+  const applyFontFamily = (family: string) => {
+    if (!editor) return;
+    const { empty, $from } = editor.state.selection;
+    if (!family) {
+      if (empty) {
+        const text = $from.parent.textContent;
+        const offset = $from.parentOffset;
+        let start = offset;
+        let end = offset;
+        while (start > 0 && /\S/.test(text[start - 1])) start--;
+        while (end < text.length && /\S/.test(text[end])) end++;
+        if (start < end) {
+          editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).unsetFontFamily().focus().run();
+          return;
+        }
+      }
+      (editor.chain().focus() as any).unsetFontFamily().run();
+      return;
+    }
+
+    if (empty) {
+      const text = $from.parent.textContent;
+      const offset = $from.parentOffset;
+      let start = offset;
+      let end = offset;
+      while (start > 0 && /\S/.test(text[start - 1])) start--;
+      while (end < text.length && /\S/.test(text[end])) end++;
+      if (start < end) {
+        editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).setFontFamily(family).focus().run();
+        return;
+      }
+    }
+    (editor.chain().focus() as any).setFontFamily(family).run();
+  };
+
+  const applyFontSize = (size: string) => {
+    if (!editor) return;
+    const { empty, $from } = editor.state.selection;
+    if (!size) {
+      if (empty) {
+        const text = $from.parent.textContent;
+        const offset = $from.parentOffset;
+        let start = offset;
+        let end = offset;
+        while (start > 0 && /\S/.test(text[start - 1])) start--;
+        while (end < text.length && /\S/.test(text[end])) end++;
+        if (start < end) {
+          editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).unsetFontSize().focus().run();
+          return;
+        }
+      }
+      (editor.chain().focus() as any).unsetFontSize().run();
+      return;
+    }
+
+    if (empty) {
+      const text = $from.parent.textContent;
+      const offset = $from.parentOffset;
+      let start = offset;
+      let end = offset;
+      while (start > 0 && /\S/.test(text[start - 1])) start--;
+      while (end < text.length && /\S/.test(text[end])) end++;
+      if (start < end) {
+        editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).setFontSize(size).focus().run();
+        return;
+      }
+    }
+    (editor.chain().focus() as any).setFontSize(size).run();
+  };
 
   return (
     <div
@@ -126,17 +200,10 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
 
       {/* Phông chữ */}
       <select
-        value={currentFontFamily}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (!v) {
-            (editor.chain().focus() as any).unsetFontFamily().run();
-          } else {
-            (editor.chain().focus() as any).setFontFamily(v).run();
-          }
-        }}
+        value={activeFontFamily}
+        onChange={(e) => applyFontFamily(e.target.value)}
         title="Phông chữ"
-        style={{ fontFamily: currentFontFamily || undefined }}
+        style={{ fontFamily: activeFontFamily || undefined }}
         className="h-7 text-xs rounded border border-slate-200 bg-white px-1.5 text-slate-700 focus:outline-none focus:border-[#2D5A27] cursor-pointer max-w-[110px]"
       >
         {FONT_FAMILIES.map((f) => (
@@ -148,15 +215,8 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
 
       {/* Cỡ chữ */}
       <select
-        value={currentFontSize}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (!v) {
-            (editor.chain().focus() as any).unsetFontSize().run();
-          } else {
-            (editor.chain().focus() as any).setFontSize(v).run();
-          }
-        }}
+        value={activeFontSize}
+        onChange={(e) => applyFontSize(e.target.value)}
         title="Cỡ chữ"
         className="h-7 text-xs rounded border border-slate-200 bg-white px-1.5 text-slate-700 focus:outline-none focus:border-[#2D5A27] cursor-pointer w-[68px]"
       >

@@ -1,18 +1,23 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Props {
   html: string;
+  htmlEn?: string | null;
   className?: string;
 }
 
 /**
  * Render HTML từ Tiptap, sau khi mount tự động wrap tất cả <table>
  * trong container cuộn ngang + nút < > trên mobile.
+ * Hỗ trợ chuyển đổi song ngữ mượt mà.
  */
-export default function ArticleContent({ html, className = '' }: Props) {
+export default function ArticleContent({ html, htmlEn, className = '' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const { language } = useLanguage();
+  const activeHtml = (language === 'en' && htmlEn?.trim()) ? htmlEn : html;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -103,13 +108,13 @@ export default function ArticleContent({ html, className = '' }: Props) {
       // Gọi sync sau khi layout xong
       requestAnimationFrame(() => setTimeout(sync, 50));
     });
-  }, [html]);
+  }, [activeHtml]);
 
   return (
     <div
       ref={ref}
       className={className}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: activeHtml }}
     />
   );
 }

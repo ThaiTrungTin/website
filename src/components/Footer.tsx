@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import PetLogo from './PetLogo';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { useLanguage } from '@/context/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
 import { getDirectionsUrl } from '@/lib/assets';
 
 interface FooterProps {
@@ -29,6 +31,7 @@ interface FooterProps {
 
 export default function Footer({ branch }: FooterProps) {
   const { config } = useSystemConfig();
+  const { t, language } = useLanguage();
 
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
@@ -63,18 +66,23 @@ export default function Footer({ branch }: FooterProps) {
             <PetLogo size="default" />
 
             <h3 className="text-base sm:text-lg font-bold text-amber-300 font-editorial tracking-wide italic">
-              {config.slogan_cuoi_trang_tieu_de || '“Thú cưng khỏe mạnh — An yên trọn một đời”'}
+              {language === 'en'
+                ? (config.slogan_cuoi_trang_tieu_de_en || '“Healthy Pets — Lifelong Peace of Mind”')
+                : (config.slogan_cuoi_trang_tieu_de || '“Thú cưng khỏe mạnh — An yên trọn một đời”')}
             </h3>
 
             <p className="text-xs text-emerald-100/80 leading-relaxed font-light max-w-sm">
-              {config.slogan_cuoi_trang_noi_dung ||
-                'Hệ thống Bệnh viện Thú Y & Resort Nghỉ dưỡng Thú Cưng Tiêu chuẩn 5 Sao quốc tế tại TP. Hồ Chí Minh. Tiên phong áp dụng chuẩn lâm sàng Fear-Free không stress cho thú cưng.'}
+              {language === 'en'
+                ? (config.slogan_cuoi_trang_noi_dung_en ||
+                  'International standard Veterinary Hospital & Pet Resort in Ho Chi Minh City. Pioneering clinical Fear-Free standards for anxiety-free pet care.')
+                : (config.slogan_cuoi_trang_noi_dung ||
+                  'Hệ thống Bệnh viện Thú Y & Resort Nghỉ dưỡng Thú Cưng Tiêu chuẩn 5 Sao quốc tế tại TP. Hồ Chí Minh. Tiên phong áp dụng chuẩn lâm sàng Fear-Free không stress cho thú cưng.')}
             </p>
 
             {/* THÔNG TIN LIÊN HỆ & 3 ICON LIÊN HỆ */}
             <div className="pt-2 space-y-2.5">
               <div className="text-xs text-emerald-100/90 font-medium flex items-center gap-1.5">
-                <span className="font-semibold text-emerald-200">Liên hệ:</span>
+                <span className="font-semibold text-emerald-200">{t('nav_contact', 'Liên hệ')}:</span>
                 <a
                   href={`tel:${hotlineRaw}`}
                   className="font-bold text-amber-300 hover:text-white transition tracking-wide font-mono text-xs sm:text-sm"
@@ -184,32 +192,32 @@ export default function Footer({ branch }: FooterProps) {
           {/* CỘT 2: VỀ PET M&M (lg:col-span-2) */}
           <div className="lg:col-span-2 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white border-b border-white/15 pb-2">
-              Về Pet M&amp;M
+              {t('nav_about', 'Về Pet M&M')}
             </h4>
             <ul className="space-y-2 text-xs text-emerald-100/80 font-light">
               <li>
                 <Link href="/#about" className="hover:text-amber-300 transition block">
-                  Giới thiệu Pet M&amp;M
+                  {language === 'en' ? 'About Pet M&M' : 'Giới thiệu Pet M&M'}
                 </Link>
               </li>
               <li>
                 <Link href="/#branches" className="hover:text-amber-300 transition block">
-                  Hệ thống cơ sở
+                  {t('nav_branches', 'Hệ thống cơ sở')}
                 </Link>
               </li>
               <li>
                 <Link href="/#about" className="hover:text-amber-300 transition block">
-                  Vì sao chọn Pet M&amp;M?
+                  {language === 'en' ? 'Why Choose Pet M&M?' : 'Vì sao chọn Pet M&M?'}
                 </Link>
               </li>
               <li>
                 <Link href="/#knowledge" className="hover:text-amber-300 transition block">
-                  Cẩm nang thú y
+                  {language === 'en' ? 'Veterinary Guide' : 'Cẩm nang thú y'}
                 </Link>
               </li>
               <li>
                 <Link href="/#booking" className="hover:text-amber-300 transition block">
-                  Đặt lịch khám bệnh
+                  {language === 'en' ? 'Book Appointment' : 'Đặt lịch khám bệnh'}
                 </Link>
               </li>
             </ul>
@@ -218,37 +226,37 @@ export default function Footer({ branch }: FooterProps) {
           {/* CỘT 3: DỊCH VỤ THÚ Y (lg:col-span-3) */}
           <div className="lg:col-span-3 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white border-b border-white/15 pb-2">
-              Dịch Vụ Thú Y
+              {language === 'en' ? 'Veterinary Services' : 'Dịch Vụ Thú Y'}
             </h4>
             <ul className="space-y-2 text-xs text-emerald-100/80 font-light">
               <li>
                 <Link href="/#services" className="hover:text-amber-300 transition block">
-                  Khám &amp; tư vấn sức khỏe tổng quát
+                  {language === 'en' ? 'General Health Check & Consultation' : 'Khám & tư vấn sức khỏe tổng quát'}
                 </Link>
               </li>
               <li>
                 <Link href="/#services" className="hover:text-amber-300 transition block">
-                  Tiêm phòng &amp; vaccine định kỳ
+                  {language === 'en' ? 'Vaccination & Preventive Care' : 'Tiêm phòng & vaccine định kỳ'}
                 </Link>
               </li>
               <li>
                 <Link href="/#services" className="hover:text-amber-300 transition block">
-                  Xét nghiệm &amp; Chẩn đoán hình ảnh
+                  {language === 'en' ? 'Lab Tests & Diagnostic Imaging' : 'Xét nghiệm & Chẩn đoán hình ảnh'}
                 </Link>
               </li>
               <li>
                 <Link href="/#services" className="hover:text-amber-300 transition block">
-                  Phẫu thuật ngoại khoa vô trùng
+                  {language === 'en' ? 'Sterile Surgical Procedures' : 'Phẫu thuật ngoại khoa vô trùng'}
                 </Link>
               </li>
               <li>
                 <Link href="/#services" className="hover:text-amber-300 transition block">
-                  Khách sạn thú cưng có camera 24/7
+                  {language === 'en' ? 'Pet Hotel with 24/7 Camera' : 'Khách sạn thú cưng có camera 24/7'}
                 </Link>
               </li>
               <li>
                 <Link href="/#services" className="hover:text-amber-300 transition block">
-                  Spa Grooming &amp; Xe Pet Taxi đón tận nhà
+                  {language === 'en' ? 'Spa Grooming & Pet Taxi Service' : 'Spa Grooming & Xe Pet Taxi đón tận nhà'}
                 </Link>
               </li>
             </ul>
@@ -259,7 +267,7 @@ export default function Footer({ branch }: FooterProps) {
             <div className="flex items-center justify-between border-b border-white/15 pb-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Vị Trí &amp; Bản Đồ</span>
+                <span>{language === 'en' ? 'Location & Map' : 'Vị Trí & Bản Đồ'}</span>
               </h4>
               <span className="text-[10px] text-amber-300 font-mono">Maps</span>
             </div>
@@ -297,30 +305,34 @@ export default function Footer({ branch }: FooterProps) {
                 className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-white/15 hover:bg-amber-400 hover:text-slate-900 text-white text-xs font-semibold transition border border-white/20 shadow-xs cursor-pointer"
               >
                 <Navigation className="w-3.5 h-3.5" />
-                <span>Mở Google Maps Chỉ Đường</span>
+                <span>{language === 'en' ? 'Open Google Maps Directions' : 'Mở Google Maps Chỉ Đường'}</span>
               </a>
             )}
           </div>
         </div>
 
         {/* HÀNG ĐÁY BẢN QUYỀN & TIÊU CHUẨN (BOTTOM LEGAL ROW) */}
-        <div className="pt-6 mt-10 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-emerald-100/60 font-light">
-          <div>
-            © {new Date().getFullYear()} Pet M&amp;M Veterinary &amp; Pet Care Clinic. Tất cả các quyền được bảo lưu.
+        <div className="pt-6 mt-10 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-emerald-100/60 font-light">
+          <div className="flex items-center gap-3">
+            <span>© {new Date().getFullYear()} Pet M&amp;M Veterinary &amp; Pet Care Clinic. {t('footer_copyright', 'Tất cả các quyền được bảo lưu.')}</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <LanguageSwitcher variant="dark" />
+
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tiêu chuẩn quốc tế WSAVA</span>
+              <span>{language === 'en' ? 'WSAVA International Standards' : 'Tiêu chuẩn quốc tế WSAVA'}</span>
             </span>
             <span className="text-white/20">•</span>
             <span>
               {config.giay_phep
-                ? config.giay_phep.toLowerCase().startsWith('giấy phép')
-                  ? config.giay_phep
-                  : `Giấy phép: ${config.giay_phep}`
-                : 'Giấy phép: 0316888999/SNN-TY'}
+                ? language === 'en'
+                  ? `License: ${config.giay_phep.replace(/^giấy phép:?\s*/i, '')}`
+                  : config.giay_phep.toLowerCase().startsWith('giấy phép')
+                    ? config.giay_phep
+                    : `Giấy phép: ${config.giay_phep}`
+                : language === 'en' ? 'License: 0316888999/SNN-TY' : 'Giấy phép: 0316888999/SNN-TY'}
             </span>
           </div>
         </div>

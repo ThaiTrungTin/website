@@ -2,8 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Users, Stethoscope, Building2, Clock, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function StatsSection() {
+  const { t } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -12,33 +14,34 @@ export default function StatsSection() {
   const stats = [
     {
       value: '30.000+',
-      label: 'Khách hàng hài lòng',
-      description: 'Chó mèo được phục hồi sức khỏe & chăm sóc sắc đẹp trọn vẹn',
+      label: t('stats_clients', 'Khách hàng hài lòng'),
+      description: t('stats_clients_desc', 'Chó mèo được phục hồi sức khỏe & chăm sóc sắc đẹp trọn vẹn'),
       icon: Users,
-      topBadge: '99.8% Hài lòng',
+      topBadge: t('reviews_verified', '99.8% Hài lòng'),
     },
     {
       value: '100%',
-      label: 'Bác sĩ chuyên khoa',
-      description: 'Tốt nghiệp ĐH Nông Lâm, chứng chỉ hành nghề & tu nghiệp quốc tế',
+      label: t('stats_doctors', 'Bác sĩ chuyên khoa'),
+      description: t('stats_doctors_desc', 'Tốt nghiệp ĐH Nông Lâm, chứng chỉ hành nghề & tu nghiệp quốc tế'),
       icon: Stethoscope,
-      topBadge: 'Đầu ngành',
+      topBadge: t('services_featured_badge', 'Đầu ngành'),
     },
     {
       value: '3+',
-      label: 'Cơ sở chuẩn 5 sao',
-      description: 'Tọa lạc tại Quận 1, Quận 7 và Biệt thự sinh thái Thảo Điền',
+      label: t('stats_branches', 'Cơ sở chuẩn 5 sao'),
+      description: t('stats_branches_desc', 'Tọa lạc tại Quận 1, Quận 7 và Biệt thự sinh thái Thảo Điền'),
       icon: Building2,
       topBadge: 'TP.HCM',
     },
     {
       value: '24/7',
-      label: 'Hotline & Lưu trú',
-      description: 'Hotline 24/7, đội ngũ trực đêm 365 ngày sẵn sàng tiếp nhận',
+      label: t('stats_hotline', 'Hotline & Lưu trú'),
+      description: t('stats_hotline_desc', 'Hotline 24/7, đội ngũ trực đêm 365 ngày sẵn sàng tiếp nhận'),
       icon: Clock,
-      topBadge: 'Ngoại viện',
+      topBadge: t('hero_stat_emergency', 'Ngoại viện'),
     },
   ];
+
 
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;

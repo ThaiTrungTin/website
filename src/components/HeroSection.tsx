@@ -17,11 +17,35 @@ import SloganAura3D from './SloganAura3D';
 import PetLogo from './PetLogo';
 import { supabase, HeroBannerItem } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { useLanguage } from '@/context/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
+import NavDesktopMenu from './NavDesktopMenu';
 import { getAssetUrl } from '@/lib/assets';
 
 interface HeroSectionProps {
   onOpenBookingModal: (preselectedService?: string) => void;
 }
+
+// Ngôi sao 4 cánh kim cương lấp lánh (Sparkling Star SVG)
+const SparkleStar = ({ className = 'w-5 h-5' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="sparkleDiamondGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="45%" stopColor="#FFF4B8" />
+        <stop offset="85%" stopColor="#FBBF24" />
+        <stop offset="100%" stopColor="#F59E0B" />
+      </radialGradient>
+    </defs>
+    <path
+      d="M12 0 L14.7 9.3 L24 12 L14.7 14.7 L12 24 L9.3 14.7 L0 12 L9.3 9.3 Z"
+      fill="url(#sparkleDiamondGrad)"
+      style={{
+        filter: 'drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 7px rgba(251, 191, 36, 0.85))',
+      }}
+    />
+  </svg>
+);
 
 // Hàm tính toạ độ thông minh trên điện thoại: tránh bị lệch mất mặt tiền / chủ thể
 const getMobileObjectPosition = (pos?: string | null) => {
@@ -153,6 +177,7 @@ const AMBIENT_PETALS = [
 
 export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
   const { config } = useSystemConfig();
+  const { t, isEn } = useLanguage();
 
   // Khởi tạo slides ban đầu từ HERO_SLIDES_DEFAULT để SSR và Client khớp 100% (tránh lỗi Hydration Mismatch)
   const [slides, setSlides] = useState<HeroBannerItem[]>(HERO_SLIDES_DEFAULT);
@@ -165,10 +190,14 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
   const slidesRef = useRef<HeroBannerItem[]>(slides);
   slidesRef.current = slides;
 
-  // Slogan re-trigger: mỗi lần Hero vào viewport thì reset key → animation chạy lại
+  // Slogan re-trigger: mỗi lần Hero vào viewport hoặc đổi ngôn ngữ thì reset key → animation chạy lại
   const [sloganKey, setSloganKey] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
   const tickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSloganKey((k) => k + 1);
+  }, [isEn]);
 
   useEffect(() => {
     const el = heroRef.current;
@@ -459,40 +488,18 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           <PetLogo size="default" />
         </a>
 
-        {/* Floating Frosted Glass Center Pill Navigation (Luminous White & Emerald) */}
-        <nav className="hidden lg:flex items-center gap-6 px-7 py-2.5 rounded-full bg-white/85 backdrop-blur-xl border border-slate-200/90 shadow-xl text-xs font-semibold text-slate-800 relative overflow-hidden">
-          <div className="absolute bottom-0 inset-x-0 h-[2px] overflow-hidden pointer-events-none">
+        {/* Floating Frosted Glass Center Pill Navigation with Real Database Dropdowns */}
+        <div className="hidden lg:flex items-center px-6 py-1.5 rounded-full bg-white/90 backdrop-blur-xl border border-slate-200/90 shadow-xl text-xs font-semibold text-slate-800 relative">
+          <div className="absolute bottom-0 inset-x-0 h-[2px] overflow-hidden rounded-full pointer-events-none">
             <div className="w-1/3 h-full bg-gradient-to-r from-transparent via-[#2D5A27] to-transparent animate-navbar-beam blur-[0.5px]" />
           </div>
+          <NavDesktopMenu variant="pill" />
+        </div>
 
-          <a href="#about" className="hover:text-[#2D5A27] transition">
-            Về Pet M&M
-          </a>
-          <span className="text-slate-300">•</span>
-          <a href="#services" className="hover:text-[#2D5A27] transition">
-            Dịch Vụ
-          </a>
-          <span className="text-slate-300">•</span>
-          <a href="#branches" className="hover:text-[#2D5A27] transition">
-            Hệ Thống Cơ Sở
-          </a>
-          <span className="text-slate-300">•</span>
-          <a href="#knowledge" className="hover:text-[#2D5A27] transition">
-            Cẩm Nang
-          </a>
-          <span className="text-slate-300">•</span>
-          <a href="#faq" className="hover:text-[#2D5A27] transition">
-            FAQ
-          </a>
-          <span className="text-slate-300">•</span>
-          <a href="#reviews" className="hover:text-[#2D5A27] transition">
-            Đánh Giá
-          </a>
-          <span className="text-slate-300">•</span>
-          <a href="#contact" className="hover:text-[#2D5A27] transition">
-            Liên Hệ
-          </a>
-        </nav>
+        {/* Right Language Switcher on Hero Top Bar */}
+        <div className="flex items-center">
+          <LanguageSwitcher variant="glass" />
+        </div>
       </div>
 
       {/* 4. EDITORIAL LUXURY HEADLINE (NỀN TRONG SUỐT 100%, GỌN GÀNG ÔM SÁT TRÊN ĐIỆN THOẠI) */}
@@ -503,7 +510,9 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
 
           {/* Majestic Editorial Title: key reset → animation chạy lại mỗi lần Hero vào viewport */}
           {(() => {
-            const rawTitle = config.slogan_dau_trang_tieu_de || 'Nâng niu từng nhịp thở, an yên trọn một đời.';
+            const rawTitle = isEn
+              ? (config.slogan_dau_trang_tieu_de_en || 'Cherishing Every Breath, Embracing Life with Peace.')
+              : (config.slogan_dau_trang_tieu_de || 'Nâng niu từng nhịp thở, an yên trọn một đời.');
             const parts = rawTitle.includes(',') ? rawTitle.split(',') : [rawTitle];
             const firstPart = parts[0].trim();
             const remainingPart = parts.slice(1).join(',').trim();
@@ -515,67 +524,93 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
             const shimmerStart = line1Done + line2Words.length * baseDelay + 0.8;
 
             return (
-              <h1
-                key={sloganKey}  // ← reset → toàn bộ animation chạy lại khi Hero vào viewport
-                suppressHydrationWarning
-                className="font-editorial text-[1.35rem] sm:text-5xl lg:text-[58px] font-semibold tracking-normal text-slate-900 leading-[1.18] sm:leading-[1.1] mb-1 sm:mb-5 drop-shadow-[0_2px_12px_rgba(255,255,255,0.95)]"
-                style={{ perspective: '800px' }}
-              >
-                {/* DÒNG 1: Từng word rớt xuống → wave float liên tục */}
-                <span className="block">
-                  {line1Words.map((word, i) => {
-                    const entranceDelay = i * baseDelay;
-                    const loopDelay = i * 0.15;
-                    const isLast = i === line1Words.length - 1;
-                    return (
-                      <span
-                        key={`w1-${i}`}
-                        className="inline-block mr-[0.22em] last:mr-0"
-                        style={{
-                          animation: `letterDrop 0.72s cubic-bezier(0.22, 1, 0.36, 1) ${entranceDelay}s both,
-                                      sloganWordWave 3.8s ease-in-out ${line1Done + loopDelay}s infinite`,
-                          opacity: 0,
-                        }}
-                      >
-                        {word}{isLast && remainingPart ? ',' : ''}
-                      </span>
-                    );
-                  })}
-                </span>
+              <div className="relative inline-block mb-1 sm:mb-5">
+                {/* Lớp hạt sao kim cương lấp lánh (Sparkling Twinkling Stars ✨) */}
+                <div className="absolute -inset-4 pointer-events-none z-20 overflow-visible">
+                  {/* Star 1: Trên chữ Nâng niu */}
+                  <span className="absolute top-1 -left-1 sm:-top-2 sm:-left-3 animate-sparkle-star-1">
+                    <SparkleStar className="w-4 h-4 sm:w-6 sm:h-6" />
+                  </span>
+                  {/* Star 2: Góc phải trên 'nhịp thở,' */}
+                  <span className="absolute -top-1 right-2 sm:-top-2 sm:right-12 animate-sparkle-star-2">
+                    <SparkleStar className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+                  </span>
+                  {/* Star 3: Giữa 2 dòng câu */}
+                  <span className="absolute top-[48%] left-[28%] sm:left-[32%] animate-sparkle-star-3">
+                    <SparkleStar className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </span>
+                  {/* Star 4: Đuôi chữ 'trọn một đời.' */}
+                  <span className="absolute -bottom-1 right-1 sm:-bottom-2 sm:right-6 animate-sparkle-star-4">
+                    <SparkleStar className="w-4 h-4 sm:w-6 sm:h-6" />
+                  </span>
+                  {/* Star 5: Giữa cụm 'từng nhịp' */}
+                  <span className="absolute top-[6%] left-[46%] animate-sparkle-star-5">
+                    <SparkleStar className="w-3 h-3 sm:w-4.5 sm:h-4.5" />
+                  </span>
+                </div>
 
-                {/* DÒNG 2 (italic xanh đậm): Từng word rớt xuống → shimmer liên tục */}
-                {remainingPart && (
-                  <span
-                    className="block not-italic font-light normal-case tracking-normal"
-                    style={{ fontSize: '0.82em' }}
-                  >
-                    {line2Words.map((word, i) => {
-                      const entranceDelay = line1Done + i * baseDelay;
-                      const isLastWord = i === line2Words.length - 1;
+                {/* Vệt quét ánh sáng kim cương (Diamond Sheen Sweep) */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-10 rounded-xl">
+                  <div className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/50 to-transparent -skew-x-12 animate-slogan-sheen" />
+                </div>
+
+                {/* Tiêu đề chính H1: Viền trắng sắc nét + Hào quang lấp lánh */}
+                <h1
+                  key={sloganKey}  // ← reset → toàn bộ animation chạy lại khi Hero vào viewport
+                  suppressHydrationWarning
+                  className="relative z-0 font-editorial text-[1.35rem] sm:text-5xl lg:text-[58px] font-semibold tracking-normal leading-[1.18] sm:leading-[1.1] animate-slogan-sparkle"
+                  style={{ perspective: '800px' }}
+                >
+                  {/* DÒNG 1: Từng word rớt xuống → wave float liên tục + Viền trắng sắc nét */}
+                  <span className="block">
+                    {line1Words.map((word, i) => {
+                      const entranceDelay = i * baseDelay;
+                      const loopDelay = i * 0.15;
+                      const isLast = i === line1Words.length - 1;
                       return (
                         <span
-                          key={`w2-${i}`}
-                          className="mr-[0.25em] last:mr-0"
+                          key={`w1-${i}`}
+                          className="inline-block mr-[0.22em] last:mr-0 slogan-bordered-word text-slate-900"
                           style={{
-                            display: 'inline-block',
-                            fontStyle: 'italic',
-                            // Gradient tối hơn: bỏ màu nhạt #A8E99C, dùng toàn xanh đậm
-                            background: 'linear-gradient(90deg, #1A3D16 0%, #2D5A27 20%, #3D7835 40%, #2D5A27 60%, #1E4D1A 80%, #2D5A27 100%)',
-                            backgroundSize: '300% 100%',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
+                            animation: `letterDrop 0.72s cubic-bezier(0.22, 1, 0.36, 1) ${entranceDelay}s both,
+                                        sloganWordWave 3.8s ease-in-out ${line1Done + loopDelay}s infinite`,
                             opacity: 0,
-                            animation: `letterDrop 0.72s cubic-bezier(0.22, 1, 0.36, 1) ${entranceDelay}s both, sloganGreenShimmer 3.5s linear ${shimmerStart}s infinite`,
                           }}
                         >
-                          {word}{isLastWord ? '.' : ''}
+                          {word}{isLast && remainingPart ? ',' : ''}
                         </span>
                       );
                     })}
                   </span>
-                )}
-              </h1>
+
+                  {/* DÒNG 2 (italic xanh ngọc đậm): Từng word rớt xuống → wave float liên tục + Viền trắng sắc nét */}
+                  {remainingPart && (
+                    <span
+                      className="block not-italic font-light normal-case tracking-normal"
+                      style={{ fontSize: '0.82em' }}
+                    >
+                      {line2Words.map((word, i) => {
+                        const entranceDelay = line1Done + i * baseDelay;
+                        const isLastWord = i === line2Words.length - 1;
+                        return (
+                          <span
+                            key={`w2-${i}`}
+                            className="inline-block mr-[0.25em] last:mr-0 slogan-bordered-word text-[#194D18]"
+                            style={{
+                              fontStyle: 'italic',
+                              opacity: 0,
+                              animation: `letterDrop 0.72s cubic-bezier(0.22, 1, 0.36, 1) ${entranceDelay}s both,
+                                          sloganWordWave 3.8s ease-in-out ${shimmerStart + i * 0.15}s infinite`,
+                            }}
+                          >
+                            {word}{isLastWord ? '.' : ''}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  )}
+                </h1>
+              </div>
             );
           })()}
 
@@ -586,14 +621,14 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
               className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-[11px] sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer whitespace-nowrap"
             >
               <CalendarCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FFB800]" />
-              <span>Đặt Lịch Thăm Khám</span>
+              <span>{t('btn_book_appointment', 'Đặt Lịch Thăm Khám')}</span>
             </button>
 
             <a
               href="#services"
               className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-7 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-[11px] sm:text-sm bg-white/95 hover:bg-white text-slate-800 border border-slate-300 shadow-sm hover:border-[#2D5A27] transition-all duration-200 cursor-pointer backdrop-blur-sm whitespace-nowrap"
             >
-              <span>Xem Dịch Vụ 5 Sao</span>
+              <span>{t('btn_view_services', 'Xem Dịch Vụ')}</span>
               <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 text-[#2D5A27]" />
             </a>
           </div>
@@ -607,7 +642,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           e.stopPropagation();
           prevSlide();
         }}
-        aria-label="Xem ảnh trước"
+        aria-label={isEn ? 'Previous slide' : 'Xem ảnh trước'}
         className="absolute left-3 sm:left-6 bottom-14 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-30 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-[#2D5A27] border border-slate-200/90 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer group"
       >
         <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-0.5" />
@@ -619,7 +654,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
           e.stopPropagation();
           nextSlide();
         }}
-        aria-label="Xem ảnh kế tiếp"
+        aria-label={isEn ? 'Next slide' : 'Xem ảnh kế tiếp'}
         className="absolute right-3 sm:right-6 bottom-14 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-30 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-[#2D5A27] border border-slate-200/90 shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer group"
       >
         <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform group-hover:translate-x-0.5" />
@@ -670,9 +705,11 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
             }}
           >
             {(() => {
-              const rawSlogan =
-                config.slogan_dau_trang_noi_dung ||
-                'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.';
+              const rawSlogan = isEn
+                ? (config.slogan_dau_trang_noi_dung_en ||
+                   'Standardized veterinary medicine combined with natural recovery therapies. Where pure love blends with state-of-the-art medical technology to restore physical vitality and soothe peace of mind.')
+                : (config.slogan_dau_trang_noi_dung ||
+                   'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.');
               const dotIndex = rawSlogan.indexOf('.');
               const part1 = dotIndex > -1 ? rawSlogan.slice(0, dotIndex + 1).trim() : rawSlogan;
               const part2 = dotIndex > -1 ? rawSlogan.slice(dotIndex + 1).trim() : '';

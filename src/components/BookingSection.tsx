@@ -6,6 +6,7 @@ import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { supabase, ChiNhanhRecord, DichVuRecord } from '@/lib/supabase';
 import { branchesData } from '@/data/branchesData';
 import { servicesData } from '@/data/servicesData';
+import { useLanguage } from '@/context/LanguageContext';
 import { getAssetUrl } from '@/lib/assets';
 import {
   CalendarCheck,
@@ -35,6 +36,8 @@ export default function BookingSection({
   isModal = false,
   onSuccess,
 }: BookingSectionProps) {
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   const [ownerName, setOwnerName] = useState('');
   const [phone, setPhone] = useState('');
   const [petName, setPetName] = useState('');
@@ -110,23 +113,23 @@ export default function BookingSection({
     setErrorMsg('');
 
     if (!ownerName.trim()) {
-      setErrorMsg('Vui lòng nhập họ và tên chủ nuôi');
+      setErrorMsg(isEn ? 'Please enter pet parent name' : 'Vui lòng nhập họ và tên chủ nuôi');
       return;
     }
     if (!phone.trim() || phone.length < 9) {
-      setErrorMsg('Vui lòng nhập số điện thoại hợp lệ (ít nhất 9 số)');
+      setErrorMsg(isEn ? 'Please enter a valid phone number (at least 9 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (ít nhất 9 số)');
       return;
     }
     if (!petName.trim()) {
-      setErrorMsg('Vui lòng nhập tên của bé thú cưng');
+      setErrorMsg(isEn ? 'Please enter your pet\'s name' : 'Vui lòng nhập tên của bé thú cưng');
       return;
     }
     if (!branch) {
-      setErrorMsg('Vui lòng chọn cơ sở khám cho bé');
+      setErrorMsg(isEn ? 'Please select a branch' : 'Vui lòng chọn cơ sở khám cho bé');
       return;
     }
     if (!service) {
-      setErrorMsg('Vui lòng chọn dịch vụ khám hoặc chăm sóc');
+      setErrorMsg(isEn ? 'Please select a service' : 'Vui lòng chọn dịch vụ khám hoặc chăm sóc');
       return;
     }
 
@@ -223,10 +226,10 @@ export default function BookingSection({
         {!isModal && (
           <ScrollRevealTitle className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4">
-              Đặt Lịch Hẹn <span className="italic font-light text-[#2D5A27]">Trực Tuyến</span>
+              {isEn ? 'Book Your ' : 'Đặt Lịch Hẹn '}<span className="italic font-light text-[#2D5A27]">{isEn ? 'Appointment Online' : 'Trực Tuyến'}</span>
             </h2>
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-light">
-              Đăng ký khám hoặc Spa cho bé trước để được khám đúng khung giờ, không cần chờ đợi bốc số.
+              {isEn ? 'Register for an exam or spa session in advance for priority check-in, no waiting required.' : 'Đăng ký khám hoặc Spa cho bé trước để được khám đúng khung giờ, không cần chờ đợi bốc số.'}
             </p>
           </ScrollRevealTitle>
         )}
@@ -239,15 +242,17 @@ export default function BookingSection({
             </div>
 
             <span className="text-xs font-bold uppercase tracking-widest text-[#2D5A27] bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200">
-              Phiếu Đặt Hẹn Đã Được Xác Nhận
+              {isEn ? 'Appointment Confirmed' : 'Phiếu Đặt Hẹn Đã Được Xác Nhận'}
             </span>
 
             <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mt-4 mb-2">
-              Hân hạnh đón tiếp ba mẹ & bé {bookingResult.petName}!
+              {isEn ? `Welcome! See you soon, ${bookingResult.petName}!` : `Hân hạnh đón tiếp ba mẹ & bé ${bookingResult.petName}!`}
             </h3>
 
             <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto mb-8 font-light">
-              Bác sĩ chuyên khoa tại {bookingResult.branchName} sẽ liên hệ xác nhận trong vòng 10 phút.
+              {isEn
+                ? `A specialist at ${bookingResult.branchName} will contact you to confirm within 10 minutes.`
+                : `Bác sĩ chuyên khoa tại ${bookingResult.branchName} sẽ liên hệ xác nhận trong vòng 10 phút.`}
             </p>
 
             {/* Boarding Pass Box */}
@@ -262,29 +267,29 @@ export default function BookingSection({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition shadow-xs"
                 >
                   <Copy className="w-3.5 h-3.5 text-[#2D5A27]" />
-                  <span>{copied ? 'Đã chép!' : 'Sao chép'}</span>
+                  <span>{copied ? (isEn ? 'Copied!' : 'Đã chép!') : (isEn ? 'Copy' : 'Sao chép')}</span>
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-500 block font-light">Chủ nuôi:</span>
+                  <span className="text-slate-500 block font-light">{isEn ? 'Pet Parent:' : 'Chủ nuôi:'}</span>
                   <span className="font-bold text-slate-900 text-sm">{bookingResult.ownerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block font-light">Bé cưng:</span>
+                  <span className="text-slate-500 block font-light">{isEn ? 'Pet:' : 'Bé cưng:'}</span>
                   <span className="font-bold text-slate-900 text-sm">{bookingResult.petName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block font-light">Cơ sở:</span>
+                  <span className="text-slate-500 block font-light">{isEn ? 'Branch:' : 'Cơ sở:'}</span>
                   <span className="font-bold text-[#2D5A27] text-sm">{bookingResult.branchName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block font-light">Thời gian:</span>
+                  <span className="text-slate-500 block font-light">{isEn ? 'Schedule:' : 'Thời gian:'}</span>
                   <span className="font-bold text-slate-900 text-sm">{bookingResult.dateTime}</span>
                 </div>
                 <div className="col-span-2 pt-3 border-t border-slate-200">
-                  <span className="text-slate-500 block font-light">Dịch vụ:</span>
+                  <span className="text-slate-500 block font-light">{isEn ? 'Service:' : 'Dịch vụ:'}</span>
                   <span className="font-bold text-[#2D5A27] text-sm">{bookingResult.service}</span>
                 </div>
               </div>
@@ -295,7 +300,7 @@ export default function BookingSection({
                 onClick={resetForm}
                 className="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-800 hover:to-emerald-900 text-white transition shadow-lg"
               >
-                Đặt Thêm Lịch Hẹn Khác
+                {isEn ? 'Book Another Appointment' : 'Đặt Thêm Lịch Hẹn Khác'}
               </button>
               <a
                 href="tel:0903599339"
@@ -323,12 +328,12 @@ export default function BookingSection({
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#2D5A27] flex items-center gap-2 mb-4">
                   <User className="w-4 h-4 text-[#FFB800]" />
-                  1. Thông tin liên hệ chủ nuôi
+                  {isEn ? '1. Pet Parent Contact Information' : '1. Thông tin liên hệ chủ nuôi'}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Họ và tên của bạn <span className="text-rose-500">*</span>
+                      {isEn ? 'Full Name' : 'Họ và tên của bạn'} <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -341,7 +346,7 @@ export default function BookingSection({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Số điện thoại <span className="text-rose-500">*</span>
+                      {isEn ? 'Phone Number' : 'Số điện thoại'} <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -358,12 +363,12 @@ export default function BookingSection({
               <div className="pt-5 border-t border-slate-200">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#2D5A27] flex items-center gap-2 mb-4">
                   <Heart className="w-4 h-4 text-[#FFB800]" />
-                  2. Thông tin thú cưng
+                  {isEn ? '2. Pet Information' : '2. Thông tin thú cưng'}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
                   <div className="sm:col-span-6">
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên của bé <span className="text-rose-500">*</span>
+                      {isEn ? "Pet's Name" : 'Tên của bé'} <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -376,13 +381,13 @@ export default function BookingSection({
 
                   <div className="sm:col-span-6">
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Loài thú cưng
+                      {isEn ? 'Pet Species' : 'Loài thú cưng'}
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { type: 'dog', label: 'Chó 🐶' },
-                        { type: 'cat', label: 'Mèo 🐱' },
-                        { type: 'other', label: 'Khác 🐰' },
+                        { type: 'dog', label: isEn ? 'Dog 🐶' : 'Chó 🐶' },
+                        { type: 'cat', label: isEn ? 'Cat 🐱' : 'Mèo 🐱' },
+                        { type: 'other', label: isEn ? 'Other 🐰' : 'Khác 🐰' },
                       ].map((item) => (
                         <button
                           key={item.type}
@@ -406,12 +411,12 @@ export default function BookingSection({
               <div className="pt-5 border-t border-slate-200">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-[#2D5A27] flex items-center gap-2 mb-4">
                   <Building className="w-4 h-4 text-[#FFB800]" />
-                  3. Cơ sở & Dịch vụ
+                  {isEn ? '3. Branch & Service Selection' : '3. Cơ sở & Dịch vụ'}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Chọn cơ sở <span className="text-rose-500">*</span>
+                      {isEn ? 'Select Clinic Branch' : 'Chọn cơ sở'} <span className="text-rose-500">*</span>
                     </label>
                     <select
                       value={branch}
@@ -422,7 +427,7 @@ export default function BookingSection({
                       }`}
                     >
                       <option value="" className="text-slate-400">
-                        -- Chọn cơ sở khám --
+                        {isEn ? '-- Select Preferred Branch --' : '-- Chọn cơ sở khám --'}
                       </option>
                       {dbBranches.length > 0
                         ? dbBranches.map((b) => (
@@ -455,28 +460,36 @@ export default function BookingSection({
                       </option>
                       {dbServices.length > 0 ? (
                         <>
-                          <optgroup label="Nhóm 1: Thú Y & Y Tế" className="bg-white text-slate-900">
+                          <optgroup label={isEn ? "Veterinary & Medical" : "Thú Y & Y Tế"} className="bg-white text-slate-900">
                             {dbServices
                               .filter((s) => s.nhom_dich_vu === 'medical')
-                              .map((s) => (
-                                <option key={s.id} value={s.ten_dich_vu}>
-                                  {s.ten_dich_vu} {s.gia_tham_khao ? `(${s.gia_tham_khao})` : ''}
-                                </option>
-                              ))}
+                              .map((s) => {
+                                const title = (isEn && s.ten_dich_vu_en) || s.ten_dich_vu;
+                                const price = (isEn && s.gia_tham_khao_en) || s.gia_tham_khao;
+                                return (
+                                  <option key={s.id} value={s.ten_dich_vu}>
+                                    {title} {price ? `(${price})` : ''}
+                                  </option>
+                                );
+                              })}
                           </optgroup>
-                          <optgroup label="Nhóm 2: Chăm Sóc & Lưu Trú" className="bg-white text-slate-900">
+                          <optgroup label={isEn ? "Care & Lodging" : "Chăm Sóc & Lưu Trú"} className="bg-white text-slate-900">
                             {dbServices
                               .filter((s) => s.nhom_dich_vu === 'care')
-                              .map((s) => (
-                                <option key={s.id} value={s.ten_dich_vu}>
-                                  {s.ten_dich_vu} {s.gia_tham_khao ? `(${s.gia_tham_khao})` : ''}
-                                </option>
-                              ))}
+                              .map((s) => {
+                                const title = (isEn && s.ten_dich_vu_en) || s.ten_dich_vu;
+                                const price = (isEn && s.gia_tham_khao_en) || s.gia_tham_khao;
+                                return (
+                                  <option key={s.id} value={s.ten_dich_vu}>
+                                    {title} {price ? `(${price})` : ''}
+                                  </option>
+                                );
+                              })}
                           </optgroup>
                         </>
                       ) : (
                         <>
-                          <optgroup label="Nhóm 1: Thú Y & Y Tế" className="bg-white text-slate-900">
+                          <optgroup label={isEn ? "Veterinary & Medical" : "Thú Y & Y Tế"} className="bg-white text-slate-900">
                             {servicesData
                               .filter((s) => s.category === 'medical')
                               .map((s) => (
@@ -485,7 +498,7 @@ export default function BookingSection({
                                 </option>
                               ))}
                           </optgroup>
-                          <optgroup label="Nhóm 2: Chăm Sóc & Lưu Trú" className="bg-white text-slate-900">
+                          <optgroup label={isEn ? "Care & Lodging" : "Chăm Sóc & Lưu Trú"} className="bg-white text-slate-900">
                             {servicesData
                               .filter((s) => s.category === 'care')
                               .map((s) => (
@@ -565,12 +578,16 @@ export default function BookingSection({
                   className="w-full flex items-center justify-center gap-3 py-4 px-8 rounded-2xl font-bold text-base bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-800 hover:to-emerald-900 text-white shadow-xl shadow-emerald-950/20 hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50"
                 >
                   <CalendarCheck className="w-5 h-5 text-white" />
-                  <span>{isSubmitting ? 'Đang xác nhận lịch hẹn...' : 'Xác Nhận Đặt Lịch Hẹn'}</span>
+                  <span>
+                    {isSubmitting
+                      ? (isEn ? 'Submitting Appointment...' : 'Đang xác nhận lịch hẹn...')
+                      : (isEn ? 'Confirm Appointment Booking' : 'Xác Nhận Đặt Lịch Hẹn')}
+                  </span>
                 </button>
 
                 <p className="text-center text-xs text-slate-500 mt-4 flex items-center justify-center gap-1.5 font-light">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  Bảo mật thông tin 100%
+                  {isEn ? '100% Confidential & Secure' : 'Bảo mật thông tin 100%'}
                 </p>
               </div>
             </div>

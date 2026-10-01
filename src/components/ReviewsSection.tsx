@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { supabase, DanhGiaRecord } from '@/lib/supabase';
+import { useLanguage } from '@/context/LanguageContext';
 import ScrollRevealTitle from './ScrollRevealTitle';
 import { getAssetUrl } from '@/lib/assets';
 
@@ -95,6 +96,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
 ];
 
 export default function ReviewsSection() {
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   const [reviews, setReviews] = useState<DanhGiaRecord[]>(DEFAULT_REVIEWS);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -171,7 +174,7 @@ export default function ReviewsSection() {
           <div>
             <ScrollRevealTitle>
               <h2 className="font-editorial text-2xl sm:text-4xl lg:text-[42px] font-normal tracking-tight text-slate-900 leading-[1.2]">
-                Đánh giá từ khách hàng
+                {isEn ? 'Client Testimonials & Feedback' : 'Đánh giá từ khách hàng'}
               </h2>
             </ScrollRevealTitle>
           </div>
@@ -230,7 +233,7 @@ export default function ReviewsSection() {
                   {rev.da_xac_thuc && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
                       <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                      <span>Đã xác thực</span>
+                      <span>{isEn ? 'Verified' : 'Đã xác thực'}</span>
                     </span>
                   )}
                 </div>

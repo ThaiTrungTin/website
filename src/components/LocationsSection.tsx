@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { branchesData, BranchItem } from '@/data/branchesData';
 import { supabase, ChiNhanhRecord } from '@/lib/supabase';
+import { useLanguage } from '@/context/LanguageContext';
 import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
 import {
   MapPin,
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react';
 
 export default function LocationsSection() {
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   const [branches, setBranches] = useState<BranchItem[]>(branchesData);
   const [selectedBranch, setSelectedBranch] = useState<BranchItem>(branchesData[0]);
 
@@ -54,22 +57,46 @@ export default function LocationsSection() {
             }
           }
 
+          let parsedFeaturesEn: string[] = [];
+          const rawTienIchEn = b.tien_ich_en as any;
+          if (Array.isArray(rawTienIchEn)) {
+            parsedFeaturesEn = rawTienIchEn.map((f: any) => String(f).trim()).filter(Boolean);
+          } else if (typeof rawTienIchEn === 'string' && rawTienIchEn.trim()) {
+            try {
+              const parsed = JSON.parse(rawTienIchEn);
+              if (Array.isArray(parsed)) {
+                parsedFeaturesEn = parsed.map((f: any) => String(f).trim()).filter(Boolean);
+              }
+            } catch {
+              parsedFeaturesEn = rawTienIchEn.split('\n').map((f: string) => f.trim()).filter(Boolean);
+            }
+          }
+
           return {
             id: b.id,
             name: b.ten_chi_nhanh?.trim() || '',
+            nameEn: b.ten_chi_nhanh_en?.trim() || '',
             shortName: b.ten_ngan?.trim() || b.ten_chi_nhanh?.trim() || '',
+            shortNameEn: b.ten_ngan_en?.trim() || b.ten_chi_nhanh_en?.trim() || '',
             tagline: b.khau_hieu?.trim() || '',
+            taglineEn: b.khau_hieu_en?.trim() || '',
             district: b.khu_vuc?.trim() || '',
+            districtEn: b.khu_vuc_en?.trim() || '',
             address: b.dia_chi?.trim() || '',
+            addressEn: b.dia_chi_en?.trim() || '',
             phone: b.so_dien_thoai?.trim() || '',
             emergencyPhone: b.so_dien_thoai?.trim() || '',
             openHours: b.gio_hoat_dong?.trim() || '',
             managerDoctor: b.bac_si_phu_trach?.trim() || '',
+            managerDoctorEn: b.bac_si_phu_trach_en?.trim() || '',
             doctorDegree: b.bang_cap_bac_si?.trim() || '',
+            doctorDegreeEn: b.bang_cap_bac_si_en?.trim() || '',
             parkingInfo: b.thong_tin_do_xe?.trim() || '',
+            parkingInfoEn: b.thong_tin_do_xe_en?.trim() || '',
             mapEmbedUrl: b.link_ggmap_embed?.trim() || '',
             googleMapsAppUrl: b.link_ggmap_app?.trim() || '',
             features: parsedFeatures,
+            featuresEn: parsedFeaturesEn,
           };
         });
 
@@ -133,9 +160,9 @@ export default function LocationsSection() {
         {/* Section Header with Title-Only Entrance Animation */}
         <ScrollRevealTitle className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
           <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
-            Hệ Thống Cơ Sở &amp; <br />
+            {isEn ? 'Clinic Network &' : 'Hệ Thống Cơ Sở &'} <br />
             <span className="italic font-light text-[#2D5A27]">
-              Bản Đồ Chỉ Đường Trực Quan
+              {isEn ? 'Interactive Direction Maps' : 'Bản Đồ Chỉ Đường Trực Quan'}
             </span>
           </h2>
         </ScrollRevealTitle>
@@ -149,6 +176,7 @@ export default function LocationsSection() {
               <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-3 no-scrollbar">
                 {branches.map((b, idx) => {
                   const isSelected = selectedBranch.id === b.id;
+                  const label = (isEn && b.shortNameEn) ? b.shortNameEn : (b.shortName || b.name || (isEn ? `Branch ${idx + 1}` : `Cơ sở ${idx + 1}`));
                   return (
                     <button
                       key={b.id}
@@ -160,7 +188,7 @@ export default function LocationsSection() {
                           : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300'
                       }`}
                     >
-                      {b.shortName || b.name || `Cơ sở ${idx + 1}`}
+                      {label}
                     </button>
                   );
                 })}
@@ -175,9 +203,9 @@ export default function LocationsSection() {
                 {/* Badges */}
                 <div className="flex flex-wrap items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2">
-                    {selectedBranch.district && (
+                    {(selectedBranch.district || selectedBranch.districtEn) && (
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#2D5A27] text-white">
-                        {selectedBranch.district}
+                        {(isEn && selectedBranch.districtEn) ? selectedBranch.districtEn : selectedBranch.district}
                       </span>
                     )}
                   </div>
@@ -192,56 +220,69 @@ export default function LocationsSection() {
 
                 {/* Tên Chi Nhánh */}
                 <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
-                  {selectedBranch.name}
+                  {(isEn && selectedBranch.nameEn) ? selectedBranch.nameEn : selectedBranch.name}
                 </h3>
 
                 {/* Địa chỉ */}
                 {selectedBranch.address && (
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
                     <MapPin className="w-4 h-4 text-[#2D5A27] shrink-0 mt-0.5" />
-                    <span className="font-medium">{selectedBranch.address}</span>
+                    <span className="font-medium">
+                      {(isEn && selectedBranch.addressEn) ? selectedBranch.addressEn : selectedBranch.address}
+                    </span>
                   </div>
                 )}
 
                 {/* Tiện ích nổi bật */}
-                {selectedBranch.features && selectedBranch.features.length > 0 && (
-                  <div className="pt-3.5 border-t border-slate-100">
-                    <span className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">
-                      Trang thiết bị &amp; Tiện ích chuẩn y khoa 5 sao:
-                    </span>
-                    <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-700">
-                      {selectedBranch.features.map((feat, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <ShieldCheck className="w-3.5 h-3.5 text-[#2D5A27] shrink-0" />
-                          <span>{feat}</span>
-                        </div>
-                      ))}
+                {(() => {
+                  const activeFeatures = (isEn && selectedBranch.featuresEn && selectedBranch.featuresEn.length > 0)
+                    ? selectedBranch.featuresEn
+                    : selectedBranch.features;
+                  return activeFeatures && activeFeatures.length > 0 ? (
+                    <div className="pt-3.5 border-t border-slate-100">
+                      <span className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">
+                        {isEn ? '5-Star Medical Equipment & Amenities:' : 'Trang thiết bị & Tiện ích chuẩn y khoa 5 sao:'}
+                      </span>
+                      <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-700">
+                        {activeFeatures.map((feat, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#2D5A27] shrink-0" />
+                            <span>{feat}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : null;
+                })()}
 
                 {/* Bác sĩ phụ trách */}
-                {selectedBranch.managerDoctor && (
+                {(selectedBranch.managerDoctor || selectedBranch.managerDoctorEn) && (
                   <div className="pt-3.5 border-t border-slate-100">
                     <span className="font-bold text-slate-900 flex items-center gap-2 mb-1 text-xs">
                       <UserCheck className="w-4 h-4 text-[#2D5A27]" />
-                      Bác sĩ phụ trách cơ sở:
+                      {isEn ? 'Facility Chief Physician:' : 'Bác sĩ phụ trách cơ sở:'}
                     </span>
-                    <p className="font-semibold text-[#2D5A27] text-xs">{selectedBranch.managerDoctor}</p>
-                    {selectedBranch.doctorDegree && (
-                      <p className="text-slate-600 text-[11px] leading-snug font-light mt-0.5">{selectedBranch.doctorDegree}</p>
+                    <p className="font-semibold text-[#2D5A27] text-xs">
+                      {(isEn && selectedBranch.managerDoctorEn) ? selectedBranch.managerDoctorEn : selectedBranch.managerDoctor}
+                    </p>
+                    {(selectedBranch.doctorDegree || selectedBranch.doctorDegreeEn) && (
+                      <p className="text-slate-600 text-[11px] leading-snug font-light mt-0.5">
+                        {(isEn && selectedBranch.doctorDegreeEn) ? selectedBranch.doctorDegreeEn : selectedBranch.doctorDegree}
+                      </p>
                     )}
                   </div>
                 )}
 
                 {/* Thông tin đỗ xe */}
-                {selectedBranch.parkingInfo && (
+                {(selectedBranch.parkingInfo || selectedBranch.parkingInfoEn) && (
                   <div className="pt-3.5 border-t border-slate-100">
                     <span className="font-bold text-slate-900 flex items-center gap-2 mb-1 text-xs">
                       <Car className="w-4 h-4 text-[#2D5A27]" />
-                      Thông tin bãi đỗ xe &amp; hỗ trợ:
+                      {isEn ? 'Parking & Support Information:' : 'Thông tin bãi đỗ xe & hỗ trợ:'}
                     </span>
-                    <p className="text-slate-600 font-light text-xs">{selectedBranch.parkingInfo}</p>
+                    <p className="text-slate-600 font-light text-xs">
+                      {(isEn && selectedBranch.parkingInfoEn) ? selectedBranch.parkingInfoEn : selectedBranch.parkingInfo}
+                    </p>
                   </div>
                 )}
               </div>
@@ -267,7 +308,7 @@ export default function LocationsSection() {
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2D5A27] font-bold text-xs transition"
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>Chỉ đường Maps</span>
+                      <span>{isEn ? 'Directions' : 'Chỉ đường Maps'}</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -282,7 +323,7 @@ export default function LocationsSection() {
                     prefetch={true}
                     className="group w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#2D5A27] hover:bg-[#23481e] text-white font-bold text-sm transition shadow-md hover:shadow-lg"
                   >
-                    <span>Xem chi tiết cơ sở</span>
+                    <span>{isEn ? 'View Clinic Details' : 'Xem chi tiết cơ sở'}</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>
@@ -299,13 +340,15 @@ export default function LocationsSection() {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
                     <h4 className="font-bold text-slate-900 text-sm sm:text-base">
-                      {selectedBranch.name}
+                      {(isEn && selectedBranch.nameEn) ? selectedBranch.nameEn : selectedBranch.name}
                     </h4>
                   </div>
                   {selectedBranch.address && (
                     <p className="text-xs text-slate-600 mt-1 flex items-center gap-1.5 font-light">
                       <MapPin className="w-3.5 h-3.5 text-[#2D5A27] shrink-0" />
-                      <span>{selectedBranch.address}</span>
+                      <span>
+                        {(isEn && selectedBranch.addressEn) ? selectedBranch.addressEn : selectedBranch.address}
+                      </span>
                     </p>
                   )}
                 </div>
@@ -318,7 +361,7 @@ export default function LocationsSection() {
                     className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-xs transition shrink-0 cursor-pointer"
                   >
                     <Navigation className="w-3.5 h-3.5 fill-white" />
-                    <span>Mở App Chỉ Đường</span>
+                    <span>{isEn ? 'Open in Google Maps' : 'Mở App Chỉ Đường'}</span>
                     <ExternalLink className="w-3 h-3 ml-0.5" />
                   </a>
                 )}
@@ -331,7 +374,9 @@ export default function LocationsSection() {
                     <div className="flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5 text-[#2D5A27]" />
                       <span className={isOpenNow ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>
-                        {isOpenNow ? '🟢 Đang mở cửa (08:00 – 20:00)' : '🔴 Đang đóng cửa • Mở lúc 08:00'}
+                        {isOpenNow
+                          ? (isEn ? '🟢 Open Now (08:00 – 20:00)' : '🟢 Đang mở cửa (08:00 – 20:00)')
+                          : (isEn ? '🔴 Closed • Opens at 08:00' : '🔴 Đang đóng cửa • Mở lúc 08:00')}
                       </span>
                     </div>
                   )}
@@ -342,7 +387,7 @@ export default function LocationsSection() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[#2D5A27] hover:text-emerald-800 font-bold hover:underline ml-auto"
                     >
-                      <span>Xem đánh giá trên Google</span>
+                      <span>{isEn ? 'Reviews on Google' : 'Xem đánh giá trên Google'}</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}

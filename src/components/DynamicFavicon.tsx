@@ -1,0 +1,71 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useSystemConfig } from '@/context/SystemConfigContext';
+import { useLanguage } from '@/context/LanguageContext';
+
+export default function DynamicFavicon() {
+  const { config } = useSystemConfig();
+  const { language } = useLanguage();
+
+  // Dynamic Browser Tab Title reacting to language and admin config
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let titleVi = config.tieu_de_trang;
+      let titleEn = config.tieu_de_trang_en;
+
+      if (!titleVi || !titleEn) {
+        try {
+          const cached = localStorage.getItem('petmm_system_config_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.tieu_de_trang) titleVi = parsed.tieu_de_trang;
+            if (parsed.tieu_de_trang_en) titleEn = parsed.tieu_de_trang_en;
+          }
+        } catch {}
+      }
+
+      const isEn = language === 'en';
+      const pageTitle = isEn
+        ? (titleEn?.trim() || 'PetM&M — Veterinary Hospital & Clinic')
+        : (titleVi?.trim() || 'PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng');
+
+      document.title = pageTitle;
+    }
+  }, [language, config.tieu_de_trang, config.tieu_de_trang_en]);
+
+  useEffect(() => {
+    const rawFavicon = config.logo_favicon?.trim();
+    const faviconUrl = rawFavicon || '/logo-favicon.png';
+
+    const lower = faviconUrl.toLowerCase();
+    let mimeType = 'image/png';
+    if (lower.includes('.svg')) mimeType = 'image/svg+xml';
+    else if (lower.includes('.ico')) mimeType = 'image/x-icon';
+    else if (lower.includes('.webp')) mimeType = 'image/webp';
+    else if (lower.includes('.jpg') || lower.includes('.jpeg')) mimeType = 'image/jpeg';
+
+    const sep = faviconUrl.includes('?') ? '&' : '?';
+    const cacheBustUrl = `${faviconUrl}${sep}v=${Date.now()}`;
+
+    // Cập nhật tất cả các thẻ icon hiện có mà KHÔNG gọi el.remove() (tránh xung đột DOM React 19)
+    const existingIcons = document.querySelectorAll<HTMLLinkElement>(
+      "link[rel='icon'], link[rel='shortcut icon'], link[rel*='icon'], link[rel='apple-touch-icon']"
+    );
+
+    if (existingIcons.length > 0) {
+      existingIcons.forEach((link) => {
+        link.href = cacheBustUrl;
+        link.type = mimeType;
+      });
+    } else {
+      const newLink = document.createElement('link');
+      newLink.rel = 'icon';
+      newLink.type = mimeType;
+      newLink.href = cacheBustUrl;
+      document.head.appendChild(newLink);
+    }
+  }, [config.logo_favicon]);
+
+  return null;
+}

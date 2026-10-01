@@ -3,6 +3,7 @@
 import React from 'react';
 import { PhoneCall, CalendarCheck } from 'lucide-react';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface MobileStickyBarProps {
   onOpenBookingModal: () => void;
@@ -10,6 +11,7 @@ interface MobileStickyBarProps {
 
 export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarProps) {
   const { config } = useSystemConfig();
+  const { t } = useLanguage();
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
 
@@ -34,7 +36,7 @@ export default function MobileStickyBar({ onOpenBookingModal }: MobileStickyBarP
           className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-black bg-gradient-to-r from-[#FFB800] to-[#E5A600] text-slate-950 shadow-md shadow-amber-500/25 active:scale-95 transition-all text-center leading-none"
         >
           <CalendarCheck className="w-4 h-4 text-slate-950 shrink-0" />
-          <span>Đặt Lịch Nhanh</span>
+          <span>{t('btn_book_short', 'Đặt Lịch')}</span>
         </button>
       </div>
     </aside>

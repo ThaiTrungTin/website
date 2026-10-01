@@ -48,10 +48,14 @@ import {
   Star,
   BarChart3,
   BookOpen,
+  LogOut,
 } from 'lucide-react';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
+import { VietnamFlag, UKFlag } from '@/components/FlagIcons';
+import AdminLoginPage from '@/components/AdminLoginPage';
+import PetLogo from '@/components/PetLogo';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -59,6 +63,64 @@ type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 
 export type ConfigSubTab = 'contact' | 'about' | 'slides' | 'stats' | 'slogans';
 
 export default function AdminDashboardPage() {
+  // XÁC THỰC QUẢN TRỊ VIÊN (ADMIN AUTHENTICATION)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ username: string; ho_ten: string; vai_tro: string } | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/admin/me');
+        const data = await res.json();
+        if (isMounted) {
+          if (data.authenticated && data.user) {
+            setIsAuthenticated(true);
+            setCurrentUser(data.user);
+          } else {
+            const local = typeof window !== 'undefined' ? localStorage.getItem('petmm_admin_user') : null;
+            if (local) {
+              setIsAuthenticated(true);
+              setCurrentUser(JSON.parse(local));
+            } else {
+              setIsAuthenticated(false);
+            }
+          }
+        }
+      } catch {
+        if (isMounted) {
+          const local = typeof window !== 'undefined' ? localStorage.getItem('petmm_admin_user') : null;
+          if (local) {
+            setIsAuthenticated(true);
+            setCurrentUser(JSON.parse(local));
+          } else {
+            setIsAuthenticated(false);
+          }
+        }
+      }
+    };
+    checkAuth();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleLogout = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn đăng xuất khỏi cổng quản trị Pet M&M?')) return;
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('petmm_admin_user');
+      }
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setIsLoggingOut(false);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<AdminTab>('banners');
   const [configSubTab, setConfigSubTab] = useState<ConfigSubTab>('contact');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -756,6 +818,8 @@ export default function AdminDashboardPage() {
   const [isFaqSaving, setIsFaqSaving] = useState(false);
   const [editingFaq, setEditingFaq] = useState<Partial<CauHoiThuongGapRecord> | null>(null);
   const [isCreatingNewFaq, setIsCreatingNewFaq] = useState(false);
+  const [faqModalTab, setFaqModalTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingFaq, setIsTranslatingFaq] = useState(false);
 
   const loadFaqs = async () => {
     try {
@@ -779,22 +843,65 @@ export default function AdminDashboardPage() {
     const nextOrder = faqs.length > 0 ? Math.max(...faqs.map((f) => f.thu_tu || 0)) + 1 : 1;
     setEditingFaq({
       cau_hoi: '',
+      cau_hoi_en: '',
       cau_tra_loi: '',
+      cau_tra_loi_en: '',
       chuyen_muc: 'Chung',
+      chuyen_muc_en: 'General',
       thu_tu: nextOrder,
       kich_hoat: true,
     });
+    setFaqModalTab('vi');
     setIsCreatingNewFaq(true);
   };
 
   const handleEditFaq = (faq: CauHoiThuongGapRecord) => {
     setEditingFaq({ ...faq });
+    setFaqModalTab('vi');
     setIsCreatingNewFaq(false);
+  };
+
+  const handleAutoTranslateFaq = async () => {
+    if (!editingFaq?.cau_hoi?.trim()) {
+      showNotification('error', 'Vui lòng nhập Câu hỏi Tiếng Việt trước khi dịch!');
+      return;
+    }
+    setIsTranslatingFaq(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        cau_hoi: editingFaq.cau_hoi || '',
+        cau_tra_loi: editingFaq.cau_tra_loi || '',
+        chuyen_muc: editingFaq.chuyen_muc || '',
+      };
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingFaq((prev) => (prev ? {
+          ...prev,
+          cau_hoi_en: data.translations.cau_hoi || prev.cau_hoi_en,
+          cau_tra_loi_en: data.translations.cau_tra_loi || prev.cau_tra_loi_en,
+          chuyen_muc_en: data.translations.chuyen_muc || prev.chuyen_muc_en,
+        } : null));
+        setFaqModalTab('en');
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh y khoa thành công!');
+      } else {
+        throw new Error(data.error || 'Dịch tự động thất bại');
+      }
+    } catch (err: any) {
+      console.error('Lỗi dịch FAQ:', err);
+      showNotification('error', `Lỗi dịch tự động: ${err.message}`);
+    } finally {
+      setIsTranslatingFaq(false);
+    }
   };
 
   const handleSaveFaq = async () => {
     if (!editingFaq?.cau_hoi?.trim() || !editingFaq?.cau_tra_loi?.trim()) {
-      showNotification('error', 'Vui lòng nhập cả Câu hỏi và Câu trả lời!');
+      showNotification('error', 'Vui lòng nhập cả Câu hỏi và Câu trả lời (Tiếng Việt)!');
       return;
     }
 
@@ -802,8 +909,11 @@ export default function AdminDashboardPage() {
     try {
       const payload: Partial<CauHoiThuongGapRecord> = {
         cau_hoi: editingFaq.cau_hoi.trim(),
+        cau_hoi_en: editingFaq.cau_hoi_en?.trim() || null,
         cau_tra_loi: editingFaq.cau_tra_loi.trim(),
+        cau_tra_loi_en: editingFaq.cau_tra_loi_en?.trim() || null,
         chuyen_muc: editingFaq.chuyen_muc?.trim() || 'Chung',
+        chuyen_muc_en: editingFaq.chuyen_muc_en?.trim() || null,
         thu_tu: Number(editingFaq.thu_tu) || 0,
         kich_hoat: editingFaq.kich_hoat !== undefined ? editingFaq.kich_hoat : true,
         ngay_cap_nhat: new Date().toISOString(),
@@ -1509,8 +1619,11 @@ export default function AdminDashboardPage() {
     const term = searchTerm.toLowerCase();
     return (
       (f.cau_hoi && f.cau_hoi.toLowerCase().includes(term)) ||
+      (f.cau_hoi_en && f.cau_hoi_en.toLowerCase().includes(term)) ||
       (f.cau_tra_loi && f.cau_tra_loi.toLowerCase().includes(term)) ||
-      (f.chuyen_muc && f.chuyen_muc.toLowerCase().includes(term))
+      (f.cau_tra_loi_en && f.cau_tra_loi_en.toLowerCase().includes(term)) ||
+      (f.chuyen_muc && f.chuyen_muc.toLowerCase().includes(term)) ||
+      (f.chuyen_muc_en && f.chuyen_muc_en.toLowerCase().includes(term))
     );
   });
 
@@ -1587,6 +1700,30 @@ export default function AdminDashboardPage() {
     stats: 'Thông Số Thống Kê',
     slogans: 'Khẩu Hiệu & Slogan',
   };
+
+  // AUTH GATE
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-[#0B150A] flex flex-col items-center justify-center p-4 select-none">
+        <PetLogo size="lg" />
+        <div className="mt-6 flex items-center gap-2.5 text-slate-300 text-xs font-semibold">
+          <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <span>Đang kiểm tra quyền truy cập quản trị...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AdminLoginPage
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex antialiased">
@@ -2045,21 +2182,35 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Sidebar Bottom / Profile */}
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
-          <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl">
-            <div className="w-8 h-8 rounded-full bg-emerald-900/60 border border-emerald-500/40 flex items-center justify-center text-emerald-300 font-bold text-xs shrink-0">
-              AD
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-white truncate">Ban Quản Trị</p>
-              <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Supabase Live</span>
+        {/* Sidebar Bottom / Profile & Logout */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-950/60">
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-emerald-900/60 border border-emerald-500/40 flex items-center justify-center text-emerald-300 font-bold text-xs shrink-0">
+                {(currentUser?.username || 'AD').substring(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white truncate">
+                  {currentUser?.ho_ten || currentUser?.username || 'Quản Trị Viên'}
+                </p>
+                <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="capitalize">{currentUser?.vai_tro || 'super_admin'}</span>
+                </div>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer shrink-0"
+              title="Đăng xuất khỏi hệ thống"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
+
       </aside>
 
       {/* ========================================================= */}
@@ -3711,18 +3862,37 @@ export default function AdminDashboardPage() {
                                 <Tag className="w-3 h-3 text-[#2D5A27]" />
                                 <span>{faq.chuyen_muc || 'Chung'}</span>
                               </span>
+                              {faq.chuyen_muc_en && (
+                                <p className="text-[10px] text-slate-400 italic mt-1">
+                                  EN: {faq.chuyen_muc_en}
+                                </p>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4">
                               <p className="font-bold text-slate-900 leading-snug">
                                 {faq.cau_hoi}
                               </p>
+                              {faq.cau_hoi_en ? (
+                                <p className="text-[11px] text-[#2D5A27] font-medium italic mt-1 line-clamp-1">
+                                  EN: {faq.cau_hoi_en}
+                                </p>
+                              ) : (
+                                <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">
+                                  Chưa có tiếng Anh
+                                </span>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4">
                               <p className="text-slate-600 line-clamp-2 leading-relaxed whitespace-pre-line">
                                 {faq.cau_tra_loi}
                               </p>
+                              {faq.cau_tra_loi_en && (
+                                <p className="text-[11px] text-slate-400 italic mt-1 line-clamp-2">
+                                  EN: {faq.cau_tra_loi_en}
+                                </p>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4 text-center">
@@ -5371,7 +5541,7 @@ export default function AdminDashboardPage() {
       {/* ========================================================= */}
       {editingFaq && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -5398,60 +5568,160 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              {/* Câu hỏi */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Câu hỏi: <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Pet M&M có nhận khám cấp cứu 24/7 không?"
-                  value={editingFaq.cau_hoi || ''}
-                  onChange={(e) => setEditingFaq((prev) => ({ ...prev, cau_hoi: e.target.value }))}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-[#2D5A27] focus:outline-none"
-                />
-              </div>
-
-              {/* Câu trả lời */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Câu trả lời giải đáp: <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  rows={5}
-                  placeholder="Nhập câu trả lời chi tiết và rõ ràng cho chủ nuôi..."
-                  value={editingFaq.cau_tra_loi || ''}
-                  onChange={(e) => setEditingFaq((prev) => ({ ...prev, cau_tra_loi: e.target.value }))}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-[#2D5A27] focus:outline-none leading-relaxed"
-                />
-              </div>
-
-              {/* Danh mục & Thứ tự */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Danh mục phân loại:
-                  </label>
-                  <input
-                    type="text"
-                    list="faq_categories_list"
-                    placeholder="Chọn hoặc nhập danh mục mới"
-                    value={editingFaq.chuyen_muc || ''}
-                    onChange={(e) => setEditingFaq((prev) => ({ ...prev, chuyen_muc: e.target.value }))}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                  <datalist id="faq_categories_list">
-                    <option value="Cấp cứu & Hotline" />
-                    <option value="Chuẩn bị thăm khám" />
-                    <option value="Lưu trú & Resort" />
-                    <option value="Vận chuyển Pet Taxi" />
-                    <option value="Tư vấn & Lựa chọn dịch vụ" />
-                    <option value="Kiểm soát nhiễm khuẩn" />
-                    <option value="Chung" />
-                  </datalist>
+            <div className="p-6 overflow-y-auto space-y-5 text-xs">
+              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
+              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setFaqModalTab('vi')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        faqModalTab === 'vi'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản Tiếng Việt</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFaqModalTab('en')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        faqModalTab === 'en'
+                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <UKFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản English</span>
+                    </button>
+                  </div>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateFaq}
+                  disabled={isTranslatingFaq}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động toàn bộ nội dung câu hỏi sang Tiếng Anh y khoa bằng AI"
+                >
+                  {isTranslatingFaq ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingFaq ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
+              </div>
+
+              {faqModalTab === 'vi' ? (
+                <>
+                  {/* Câu hỏi VI */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Câu hỏi (Tiếng Việt): <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editingFaq.cau_hoi || ''}
+                      onChange={(e) => setEditingFaq((prev) => ({ ...prev, cau_hoi: e.target.value }))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Câu trả lời VI */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Câu trả lời giải đáp (Tiếng Việt): <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={editingFaq.cau_tra_loi || ''}
+                      onChange={(e) => setEditingFaq((prev) => ({ ...prev, cau_tra_loi: e.target.value }))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Danh mục VI */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Danh mục phân loại (Tiếng Việt):
+                    </label>
+                    <input
+                      type="text"
+                      list="faq_categories_list_vi"
+                      value={editingFaq.chuyen_muc || ''}
+                      onChange={(e) => setEditingFaq((prev) => ({ ...prev, chuyen_muc: e.target.value }))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                    <datalist id="faq_categories_list_vi">
+                      <option value="Cấp cứu & Hotline" />
+                      <option value="Chuẩn bị thăm khám" />
+                      <option value="Lưu trú & Resort" />
+                      <option value="Vận chuyển Pet Taxi" />
+                      <option value="Tư vấn & Lựa chọn dịch vụ" />
+                      <option value="Kiểm soát nhiễm khuẩn" />
+                      <option value="Chung" />
+                    </datalist>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Câu hỏi EN */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Câu hỏi (Tiếng Anh - English):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingFaq.cau_hoi_en || ''}
+                      onChange={(e) => setEditingFaq((prev) => ({ ...prev, cau_hoi_en: e.target.value }))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Câu trả lời EN */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Câu trả lời giải đáp (Tiếng Anh - English):
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={editingFaq.cau_tra_loi_en || ''}
+                      onChange={(e) => setEditingFaq((prev) => ({ ...prev, cau_tra_loi_en: e.target.value }))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Danh mục EN */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Danh mục phân loại (Tiếng Anh - English):
+                    </label>
+                    <input
+                      type="text"
+                      list="faq_categories_list_en"
+                      value={editingFaq.chuyen_muc_en || ''}
+                      onChange={(e) => setEditingFaq((prev) => ({ ...prev, chuyen_muc_en: e.target.value }))}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                    <datalist id="faq_categories_list_en">
+                      <option value="Emergency & Hotline" />
+                      <option value="Visit Preparation" />
+                      <option value="Boarding & Resort" />
+                      <option value="Pet Taxi & Relocation" />
+                      <option value="Consultation & Guidance" />
+                      <option value="Infection Control" />
+                      <option value="General" />
+                    </datalist>
+                  </div>
+                </>
+              )}
+
+              {/* Cài đặt chung: Thứ tự & Kích hoạt */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Thứ tự sắp xếp:
@@ -5464,20 +5734,19 @@ export default function AdminDashboardPage() {
                     className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                   />
                 </div>
-              </div>
 
-              {/* Kích hoạt */}
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="faq_kich_hoat"
-                  checked={editingFaq.kich_hoat !== false}
-                  onChange={(e) => setEditingFaq((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
-                  className="w-4 h-4 text-[#2D5A27] rounded border-slate-300 focus:ring-[#2D5A27]"
-                />
-                <label htmlFor="faq_kich_hoat" className="text-xs font-semibold text-slate-800 cursor-pointer">
-                  Kích hoạt hiển thị ngoài website
-                </label>
+                <div className="flex items-center gap-2 pt-6">
+                  <input
+                    type="checkbox"
+                    id="faq_kich_hoat"
+                    checked={editingFaq.kich_hoat !== false}
+                    onChange={(e) => setEditingFaq((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                    className="w-4 h-4 text-[#2D5A27] rounded border-slate-300 focus:ring-[#2D5A27]"
+                  />
+                  <label htmlFor="faq_kich_hoat" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                    Kích hoạt hiển thị ngoài website
+                  </label>
+                </div>
               </div>
             </div>
 

@@ -1,20 +1,29 @@
 export interface BranchItem {
   id: string;
   name: string;
+  nameEn?: string;
   shortName: string;
+  shortNameEn?: string;
   tagline: string;
+  taglineEn?: string;
   district: string;
+  districtEn?: string;
   address: string;
+  addressEn?: string;
   phone: string;
   emergencyPhone: string;
   openHours: string;
   managerDoctor: string;
+  managerDoctorEn?: string;
   doctorDegree: string;
+  doctorDegreeEn?: string;
   parkingInfo: string;
+  parkingInfoEn?: string;
   mapEmbedUrl: string;
   googleMapsAppUrl: string;
   weeklySchedule?: { day: string; hours: string }[];
   features: string[];
+  featuresEn?: string[];
 }
 
 export const branchesData: BranchItem[] = [

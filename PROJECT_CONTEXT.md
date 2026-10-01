@@ -1,7 +1,8 @@
 # PET M&M — SỔ TAY NGỮ CẢNH DỰ ÁN (PROJECT CONTEXT)
 
 > 🆔 **MÃ CUỘC TRÒ CHUYỆN (CONVERSATION ID)**:
-> - **Phiên hiện tại (Latest)**: `32d76e44-7eef-4ed7-8eb1-25e266118dec`
+> - **Phiên hiện tại (Latest)**: `43991119-8237-4895-a7ff-c47117034f65`
+> - **Phiên trước**: `32d76e44-7eef-4ed7-8eb1-25e266118dec`
 > - **Phiên khởi tạo (Origin)**: `dcd00ee0-4028-4c4b-8357-a1ca0d04d25d`
 > 
 > *Dành cho AI Agent*: Đọc file này khi bắt đầu một phiên làm việc mới để nắm toàn bộ bối cảnh, thẩm mỹ, các linh kiện đã hoàn thành và kế hoạch phát triển backend tiếp theo mà không cần người dùng phải giải thích lại.
@@ -23,13 +24,13 @@
 
 ---
 
-## 2. NGUYÊN TẮC THẨM MỸ CỐT LÕI (CRITICAL RULES)
+## 2. NGUYÊN TẮC THẨM MỸ & QUY TẮC THIẾT KẾ CỐT LÕI (CRITICAL RULES)
 1. **Phong cách nghệ thuật Điện ảnh Siêu Thực (Photorealistic & Cinematic)**:
    - **Tuyệt đối KHÔNG dùng hình ảnh 3D hoạt hình / chibi / cartoon / phèn**.
    - Hình ảnh phải mang vẻ đẹp siêu thực, giống như phim điện ảnh nghệ thuật (người thật, thú cưng lông mượt như thật, ánh sáng sương mù suối khoáng tự nhiên).
-2. **Quy tắc trải nghiệm người dùng**:
+2. **Quy tắc trải nghiệm người dùng & Kiểm thử**:
    - Khung cảnh cún Golden & mèo Anh lông ngắn bên bờ suối nước nóng phải **thông thoáng, sạch sẽ 100%, không bị đè bất kỳ nút chấm đen/nhãn hotspot nào**.
-   - **Tuyệt đối không tự ý mở trình duyệt `http://localhost:3000/`** khi chưa có yêu cầu (tuân thủ chỉ dẫn của người dùng).
+   - **Tuyệt đối không tự ý mở trình duyệt `browser_subagent` / `http://localhost:3000/`** khi chưa có sự cho phép cụ thể từ người dùng. Mọi kiểm thử phải chạy qua `npx tsc --noEmit` hoặc terminal.
 3. **Quy tắc Ô nhập liệu Trang Quản Trị (Admin Inputs - BẮT BUỘC & VĨNH VIỄN)**:
    - **Tuyệt đối KHÔNG ĐƯỢC thêm bất kỳ chú thích (placeholder) bên trong các ô nhập liệu (`<input>`, `<textarea>`)** hay các dòng chữ gợi ý thừa thãi bên dưới. Giữ các ô nhập liệu hoàn toàn sạch sẽ, chỉ có nhãn tiêu đề (label).
    - Từ nay về sau, bất kỳ form nhập liệu nào trong Admin đều không được phép để thuộc tính `placeholder="..."`.
@@ -40,6 +41,20 @@
    - **Tất cả các khu vực chèn ảnh trong Admin (Ảnh Hero Banners, Ảnh bìa Chi Nhánh, Ảnh Dịch Vụ, Bài viết chi tiết...) đều BẮT BUỘC phải có cả 2 chức năng song song: CHÈN (Tải file từ máy / nhập URL) VÀ DÁN TRỰC TIẾP (Ctrl+V từ clipboard / ảnh chụp màn hình / ảnh copy từ web)**.
    - Khi người dùng nhấn `Ctrl+V` vào ô đường dẫn ảnh hoặc khung ảnh, hoặc bấm nút `Dán Ảnh`, hệ thống phải tự động nhận diện dữ liệu hình ảnh trong Clipboard, upload ngay lên Supabase Storage và điền link hoàn tất mà không bắt người dùng phải lưu file về máy rồi tải lên thủ công.
    - Tuyệt đối tuân thủ Quy tắc 3: KHÔNG dùng `placeholder` trong các ô nhập URL ảnh.
+6. **Quy tắc Hiển thị Chú thích Nút nổi (Floating Tooltip Scoping)**:
+   - Khi rê chuột vào icon nào chỉ được phép bung duy nhất chú thích của icon đó (`group/item` và `group-hover/item:...`).
+   - Tuyệt đối không để class `group` ở thẻ cha bao bọc toàn cụm, vì sẽ làm bung đồng loạt toàn bộ chú thích của tất cả các nút khi hover vào vùng chứa.
+7. **Quy tắc Ẩn khi Cuộn Trang (Scroll Hiding State)**:
+   - Khi người dùng đang cuộn trang (`isScrolling`), cụm liên hệ nổi và nút điều hướng cuộn trang phải **ẩn hoàn toàn 100%** (`translate-x-32 opacity-0 pointer-events-none`), không chừa thụt dở dang và vô hiệu hóa tương tác chuột.
+   - Khi dừng cuộn (sau 650ms), cụm nút sẽ lướt êm dịu trở lại vị trí hiển thị (`translate-x-0 opacity-100 pointer-events-auto`).
+8. **Quy tắc Menu Điều hướng Phân Cấp (Database-driven Dropdown Navigation)**:
+   - Toàn bộ nội dung đổ xuống của menu (Chi nhánh, Dịch vụ, Cẩm nang) **phải lấy 100% dữ liệu thực tế từ Database**, tuyệt đối không bịa dữ liệu giả lập.
+   - **Dịch vụ**: Phân loại theo đúng 2 nhóm thực tế: `Thú Y & Y Tế` và `Chăm Sóc & Lưu Trú`. Tuyệt đối bỏ tiền tố "Nhóm 1", "Nhóm 2" ở mọi nơi liên quan đến dịch vụ. Khi chọn dịch vụ con từ menu, hệ thống phải tự động cuộn đến phân mục Dịch vụ và mở chi tiết dịch vụ đó ngay lập tức.
+   - **Chi nhánh**: Đổ xuống danh sách chi nhánh thực tế từ DB, click chuyển thẳng vào view chi tiết cơ sở (`/chi-nhanh/:id`).
+   - **Cẩm nang**: Đổ xuống 2 tầng (Tầng 1 là chuyên mục đang có bài viết thực tế, bỏ mục "Tất cả bài viết"; Tầng 2 là tiêu đề bài viết con thực tế từ DB, click chuyển thẳng vào view chi tiết bài viết (`/kien-thuc/:id`)).
+9. **Quy tắc Chuyển Đổi Song Ngữ (Bilingual Architecture VI / EN)**:
+   - Đồng bộ song ngữ thời gian thực trên toàn bộ ứng dụng qua `LanguageContext`: Header, Menu đa tầng, Tiêu đề tab trình duyệt (`document.title`), Slogan 3D Aura, Hero Banner, Marquee Ticker, Chân trang và Modal.
+   - Dữ liệu cấu hình (`tieu_de_trang_en`, `slogan_dau_trang_tieu_de_en`, `slogan_dau_trang_noi_dung_en`) được lưu trữ tại DB bảng `cau_hinh` và tự động lưu cache tại `localStorage` để hiển thị tức thì không bị chớp giật hay nhảy sai ngôn ngữ lúc mới tải trang.
 
 ---
 
@@ -305,5 +320,231 @@ Tích hợp cơ sở dữ liệu đám mây **Supabase (PostgreSQL)** và xây d
 - **Tối Ưu Giao Diện Đội Ngũ Y Tế Trên Điện Thoại (`/doi-ngu`)**:
   - **Mũi tên lướt qua lại nằm trực tiếp đè trên ảnh**: Cặp nút `<` và `>` trên điện thoại được đặt trực tiếp đè lên 2 bên mép ảnh nhân sự (`absolute left-1.5/right-1.5 top-24`), nền trắng bo tròn có viền và bóng đổ nổi bật, tự động ẩn khi chạm mép danh sách, tách biệt hoàn toàn khỏi dòng tiêu đề.
   - **Ẩn hoàn toàn tiêu đề nếu hạng mục không có nhân sự**: Bất kỳ hạng mục nào (Lãnh đạo chuyên môn, Chuyên gia tư vấn, Bác sĩ thú y, Điều dưỡng & Chăm sóc) chưa có nhân sự (`items.length === 0`) thì hệ thống sẽ ẩn 100% cả dòng tiêu đề, vạch màu xanh thương hiệu, khung danh sách và nút điều hướng nhảy nhanh (pill) trên thanh breadcrumbs đầu trang.
+
+---
+
+## 14. HỆ THỐNG MENU ĐIỀU HƯỚNG ĐA TẦNG ĐỘNG (DATABASE-DRIVEN MULTI-TIER NAVIGATION)
+- **Tập tin liên quan**: [`src/components/NavDesktopMenu.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/NavDesktopMenu.tsx), [`src/components/Header.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/Header.tsx), [`src/hooks/useNavDatabase.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/hooks/useNavDatabase.ts).
+- **Lấy dữ liệu 100% từ Database Supabase**: Không bịa dữ liệu giả lập, có state dự phòng tức thì ban đầu để menu không bị chớp giật hay trống trơn khi mới tải trang.
+- **Cấu trúc chi tiết của 3 phân mục dropdown**:
+  1. 🩺 **Dịch Vụ (Đổ xuống 2 tầng)**:
+     - **Tầng 1**: Phân thành 2 nhóm thực tế: `Thú Y & Y Tế` (`medical`) và `Chăm Sóc & Lưu Trú` (`care`).
+     - **Quy tắc bỏ chữ**: Đã loại bỏ hoàn toàn chữ "Nhóm 1", "Nhóm 2" trên toàn bộ website và cả trong form quản trị Admin.
+     - **Tầng 2**: Danh sách các dịch vụ con thực tế từ bảng `dich_vu` bay ra bên phải theo nhóm tương ứng.
+     - **Hành vi tương tác**: Khi người dùng bấm vào một dịch vụ con bất kỳ, website tự động cuộn mượt mà đến phân mục `#services` và phát sự kiện `select-service` mở trực tiếp chi tiết của dịch vụ đó.
+  2. 🏥 **Hệ Thống Cơ Sở (Đổ xuống 1 tầng)**:
+     - Hiển thị danh sách tên ngắn của các chi nhánh đang hoạt động từ bảng `chi_nhanh` (Ví dụ: "Cơ sở TP. Thủ Đức", "sá").
+     - Khi bấm vào cơ sở, website chuyển thẳng đến trang view chi tiết con `/chi-nhanh/:id`.
+  3. 📚 **Cẩm Nang (Đổ xuống 2 tầng)**:
+     - **Tầng 1**: Hiển thị danh sách các chuyên mục thực tế đang có bài viết con từ bảng `bai_viet` (đã loại bỏ mục "Tất cả bài viết" theo yêu cầu).
+     - **Tầng 2**: Danh sách tiêu đề bài viết con thực tế bay ra bên phải, khi bấm vào sẽ chuyển thẳng đến trang view chi tiết bài viết `/kien-thuc/:id`.
+- **Hỗ trợ đa dạng biến thể (Variants)**: Dùng chung một linh kiện `NavDesktopMenu` cho cả thanh Menu nổi dạng viên thuốc (`variant="pill"`) và thanh Sticky Header khi cuộn trang (`variant="header"`).
+
+---
+
+## 15. KIẾN TRÚC CHUYỂN ĐỔI SONG NGỮ VI / EN THỜI GIAN THỰC (REAL-TIME BILINGUAL ARCHITECTURE)
+- **Tập tin liên quan**: [`src/context/LanguageContext.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/context/LanguageContext.tsx), [`src/components/LanguageSwitcher.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/LanguageSwitcher.tsx), [`src/components/DynamicFavicon.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/DynamicFavicon.tsx), [`src/locales/translations.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/locales/translations.ts).
+- **Cơ chế lưu trữ & Trạng thái**:
+  - Lưu trữ trạng thái ngôn ngữ đồng thời vào `localStorage` (`petmm_language`) và Cookie (`petmm_lang`) với thời hạn 1 năm.
+  - Cập nhật tức thì thuộc tính `<html lang="vi">` hoặc `<html lang="en">` phục vụ SEO và trợ năng.
+- **Phạm vi chuyển ngữ toàn diện**:
+  - **Tiêu đề Tab trình duyệt (`document.title`)**: Đổi động theo ngôn ngữ: Tiếng Việt hiển thị `tieu_de_trang` / Tiếng Anh hiển thị `tieu_de_trang_en` từ Database (có nạp cache tránh gián đoạn).
+  - **Menu Điều Hướng & Thanh Header**: `Về Pet M&M` $\leftrightarrow$ `About Pet M&M`, `Dịch Vụ` $\leftrightarrow$ `Services`, `Hệ Thống Cơ Sở` $\leftrightarrow$ `Our Branches`, `Cẩm Nang` $\leftrightarrow$ `Handbook`, `Đặt Lịch Khám` $\leftrightarrow$ `Book Appointment`.
+  - **Các nhóm dịch vụ con & Chi nhánh & Cẩm nang**: Tự động chuyển đổi tên song ngữ theo các trường `ten_dich_vu_en`, `ten_ngan_en`, `ten_chi_nhanh_en`, `chuyen_muc_en`, `tieu_de_en`.
+  - **Khu vực Mở đầu Hero Section**:
+    - Tiêu đề H1: Tự động đổi giữa `slogan_dau_trang_tieu_de` và `slogan_dau_trang_tieu_de_en`.
+    - Dải Marquee Ticker: Tự động chạy nội dung khẩu hiệu giữa `slogan_dau_trang_noi_dung` và `slogan_dau_trang_noi_dung_en`.
+    - Nút CTA: `Đặt Lịch Thăm Khám` $\leftrightarrow$ `Book Appointment`, `Xem Dịch Vụ` $\leftrightarrow$ `View Services`.
+
+---
+
+## 16. TỐI ƯU CỤM WIDGET LIÊN HỆ NỔI & ĐIỀU HƯỚNG CUỘN TRANG
+- **Tập tin liên quan**: [`src/components/FloatingContactWidgets.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/FloatingContactWidgets.tsx), [`src/components/ScrollNavigationButtons.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ScrollNavigationButtons.tsx).
+- **Hover Chú Thích Từng Nút Riêng Biệt (Scoped Tooltip)**:
+  - Loại bỏ hoàn toàn class `group` ở thẻ cha bao bọc để không kích hoạt đồng loạt tất cả các tooltip cùng lúc.
+  - Gắn nhãn định danh nhóm riêng `group/item` cho từng nút bấm liên hệ (Hotline, Zalo, Messenger, Fanpage Facebook, TikTok, Gmail).
+  - Khi rê chuột vào icon nào, duy nhất chú thích của icon đó được hiển thị mượt mà (`group-hover/item:opacity-100 group-hover/item:translate-x-0`).
+- **Hiệu Ứng Ẩn Hoàn Toàn Khi Cuộn Trang (Complete Scroll Hiding)**:
+  - Lắng nghe sự kiện `scroll` cửa sổ và quản lý trạng thái `isScrolling` kèm `setTimeout` (650ms).
+  - Khi người dùng bắt đầu cuộn trang: Toàn bộ cụm nút nổi liên hệ và cụm nút mũi tên cuộn trang sẽ trượt ẩn hoàn toàn 100% khỏi mép màn hình (`translate-x-32 opacity-0 pointer-events-none`).
+  - Khi người dùng dừng cuộn: Toàn bộ cụm nút sẽ êm ái trượt trở lại vị trí ban đầu (`translate-x-0 opacity-100 pointer-events-auto`).
+- **Mũi tên Đầu Trang & Cuối Trang thông minh**:
+  - Tự động ẩn nút mũi tên Lên khi đang ở vị trí đầu trang (< 120px).
+  - Tự động ẩn nút mũi tên Xuống khi đã cuộn tới sát chân trang (< 120px từ đáy).
+
+---
+
+## 17. HỆ THỐNG SONG NGỮ CHO KHUNG GIỚI THIỆU & QUẢN LÝ SLIDE ẢNH ADMIN
+- **Tập tin liên quan**: [`src/components/AboutSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/AboutSection.tsx), [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx), [`src/lib/supabase.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/supabase.ts).
+- **Cơ sở dữ liệu Supabase (`public.hinh_anh`)**:
+  - Bổ sung 3 trường song ngữ: `tieu_de_en`, `alt_text_en`, `mo_ta_en`.
+  - Khởi tạo sẵn bản dịch chuẩn y khoa quốc tế cho toàn bộ các slide ảnh mẫu hiện có.
+- **Trang chủ Khung Giới Thiệu (`AboutSection.tsx`)**:
+  - Toàn bộ nội dung chuyển đổi tức thì theo ngôn ngữ (`isEn`):
+    - Huy hiệu sứ mệnh (`gioi_thieu_huy_hieu_en`), tiêu đề 2 dòng (`gioi_thieu_tieu_de_1_en`, `gioi_thieu_tieu_de_2_en`), đoạn văn giới thiệu (`gioi_thieu_mo_ta_en`).
+    - 4 khối cam kết y đức chuẩn Fear-Free Hoa Kỳ, Vô trùng áp lực dương, Bác sĩ chuyên môn sâu, Hồ sơ bệnh án minh bạch.
+    - Tiêu đề chú thích ảnh slide (`tieu_de_en`) & huy hiệu góc ảnh (`alt_text_en`).
+    - Bảng 4 thông số: Năm thành lập, Cơ sở TP.HCM, Khách hàng, Đội ngũ y tế.
+    - Khối trích dẫn tâm niệm y đức và chức danh bác sĩ trưởng.
+    - Nhãn trợ năng (aria-label) cho các nút mũi tên chuyển slide, nút chấm tròn dots, tooltip liên kết.
+- **Khu vực Quản trị Admin (`/admin` - Slide Ảnh Khung Giới Thiệu & Đội Ngũ)**:
+  - Thẻ danh sách slide hiển thị huy hiệu `EN` và tiêu đề tiếng Anh tương ứng.
+  - Modal "Chỉnh Sửa Ảnh Khung Giới Thiệu" / "Thêm Ảnh Khung Giới Thiệu":
+    - **Thanh tab chuyển đổi ngôn ngữ**: Tiếng Việt (cờ Việt Nam) $\leftrightarrow$ English (cờ Vương Quốc Anh).
+    - **Nút "Chuyển đổi ENG" tích hợp AI**: Tự động dịch tiêu đề chú thích ảnh và huy hiệu góc ảnh sang tiếng Anh chuyên ngành thú y chuẩn mực bằng 1 chạm.
+    - **Tuân thủ tuyệt đối Quy tắc 3 (Rule 3)**: Hoàn toàn không sử dụng thuộc tính `placeholder` trong bất kỳ ô nhập liệu nào.
+
+---
+
+## 18. TỰ ĐỘNG CHUYỂN NGỮ TOÀN DIỆN CƠ SỞ DỮ LIỆU DỊCH VỤ (`public.dich_vu`)
+- **Tập tin liên quan**: [`src/components/ServicesSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ServicesSection.tsx), [`src/components/BookingSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/BookingSection.tsx), [`src/lib/supabase.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/supabase.ts).
+- **Thực thi SQL Batch tự động lưu thẳng vào Database**:
+  - Đã chạy tập lệnh tự động hóa biên dịch và cập nhật 100% dữ liệu song ngữ chuẩn y khoa & resort thú cưng quốc tế cho toàn bộ 9 gói dịch vụ trong `public.dich_vu`:
+    1. `kham-tong-quat` (Medical): Comprehensive Clinical Exam & Consultation | Most Popular | From 150,000 VND.
+    2. `tiem-phong-vaccine` (Medical): GSP-Standard Preventive Vaccination | International Standard | From 220,000 VND / dose.
+    3. `xet-nghiem-chan-doan` (Medical): Laboratory Testing & Digital Diagnostic Imaging | High-Tech Diagnostics | From 180,000 VND.
+    4. `phau-thuat-ngoai-khoa` (Medical): Surgical Care & Safe Neutering Procedures | 5-Star Safety | Consultation per Case.
+    5. `dieu-tri-noi-tru` (Medical): Inpatient Hospitalization & 24/7 ICU Recovery | 24/7 Dedicated Shift | From 200,000 VND / day.
+    6. `spa-grooming-cat-tia` (Care): 5-Star Luxury Spa, Grooming & Styling | Most Loved | From 250,000 VND.
+    7. `daycare-ban-tru` (Care): Joyful Pet Daycare & Socialization | Active & Healthy | From 180,000 VND / day.
+    8. `pet-hotel-resort` (Care): 5-Star Luxury Pet Resort & Suite Hotel | 5-Star Luxury | From 280,000 VND / night.
+    9. `pet-taxi-dua-don` (Care): Door-to-Door Dedicated Pet Taxi Service | Door-to-Door Convenience | From 90,000 VND / trip.
+  - Toàn bộ các trường dữ liệu con bao gồm: `ten_dich_vu_en`, `phu_de_en`, `huy_hieu_en`, `gia_tham_khao_en`, `thoi_luong_en`, `mo_ta_en`, mảng tiện ích y khoa `tien_ich_en`, mảng quy trình lâm sàng `quy_trinh_en` đều đã được lưu trữ vĩnh viễn trong cơ sở dữ liệu Supabase.
+- **Hiển thị giao diện người dùng**:
+  - Khi chuyển sang **English**: Cả 2 nhóm dịch vụ (`Veterinary & Medical` và `Care & Lodging`) hiển thị 100% tiếng Anh trên danh sách thẻ, bảng chi tiết bên phải (Desktop), giao diện Accordion đổ xuống (Mobile), cũng như bộ chọn dịch vụ trong form đặt lịch hẹn [`BookingSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/BookingSection.tsx).
+
+---
+
+## 19. HỆ THỐNG CƠ SỞ & BẢN ĐỒ CHỈ ĐƯỜNG TRỰC QUAN SONG NGỮ TOÀN DIỆN (CLINIC NETWORK & ADMIN MIRRORING)
+- **Tập tin liên quan**: 
+  - Giao diện Trang chủ: [`src/components/LocationsSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/LocationsSection.tsx)
+  - Trang chi tiết con: [`src/app/chi-nhanh/[id]/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/chi-nhanh/[id]/page.tsx), [`src/components/ChiNhanhDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ChiNhanhDetailClient.tsx), [`src/components/ArticleContent.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ArticleContent.tsx)
+  - Quản trị Admin: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - Bộ máy dịch thuật: [`src/app/api/admin/translate/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/translate/route.ts)
+  - CSDL & Types: [`src/lib/supabase.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/supabase.ts), bảng `public.chi_nhanh`.
+
+### 1. Nâng Cấp Bộ Máy Dịch Thuật Đa Tầng (Hybrid Translation Engine)
+- **Giải quyết triệt để lỗi không dịch được bài viết dài (> 500 ký tự)**:
+  - Chuyển đổi phương thức gọi Google GTX từ HTTP GET sang HTTP POST với `application/x-www-form-urlencoded`.
+  - Phân tách đoạn văn bản thông minh theo thẻ HTML (`</p>`, `</h2>`, `</li>`, `\n\n`) đối với văn bản trên 2000 ký tự và dịch song song.
+  - **Bảo toàn thẻ ảnh `<img>` tuyệt đối**: Nhận diện và mã hóa các thẻ `<img ...>` thành token `[[IMG_TAG_x]]` trước khi dịch, sau đó giải mã phục hồi nguyên vẹn URL và thuộc tính ảnh mà không bị AI/Google dịch làm sai lệch đường dẫn.
+
+### 2. Giao Diện Trang Chủ (`LocationsSection.tsx`)
+- Tự động chuyển đổi mượt mà toàn bộ trường thông tin sang English:
+  - Nút chọn cơ sở: `ten_ngan_en` $\rightarrow$ `ten_ngan`.
+  - Huy hiệu khu vực / quận: `khu_vuc_en` $\rightarrow$ `khu_vuc`.
+  - Địa chỉ: `dia_chi_en` $\rightarrow$ `dia_chi`.
+  - Giờ hoạt động: `gio_hoat_dong_en` $\rightarrow$ `gio_hoat_dong`.
+  - Danh sách trang thiết bị & tiện ích 5 sao: Sử dụng mảng `tien_ich_en` khi ở chế độ English.
+  - Thông tin bác sĩ trưởng cơ sở: `bac_si_phu_trach_en` & học vị `bang_cap_bac_si_en`.
+  - Thông tin bãi đỗ xe: `thong_tin_do_xe_en`.
+  - Các nút hành động: *"View Clinic Details"* (`/chi-nhanh/[id]`), *"Directions"*, *"Open in Google Maps"*, *"Reviews on Google"*.
+
+### 3. Trang Con Chi Tiết Chi Nhánh (`/chi-nhanh/[id]`)
+- Sử dụng Client Component [`ChiNhanhDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ChiNhanhDetailClient.tsx) kết nối trực tiếp với `useLanguage()`:
+  - Breadcrumb định hướng: *"Trang Chủ"* $\leftrightarrow$ *"Home"*, *"Hệ Thống Cơ Sở"* $\leftrightarrow$ *"Clinic Network"*.
+  - Tiêu đề Hero Banner, địa chỉ, giờ hoạt động, hotline, nút chỉ đường và nút quay lại danh sách cơ sở đều chuyển đổi tức thì.
+  - Cột bên phải (Sidebar): Form tư vấn hỗ trợ, đường dây nóng cấp cứu 24/7, câu hỏi thường gặp về cơ sở.
+  - **Nội dung bài viết chi tiết**: Truyền `htmlEn={branch.bai_viet_chi_tiet_en}` vào [`ArticleContent.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ArticleContent.tsx), tự động render bài viết tiếng Anh đầy đủ hình ảnh minh họa khi người dùng đổi ngôn ngữ.
+
+### 4. Quản Trị Admin (`/admin` - Chỉnh Sửa Chi Nhánh Bệnh Viện)
+- **Đồng bộ bố cục giao diện 1:1 giữa Bản Tiếng Việt và Bản English**:
+  - Khi chuyển sang tab `Bản English`, toàn bộ form có **giao diện và cấu trúc hoàn toàn y hệt tiếng Việt** (không còn tình trạng hiện ô nhỏ bên trên):
+    - Dòng 1: Tên chi nhánh đầy đủ (English) | Tên ngắn hiển thị thẻ (English) | Khu vực / Quận (English).
+    - Dòng 2: Địa chỉ chi nhánh (English) | Hotline dùng chung | Giờ hoạt động (English).
+    - Dòng 3: Bác sĩ phụ trách (English) | Học vị / Bằng cấp bác sĩ (English) | Thứ tự sắp xếp | Trạng thái hoạt động.
+    - Dòng 4: Link Google Maps Embed | Link Google Maps App.
+    - Dòng 5: Thông tin bãi đỗ xe & hỗ trợ (English) | Tiện ích & Trang thiết bị (English - Mỗi mục trên 1 dòng).
+    - Dòng 6: Ảnh bìa chi nhánh & Căn chỉnh tâm điểm ảnh.
+    - Dòng 7: Trình soạn thảo văn bản phong phú `RichTextEditor` cho bài viết chi tiết (English) có đầy đủ tính năng tải ảnh lên Supabase Storage `branches/` và nút xem trước ngoài web.
+  - **Nút "Chuyển đổi ENG" 1 chạm**: Tự động dịch toàn bộ 10 trường dữ liệu + danh sách tiện ích + **toàn bộ bài viết chi tiết HTML dài** sang tiếng Anh và tự động điền vào tab English.
+  - **Công cụ sao chép & dịch chuyên biệt cho bài viết chi tiết**:
+    - Nút *"Bê bài viết & ảnh Tiếng Việt qua"*: Sao chép nguyên vẹn bài viết và 100% hình ảnh từ bản Tiếng Việt sang English trong tích tắc.
+    - Nút *"Dịch bài viết (giữ nguyên ảnh)"*: Dịch nhanh toàn bộ nội dung sang tiếng Anh, tự động tách thẻ và bảo toàn nguyên vẹn tất cả thẻ `<img ...>` (kể cả ảnh base64 và ảnh lưu trữ Supabase).
+  - **Tuân thủ tuyệt đối Quy tắc 3 (Rule 3)**: Không sử dụng bất kỳ thuộc tính `placeholder` nào trong form.
+
+---
+
+## 20. THANH ĐIỀU HƯỚNG HEADER CỐ ĐỊNH & THANH ĐIỀU HƯỚNG NHANH GỘP CHUNG (COMBINED STICKY SUB-BAR)
+- **Tập tin liên quan**:
+  - Component Header: [`src/components/Header.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/Header.tsx)
+  - Trang con Chi Nhánh: [`src/components/ChiNhanhDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ChiNhanhDetailClient.tsx)
+  - Trang con Đội Ngũ Y Tế: [`src/app/doi-ngu/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/doi-ngu/page.tsx)
+  - Trang con Bài Viết Cẩm Nang: [`src/app/kien-thuc/[id]/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/kien-thuc/[id]/page.tsx)
+- **Cơ chế hoạt động**:
+  - Hỗ trợ cờ thuộc tính `alwaysVisible?: boolean` trên component [`Header.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/Header.tsx). Khi bật `alwaysVisible`, thanh Header (kính mờ sang trọng, viền laser ngọc lục bảo chuyển động, Logo Pet M&M vàng kim/xanh ngọc, menu dropdown đa tầng, nút đổi ngôn ngữ EN/VI, hotline gọi nhanh và nút Đặt Lịch Hẹn) luôn ghim cố định ở đỉnh màn hình (`fixed top-0 inset-x-0 z-50 shadow-md`) ngay từ khi tải trang và duy trì cố định mượt mà khi người dùng cuộn chuột xuống nội dung bên dưới.
+  - **Gộp 2 thanh (Breadcrumbs + Thanh thông tin nhanh) thành 1 thanh duy nhất (`ChiNhanhDetailClient.tsx`)**:
+    - Thay vì hiển thị 2 thanh rời rạc (thanh Breadcrumbs phía trên và thẻ card hotline/giờ mở cửa/chỉ đường phía dưới chiếm nhiều diện tích), toàn bộ đã được **gom chung vào 1 thanh điều hướng hợp nhất**.
+    - **Cố định ngay bên dưới thanh Header khi cuộn trang (`sticky top-[60px] sm:top-[68px] z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs`)**: Khi người dùng cuộn chuột đọc bài viết bên dưới, thanh này trượt lên và khóa chặt ngay sát mép dưới của thanh Header chính, giúp người dùng luôn theo dõi được lộ trình breadcrumb, số hotline gọi nhanh, giờ mở cửa và nút Chỉ đường Google Maps mà không cần cuộn ngược lên đầu trang.
+    - **Bố cục Desktop (`lg:flex`)**: 1 dòng ngang cân xứng hoàn hảo — Cột trái là thanh Breadcrumb định hướng, Cột phải là Pill hotline, Pill giờ mở cửa và Nút chỉ đường màu xanh ngọc bích chuẩn y khoa.
+    - **Bố cục Mobile (`lg:hidden`)**: 2 dòng tinh tế — Dòng 1 là Breadcrumb cuộn ngang, Dòng 2 là Hotline + Giờ + Nút chỉ đường có phân tách viền mờ tinh gọn.
+  - Tích hợp cửa sổ Đặt Lịch Hẹn (`BookingModal`) đồng bộ trực tiếp khi người dùng bấm nút "Đặt Lịch" trên Header tại các trang con.
+
+---
+
+## 21. HỆ THỐNG SONG NGỮ TOÀN DIỆN CHO CẨM NANG & KIẾN THỨC Y KHOA (PET HEALTH, WELLNESS & PRACTICAL CARE INSIGHTS)
+- **Tập tin liên quan**:
+  - Trang chủ: [`src/components/KnowledgeSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/KnowledgeSection.tsx)
+  - Trang con chi tiết bài viết: [`src/app/kien-thuc/[id]/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/kien-thuc/[id]/page.tsx)
+  - Client component trang con: [`src/components/KienThucDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/KienThucDetailClient.tsx)
+  - Trình hiển thị nội dung & cuộn bảng: [`src/components/ArticleContent.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ArticleContent.tsx)
+  - Trang Quản trị: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - Định nghĩa Type: [`src/lib/supabase.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/supabase.ts)
+
+### 1. Cơ Sở Dữ Liệu (`public.bai_viet`)
+- Mở rộng đầy đủ các trường song ngữ:
+  - `tieu_de_en`: Tiêu đề bài viết tiếng Anh.
+  - `chuyen_muc_en`: Tên chuyên mục cẩm nang tiếng Anh (vd: *Preventive Medicine, Pet First Aid, Pet Care & Spa*).
+  - `mo_ta_ngan_en`: Tóm tắt ngắn hiển thị trên thẻ card ngoài trang chủ.
+  - `noi_dung_en`: Nội dung chi tiết bài viết tiếng Anh (hỗ trợ cả WYSIWYG HTML và Markdown, bảo toàn toàn bộ ảnh).
+  - `thoi_gian_doc_en`: Thời gian đọc dự kiến tiếng Anh (vd: *4 min read, 5 min read*).
+  - `tac_gia_en`: Tên và học vị tác giả tiếng Anh (vd: *Dr. Nguyen Minh Tuan, Specialist I, MSc. DVM Tran Hoang Oanh*).
+- Đã hoàn tất dịch thuật và nạp dữ liệu tiếng Anh chuẩn y khoa cho toàn bộ các bài viết hiện hữu.
+
+### 2. Trang Chủ (`KnowledgeSection.tsx`)
+- Kết nối tự động với `useLanguage()`:
+  - Huy hiệu chuyên mục: *"CẨM NANG BÁC SĨ PET M&M"* $\leftrightarrow$ *"VETERINARY MEDICAL GUIDE"*.
+  - Tiêu đề chính: *"Kiến Thức & Kinh Nghiệm Nuôi Thú Cưng"* $\leftrightarrow$ *"Pet Health, Wellness & Practical Care Insights"*.
+  - Đoạn giới thiệu y khoa tự động dịch theo ngôn ngữ.
+  - Mỗi thẻ bài viết hiển thị song ngữ: Chuyên mục, thời gian đọc, tiêu đề, tóm tắt nội dung, nút *"Đọc tiếp"* $\leftrightarrow$ *"Read article"*.
+  - Bộ dữ liệu mặc định fallback (`DEFAULT_ARTICLES`) được trang bị sẵn phiên bản tiếng Anh hoàn chỉnh.
+
+### 3. Trang Con Chi Tiết Bài Viết (`/kien-thuc/[id]`)
+- Tái cấu trúc theo kiến trúc tối ưu: Server Page (`page.tsx`) kết hợp Client Component (`KienThucDetailClient.tsx`):
+  - **Chuyển đổi ngôn ngữ tức thì 0ms** khi bấm nút EN/VI trên Header mà không cần tải lại trang.
+  - Thanh Breadcrumbs định hướng ghim cố định ngay dưới Header khi cuộn (`sticky top-[60px] sm:top-[68px] z-30`): *"Trang chủ"* $\leftrightarrow$ *"Home"*, *"Cẩm nang kiến thức"* $\leftrightarrow$ *"Veterinary Guide"*, tiêu đề bài viết.
+  - Hero Banner y khoa: Hiển thị chuyên mục, thời gian đọc, tiêu đề, tác giả, ngày đăng chuẩn song ngữ.
+  - Khung tóm tắt bài viết mở đầu và ảnh bìa phóng lớn chuẩn phong cách tạp chí y khoa.
+  - **Nội dung bài viết chi tiết**: Render mượt mà qua component [`ArticleContent.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ArticleContent.tsx), tự động wrap bảng biểu vào container cuộn ngang và chuyển đổi tức thì sang `noi_dung_en`.
+  - Khối tác giả & bảo chứng y khoa: Biểu tượng khiên bảo vệ y khoa, tên bác sĩ, chức danh kiểm định y khoa, nút *"Đặt Lịch Thăm Khám"* $\leftrightarrow$ *"Book an Appointment"*.
+  - Hộp khuyến cáo y khoa & danh sách bài viết liên quan (Related Insights) hoàn toàn song ngữ.
+  - Cột bên phải (Sidebar): Form tư vấn nhanh, FAQ cẩm nang, Hộp hỗ trợ trực tuyến.
+
+### 4. Quản Trị Admin (`/admin` - Quản Lý Bài Viết Cẩm Nang)
+- **Đồng bộ bố cục giao diện 1:1 chuẩn xác giữa Bản Tiếng Việt và Bản English**:
+  - Giao diện tab `Bản English` có cấu trúc giống hệt tiếng Việt:
+    - Dòng 1: Tiêu đề bài viết (English) | Chuyên mục bài viết (English) | Tác giả / Bác sĩ phụ trách (English).
+    - Dòng 2: Thời gian đọc dự kiến (English) | Ngày đăng bài | Thứ tự sắp xếp | Trạng thái hiển thị (Xuất bản / Bản nháp).
+    - Dòng 3: Ảnh bìa bài viết (Dùng chung) | Tóm tắt ngắn (English).
+    - Dòng 4: Trình soạn thảo văn bản phong phú `RichTextEditor` cho bài viết chi tiết (English) có đầy đủ tính năng tải ảnh lên Supabase Storage `articles/`.
+  - **Nút "Chuyển đổi ENG" AI 1 chạm**: Dịch tự động toàn bộ 6 trường (Tiêu đề, Chuyên mục, Tóm tắt, Nội dung HTML dài, Tác giả, Thời gian đọc) sang tiếng Anh chuẩn xác.
+  - **Bộ công cụ bài viết tiếng Anh chuyên biệt**:
+    - Nút *"Bê bài viết & ảnh Tiếng Việt qua"*: Sao chép nguyên vẹn nội dung và 100% hình ảnh sang English để dễ dàng chỉnh sửa đối chiếu.
+    - Nút *"Dịch bài viết (giữ nguyên ảnh)"*: Dịch nội dung bài viết sang tiếng Anh, tự động bảo toàn nguyên vẹn tất cả các thẻ hình ảnh `<img ...>`.
+    - Nút *"Xem trang ngoài web"*: Mở trực tiếp bài viết ngoài trang web thực tế.
+  - **Tuân thủ tuyệt đối Quy tắc 3 (Rule 3)**: Không sử dụng bất kỳ thuộc tính `placeholder` nào trong form.
+
+### 5. Tối Ưu Tốc Độ Chuyển Trang View Con (`/kien-thuc/[id]`) Cực Nhanh
+- **Triệt tiêu gánh nặng dung lượng 160KB**:
+  - Bài viết 1 trước đây chứa chuỗi ảnh base64 trực tiếp trong mã HTML dài hơn 160.000 ký tự. Đã trích xuất và tải ảnh lên Supabase Storage CDN (`articles/vaccine_guide_1790858785846.png`), giảm dung lượng bài viết từ **160,053 ký tự xuống còn 894 ký tự** (~giảm hơn 180 lần).
+- **Chạy song song qua `Promise.all`**:
+  - `page.tsx` chuyển từ chạy tuần tự (waterfall) sang thực thi đồng thời cả 2 truy vấn `getArticle(id)` và `getRelatedArticles(id)` qua `Promise.all`, rút ngắn 50% độ trễ mạng.
+- **Tinh gọn danh sách bài viết liên quan**:
+  - Chỉ truy vấn đúng 7 trường hiển thị thẻ card (`id, tieu_de, tieu_de_en, chuyen_muc, chuyen_muc_en, hinh_anh, ngay_dang`), loại bỏ hoàn toàn việc tải nội dung bài viết dài của các bài khác vào bộ nhớ.
+- **Kích hoạt `prefetch={true}` & Soft Navigation**:
+  - Bổ sung `prefetch={true}` trên toàn bộ các thẻ `<Link>` tại trang chủ ([`KnowledgeSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/KnowledgeSection.tsx)), menu đa tầng ([`NavDesktopMenu.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/NavDesktopMenu.tsx)), ngăn kéo menu mobile ([`Header.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/Header.tsx)) và sidebar chi nhánh ([`ChiNhanhDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ChiNhanhDetailClient.tsx)).
+  - Next.js tự động tải trước gói dữ liệu trong nền ngay khi link xuất hiện trên màn hình, giúp việc nhấp chuột chuyển trang đạt phản hồi tức thì.
+
+
 
 

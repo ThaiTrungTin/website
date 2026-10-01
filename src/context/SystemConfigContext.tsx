@@ -5,6 +5,9 @@ import { supabase, CauHinhRecord } from '@/lib/supabase';
 
 const DEFAULT_CONFIG: CauHinhRecord = {
   id: 'system',
+  logo_favicon: '/logo-favicon.png',
+  tieu_de_trang: 'PetM&M — Phòng Khám Thuộc Bệnh Viện Thú Cưng',
+  tieu_de_trang_en: 'PetM&M — Veterinary Hospital & Clinic',
   hotline: '0903 599 339',
   hotline_hien_thi: '0903 599 339',
   link_zalo: 'https://zalo.me/0903599339',
@@ -14,7 +17,9 @@ const DEFAULT_CONFIG: CauHinhRecord = {
   email: 'contact@petmm.vn',
   dia_chi_chinh: '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh',
   slogan_dau_trang_tieu_de: 'Nâng niu từng nhịp thở, an yên trọn một đời.',
+  slogan_dau_trang_tieu_de_en: 'Cherishing Every Breath, Embracing Life with Peace.',
   slogan_dau_trang_noi_dung: 'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.',
+  slogan_dau_trang_noi_dung_en: 'Standardized veterinary medicine combined with natural recovery therapies. Where pure love blends with state-of-the-art medical technology to restore physical vitality and soothe peace of mind.',
   slogan_cuoi_trang_tieu_de: '“Thú cưng khỏe mạnh — An yên trọn một đời”',
   slogan_cuoi_trang_noi_dung: 'Hệ thống Bệnh viện Thú Y & Resort Nghỉ dưỡng Thú Cưng Tiêu chuẩn 5 Sao quốc tế tại TP. Hồ Chí Minh. Tiên phong áp dụng chuẩn lâm sàng Fear-Free không stress cho thú cưng.',
   giay_phep: '0316888999/SNN-TY',
@@ -49,6 +54,19 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
   const [config, setConfig] = useState<CauHinhRecord>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(false);
 
+  // Đọc ngay lập tức từ bộ nhớ cache client để không bị giật hay trễ
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('petmm_system_config_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          setConfig((prev) => ({ ...prev, ...parsed }));
+        }
+      }
+    } catch {}
+  }, []);
+
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true);
@@ -64,10 +82,13 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
       }
 
       if (data) {
-        setConfig((prev) => ({
-          ...prev,
-          ...data,
-        }));
+        setConfig((prev) => {
+          const merged = { ...prev, ...data };
+          try {
+            localStorage.setItem('petmm_system_config_cache', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
     } catch (err) {
       console.warn('Không thể tải cấu hình:', err);
@@ -84,6 +105,18 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
     };
     window.addEventListener('focus', handleFocus);
 
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'petmm_system_config_cache' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === 'object') {
+            setConfig((prev) => ({ ...prev, ...parsed }));
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
     // Lắng nghe thay đổi thời gian thực khi Admin cập nhật hotline / link
     const channel = supabase
       .channel('cau_hinh_changes')
@@ -98,6 +131,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
 
     return () => {
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
       supabase.removeChannel(channel);
     };
   }, [fetchConfig]);

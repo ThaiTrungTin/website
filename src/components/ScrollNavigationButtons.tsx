@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function ScrollNavigationButtons() {
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(true);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,6 +20,14 @@ export default function ScrollNavigationButtons() {
 
       // Ẩn mũi tên xuống khi đã cuộn tới sát cuối trang (còn dưới 120px)
       setCanScrollDown(scrollY + windowHeight < docHeight - 120);
+
+      setIsScrolling(true);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 650);
     };
 
     handleScroll();
@@ -26,6 +36,9 @@ export default function ScrollNavigationButtons() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -45,7 +58,11 @@ export default function ScrollNavigationButtons() {
   return (
     <aside
       aria-label="Điều hướng cuộn trang"
-      className="fixed right-[64px] sm:right-[92px] bottom-24 sm:bottom-12 z-40 flex flex-col items-center gap-1 select-none"
+      className={`fixed right-[64px] sm:right-[92px] bottom-24 sm:bottom-12 z-40 flex flex-col items-center gap-1 select-none transition-all duration-500 ease-out ${
+        isScrolling
+          ? 'translate-x-32 opacity-0 pointer-events-none'
+          : 'translate-x-0 opacity-100 pointer-events-auto'
+      }`}
     >
       {/* 1. Mũi tên Đầu Trang (Chỉ hiện khi đã cuộn xuống, ẩn khi ở đầu trang) */}
       {canScrollUp && (

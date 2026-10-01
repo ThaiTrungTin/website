@@ -5,6 +5,7 @@ import Image from 'next/image';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { supabase, CauHoiThuongGapRecord } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { faqData } from '@/data/faqData';
 import { getAssetUrl } from '@/lib/assets';
 import {
@@ -20,14 +21,19 @@ import {
 const FALLBACK_FAQS: CauHoiThuongGapRecord[] = faqData.map((f, i) => ({
   id: f.id,
   cau_hoi: f.question,
+  cau_hoi_en: f.question_en,
   cau_tra_loi: f.answer,
+  cau_tra_loi_en: f.answer_en,
   chuyen_muc: f.category || 'Chung',
+  chuyen_muc_en: f.category_en || 'General',
   thu_tu: i + 1,
   kich_hoat: true,
 }));
 
 export default function FaqSection() {
   const { config } = useSystemConfig();
+  const { t, language } = useLanguage();
+  const isEn = language === 'en';
   const [faqs, setFaqs] = useState<CauHoiThuongGapRecord[]>(FALLBACK_FAQS);
   const [openId, setOpenId] = useState<string | null>(FALLBACK_FAQS[0]?.id || null);
   const [loading, setLoading] = useState(false);
@@ -108,11 +114,16 @@ export default function FaqSection() {
         {/* Header chuẩn typography font-editorial & màu xanh emerald của web Pet M&M */}
         <ScrollRevealTitle className="text-left mb-10 sm:mb-14">
           <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4">
-            Câu Hỏi <span className="italic font-light text-[#2D5A27]">Thường Gặp</span>
+            {isEn ? 'Frequently Asked ' : 'Câu Hỏi '}
+            <span className="italic font-light text-[#2D5A27]">
+              {isEn ? 'Questions' : 'Thường Gặp'}
+            </span>
           </h2>
 
           <p className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed font-light">
-            Pet M&amp;M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo OA chính thức của Pet M&amp;M.
+            {isEn
+              ? 'Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at Pet M&M.'
+              : 'Pet M&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo OA chính thức của Pet M&M.'}
           </p>
         </ScrollRevealTitle>
 
@@ -142,7 +153,7 @@ export default function FaqSection() {
                           isOpen ? 'text-[#2D5A27] font-bold' : 'text-slate-800 hover:text-slate-950'
                         }`}
                       >
-                        {item.cau_hoi}
+                        {isEn ? (item.cau_hoi_en || item.cau_hoi) : item.cau_hoi}
                       </h3>
                     </div>
 
@@ -157,7 +168,7 @@ export default function FaqSection() {
 
                   {isOpen && (
                     <div className="px-4 pb-5 sm:px-5 sm:pb-6 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3.5 animate-in fade-in duration-200 font-light whitespace-pre-line">
-                      <p>{item.cau_tra_loi}</p>
+                      <p>{isEn ? (item.cau_tra_loi_en || item.cau_tra_loi) : item.cau_tra_loi}</p>
                     </div>
                   )}
                 </div>
@@ -167,7 +178,7 @@ export default function FaqSection() {
             {faqs.length === 0 && !loading && (
               <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
                 <HelpCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Chưa có câu hỏi nào.</p>
+                <p className="text-sm text-slate-500">{isEn ? 'No questions available.' : 'Chưa có câu hỏi nào.'}</p>
               </div>
             )}
           </div>
@@ -179,10 +190,10 @@ export default function FaqSection() {
               <div className="absolute -top-24 -right-24 w-52 h-52 bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" />
 
               <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mb-2">
-                Bạn cần Pet M&amp;M <span className="italic font-light text-[#2D5A27]">hỗ trợ?</span>
+                {isEn ? 'Need Pet M&M ' : 'Bạn cần Pet M&M '}<span className="italic font-light text-[#2D5A27]">{isEn ? 'support?' : 'hỗ trợ?'}</span>
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 mb-6 font-light">
-                Chọn cách liên hệ phù hợp với nhu cầu của bạn.
+                {isEn ? 'Choose the contact method that suits your needs.' : 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.'}
               </p>
 
               {/* 3 Thẻ liên hệ trực tiếp */}
@@ -200,12 +211,14 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#2D5A27] transition-colors">
-                        Đặt lịch dịch vụ qua Zalo OA
+                        {isEn ? 'Book via Zalo OA' : 'Đặt lịch dịch vụ qua Zalo OA'}
                       </h4>
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&amp;M xác nhận lịch hẹn.
+                      {isEn
+                        ? 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.'
+                        : 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.'}
                     </p>
                   </div>
                 </a>
@@ -221,12 +234,14 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-rose-700 transition-colors">
-                        Gọi trực tiếp hotline cấp cứu 24/7
+                        {isEn ? 'Call 24/7 Emergency Hotline' : 'Gọi trực tiếp hotline cấp cứu 24/7'}
                       </h4>
                       <PhoneCall className="w-3.5 h-3.5 text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.
+                      {isEn
+                        ? 'When your pet has difficulty breathing, seizures, severe pain, bleeding, vomiting, diarrhea, suspected poisoning, or needs emergency assistance.'
+                        : 'Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.'}
                     </p>
                     <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold">
                       <span>Hotline: {hotlineDisplay}</span>
@@ -247,12 +262,14 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#2D5A27] transition-colors">
-                        Trao đổi nhu cầu chăm sóc đặc thù
+                        {isEn ? 'Special Care Consultation' : 'Trao đổi nhu cầu chăm sóc đặc thù'}
                       </h4>
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.
+                      {isEn
+                        ? 'Send your pet\'s medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs.'
+                        : 'Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.'}
                     </p>
                   </div>
                 </a>
