@@ -6391,6 +6391,7 @@ export default function AdminDashboardPage() {
                       )}
                     </div>
                     <RichTextEditor
+                      key={`branch-editor-vi-${editingBranch.id || 'new'}`}
                       value={editingBranch.bai_viet_chi_tiet || ''}
                       onChange={(html) => setEditingBranch((prev) => ({ ...prev, bai_viet_chi_tiet: html }))}
                       minHeight={340}
@@ -6570,6 +6571,7 @@ export default function AdminDashboardPage() {
                       )}
                     </div>
                     <RichTextEditor
+                      key={`branch-editor-en-${editingBranch.id || 'new'}`}
                       value={(editingBranch as any).bai_viet_chi_tiet_en || ''}
                       onChange={(html) => setEditingBranch((prev) => ({ ...prev, bai_viet_chi_tiet_en: html } as any))}
                       minHeight={340}
@@ -8250,6 +8252,7 @@ export default function AdminDashboardPage() {
                       )}
                     </div>
                     <RichTextEditor
+                      key={`article-editor-vi-${editingArticle.id || 'new'}`}
                       value={editingArticle.noi_dung || ''}
                       onChange={(html) => setEditingArticle((prev) => ({ ...prev, noi_dung: html }))}
                       minHeight={340}
@@ -8333,6 +8336,7 @@ export default function AdminDashboardPage() {
                       </label>
                     </div>
                     <RichTextEditor
+                      key={`article-editor-en-${editingArticle.id || 'new'}`}
                       value={(editingArticle as any).noi_dung_en || ''}
                       onChange={(html) => setEditingArticle((prev) => ({ ...prev, noi_dung_en: html } as any))}
                       minHeight={340}

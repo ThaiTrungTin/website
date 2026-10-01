@@ -409,6 +409,16 @@ export default function RichTextEditor({
     immediatelyRender: false,
   });
 
+  // Tự động đồng bộ nội dung khi prop `value` thay đổi từ bên ngoài (Dịch AI, nạp dữ liệu, chuyển tab...)
+  React.useEffect(() => {
+    if (!editor) return;
+    const currentHtml = editor.getHTML();
+    const targetHtml = value || '';
+    if (targetHtml !== currentHtml) {
+      editor.commands.setContent(targetHtml, { emitUpdate: false });
+    }
+  }, [value, editor]);
+
   return (
     <div
       className="rounded-xl border border-slate-300 bg-white focus-within:border-[#2D5A27] transition shadow-2xs relative"
