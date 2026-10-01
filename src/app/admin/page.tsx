@@ -2944,34 +2944,65 @@ export default function AdminDashboardPage() {
               </button>
 
               {/* Menu 5: FAQs */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('faqs');
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
-                  activeTab === 'faqs'
-                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <HelpCircle
-                    className={`w-4 h-4 transition ${
-                      activeTab === 'faqs' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
-                    }`}
-                  />
-                  <span>Câu Hỏi Thường Gặp</span>
-                </div>
-                <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    activeTab === 'faqs' ? 'bg-black/30 text-amber-300' : 'bg-slate-800 text-slate-400'
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('faqs');
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group cursor-pointer ${
+                    activeTab === 'faqs'
+                      ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
-                  {faqs.length}
-                </span>
-              </button>
+                  <div className="flex items-center gap-3">
+                    <HelpCircle
+                      className={`w-4 h-4 transition ${
+                        activeTab === 'faqs' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                      }`}
+                    />
+                    <span>Câu Hỏi Thường Gặp</span>
+                  </div>
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      activeTab === 'faqs' ? 'bg-black/30 text-amber-300' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {faqs.length}
+                  </span>
+                </button>
+
+                {/* Sub-menu khi đang ở tab FAQs */}
+                {activeTab === 'faqs' && (
+                  <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setFaqSubTab('list')}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                        faqSubTab === 'list'
+                          ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <span>• Danh sách câu hỏi ({faqs.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFaqSubTab('support_panel')}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                        faqSubTab === 'support_panel'
+                          ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <PhoneCall className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span>Bạn cần hỗ trợ? (Song ngữ)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Menu 6: Reviews */}
               <button
@@ -3094,7 +3125,33 @@ export default function AdminDashboardPage() {
                 </div>
               </button>
 
-              
+              {/* Cấu hình Mục Bạn Cần Hỗ Trợ? (FAQ Support Panel) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('faqs');
+                  setFaqSubTab('support_panel');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group cursor-pointer ${
+                  activeTab === 'faqs' && faqSubTab === 'support_panel'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <PhoneCall
+                    className={`w-3.5 h-3.5 transition ${
+                      activeTab === 'faqs' && faqSubTab === 'support_panel' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span>Bạn Cần Hỗ Trợ? (FAQ)</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+                  Song ngữ
+                </span>
+              </button>
+
               {/* Cấu hình Email & SMTP */}
               <button
                 type="button"
