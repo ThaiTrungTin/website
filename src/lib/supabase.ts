@@ -230,13 +230,17 @@ export interface LichHenRecord {
 export interface DanhGiaRecord {
   id: string;
   ten_khach_hang: string;
+  ten_khach_hang_en?: string | null;
   so_dien_thoai: string;
   so_sao: number;
   noi_dung: string;
+  noi_dung_en?: string | null;
   dich_vu_su_dung?: string | null;
+  dich_vu_su_dung_en?: string | null;
   chi_nhanh?: string | null;
   hinh_anh_thu_cung?: string | null;
   ngay_danh_gia?: string | null;
+  ngay_danh_gia_en?: string | null;
   da_xac_thuc?: boolean | null;
   thu_tu?: number | null;
   kich_hoat?: boolean | null;

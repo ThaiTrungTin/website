@@ -1947,6 +1947,8 @@ export default function AdminDashboardPage() {
   const [editingReview, setEditingReview] = useState<Partial<DanhGiaRecord> | null>(null);
   const [isCreatingNewReview, setIsCreatingNewReview] = useState(false);
   const [isReviewSaving, setIsReviewSaving] = useState(false);
+  const [reviewModalTab, setReviewModalTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingReview, setIsTranslatingReview] = useState(false);
 
   const loadReviews = useCallback(async () => {
     setReviewsLoading(true);
@@ -1970,21 +1972,71 @@ export default function AdminDashboardPage() {
     const nextOrder = reviews.length > 0 ? Math.max(...reviews.map((r) => r.thu_tu || 0)) + 1 : 1;
     setEditingReview({
       ten_khach_hang: '',
+      ten_khach_hang_en: '',
       so_dien_thoai: '0908 234 ***',
       so_sao: 5,
       noi_dung: '',
+      noi_dung_en: '',
+      dich_vu_su_dung: '',
+      dich_vu_su_dung_en: '',
+      chi_nhanh: '',
       hinh_anh_thu_cung: '/pet_golden_spa.jpg',
       ngay_danh_gia: 'Gần đây',
+      ngay_danh_gia_en: 'Recently',
       da_xac_thuc: true,
       thu_tu: nextOrder,
       kich_hoat: true,
     });
+    setReviewModalTab('vi');
     setIsCreatingNewReview(true);
   };
 
   const handleEditReview = (review: DanhGiaRecord) => {
     setEditingReview({ ...review });
+    setReviewModalTab('vi');
     setIsCreatingNewReview(false);
+  };
+
+  const handleAutoTranslateReview = async () => {
+    if (!editingReview) return;
+    if (!editingReview.noi_dung?.trim() && !editingReview.ten_khach_hang?.trim()) {
+      showNotification('error', 'Vui lòng nhập nội dung nhận xét hoặc tên khách hàng trước khi dịch!');
+      return;
+    }
+
+    setIsTranslatingReview(true);
+    try {
+      const fieldsToTranslate: Record<string, string> = {
+        ten_khach_hang: editingReview.ten_khach_hang || '',
+        noi_dung: editingReview.noi_dung || '',
+        ngay_danh_gia: editingReview.ngay_danh_gia || '',
+        dich_vu_su_dung: editingReview.dich_vu_su_dung || '',
+      };
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsToTranslate }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        setEditingReview((prev) => (prev ? {
+          ...prev,
+          ten_khach_hang_en: data.translations.ten_khach_hang || prev.ten_khach_hang_en,
+          noi_dung_en: data.translations.noi_dung || prev.noi_dung_en,
+          ngay_danh_gia_en: data.translations.ngay_danh_gia || prev.ngay_danh_gia_en,
+          dich_vu_su_dung_en: data.translations.dich_vu_su_dung || prev.dich_vu_su_dung_en,
+        } : null));
+        setReviewModalTab('en');
+        showNotification('success', 'Đã chuyển đổi sang Tiếng Anh y khoa Fear-Free thành công!');
+      } else {
+        throw new Error(data.error || 'Dịch tự động thất bại');
+      }
+    } catch (err: any) {
+      console.error('Lỗi dịch đánh giá:', err);
+      showNotification('error', `Lỗi dịch tự động: ${err.message}`);
+    } finally {
+      setIsTranslatingReview(false);
+    }
   };
 
   const handleToggleReviewActive = async (review: DanhGiaRecord) => {
@@ -2033,13 +2085,17 @@ export default function AdminDashboardPage() {
     try {
       const payload = {
         ten_khach_hang: editingReview.ten_khach_hang.trim(),
+        ten_khach_hang_en: editingReview.ten_khach_hang_en?.trim() || null,
         so_dien_thoai: editingReview.so_dien_thoai?.trim() || '0908 234 ***',
         so_sao: Number(editingReview.so_sao) || 5,
         noi_dung: editingReview.noi_dung.trim(),
+        noi_dung_en: editingReview.noi_dung_en?.trim() || null,
         dich_vu_su_dung: editingReview.dich_vu_su_dung?.trim() || '',
+        dich_vu_su_dung_en: editingReview.dich_vu_su_dung_en?.trim() || null,
         chi_nhanh: editingReview.chi_nhanh?.trim() || '',
         hinh_anh_thu_cung: editingReview.hinh_anh_thu_cung?.trim() || '/pet_golden_spa.jpg',
         ngay_danh_gia: editingReview.ngay_danh_gia?.trim() || 'Gần đây',
+        ngay_danh_gia_en: editingReview.ngay_danh_gia_en?.trim() || null,
         da_xac_thuc: editingReview.da_xac_thuc ?? true,
         thu_tu: Number(editingReview.thu_tu) || 0,
         kich_hoat: editingReview.kich_hoat !== false,
@@ -2682,7 +2738,9 @@ export default function AdminDashboardPage() {
     const term = searchTerm.toLowerCase();
     return (
       (r.ten_khach_hang && r.ten_khach_hang.toLowerCase().includes(term)) ||
+      (r.ten_khach_hang_en && r.ten_khach_hang_en.toLowerCase().includes(term)) ||
       (r.noi_dung && r.noi_dung.toLowerCase().includes(term)) ||
+      (r.noi_dung_en && r.noi_dung_en.toLowerCase().includes(term)) ||
       (r.dich_vu_su_dung && r.dich_vu_su_dung.toLowerCase().includes(term)) ||
       (r.chi_nhanh && r.chi_nhanh.toLowerCase().includes(term)) ||
       (r.so_dien_thoai && r.so_dien_thoai.toLowerCase().includes(term))
@@ -6556,8 +6614,14 @@ export default function AdminDashboardPage() {
                                   <p className="font-bold text-slate-900 truncate">
                                     {rev.ten_khach_hang}
                                   </p>
+                                  {rev.ten_khach_hang_en && (
+                                    <p className="text-[11px] text-slate-500 font-medium truncate flex items-center gap-1">
+                                      <UKFlag className="w-3 h-2 rounded-[1px] shrink-0" />
+                                      <span>{rev.ten_khach_hang_en}</span>
+                                    </p>
+                                  )}
                                   {rev.da_xac_thuc && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 mt-0.5">
                                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                       <span>Đã xác thực</span>
                                     </span>
@@ -6581,13 +6645,33 @@ export default function AdminDashboardPage() {
                             </td>
 
                             <td className="py-3.5 px-4">
-                              <p className="text-slate-600 line-clamp-2 leading-relaxed text-[11px] italic">
-                                &ldquo;{rev.noi_dung}&rdquo;
-                              </p>
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-1.5">
+                                  <VietnamFlag className="w-3.5 h-2.5 rounded-[1px] mt-0.5 shrink-0" />
+                                  <p className="text-slate-700 line-clamp-2 leading-relaxed text-[11px] italic">
+                                    &ldquo;{rev.noi_dung}&rdquo;
+                                  </p>
+                                </div>
+                                {rev.noi_dung_en ? (
+                                  <div className="flex items-start gap-1.5 pt-1 border-t border-slate-100">
+                                    <UKFlag className="w-3.5 h-2.5 rounded-[1px] mt-0.5 shrink-0" />
+                                    <p className="text-emerald-800 line-clamp-2 leading-relaxed text-[11px] italic">
+                                      &ldquo;{rev.noi_dung_en}&rdquo;
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">
+                                    Chưa có bản EN
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             <td className="py-3.5 px-4 text-center text-slate-500 text-[11px]">
-                              {rev.ngay_danh_gia || 'Gần đây'}
+                              <div>{rev.ngay_danh_gia || 'Gần đây'}</div>
+                              {rev.ngay_danh_gia_en && (
+                                <div className="text-[10px] text-slate-400 font-mono">({rev.ngay_danh_gia_en})</div>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4 text-center">
@@ -9330,90 +9414,216 @@ export default function AdminDashboardPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSaveReview} className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tên chủ nuôi: *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingReview.ten_khach_hang || ''}
-                    onChange={(e) => setEditingReview((prev) => ({ ...prev, ten_khach_hang: e.target.value }))}
-                    placeholder="VD: Chị Minh Thư"
-                    required
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Số điện thoại (ẩn 4 số cuối): *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingReview.so_dien_thoai || ''}
-                    onChange={(e) => setEditingReview((prev) => ({ ...prev, so_dien_thoai: e.target.value }))}
-                    placeholder="VD: 0908 234 ***"
-                    required
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Số sao đánh giá (1 - 5 sao):
-                  </label>
-                  <div className="flex items-center gap-1.5 pt-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setEditingReview((prev) => ({ ...prev, so_sao: star }))}
-                        className="p-1 hover:scale-110 transition cursor-pointer"
-                      >
-                        <Star
-                          className={`w-5 h-5 ${
-                            (editingReview.so_sao || 5) >= star
-                              ? 'fill-amber-400 text-amber-400'
-                              : 'text-slate-200'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                    <span className="ml-2 font-bold text-xs text-slate-700 font-mono">
-                      {editingReview.so_sao || 5} Sao
-                    </span>
+              {/* Thanh chuyển đổi ngôn ngữ & Nút dịch AI */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700">Ngôn ngữ soạn thảo:</span>
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setReviewModalTab('vi')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        reviewModalTab === 'vi'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản Tiếng Việt</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewModalTab('en')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        reviewModalTab === 'en'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <UKFlag className="w-4 h-3 rounded-[2px]" />
+                      <span>Bản English</span>
+                    </button>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thời gian hiển thị:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingReview.ngay_danh_gia || ''}
-                    onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia: e.target.value }))}
-                    placeholder="VD: Hôm qua, 3 ngày trước, 1 tuần trước..."
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateReview}
+                  disabled={isTranslatingReview}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động nhận xét và tên khách hàng sang Tiếng Anh y khoa Fear-Free bằng AI"
+                >
+                  {isTranslatingReview ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingReview ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
               </div>
 
-              <div>
+              {reviewModalTab === 'vi' ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tên chủ nuôi (Tiếng Việt): <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingReview.ten_khach_hang || ''}
+                        onChange={(e) => setEditingReview((prev) => ({ ...prev, ten_khach_hang: e.target.value }))}
+                        placeholder="VD: Chị Minh Thư"
+                        required
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Số điện thoại (ẩn 4 số cuối): <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingReview.so_dien_thoai || ''}
+                        onChange={(e) => setEditingReview((prev) => ({ ...prev, so_dien_thoai: e.target.value }))}
+                        placeholder="VD: 0908 234 ***"
+                        required
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Thời gian hiển thị (Tiếng Việt):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingReview.ngay_danh_gia || ''}
+                        onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia: e.target.value }))}
+                        placeholder="VD: Hôm qua, 3 ngày trước, 1 tuần trước..."
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Dịch vụ đã sử dụng (Tiếng Việt):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingReview.dich_vu_su_dung || ''}
+                        onChange={(e) => setEditingReview((prev) => ({ ...prev, dich_vu_su_dung: e.target.value }))}
+                        placeholder="VD: Cấp cứu 24/7, Spa Fear-Free..."
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Nội dung nhận xét chi tiết (Tiếng Việt): <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={editingReview.noi_dung || ''}
+                      onChange={(e) => setEditingReview((prev) => ({ ...prev, noi_dung: e.target.value }))}
+                      placeholder="Nhập cảm nhận của chủ nuôi về dịch vụ, bác sĩ, điều dưỡng..."
+                      required
+                      className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 text-xs flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>Nội dung Tiếng Anh sẽ tự động xuất hiện khi khách chọn cờ UK. Bạn có thể bấm nút <strong>Chuyển đổi ENG</strong> bên trên để AI dịch nhanh chuẩn Fear-Free.</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tên khách hàng (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingReview.ten_khach_hang_en || ''}
+                        onChange={(e) => setEditingReview((prev) => ({ ...prev, ten_khach_hang_en: e.target.value }))}
+                        placeholder="VD: Ms. Minh Thu, Mr. David..."
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Thời gian hiển thị (English):
+                      </label>
+                      <input
+                        type="text"
+                        value={editingReview.ngay_danh_gia_en || ''}
+                        onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia_en: e.target.value }))}
+                        placeholder="VD: Yesterday, 3 days ago, 1 week ago..."
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Dịch vụ đã sử dụng (English):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingReview.dich_vu_su_dung_en || ''}
+                      onChange={(e) => setEditingReview((prev) => ({ ...prev, dich_vu_su_dung_en: e.target.value }))}
+                      placeholder="VD: 24/7 Emergency Care, Fear-Free Spa..."
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Nội dung nhận xét chi tiết (English):
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={editingReview.noi_dung_en || ''}
+                      onChange={(e) => setEditingReview((prev) => ({ ...prev, noi_dung_en: e.target.value }))}
+                      placeholder="Enter client feedback in English (Fear-Free, medical care, doctors, nurses)..."
+                      className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="pt-2 border-t border-slate-100">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nội dung nhận xét chi tiết: *
+                  Số sao đánh giá (1 - 5 sao):
                 </label>
-                <textarea
-                  rows={4}
-                  value={editingReview.noi_dung || ''}
-                  onChange={(e) => setEditingReview((prev) => ({ ...prev, noi_dung: e.target.value }))}
-                  placeholder="Nhập cảm nhận của chủ nuôi về dịch vụ, bác sĩ, điều dưỡng..."
-                  required
-                  className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
-                />
+                <div className="flex items-center gap-1.5 pt-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditingReview((prev) => ({ ...prev, so_sao: star }))}
+                      className="p-1 hover:scale-110 transition cursor-pointer"
+                    >
+                      <Star
+                        className={`w-5 h-5 ${
+                          (editingReview.so_sao || 5) >= star
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-slate-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 font-bold text-xs text-slate-700 font-mono">
+                    {editingReview.so_sao || 5} Sao
+                  </span>
+                </div>
               </div>
 
               {/* Ảnh đại diện thú cưng: tự thêm hoặc dán vào */}
