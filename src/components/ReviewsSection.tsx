@@ -28,8 +28,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     dich_vu_su_dung: 'Spa Thủy Liệu & Trị Liệu Da Thảo Mộc',
     dich_vu_su_dung_en: 'Hydrotherapy & Herbal Skin Therapy',
     hinh_anh_thu_cung: '/pet_golden_spa.jpg',
-    ngay_danh_gia: 'Hôm qua',
-    ngay_danh_gia_en: 'Yesterday',
+    ngay_danh_gia: '2026-10-01',
+    ngay_danh_gia_en: '2026-10-01',
     da_xac_thuc: true,
     thu_tu: 1,
     kich_hoat: true,
@@ -47,8 +47,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     dich_vu_su_dung: 'Cấp Cứu Ngoại Khoa & Phẫu Thuật Nội Soi',
     dich_vu_su_dung_en: 'Surgical Emergency & Endoscopy',
     hinh_anh_thu_cung: '/pet_corgi_park.jpg',
-    ngay_danh_gia: '3 ngày trước',
-    ngay_danh_gia_en: '3 days ago',
+    ngay_danh_gia: '2026-09-29',
+    ngay_danh_gia_en: '2026-09-29',
     da_xac_thuc: true,
     thu_tu: 2,
     kich_hoat: true,
@@ -66,8 +66,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     dich_vu_su_dung: 'Resort & Khách Sạn Thú Cưng 5 Sao',
     dich_vu_su_dung_en: '5-Star Luxury Pet Resort & Hotel',
     hinh_anh_thu_cung: '/pet_cat_resort.jpg',
-    ngay_danh_gia: '5 ngày trước',
-    ngay_danh_gia_en: '5 days ago',
+    ngay_danh_gia: '2026-09-27',
+    ngay_danh_gia_en: '2026-09-27',
     da_xac_thuc: true,
     thu_tu: 3,
     kich_hoat: true,
@@ -85,8 +85,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     dich_vu_su_dung: 'Vật Lý Trị Liệu & Phục Hồi Vận Động',
     dich_vu_su_dung_en: 'Physical Therapy & Rehabilitation',
     hinh_anh_thu_cung: '/pet_puppy_play.jpg',
-    ngay_danh_gia: '1 tuần trước',
-    ngay_danh_gia_en: '1 week ago',
+    ngay_danh_gia: '2026-09-25',
+    ngay_danh_gia_en: '2026-09-25',
     da_xac_thuc: true,
     thu_tu: 4,
     kich_hoat: true,
@@ -104,8 +104,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     dich_vu_su_dung: 'Khám Tổng Quát & Tiêm Ngừa Vac-xin',
     dich_vu_su_dung_en: 'General Checkup & Vaccinations',
     hinh_anh_thu_cung: '/pet_kitten_eyes.jpg',
-    ngay_danh_gia: '2 tuần trước',
-    ngay_danh_gia_en: '2 weeks ago',
+    ngay_danh_gia: '2026-09-18',
+    ngay_danh_gia_en: '2026-09-18',
     da_xac_thuc: true,
     thu_tu: 5,
     kich_hoat: true,
@@ -123,8 +123,8 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     dich_vu_su_dung: 'Spa Cắt Tỉa Tạo Kiểu Grooming 5 Sao',
     dich_vu_su_dung_en: '5-Star Grooming & Styling Spa',
     hinh_anh_thu_cung: '/pet_golden_spa.jpg',
-    ngay_danh_gia: '3 tuần trước',
-    ngay_danh_gia_en: '3 weeks ago',
+    ngay_danh_gia: '2026-09-11',
+    ngay_danh_gia_en: '2026-09-11',
     da_xac_thuc: true,
     thu_tu: 6,
     kich_hoat: true,
@@ -132,19 +132,31 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
 ];
 
 function formatReviewTime(time: string | null | undefined, timeEn: string | null | undefined, isEn: boolean): string {
-  if (isEn && timeEn) return timeEn;
-  if (!time) return isEn ? 'Recently' : 'Gần đây';
-  if (!isEn) return time;
-  if (time === 'Hôm qua') return 'Yesterday';
-  if (time === 'Hôm nay') return 'Today';
-  if (time === 'Gần đây') return 'Recently';
-  return time
-    .replace(/(\d+)\s*ngày trước/gi, '$1 days ago')
-    .replace(/(\d+)\s*tuần trước/gi, '$1 weeks ago')
-    .replace(/(\d+)\s*tháng trước/gi, '$1 months ago')
-    .replace(/1\s*days ago/gi, '1 day ago')
-    .replace(/1\s*weeks ago/gi, '1 week ago')
-    .replace(/1\s*months ago/gi, '1 month ago');
+  const raw = (isEn && timeEn) ? timeEn : (time || timeEn);
+  if (!raw) return '';
+
+  // Nếu là dạng YYYY-MM-DD từ chọn lịch
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${d}/${m}/${y}`;
+  }
+
+  // Nếu đã là DD/MM/YYYY
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+    return raw;
+  }
+
+  // Chuyển đổi dữ liệu cũ thay vì hiển thị hôm qua, hôm kia
+  if (raw === 'Hôm qua' || raw === 'Yesterday') return '01/10/2026';
+  if (raw.includes('3 ngày') || raw.includes('3 days')) return '29/09/2026';
+  if (raw.includes('5 ngày') || raw.includes('5 days')) return '27/09/2026';
+  if (raw.includes('1 tuần') || raw.includes('1 week')) return '25/09/2026';
+  if (raw.includes('2 tuần') || raw.includes('2 weeks')) return '18/09/2026';
+  if (raw.includes('3 tuần') || raw.includes('3 weeks')) return '11/09/2026';
+  if (raw === 'Hôm nay' || raw === 'Today' || raw === 'Gần đây' || raw === 'Recently') return '02/10/2026';
+
+  return raw;
 }
 
 export default function ReviewsSection() {

@@ -1968,8 +1968,39 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+function toDateInputValue(val?: string | null): string {
+  if (!val) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  const parts = val.split('/');
+  if (parts.length === 3 && parts[2]?.length === 4) {
+    const d = parts[0].padStart(2, '0');
+    const m = parts[1].padStart(2, '0');
+    const y = parts[2];
+    return `${y}-${m}-${d}`;
+  }
+  return '';
+}
+
+function formatDisplayReviewDate(val?: string | null): string {
+  if (!val) return 'Mới đây';
+  const isoMatch = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${d}/${m}/${y}`;
+  }
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) return val;
+  if (val === 'Hôm qua' || val === 'Yesterday') return '01/10/2026';
+  if (val.includes('3 ngày') || val.includes('3 days')) return '29/09/2026';
+  if (val.includes('5 ngày') || val.includes('5 days')) return '27/09/2026';
+  if (val.includes('1 tuần') || val.includes('1 week')) return '25/09/2026';
+  if (val.includes('2 tuần') || val.includes('2 weeks')) return '18/09/2026';
+  if (val.includes('3 tuần') || val.includes('3 weeks')) return '11/09/2026';
+  return val;
+}
+
   const handleAddNewReview = () => {
     const nextOrder = reviews.length > 0 ? Math.max(...reviews.map((r) => r.thu_tu || 0)) + 1 : 1;
+    const todayIso = new Date().toISOString().split('T')[0];
     setEditingReview({
       ten_khach_hang: '',
       ten_khach_hang_en: '',
@@ -1981,8 +2012,8 @@ export default function AdminDashboardPage() {
       dich_vu_su_dung_en: '',
       chi_nhanh: '',
       hinh_anh_thu_cung: '/pet_golden_spa.jpg',
-      ngay_danh_gia: 'Gần đây',
-      ngay_danh_gia_en: 'Recently',
+      ngay_danh_gia: todayIso,
+      ngay_danh_gia_en: todayIso,
       da_xac_thuc: true,
       thu_tu: nextOrder,
       kich_hoat: true,
@@ -6667,11 +6698,10 @@ export default function AdminDashboardPage() {
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4 text-center text-slate-500 text-[11px]">
-                              <div>{rev.ngay_danh_gia || 'Gần đây'}</div>
-                              {rev.ngay_danh_gia_en && (
-                                <div className="text-[10px] text-slate-400 font-mono">({rev.ngay_danh_gia_en})</div>
-                              )}
+                            <td className="py-3.5 px-4 text-center text-slate-700 font-mono text-[11px] font-medium">
+                              <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                {formatDisplayReviewDate(rev.ngay_danh_gia)}
+                              </span>
                             </td>
 
                             <td className="py-3.5 px-4 text-center">
@@ -9494,13 +9524,19 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Ngày đánh giá (dd/mm/yyyy):
+                        Ngày đánh giá:
                       </label>
                       <input
-                        type="text"
-                        value={editingReview.ngay_danh_gia || ''}
-                        onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia: e.target.value }))}
-                        placeholder="VD: 25/10/2026 hoặc Hôm qua..."
+                        type="date"
+                        value={toDateInputValue(editingReview.ngay_danh_gia)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditingReview((prev) => ({
+                            ...prev,
+                            ngay_danh_gia: val,
+                            ngay_danh_gia_en: prev?.ngay_danh_gia_en || val,
+                          }));
+                        }}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -9551,13 +9587,18 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Ngày đánh giá (dd/mm/yyyy):
+                        Ngày đánh giá:
                       </label>
                       <input
-                        type="text"
-                        value={editingReview.ngay_danh_gia_en || ''}
-                        onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia_en: e.target.value }))}
-                        placeholder="VD: 25/10/2026 hoặc Yesterday..."
+                        type="date"
+                        value={toDateInputValue(editingReview.ngay_danh_gia_en || editingReview.ngay_danh_gia)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditingReview((prev) => ({
+                            ...prev,
+                            ngay_danh_gia_en: val,
+                          }));
+                        }}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
