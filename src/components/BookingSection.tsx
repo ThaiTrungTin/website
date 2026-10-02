@@ -841,18 +841,19 @@ const getTodayDateVN = () => {
             </div>
 
             {/* CỘT PHẢI: ẢNH BÌA & THÔNG TIN CẤU HÌNH THIẾT KẾ TỪ ADMIN */}
-            <div className="hidden lg:flex lg:col-span-5 relative min-h-[560px] bg-slate-900 overflow-hidden flex-col justify-between p-8 text-white">
-              {/* Ảnh nền */}
+            <div className="hidden lg:flex lg:col-span-5 relative min-h-[560px] bg-slate-100 overflow-hidden flex-col justify-between p-8 text-white">
+              {/* Ảnh nền giữ hiệu ứng tự nhiên, sáng rõ ràng không bị tối đục */}
               <img
                 src={coverImage || DEFAULT_COVER_IMAGE}
                 alt="Pet M&M Veterinary Clinic"
-                className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-700 hover:scale-100"
+                className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 hover:scale-102"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/50 to-slate-900/30" />
+              {/* Chỉ phủ lớp chuyển bóng mờ nhẹ ở phần chân đáy để chữ hiển thị tương phản rõ nét */}
+              <div className="absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-t from-slate-950/95 via-slate-950/65 to-transparent pointer-events-none" />
 
               {/* Huy hiệu đỉnh */}
               <div className="relative z-10">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-xs font-bold shadow-lg">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/70 backdrop-blur-md border border-white/25 text-white text-xs font-bold shadow-lg">
                   <span className="w-2 h-2 rounded-full bg-[#FFB800] animate-pulse" />
                   <span>Pet M&M Medical Center</span>
                 </div>
