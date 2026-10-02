@@ -66,7 +66,7 @@ const getMobileObjectPosition = (pos?: string | null) => {
 const HERO_SLIDES_DEFAULT: HeroBannerItem[] = [
   {
     id: 'aa8eaaf2-ff33-40e9-99ef-549988d98099',
-    tieu_de: 'Ảnh nền Pet M&M',
+    tieu_de: 'Ảnh nền PetM&M',
     duong_dan_anh: 'https://ntkpdadakcyugvivvsjw.supabase.co/storage/v1/object/public/hinh_anh/banners/hero_1790088496905_19pds.jpg',
     can_chinh: '50% 15%',
     ti_le_phong: 1.05,
@@ -154,7 +154,7 @@ const HERO_SLIDES_DEFAULT: HeroBannerItem[] = [
   },
   {
     id: '8c6bd110-2521-489b-b28d-8cb67bccc4e3',
-    tieu_de: 'Ảnh nền Pet M&M',
+    tieu_de: 'Ảnh nền PetM&M',
     duong_dan_anh: 'https://ntkpdadakcyugvivvsjw.supabase.co/storage/v1/object/public/hinh_anh/banners/hero_1790091603217_5217i.jpg',
     can_chinh: '50% 50%',
     ti_le_phong: 1.05,
@@ -394,7 +394,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
     <section
       ref={heroRef}
       id="hero"
-      aria-label="Khu vực mở đầu Pet M&M 5 sao"
+      aria-label="Khu vực mở đầu PetM&M 5 sao"
       className="relative min-h-[50vh] sm:min-h-screen flex items-center justify-center pt-4 pb-14 sm:pt-28 sm:pb-16 text-slate-900 overflow-hidden select-none cursor-grab active:cursor-grabbing bg-white"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -433,7 +433,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
               >
                 <Image
                   src={getAssetUrl(slide.duong_dan_anh)}
-                  alt={slide.alt_text || slide.tieu_de || 'Ảnh nền Pet M&M'}
+                  alt={slide.alt_text || slide.tieu_de || 'Ảnh nền PetM&M'}
                   fill
                   priority={index === 0}
                   loading={index === 0 ? 'eager' : 'lazy'}
@@ -483,7 +483,7 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
 
       {/* 3. FLOATING TOP PILL NAV BAR (BẢN TÔNG SÁNG SANG TRỌNG) */}
       <div className="absolute top-2 sm:top-6 inset-x-0 z-30 flex items-center justify-between px-3.5 sm:px-12 max-w-7xl mx-auto pointer-events-auto w-full">
-        {/* Brand Logo Pet M&M */}
+        {/* Brand Logo PetM&M */}
         <a href="#" className="flex items-center drop-shadow-sm scale-90 sm:scale-100 origin-left">
           <PetLogo size="default" />
         </a>

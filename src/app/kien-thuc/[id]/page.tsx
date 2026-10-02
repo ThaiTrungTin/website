@@ -63,9 +63,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const data = await getArticle(id);
 
-  if (!data) return { title: 'Cẩm nang kiến thức | Pet M&M' };
+  if (!data) return { title: 'Cẩm nang kiến thức | PetM&M' };
   return {
-    title: `${data.tieu_de} | Pet M&M`,
+    title: `${data.tieu_de} | PetM&M`,
     description: data.mo_ta_ngan || `Cẩm nang y khoa thú cưng: ${data.tieu_de}`,
     openGraph: data.hinh_anh ? { images: [getAssetUrl(data.hinh_anh)] } : undefined,
   };

@@ -58,7 +58,7 @@ export default function ScrollNavigationButtons() {
   return (
     <aside
       aria-label="Điều hướng cuộn trang"
-      className={`fixed right-[64px] sm:right-[92px] bottom-24 sm:bottom-12 z-40 flex flex-col items-center gap-1 select-none transition-all duration-500 ease-out ${
+      className={`fixed right-3 md:right-[64px] lg:right-[92px] bottom-6 sm:bottom-8 z-40 flex flex-col items-center gap-1 select-none transition-all duration-500 ease-out ${
         isScrolling
           ? 'translate-x-32 opacity-0 pointer-events-none'
           : 'translate-x-0 opacity-100 pointer-events-auto'

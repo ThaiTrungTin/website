@@ -290,8 +290,8 @@ const FALLBACK_TEAM: DoiNguRecord[] = [
     id: '1',
     ho_ten: 'TS. BSTY. Vương Tuấn Phong',
     ho_ten_en: 'Dr. Vuong Tuan Phong, DVM, Ph.D.',
-    chuc_danh: 'NHÀ SÁNG LẬP · PET M&M',
-    chuc_danh_en: 'CO-FOUNDER · PET M&M',
+    chuc_danh: 'NHÀ SÁNG LẬP · PETM&M',
+    chuc_danh_en: 'CO-FOUNDER · PETM&M',
     hoc_vi_chuc_vu: 'Tiến sĩ Thú y · Giám Đốc Điều Hành',
     hoc_vi_chuc_vu_en: 'Ph.D. in Veterinary Medicine · CEO',
     phan_loai: 'lanh_dao',
@@ -307,16 +307,16 @@ const FALLBACK_TEAM: DoiNguRecord[] = [
     id: '2',
     ho_ten: 'PGS. BSTY. Bùi Khánh Linh',
     ho_ten_en: 'Assoc. Prof. Bui Khanh Linh, DVM, Ph.D.',
-    chuc_danh: 'NHÀ SÁNG LẬP · PET M&M',
-    chuc_danh_en: 'CO-FOUNDER · PET M&M',
+    chuc_danh: 'NHÀ SÁNG LẬP · PETM&M',
+    chuc_danh_en: 'CO-FOUNDER · PETM&M',
     hoc_vi_chuc_vu: 'Phó Giáo Sư Thú Y · Viện Trưởng Nghiên Cứu',
     hoc_vi_chuc_vu_en: 'Assoc. Prof. of Vet Medicine · Research Director',
     phan_loai: 'lanh_dao',
     hinh_anh: '/about_consultation.jpg',
     mo_ta:
-      'Xây dựng nền tảng hợp tác quốc tế, tinh thần đào tạo và định hướng phát triển bền vững dựa trên tiến bộ khoa học công nghệ cho Pet M&M.',
+      'Xây dựng nền tảng hợp tác quốc tế, tinh thần đào tạo và định hướng phát triển bền vững dựa trên tiến bộ khoa học công nghệ cho PetM&M.',
     mo_ta_en:
-      'Establishes international cooperation frameworks, continuous clinical training, and sustainable development driven by scientific and technological advancements at Pet M&M.',
+      'Establishes international cooperation frameworks, continuous clinical training, and sustainable development driven by scientific and technological advancements at PetM&M.',
     thu_tu: 2,
     kich_hoat: true,
   },
@@ -505,7 +505,7 @@ export default function DoiNguYTePage() {
   // Cập nhật tab title theo ngôn ngữ khi vào trang
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const pageTitle = isEn ? 'Medical & Veterinary Team | Pet M&M' : 'Đội Ngũ Bác Sĩ & Y Tế | Pet M&M';
+      const pageTitle = isEn ? 'Medical & Veterinary Team | PetM&M' : 'Đội Ngũ Bác Sĩ & Y Tế | PetM&M';
       document.title = pageTitle;
     }
   }, [isEn]);
@@ -569,7 +569,7 @@ export default function DoiNguYTePage() {
       <div className="relative w-full h-64 sm:h-80 md:h-[400px] overflow-hidden bg-slate-900">
         <Image
           src={getAssetUrl('/about_team_entrance.jpg')}
-          alt={t('team_hero_title', 'Đội Ngũ Bác Sĩ & Y Tế Pet M&M')}
+          alt={t('team_hero_title', 'Đội Ngũ Bác Sĩ & Y Tế PetM&M')}
           fill
           priority
           className="object-cover object-center"
@@ -582,7 +582,7 @@ export default function DoiNguYTePage() {
               <span>{t('team_hero_badge', 'HỘI ĐỒNG Y KHOA CHUYÊN MÔN CAO')}</span>
             </span>
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-editorial font-bold text-white drop-shadow-md leading-tight">
-              {t('team_hero_title', 'Đội Ngũ Bác Sĩ & Y Tế Pet M&M')}
+              {t('team_hero_title', 'Đội Ngũ Bác Sĩ & Y Tế PetM&M')}
             </h1>
             <p className="text-white/85 text-xs sm:text-sm mt-2 max-w-2xl font-light leading-relaxed">
               {isEn
@@ -606,7 +606,7 @@ export default function DoiNguYTePage() {
             <li className="text-slate-300 select-none">›</li>
             <li>
               <Link href="/#about" className="text-slate-500 hover:text-[#2D5A27] transition font-medium">
-                {t('team_breadcrumb_about', 'Về Pet M&M')}
+                {t('team_breadcrumb_about', 'Về PetM&M')}
               </Link>
             </li>
             <li className="text-slate-300 select-none">›</li>
@@ -690,7 +690,7 @@ export default function DoiNguYTePage() {
 
           {/* CỘT PHẢI (4 CỘT): SIDEBAR TƯ VẤN & ĐẶT LỊCH HẸN BÁC SĨ */}
           <div className="lg:col-span-4 space-y-6">
-            <ConsultationSidebar branchName={t('team_sidebar_board', 'Hội Đồng Y Khoa Pet M&M')} />
+            <ConsultationSidebar branchName={t('team_sidebar_board', 'Hội Đồng Y Khoa PetM&M')} />
           </div>
         </div>
       </div>

@@ -31,7 +31,7 @@ export interface EmailTemplateConfig {
 export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateConfig = {
   logoUrl: '',
   // TIẾNG VIỆT
-  subjectVi: '[Pet M&M] Xác Nhận Lịch Hẹn #{booking_code} cho bé {pet_name}',
+  subjectVi: '[PetM&M] Xác Nhận Lịch Hẹn #{booking_code} cho bé {pet_name}',
   bannerTitleVi: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
   bannerSubtitleVi: 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc',
   introVi: 'Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>{pet_name}</strong> tại Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.',
@@ -41,7 +41,7 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateConfig = {
   footerVi: 'Nếu cần thay đổi giờ hẹn hoặc cần tư vấn khẩn cấp, vui lòng liên hệ ngay:',
 
   // TIẾNG ANH
-  subjectEn: '[Pet M&M] Appointment Confirmed - Code #{booking_code} for {pet_name}',
+  subjectEn: '[PetM&M] Appointment Confirmed - Code #{booking_code} for {pet_name}',
   bannerTitleEn: 'PetM&M Veterinary Clinic & Animal Hospital',
   bannerSubtitleEn: 'Appointment Booking Receipt',
   introEn: 'Thank you for booking an appointment for <strong>{pet_name}</strong> at PetM&M Pet Hospital Clinic. Our veterinary team has received your request and is ready to provide the best care.',
@@ -209,14 +209,14 @@ export async function sendMail({
 
 // GỬI EMAIL MÃ OTP ĐẶT LẠI MẬT KHẨU
 export async function sendOtpEmail(toEmail: string, otpCode: string) {
-  const subject = `[Pet M&M] Mã xác thực OTP đặt lại mật khẩu: ${otpCode}`;
+  const subject = `[PetM&M] Mã xác thực OTP đặt lại mật khẩu: ${otpCode}`;
 
   const html = `
   <!DOCTYPE html>
   <html>
   <head>
     <meta charset="utf-8">
-    <title>Mã Xác Thực Pet M&M</title>
+    <title>Mã Xác Thực PetM&M</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 32px 16px;">
@@ -289,7 +289,7 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
     to: toEmail,
     subject,
     html,
-    text: `Mã OTP xác thực đặt lại mật khẩu Pet M&M của bạn là: ${otpCode}. Hiệu lực 15 phút.`,
+    text: `Mã OTP xác thực đặt lại mật khẩu PetM&M của bạn là: ${otpCode}. Hiệu lực 15 phút.`,
   });
 }
 
@@ -310,7 +310,7 @@ export async function sendTestEmail(
     ownerName: isEn ? 'Alex Johnson' : 'Nguyễn Văn An',
     petName: isEn ? 'Milo' : 'Bé Đậu',
     petType: 'dog',
-    branchName: isEn ? 'Pet M&M District 2 Clinic' : 'Cơ sở Thảo Điền - TP. Thủ Đức',
+    branchName: isEn ? 'PetM&M District 2 Clinic' : 'Cơ sở Thảo Điền - TP. Thủ Đức',
     service: isEn ? 'General Health Check & Vaccination' : 'Khám sức khỏe tổng quát & Tiêm phòng',
     dateTime: `09:00 - 09:30, ${isEn ? 'Date' : 'Ngày'} ${new Date().toLocaleDateString('vi-VN')}`,
     note: isEn ? 'Pet has slight itching on left ear' : 'Bé hơi ngứa tai trái, cần soi tai',
@@ -407,7 +407,7 @@ export async function sendBookingConfirmationEmail({
   if (templateCfg.logoUrl && templateCfg.logoUrl.startsWith('http')) {
     logoHtml = `
       <div style="text-align: center; margin-bottom: 14px;">
-        <img src="${templateCfg.logoUrl}" alt="Pet M&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
+        <img src="${templateCfg.logoUrl}" alt="PetM&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
       </div>
     `;
   } else {
@@ -421,7 +421,7 @@ export async function sendBookingConfirmationEmail({
       });
       logoHtml = `
         <div style="text-align: center; margin-bottom: 14px;">
-          <img src="cid:petmm_logo_img" alt="Pet M&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
+          <img src="cid:petmm_logo_img" alt="PetM&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
         </div>
       `;
     }

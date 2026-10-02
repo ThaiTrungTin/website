@@ -20,8 +20,10 @@ import {
   HelpCircle,
   Sparkles,
   Star,
+  Briefcase,
 } from 'lucide-react';
 import PetLogo from './PetLogo';
+import PetMMBrand from './PetMMBrand';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -96,7 +98,7 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          {/* Brand Logo Pet M&M */}
+          {/* Brand Logo PetM&M */}
           <Link href="/" className="flex items-center">
             <PetLogo size="default" />
           </Link>
@@ -135,21 +137,13 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
             </button>
           </div>
 
-          {/* Mobile Hamburger */}
+          {/* Mobile Hamburger & Language Flag */}
           <div className="flex items-center gap-2 lg:hidden">
-            <LanguageSwitcher variant="light" showIcon={false} />
-            <button
-              onClick={handleBookingClick}
-              className="relative overflow-hidden sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs bg-gradient-to-r from-[#FFB800] to-amber-400 text-slate-950 shadow-md cursor-pointer"
-            >
-              <div className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none animate-button-gleam" />
-              <CalendarCheck className="w-3.5 h-3.5" />
-              <span>{t('btn_book_short', 'Đặt Lịch')}</span>
-            </button>
+            <LanguageSwitcher variant="light" flagOnly={true} />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isEn ? 'Open navigation menu' : 'Mở menu di động'}
-              className="p-2 rounded-xl text-slate-800 hover:text-[#2D5A27] hover:bg-slate-100 transition"
+              className="p-2 rounded-xl text-slate-800 hover:text-[#2D5A27] hover:bg-slate-100 transition cursor-pointer"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -189,7 +183,7 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
 
             {/* Navigation Links with Accordion Dropdowns using Real DB Data */}
             <nav className="flex flex-col gap-1.5 mt-5">
-              {/* Về Pet M&M */}
+              {/* Về PetM&M */}
               <a
                 href="/#about"
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -199,7 +193,10 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
                   <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2D5A27]">
                     <Heart className="w-4 h-4" />
                   </div>
-                  <span>{t('nav_about', 'Về Pet M&M')}</span>
+                  <span>
+                    {isEn ? 'About ' : 'Về '}
+                    <PetMMBrand />
+                  </span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </a>
@@ -365,6 +362,21 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </a>
+
+              {/* Tuyển Dụng */}
+              <Link
+                href="/tuyen-dung"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-semibold text-slate-700 hover:text-[#2D5A27] hover:bg-slate-50 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2D5A27]">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <span>{t('nav_careers', 'Tuyển Dụng')}</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </Link>
 
               {/* Liên Hệ */}
               <a

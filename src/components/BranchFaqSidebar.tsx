@@ -13,6 +13,7 @@ import {
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { supabase, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
+import PetMMBrand from './PetMMBrand';
 
 /* ── FAQ accordion cho Sidebar các trang con ── */
 export default function BranchFaqSidebar() {
@@ -150,11 +151,11 @@ export function SupportPanel() {
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
           {isEn ? (
             <>
-              Need Pet M&amp;M <span className="text-[#2D5A27]">support?</span>
+              Need <PetMMBrand /> <span className="text-[#2D5A27]">support?</span>
             </>
           ) : (
             <>
-              Bạn cần Pet M&amp;M <span className="text-[#2D5A27]">hỗ trợ?</span>
+              Bạn cần <PetMMBrand /> <span className="text-[#2D5A27]">hỗ trợ?</span>
             </>
           )}
         </h3>

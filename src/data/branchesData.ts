@@ -29,7 +29,7 @@ export interface BranchItem {
 export const branchesData: BranchItem[] = [
   {
     id: 'branch-thuduc',
-    name: 'Phòng Khám Thú Cưng Pet M&M',
+    name: 'Phòng Khám Thú Cưng PetM&M',
     shortName: 'Cơ sở TP. Thủ Đức',
     tagline: '',
     district: 'TP. Thủ Đức',

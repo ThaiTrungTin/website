@@ -35,8 +35,8 @@ interface AboutSlideItem {
 const DEFAULT_ABOUT_SLIDES: AboutSlideItem[] = [
   {
     image: '/about_team_entrance.jpg',
-    title: 'Đội Ngũ Bác Sĩ & Trụ Sở Bệnh Viện Pet M&M',
-    title_en: 'Pet M&M Veterinary Medical Team & Hospital Headquarters',
+    title: 'Đội Ngũ Bác Sĩ & Trụ Sở Bệnh Viện PetM&M',
+    title_en: 'PetM&M Veterinary Medical Team & Hospital Headquarters',
     tag: 'Đội ngũ chuyên môn',
     tag_en: 'Medical Specialists',
   },
@@ -64,7 +64,7 @@ export default function AboutSection() {
 
   const huyHieu = isEn
     ? (config.gioi_thieu_huy_hieu_en || 'MISSION & PHILOSOPHY')
-    : (config.gioi_thieu_huy_hieu || 'SỨ MỆNH & TRIẾT LÝ PET M&M');
+    : (config.gioi_thieu_huy_hieu || 'SỨ MỆNH & TRIẾT LÝ PETM&M');
   const tieuDe1 = isEn
     ? (config.gioi_thieu_tieu_de_1_en || 'Elevating Veterinary Medicine')
     : (config.gioi_thieu_tieu_de_1 || 'Nâng Tầm Chăm Sóc Y Khoa');
@@ -73,9 +73,9 @@ export default function AboutSection() {
     : (config.gioi_thieu_tieu_de_2 || 'Bằng Trái Tim & Y Đức');
   const moTa = isEn
     ? (config.gioi_thieu_mo_ta_en ||
-      'Established with the vision of setting new standards in pet healthcare in Vietnam, Pet M&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.')
+      'Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.')
     : (config.gioi_thieu_mo_ta ||
-      'Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, Pet M&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.');
+      'Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.');
   const trichDan = isEn
     ? (config.gioi_thieu_trich_dan_en ||
       '“We regard every breath and every heartbeat of our patients as our greatest pride and responsibility in our veterinary calling.”')
@@ -85,8 +85,8 @@ export default function AboutSection() {
     ? (config.gioi_thieu_bac_si_ten_en || config.gioi_thieu_bac_si_ten || 'Dr. Nguyen Minh Tuan')
     : (config.gioi_thieu_bac_si_ten || 'BS. CKI Nguyễn Minh Tuấn');
   const bacSiChucDanh = isEn
-    ? (config.gioi_thieu_bac_si_chuc_danh_en || 'Chief Medical Director, Pet M&M Veterinary Hospital Network')
-    : (config.gioi_thieu_bac_si_chuc_danh || 'Giám Đốc Chuyên Môn Hệ Thống Bệnh Viện Pet M&M');
+    ? (config.gioi_thieu_bac_si_chuc_danh_en || 'Chief Medical Director, PetM&M Veterinary Hospital Network')
+    : (config.gioi_thieu_bac_si_chuc_danh || 'Giám Đốc Chuyên Môn Hệ Thống Bệnh Viện PetM&M');
   const namThanhLap = config.thong_ke_nam_thanh_lap || '2018';
   const namThanhLapNhan = isEn
     ? (config.thong_ke_nam_thanh_lap_nhan_en || 'Founded')
@@ -113,8 +113,8 @@ export default function AboutSection() {
           const mapped: AboutSlideItem[] = data.map((d: any) => ({
             id: d.id,
             image: d.duong_dan_anh || '/about_team_entrance.jpg',
-            title: d.tieu_de || 'Bệnh Viện Thú Y Pet M&M',
-            title_en: d.tieu_de_en || 'Pet M&M Veterinary Hospital',
+            title: d.tieu_de || 'Bệnh Viện Thú Y PetM&M',
+            title_en: d.tieu_de_en || 'PetM&M Veterinary Hospital',
             tag: d.alt_text || 'Đội ngũ chuyên môn',
             tag_en: d.alt_text_en || 'Medical Specialists',
           }));
@@ -211,7 +211,7 @@ export default function AboutSection() {
       <div className="absolute inset-0 z-0">
         <Image
           src={getAssetUrl('/services_bg.jpg')}
-          alt="Bác sĩ Pet M&M chăm sóc ân cần cho thú cưng"
+          alt="Bác sĩ PetM&M chăm sóc ân cần cho thú cưng"
           fill
           quality={90}
           className="object-cover object-center scale-105 opacity-10"
@@ -269,7 +269,7 @@ export default function AboutSection() {
               <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-900 group">
                 {slides.length > 0 && (() => {
                   const activeSlide = slides[currentSlide];
-                  const currentSlideTitle = isEn && activeSlide?.title_en ? activeSlide.title_en : (activeSlide?.title || 'Pet M&M');
+                  const currentSlideTitle = isEn && activeSlide?.title_en ? activeSlide.title_en : (activeSlide?.title || 'PetM&M');
                   const currentSlideTag = isEn && activeSlide?.tag_en ? activeSlide.tag_en : (activeSlide?.tag || (isEn ? 'Medical Specialists' : 'Đội ngũ chuyên môn'));
 
                   return (

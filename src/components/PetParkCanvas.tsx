@@ -54,7 +54,7 @@ export default function PetParkCanvas() {
     rimLight.position.set(-5, 6, -4);
     scene.add(rimLight);
 
-    // Warm golden amber fill light (Pet M&M brand)
+    // Warm golden amber fill light (PetM&M brand)
     const fillLight = new THREE.PointLight(0xffb800, 1.6, 12);
     fillLight.position.set(0, -1, 3);
     scene.add(fillLight);
@@ -268,7 +268,7 @@ export default function PetParkCanvas() {
     dogHead.add(earLeft);
     dogHead.add(earRight);
 
-    // Medical Bandana / Collar around Corgi Neck (Pet M&M Emerald & Gold)
+    // Medical Bandana / Collar around Corgi Neck (PetM&M Emerald & Gold)
     const collarGeo = new THREE.TorusGeometry(0.46, 0.05, 12, 28);
     const collar = new THREE.Mesh(collarGeo, emeraldMat);
     collar.rotation.x = Math.PI / 2;
@@ -569,7 +569,7 @@ export default function PetParkCanvas() {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
         </span>
         <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-        <span>3D Studio Thú Cưng Pet M&M</span>
+        <span>3D Studio Thú Cưng PetM&M</span>
       </div>
 
       {/* International Hospital Standard Badge */}

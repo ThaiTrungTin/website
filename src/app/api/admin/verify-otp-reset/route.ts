@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         password: newPassword,
         email_confirm: true,
         user_metadata: {
-          ho_ten: 'Quản Trị Viên Pet M&M',
+          ho_ten: 'Quản Trị Viên PetM&M',
           vai_tro: 'super_admin',
         },
       });

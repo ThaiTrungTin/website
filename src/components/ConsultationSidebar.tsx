@@ -5,7 +5,7 @@ import { Send, User, Phone, CheckCircle2 } from 'lucide-react';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 
-export default function ConsultationSidebar({ branchName = 'Hệ Thống Pet M&M' }: { branchName?: string }) {
+export default function ConsultationSidebar({ branchName = 'Hệ Thống PetM&M' }: { branchName?: string }) {
   const { config } = useSystemConfig();
   const { isEn, t } = useLanguage();
   const [name, setName] = useState('');
@@ -16,8 +16,8 @@ export default function ConsultationSidebar({ branchName = 'Hệ Thống Pet M&M
   const hotline = config?.hotline_hien_thi || config?.hotline || '0903 599 339';
   const zaloLink = config?.link_zalo || '#';
 
-  const effectiveBranchName = isEn && branchName === 'Hội Đồng Y Khoa Pet M&M'
-    ? 'Pet M&M Medical Board'
+  const effectiveBranchName = isEn && branchName === 'Hội Đồng Y Khoa PetM&M'
+    ? 'PetM&M Medical Board'
     : branchName;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,10 +28,10 @@ export default function ConsultationSidebar({ branchName = 'Hệ Thống Pet M&M
     // Gửi tin nhắn Zalo OA (format link Zalo pre-filled message)
     const msg = isEn
       ? encodeURIComponent(
-          `Hello Pet M&M! I am ${name.trim()}, phone number ${phone.trim()}. I would like to request consultation for ${effectiveBranchName}.`
+          `Hello PetM&M! I am ${name.trim()}, phone number ${phone.trim()}. I would like to request consultation for ${effectiveBranchName}.`
         )
       : encodeURIComponent(
-          `Xin chào Pet M&M! Tôi là ${name.trim()}, số điện thoại ${phone.trim()}. Tôi muốn được tư vấn dịch vụ tại cơ sở ${effectiveBranchName}.`
+          `Xin chào PetM&M! Tôi là ${name.trim()}, số điện thoại ${phone.trim()}. Tôi muốn được tư vấn dịch vụ tại cơ sở ${effectiveBranchName}.`
         );
     const zaloUrl = `${zaloLink}?msg=${msg}`;
 
@@ -52,7 +52,7 @@ export default function ConsultationSidebar({ branchName = 'Hệ Thống Pet M&M
           {t('consult_success_title', 'Đã gửi thành công!')}
         </h3>
         <p className="text-xs text-slate-500">
-          {t('consult_success_desc', 'Tin nhắn Zalo đã được mở. Đội ngũ Pet M&M sẽ liên hệ lại với bạn sớm nhất.')}
+          {t('consult_success_desc', 'Tin nhắn Zalo đã được mở. Đội ngũ PetM&M sẽ liên hệ lại với bạn sớm nhất.')}
         </p>
         <a
           href={`tel:${hotline.replace(/\s+/g, '')}`}
@@ -79,7 +79,7 @@ export default function ConsultationSidebar({ branchName = 'Hệ Thống Pet M&M
           <span className="italic font-light opacity-90">{t('consult_title_free_part2', 'miễn phí')}</span>
         </h3>
         <p className="text-emerald-100 text-xs mt-0.5 font-light">
-          {t('consult_desc', 'Điền thông tin để đội ngũ Pet M&M liên hệ tư vấn cho bạn')}
+          {t('consult_desc', 'Điền thông tin để đội ngũ PetM&M liên hệ tư vấn cho bạn')}
         </p>
       </div>
 

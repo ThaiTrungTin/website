@@ -10,7 +10,7 @@ export interface TranslationDict {
 export const translations: TranslationDict = {
   // Navigation
   nav_about: {
-    vi: 'Về Pet M&M',
+    vi: 'Về PetM&M',
     en: 'About Us',
   },
   nav_services: {
@@ -144,16 +144,16 @@ export const translations: TranslationDict = {
 
   // About Section
   about_tag: {
-    vi: 'VỀ HỆ THỐNG PET M&M',
-    en: 'ABOUT PET M&M',
+    vi: 'VỀ HỆ THỐNG PETM&M',
+    en: 'ABOUT PETM&M',
   },
   about_heading: {
     vi: 'Y Đức Hàng Đầu — Nâng Niu Từng Nhịp Thở Thú Cưng',
     en: 'Medical Integrity — Cherishing Every Breath of Your Pet',
   },
   about_desc_1: {
-    vi: 'Pet M&M được xây dựng với sứ mệnh trở thành điểm tựa y tế và nghỉ dưỡng đáng tin cậy nhất cho thú cưng và gia đình bạn tại TP.HCM.',
-    en: 'Pet M&M was founded with the mission of providing the most trusted medical and resort haven for pets and their families in Ho Chi Minh City.',
+    vi: 'PetM&M được xây dựng với sứ mệnh trở thành điểm tựa y tế và nghỉ dưỡng đáng tin cậy nhất cho thú cưng và gia đình bạn tại TP.HCM.',
+    en: 'PetM&M was founded with the mission of providing the most trusted medical and resort haven for pets and their families in Ho Chi Minh City.',
   },
   about_desc_2: {
     vi: 'Tiên phong ứng dụng tiêu chuẩn Fear-Free giúp giảm tối đa sự sợ hãi, lo âu cho các bé chó mèo khi đến khám chữa bệnh.',
@@ -228,8 +228,8 @@ export const translations: TranslationDict = {
     en: 'OUR BRANCH NETWORK',
   },
   branches_heading: {
-    vi: 'Hệ Thống Chi Nhánh Pet M&M Tại TP.HCM',
-    en: 'Pet M&M Clinics & Hospital Locations',
+    vi: 'Hệ Thống Chi Nhánh PetM&M Tại TP.HCM',
+    en: 'PetM&M Clinics & Hospital Locations',
   },
   branches_subtitle: {
     vi: 'Mạng lưới bệnh viện và phòng khám hiện đại phủ sóng khắp TP. Thủ Đức và các quận trung tâm.',
@@ -258,8 +258,8 @@ export const translations: TranslationDict = {
     en: 'Pet Health, Nutrition & Wellness Guide',
   },
   knowledge_subtitle: {
-    vi: 'Chia sẻ kiến thức chuyên môn từ đội ngũ Bác sĩ Thú y Pet M&M giúp ba mẹ chăm sóc các bé tốt nhất.',
-    en: 'Expert medical guidance and practical care tips curated by Pet M&M veterinary specialists.',
+    vi: 'Chia sẻ kiến thức chuyên môn từ đội ngũ Bác sĩ Thú y PetM&M giúp ba mẹ chăm sóc các bé tốt nhất.',
+    en: 'Expert medical guidance and practical care tips curated by PetM&M veterinary specialists.',
   },
   knowledge_read_more: {
     vi: 'Đọc Bài Viết',
@@ -294,8 +294,8 @@ export const translations: TranslationDict = {
     en: 'Love & Trust from Our Pet Parents',
   },
   reviews_subtitle: {
-    vi: 'Hàng ngàn lời nhận xét chân thực từ các ba mẹ đã gửi gắm thú cưng tại Pet M&M.',
-    en: 'Thousands of heartfelt reviews from families who trust Pet M&M with their furry companions.',
+    vi: 'Hàng ngàn lời nhận xét chân thực từ các ba mẹ đã gửi gắm thú cưng tại PetM&M.',
+    en: 'Thousands of heartfelt reviews from families who trust PetM&M with their furry companions.',
   },
   reviews_verified: {
     vi: 'Đã xác thực dịch vụ',
@@ -372,14 +372,14 @@ export const translations: TranslationDict = {
     en: 'Appointment Successfully Booked!',
   },
   form_success_desc: {
-    vi: 'Cảm ơn bạn đã tin tưởng Pet M&M. Đội ngũ y tế sẽ liên hệ xác nhận lịch hẹn trong ít phút.',
-    en: 'Thank you for choosing Pet M&M. Our care team will contact you shortly to confirm your booking.',
+    vi: 'Cảm ơn bạn đã tin tưởng PetM&M. Đội ngũ y tế sẽ liên hệ xác nhận lịch hẹn trong ít phút.',
+    en: 'Thank you for choosing PetM&M. Our care team will contact you shortly to confirm your booking.',
   },
 
   // Footer
   footer_about_title: {
-    vi: 'Hệ Thống Bệnh Viện Thú Y Pet M&M',
-    en: 'Pet M&M Veterinary Hospital Network',
+    vi: 'Hệ Thống Bệnh Viện Thú Y PetM&M',
+    en: 'PetM&M Veterinary Hospital Network',
   },
   footer_quick_links: {
     vi: 'Liên Kết Nhanh',
@@ -398,8 +398,8 @@ export const translations: TranslationDict = {
     en: '24/7 EMERGENCY & INPATIENT CARE AT ALL LOCATIONS',
   },
   footer_copyright: {
-    vi: 'Bản quyền thuộc về Hệ Thống Bệnh Viện Thú Y Pet M&M.',
-    en: 'All rights reserved. Pet M&M Veterinary Hospital Network.',
+    vi: 'Bản quyền thuộc về Hệ Thống Bệnh Viện Thú Y PetM&M.',
+    en: 'All rights reserved. PetM&M Veterinary Hospital Network.',
   },
   footer_license: {
     vi: 'Giấy phép hoạt động khám chữa bệnh thú y do Chi cục Chăn nuôi & Thú y cấp.',
@@ -496,8 +496,8 @@ export const translations: TranslationDict = {
     en: 'HIGH-LEVEL MEDICAL ADVISORY BOARD',
   },
   team_hero_title: {
-    vi: 'Đội Ngũ Bác Sĩ & Y Tế Pet M&M',
-    en: 'Pet M&M Medical & Veterinary Team',
+    vi: 'Đội Ngũ Bác Sĩ & Y Tế PetM&M',
+    en: 'PetM&M Medical & Veterinary Team',
   },
   team_hero_desc_prefix: {
     vi: 'Quy tụ hơn',
@@ -512,8 +512,8 @@ export const translations: TranslationDict = {
     en: 'Home',
   },
   team_breadcrumb_about: {
-    vi: 'Về Pet M&M',
-    en: 'About Pet M&M',
+    vi: 'Về PetM&M',
+    en: 'About PetM&M',
   },
   team_breadcrumb_team: {
     vi: 'Đội ngũ y tế',
@@ -566,8 +566,8 @@ export const translations: TranslationDict = {
 
   // Consultation Sidebar
   consult_board_default: {
-    vi: 'Hội Đồng Y Khoa Pet M&M',
-    en: 'Pet M&M Medical Board',
+    vi: 'Hội Đồng Y Khoa PetM&M',
+    en: 'PetM&M Medical Board',
   },
   consult_title_free: {
     vi: 'Nhận tư vấn miễn phí',
@@ -582,8 +582,8 @@ export const translations: TranslationDict = {
     en: 'free consultation',
   },
   consult_desc: {
-    vi: 'Điền thông tin để đội ngũ Pet M&M liên hệ tư vấn cho bạn',
-    en: 'Leave your details and the Pet M&M team will contact you shortly',
+    vi: 'Điền thông tin để đội ngũ PetM&M liên hệ tư vấn cho bạn',
+    en: 'Leave your details and the PetM&M team will contact you shortly',
   },
   consult_fullname: {
     vi: 'Họ và tên',
@@ -618,11 +618,40 @@ export const translations: TranslationDict = {
     en: 'Submitted Successfully!',
   },
   consult_success_desc: {
-    vi: 'Tin nhắn Zalo đã được mở. Đội ngũ Pet M&M sẽ liên hệ lại với bạn sớm nhất.',
-    en: 'Zalo message has been opened. Pet M&M team will contact you as soon as possible.',
+    vi: 'Tin nhắn Zalo đã được mở. Đội ngũ PetM&M sẽ liên hệ lại với bạn sớm nhất.',
+    en: 'Zalo message has been opened. PetM&M team will contact you as soon as possible.',
   },
   consult_retry: {
     vi: 'Gửi lại',
     en: 'Submit another request',
+  },
+  // Careers & Recruitment
+  nav_careers: {
+    vi: 'Tuyển Dụng',
+    en: 'Careers',
+  },
+  careers_badge: {
+    vi: 'CƠ HỘI NGHỀ NGHIỆP',
+    en: 'CAREER OPPORTUNITIES',
+  },
+  careers_hero_title: {
+    vi: 'Gia Nhập Đội Ngũ PetM&M',
+    en: 'Join the PetM&M Team',
+  },
+  careers_hero_subtitle: {
+    vi: 'Cùng chúng tôi kiến tạo môi trường thú y nhân văn chuẩn Fear-Free 5 sao. Nơi mỗi bác sĩ, kỹ thuật viên và điều dưỡng được tôn vinh và phát triển tài năng.',
+    en: 'Join us in building a compassionate 5-star Fear-Free veterinary environment where every vet, technician, and nurse thrives.',
+  },
+  careers_view_all: {
+    vi: 'Xem tất cả vị trí tuyển dụng',
+    en: 'View all career openings',
+  },
+  careers_apply_now: {
+    vi: 'Ứng Tuyển Ngay',
+    en: 'Apply Now',
+  },
+  careers_job_details: {
+    vi: 'Xem Chi Tiết Vị Trí',
+    en: 'View Job Details',
   },
 };

@@ -645,7 +645,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#2D5A27] transition"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Quay lại trang chủ Pet M&amp;M</span>
+            <span>Quay lại trang chủ PetM&amp;M</span>
           </Link>
         </div>
       </div>

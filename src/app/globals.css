@@ -77,6 +77,19 @@
   font-family: var(--font-serif), "Playfair Display", Georgia, serif;
 }
 
+/* PetM&M Brand Typography - Chữ & thấp hơn và nhỏ hơn 2 chữ M */
+.brand-and,
+.brand-amp {
+  display: inline-block;
+  font-size: 0.76em;
+  line-height: 1;
+  position: relative;
+  top: 0.05em;
+  margin: 0 0.5px;
+  vertical-align: baseline;
+  font-weight: 700;
+}
+
 /* Responsive Banner Object Position (Chống lệch ảnh trên điện thoại) */
 @media (max-width: 639px) {
   .hero-slide-img {

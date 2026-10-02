@@ -191,14 +191,14 @@ export interface SupportPanelConfig {
 }
 
 export const DEFAULT_SUPPORT_CONFIG: SupportPanelConfig = {
-  tieu_de_vi: 'Bạn cần Pet M&M hỗ trợ?',
-  tieu_de_en: 'Need Pet M&M support?',
+  tieu_de_vi: 'Bạn cần PetM&M hỗ trợ?',
+  tieu_de_en: 'Need PetM&M support?',
   mo_ta_vi: 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.',
   mo_ta_en: 'Choose the contact method that suits your needs.',
   card1_title_vi: 'Đặt lịch dịch vụ qua Zalo OA',
   card1_title_en: 'Book via Zalo OA',
-  card1_desc_vi: 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.',
-  card1_desc_en: 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.',
+  card1_desc_vi: 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để PetM&M xác nhận lịch hẹn.',
+  card1_desc_en: 'Send your pet info, desired service, branch, and preferred time. PetM&M will confirm your appointment.',
   card2_title_vi: 'Gọi trực tiếp hotline cấp cứu 24/7',
   card2_title_en: 'Call 24/7 Emergency Hotline',
   card2_desc_vi: 'Khi thú cưng khó thở, co giật, đau nhiều, chảy máu, nôn hoặc tiêu chảy nặng, nghi ngộ độc hay cần hỗ trợ khẩn cấp. Không chờ phản hồi qua tin nhắn.',
@@ -288,6 +288,35 @@ export interface BaiVietRecord {
   thu_tu?: number | null;
   kich_hoat?: boolean | null;
   luot_xem?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TuyenDungRecord {
+  id: string;
+  tieu_de: string;
+  tieu_de_en?: string | null;
+  phong_ban?: string | null;
+  phong_ban_en?: string | null;
+  dia_diem?: string | null;
+  dia_diem_en?: string | null;
+  hinh_thuc?: string | null;
+  hinh_thuc_en?: string | null;
+  muc_luong?: string | null;
+  muc_luong_en?: string | null;
+  kinh_nghiem?: string | null;
+  kinh_nghiem_en?: string | null;
+  so_luong?: number | null;
+  han_nop?: string | null;
+  mo_ta?: string | null;
+  mo_ta_en?: string | null;
+  yeu_cau?: string | null;
+  yeu_cau_en?: string | null;
+  quyen_loi?: string | null;
+  quyen_loi_en?: string | null;
+  hinh_anh?: string | null;
+  thu_tu?: number | null;
+  kich_hoat?: boolean | null;
   created_at?: string;
   updated_at?: string;
 }

@@ -13,15 +13,19 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import PetLogo from './PetLogo';
+import PetMMBrand from './PetMMBrand';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
 import { getDirectionsUrl } from '@/lib/assets';
+import { useNavDatabase } from '@/hooks/useNavDatabase';
 
 interface FooterProps {
   branch?: {
     ten_chi_nhanh?: string;
+    ten_chi_nhanh_en?: string | null;
     dia_chi?: string;
+    dia_chi_en?: string | null;
     so_dien_thoai?: string | null;
     gio_hoat_dong?: string | null;
     link_ggmap_embed?: string | null;
@@ -32,6 +36,8 @@ interface FooterProps {
 export default function Footer({ branch }: FooterProps) {
   const { config } = useSystemConfig();
   const { t, language } = useLanguage();
+  const { services } = useNavDatabase();
+  const isEn = language === 'en';
 
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
@@ -40,11 +46,50 @@ export default function Footer({ branch }: FooterProps) {
   const messengerUrl = config.link_messenger?.trim() || '';
   const tiktokUrl = config.link_tiktok?.trim() || '';
   const email = config.email?.trim() || '';
-  const addressDefault = config.dia_chi_chinh || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
 
-  // Map & location data (changes dynamically if a branch is passed)
-  const branchName = branch?.ten_chi_nhanh || 'Trụ Sở Chính TP. Thủ Đức';
-  const branchAddress = branch?.dia_chi || addressDefault;
+  const defaultBranchNameVi = 'Trụ Sở Chính TP. Thủ Đức';
+  const defaultBranchNameEn = 'Thu Duc City Main Headquarters';
+  const defaultAddressVi = config.dia_chi_chinh || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
+  const defaultAddressEn = '19, Street 1, Phuoc Long Ward, Thu Duc City, Ho Chi Minh City';
+
+  const formatAddressForLanguage = (addr: string, en: boolean) => {
+    if (!en || !addr) return addr;
+    return addr
+      .replace(/19\s*Đ\.\s*Số\s*1/gi, '19, Street 1')
+      .replace(/Đ\.\s*Số/gi, 'Street')
+      .replace(/Đường\s*Số/gi, 'Street')
+      .replace(/Phường\s*Phước\s*Long/gi, 'Phuoc Long Ward')
+      .replace(/Phường/gi, 'Ward')
+      .replace(/TP\.\s*Thủ\s*Đức/gi, 'Thu Duc City')
+      .replace(/TP\.\s*Hồ\s*Chí\s*Minh/gi, 'Ho Chi Minh City')
+      .replace(/Thành\s*phố\s*Hồ\s*Chí\s*Minh/gi, 'Ho Chi Minh City')
+      .replace(/Quận/gi, 'District');
+  };
+
+  const formatBranchNameForLanguage = (name: string, en: boolean) => {
+    if (!en || !name) return name;
+    return name
+      .replace(/Trụ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Thu Duc City Main Headquarters')
+      .replace(/Phòng\s*Khám\s*Thuộc\s*Bệnh\s*Viện\s*Thú\s*Cưng\s*PetM&M/gi, 'PetM&M Pet Hospital Clinic')
+      .replace(/Cơ\s*sở\s*TP\.\s*Thủ\s*Đức/gi, 'Thu Duc City Branch')
+      .replace(/Cơ\s*sở/gi, 'Branch');
+  };
+
+  // Map & location data (changes dynamically if a branch is passed, fully bilingual)
+  const branchName = isEn
+    ? (branch?.ten_chi_nhanh_en?.trim() ||
+        (branch?.ten_chi_nhanh
+          ? formatBranchNameForLanguage(branch.ten_chi_nhanh, true)
+          : defaultBranchNameEn))
+    : (branch?.ten_chi_nhanh?.trim() || defaultBranchNameVi);
+
+  const branchAddress = isEn
+    ? (branch?.dia_chi_en?.trim() ||
+        (branch?.dia_chi
+          ? formatAddressForLanguage(branch.dia_chi, true)
+          : defaultAddressEn))
+    : (branch?.dia_chi?.trim() || defaultAddressVi);
+
   const branchPhone = branch?.so_dien_thoai || hotlineDisplay;
   const mapEmbedUrl =
     branch?.link_ggmap_embed ||
@@ -59,9 +104,9 @@ export default function Footer({ branch }: FooterProps) {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-800/15 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Main 4-Column Grid: Brand | Về Pet M&M | Dịch Vụ Thú Y | Bản Đồ Gắn Trong Thanh */}
+        {/* Main 4-Column Grid: Brand | Về PetM&M | Dịch Vụ Thú Y | Bản Đồ Gắn Trong Thanh */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-7 items-start">
-          {/* CỘT 1: THƯƠNG HIỆU PET M&M (lg:col-span-4) */}
+          {/* CỘT 1: THƯƠNG HIỆU PETM&M (lg:col-span-4) */}
           <div className="lg:col-span-4 space-y-3.5">
             <PetLogo size="default" />
 
@@ -112,7 +157,7 @@ export default function Footer({ branch }: FooterProps) {
                     href={zaloUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="Chat Zalo với Pet M&M"
+                    aria-label="Chat Zalo với PetM&M"
                     title="Chat Zalo"
                     className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0068FF] text-white shadow-lg shadow-blue-950/40 hover:scale-110 active:scale-95 transition-all duration-300 border border-white/20 cursor-pointer"
                   >
@@ -142,7 +187,7 @@ export default function Footer({ branch }: FooterProps) {
                     href={facebookUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="Fanpage Facebook Pet M&M"
+                    aria-label="Fanpage Facebook PetM&M"
                     title="Fanpage Facebook"
                     className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1877F2] text-white shadow-lg shadow-blue-950/40 hover:scale-110 active:scale-95 transition-all duration-300 border border-white/20 cursor-pointer"
                   >
@@ -158,7 +203,7 @@ export default function Footer({ branch }: FooterProps) {
                     href={tiktokUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="Kênh TikTok Pet M&M"
+                    aria-label="Kênh TikTok PetM&M"
                     title="Kênh TikTok"
                     className="group relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-950 text-white shadow-lg shadow-black/50 hover:scale-110 active:scale-95 transition-all duration-300 border border-white/20 cursor-pointer"
                   >
@@ -189,30 +234,49 @@ export default function Footer({ branch }: FooterProps) {
             </div>
           </div>
 
-          {/* CỘT 2: VỀ PET M&M (lg:col-span-2) */}
+          {/* CỘT 2: VỀ PETM&M (lg:col-span-2) */}
           <div className="lg:col-span-2 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white border-b border-white/15 pb-2">
-              {t('nav_about', 'Về Pet M&M')}
+              {language === 'en' ? (
+                <>About <PetMMBrand /></>
+              ) : (
+                <>Về <PetMMBrand /></>
+              )}
             </h4>
             <ul className="space-y-2 text-xs text-emerald-100/80 font-light">
               <li>
                 <Link href="/#about" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'About Pet M&M' : 'Giới thiệu Pet M&M'}
+                  {language === 'en' ? <>About <PetMMBrand /></> : <>Giới thiệu <PetMMBrand /></>}
                 </Link>
               </li>
               <li>
                 <Link href="/#branches" className="hover:text-amber-300 transition block">
-                  {t('nav_branches', 'Hệ thống cơ sở')}
+                  {t('nav_branches', 'Hệ Thống Cơ Sở')}
                 </Link>
               </li>
               <li>
-                <Link href="/#about" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Why Choose Pet M&M?' : 'Vì sao chọn Pet M&M?'}
+                <Link href="/doi-ngu" className="hover:text-amber-300 transition block">
+                  {language === 'en' ? 'Medical Team' : 'Đội ngũ bác sĩ'}
                 </Link>
               </li>
               <li>
                 <Link href="/#knowledge" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Veterinary Guide' : 'Cẩm nang thú y'}
+                  {t('nav_knowledge', 'Cẩm Nang')}
+                </Link>
+              </li>
+              <li>
+                <Link href="/#faq" className="hover:text-amber-300 transition block">
+                  {t('nav_faq', 'FAQ')}
+                </Link>
+              </li>
+              <li>
+                <Link href="/#reviews" className="hover:text-amber-300 transition block">
+                  {t('nav_reviews', 'Đánh Giá')}
+                </Link>
+              </li>
+              <li>
+                <Link href="/tuyen-dung" className="hover:text-amber-300 transition block">
+                  {language === 'en' ? 'Careers & Recruitment' : 'Tuyển dụng & Cơ hội nghề nghiệp'}
                 </Link>
               </li>
               <li>
@@ -229,36 +293,46 @@ export default function Footer({ branch }: FooterProps) {
               {language === 'en' ? 'Veterinary Services' : 'Dịch Vụ Thú Y'}
             </h4>
             <ul className="space-y-2 text-xs text-emerald-100/80 font-light">
-              <li>
-                <Link href="/#services" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'General Health Check & Consultation' : 'Khám & tư vấn sức khỏe tổng quát'}
-                </Link>
-              </li>
-              <li>
-                <Link href="/#services" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Vaccination & Preventive Care' : 'Tiêm phòng & vaccine định kỳ'}
-                </Link>
-              </li>
-              <li>
-                <Link href="/#services" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Lab Tests & Diagnostic Imaging' : 'Xét nghiệm & Chẩn đoán hình ảnh'}
-                </Link>
-              </li>
-              <li>
-                <Link href="/#services" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Sterile Surgical Procedures' : 'Phẫu thuật ngoại khoa vô trùng'}
-                </Link>
-              </li>
-              <li>
-                <Link href="/#services" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Pet Hotel with 24/7 Camera' : 'Khách sạn thú cưng có camera 24/7'}
-                </Link>
-              </li>
-              <li>
-                <Link href="/#services" className="hover:text-amber-300 transition block">
-                  {language === 'en' ? 'Spa Grooming & Pet Taxi Service' : 'Spa Grooming & Xe Pet Taxi đón tận nhà'}
-                </Link>
-              </li>
+              {services && services.length > 0 ? (
+                services.map((service) => {
+                  const sName =
+                    language === 'en' && service.ten_dich_vu_en
+                      ? service.ten_dich_vu_en
+                      : service.ten_dich_vu;
+                  return (
+                    <li key={service.id}>
+                      <a
+                        href={`/#services?service=${service.id}`}
+                        onClick={(e) => {
+                          if (
+                            typeof window !== 'undefined' &&
+                            (window.location.pathname === '/' || window.location.pathname === '')
+                          ) {
+                            e.preventDefault();
+                            window.dispatchEvent(
+                              new CustomEvent('select-service', { detail: { id: service.id } })
+                            );
+                            const el = document.getElementById('services');
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }
+                        }}
+                        className="hover:text-amber-300 transition block truncate"
+                        title={sName}
+                      >
+                        {sName}
+                      </a>
+                    </li>
+                  );
+                })
+              ) : (
+                <li>
+                  <Link href="/#services" className="hover:text-amber-300 transition block">
+                    {language === 'en' ? 'All Services' : 'Tất cả dịch vụ thú y'}
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -314,7 +388,7 @@ export default function Footer({ branch }: FooterProps) {
         {/* HÀNG ĐÁY BẢN QUYỀN & TIÊU CHUẨN (BOTTOM LEGAL ROW) */}
         <div className="pt-6 mt-10 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-emerald-100/60 font-light">
           <div className="flex items-center gap-3">
-            <span>© {new Date().getFullYear()} Pet M&amp;M Veterinary &amp; Pet Care Clinic. {t('footer_copyright', 'Tất cả các quyền được bảo lưu.')}</span>
+            <span>© {new Date().getFullYear()} <PetMMBrand /> Veterinary &amp; Pet Care Clinic. {t('footer_copyright', 'Tất cả các quyền được bảo lưu.')}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">

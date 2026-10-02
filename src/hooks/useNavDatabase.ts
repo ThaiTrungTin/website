@@ -281,6 +281,7 @@ export function useNavDatabase() {
   return {
     branches,
     serviceGroups,
+    services: servicesData,
     knowledgeGroups,
   };
 }

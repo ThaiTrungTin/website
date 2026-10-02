@@ -133,8 +133,8 @@ export default function FloatingContactWidgets() {
     if (tiktokUrl && tiktokUrl !== '#') {
       channels.push({
         id: 'tiktok',
-        nameVi: 'Kênh TikTok Pet M&M',
-        nameEn: 'Pet M&M TikTok Channel',
+        nameVi: 'Kênh TikTok PetM&M',
+        nameEn: 'PetM&M TikTok Channel',
         url: tiktokUrl,
         bgColor: 'bg-slate-950',
         renderIcon: () => (
@@ -198,9 +198,9 @@ export default function FloatingContactWidgets() {
   return (
     <div
       ref={widgetRef}
-      className={`fixed right-3 sm:right-6 bottom-20 sm:bottom-8 z-50 flex flex-col items-end gap-2.5 sm:gap-3 select-none transition-all duration-500 ease-out ${
+      className={`fixed left-3 md:left-auto md:right-6 bottom-6 sm:bottom-8 z-50 flex flex-col items-start md:items-end gap-2.5 sm:gap-3 select-none transition-all duration-500 ease-out ${
         isScrolling
-          ? 'translate-x-32 opacity-0 pointer-events-none'
+          ? '-translate-x-32 md:translate-x-32 opacity-0 pointer-events-none'
           : 'translate-x-0 opacity-100 pointer-events-auto'
       }`}
     >
@@ -211,9 +211,6 @@ export default function FloatingContactWidgets() {
           aria-label={isEn ? 'Call 24/7 Emergency Hotline' : 'Gọi Hotline Cấp Cứu 24/7'}
           className="group/item relative flex items-center"
         >
-          <span className="hidden sm:block absolute right-full mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
-            <span className="text-[#FFB800] font-black">Hotline 24/7:</span> {hotlineDisplay}
-          </span>
           <div className="relative flex items-center justify-center w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-xl shadow-rose-900/50 hover:scale-110 active:scale-95 transition-all duration-300">
             <span
               className="absolute -inset-1 rounded-full bg-rose-500/40 animate-ping pointer-events-none"
@@ -221,12 +218,15 @@ export default function FloatingContactWidgets() {
             />
             <PhoneCall className="w-5 h-5 sm:w-6 sm:h-6 fill-white animate-bounce" />
           </div>
+          <span className="hidden sm:block absolute left-full ml-3 md:left-auto md:ml-0 md:right-full md:mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 -translate-x-1 md:translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
+            <span className="text-[#FFB800] font-black">Hotline 24/7:</span> {hotlineDisplay}
+          </span>
         </a>
       )}
 
       {/* ── 2. DANH SÁCH CÁC KÊNH CHAT BUNG RA KHI MỞ (Zalo, Messenger, FB, Gmail) ── */}
       {isOpen && (
-        <div className="flex flex-col items-end gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="flex flex-col items-start md:items-end gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
           {availableChannels.map((channel, idx) => (
             <a
               key={channel.id}
@@ -237,15 +237,15 @@ export default function FloatingContactWidgets() {
               className="group/item relative flex items-center transition-transform duration-200 hover:scale-105"
               style={{ animationDelay: `${idx * 40}ms` }}
             >
-              {/* Tooltip khi rê chuột vào từng icon */}
-              <span className="hidden sm:block absolute right-full mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
-                {isEn ? channel.nameEn : channel.nameVi}
-              </span>
               <div
                 className={`relative flex items-center justify-center w-11 h-11 sm:w-13 sm:h-13 rounded-full text-white shadow-xl shadow-slate-950/25 hover:scale-110 active:scale-95 transition-all duration-300 border border-white/30 ${channel.bgColor}`}
               >
                 {channel.renderIcon()}
               </div>
+              {/* Tooltip khi rê chuột vào từng icon */}
+              <span className="hidden sm:block absolute left-full ml-3 md:left-auto md:ml-0 md:right-full md:mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 -translate-x-1 md:translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
+                {isEn ? channel.nameEn : channel.nameVi}
+              </span>
             </a>
           ))}
         </div>
@@ -262,12 +262,12 @@ export default function FloatingContactWidgets() {
               aria-label={isEn ? 'Close contact menu' : 'Đóng menu liên hệ'}
               className="group/item relative flex items-center cursor-pointer focus:outline-none"
             >
-              <span className="hidden sm:block absolute right-full mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
-                {isEn ? 'Collapse menu' : 'Thu gọn'}
-              </span>
               <div className="relative flex items-center justify-center w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-slate-900 text-white shadow-2xl hover:scale-110 hover:bg-slate-800 active:scale-95 transition-all duration-300 border border-white/30">
                 <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
+              <span className="hidden sm:block absolute left-full ml-3 md:left-auto md:ml-0 md:right-full md:mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 -translate-x-1 md:translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
+                {isEn ? 'Collapse menu' : 'Thu gọn'}
+              </span>
             </button>
           ) : (
             /* Nút tròn với hiệu ứng các icon LƯỚT NGANG TRỌN VẸN 100% */
@@ -280,7 +280,7 @@ export default function FloatingContactWidgets() {
               className="group/item relative flex items-center cursor-pointer focus:outline-none"
             >
               {/* Tooltip khi rê chuột vào nút tròn đang lướt */}
-              <span className="hidden sm:block absolute right-full mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
+              <span className="hidden sm:block absolute left-full ml-3 md:left-auto md:ml-0 md:right-full md:mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold whitespace-nowrap shadow-xl opacity-0 -translate-x-1 md:translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-200 pointer-events-none">
                 <span className="text-[#FFB800] font-black">
                   {isEn ? 'Chat & Support:' : 'Chat & Hỗ Trợ:'}
                 </span>{' '}

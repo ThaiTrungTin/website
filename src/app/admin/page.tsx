@@ -56,6 +56,7 @@ import {
   BarChart3,
   BookOpen,
   LogOut,
+  Briefcase,
 } from 'lucide-react';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
@@ -63,6 +64,7 @@ import AdminImageInput from '@/components/AdminImageInput';
 import { VietnamFlag, UKFlag } from '@/components/FlagIcons';
 import AdminLoginPage from '@/components/AdminLoginPage';
 import PetLogo from '@/components/PetLogo';
+import AdminCareersManager from '@/components/AdminCareersManager';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -112,7 +114,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   const handleLogout = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn đăng xuất khỏi cổng quản trị Pet M&M?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn đăng xuất khỏi cổng quản trị PetM&M?')) return;
     setIsLoggingOut(true);
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
@@ -191,8 +193,8 @@ export default function AdminDashboardPage() {
     const nextOrder = banners.length > 0 ? Math.max(...banners.map((b) => b.thu_tu || 0)) + 1 : 1;
     setEditingBanner({
       duong_dan_anh: '',
-      tieu_de: 'Ảnh nền Pet M&M',
-      alt_text: 'Ảnh nền Pet M&M 5 sao',
+      tieu_de: 'Ảnh nền PetM&M',
+      alt_text: 'Ảnh nền PetM&M 5 sao',
       chuyen_muc: 'hero_banner',
       can_chinh: '50% 50%',
       ti_le_phong: 1.05,
@@ -257,8 +259,8 @@ export default function AdminDashboardPage() {
       setEditingBanner((prev) => ({
         ...prev,
         duong_dan_anh: publicUrlData.publicUrl,
-        tieu_de: 'Ảnh nền Pet M&M',
-        alt_text: 'Ảnh nền Pet M&M 5 sao',
+        tieu_de: 'Ảnh nền PetM&M',
+        alt_text: 'Ảnh nền PetM&M 5 sao',
       }));
 
       showNotification('success', 'Đã tải ảnh lên Supabase thành công!');
@@ -382,9 +384,9 @@ export default function AdminDashboardPage() {
     try {
       const finalPosition = `${cropX}% ${cropY}%`;
       const payload = {
-        tieu_de: editingBanner.tieu_de || 'Ảnh nền Pet M&M',
+        tieu_de: editingBanner.tieu_de || 'Ảnh nền PetM&M',
         duong_dan_anh: editingBanner.duong_dan_anh,
-        alt_text: editingBanner.alt_text || 'Ảnh nền Pet M&M 5 sao',
+        alt_text: editingBanner.alt_text || 'Ảnh nền PetM&M 5 sao',
         chuyen_muc: 'hero_banner',
         can_chinh: finalPosition,
         ti_le_phong: Number(zoomLevel) || 1.05,
@@ -889,7 +891,7 @@ export default function AdminDashboardPage() {
   const [smtpForm, setSmtpForm] = useState({
     smtp_email: 'thaitrtin@gmail.com',
     smtp_password: '',
-    smtp_sender_name: 'Bệnh Viện Thú Y Pet M&M 5★',
+    smtp_sender_name: 'Bệnh Viện Thú Y PetM&M 5★',
     smtp_notify_email: 'thaitrtin@gmail.com',
     hasPassword: false,
   });
@@ -915,13 +917,13 @@ export default function AdminDashboardPage() {
     footerEn: string;
   }>({
     logoUrl: '',
-    subjectVi: '[Pet M&M] Xác Nhận Lịch Hẹn #{booking_code} cho bé {pet_name}',
+    subjectVi: '[PetM&M] Xác Nhận Lịch Hẹn #{booking_code} cho bé {pet_name}',
     bannerTitleVi: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
     bannerSubtitleVi: 'Phiếu Tiếp Nhận Lịch Hẹn Khám & Chăm Sóc',
     introVi: 'Cảm ơn bạn đã tin tưởng đặt lịch thăm khám cho bé <strong>{pet_name}</strong> tại Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M. Đội ngũ y bác sĩ đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo nhất.',
     checklistVi: `• Vui lòng đến trước 5 - 10 phút để bé được kiểm tra sinh hiệu ban đầu.\n• Ba mẹ nhớ đeo xích hoặc dùng túi/balo vận chuyển cho bé để đảm bảo an toàn.\n• Nếu cần xét nghiệm máu hoặc phẫu thuật, vui lòng nhịn ăn cho bé trước 6 - 8 tiếng.`,
     footerVi: 'Nếu cần thay đổi giờ hẹn hoặc cần tư vấn khẩn cấp, vui lòng liên hệ ngay:',
-    subjectEn: '[Pet M&M] Appointment Confirmed - Code #{booking_code} for {pet_name}',
+    subjectEn: '[PetM&M] Appointment Confirmed - Code #{booking_code} for {pet_name}',
     bannerTitleEn: 'PetM&M Veterinary Clinic & Animal Hospital',
     bannerSubtitleEn: 'Appointment Booking Receipt',
     introEn: 'Thank you for booking an appointment for <strong>{pet_name}</strong> at PetM&M Pet Hospital Clinic. Our veterinary team has received your request and is ready to provide the best care.',
@@ -1424,7 +1426,7 @@ export default function AdminDashboardPage() {
   const [faqModalTab, setFaqModalTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingFaq, setIsTranslatingFaq] = useState(false);
 
-  // Quản lý Sub-Tab FAQ & Cấu hình mục "Bạn cần Pet M&M hỗ trợ?"
+  // Quản lý Sub-Tab FAQ & Cấu hình mục "Bạn cần PetM&M hỗ trợ?"
   const [faqSubTab, setFaqSubTab] = useState<'list' | 'support_panel'>('list');
   const [supportPanelData, setSupportPanelData] = useState<SupportPanelConfig>(DEFAULT_SUPPORT_CONFIG);
   const [supportPanelLoading, setSupportPanelLoading] = useState(false);
@@ -1530,7 +1532,7 @@ export default function AdminDashboardPage() {
         window.dispatchEvent(new CustomEvent('petmm_support_config_updated', { detail: supportPanelData }));
       }
 
-      showNotification('success', 'Đã lưu cấu hình mục "Bạn cần Pet M&M hỗ trợ?" thành công!');
+      showNotification('success', 'Đã lưu cấu hình mục "Bạn cần PetM&M hỗ trợ?" thành công!');
     } catch (err: any) {
       console.error('Lỗi lưu support panel:', err);
       showNotification('error', `Lỗi lưu: ${err.message}`);
@@ -1864,7 +1866,7 @@ export default function AdminDashboardPage() {
           ownerName: app.ho_ten_chu,
           petName: app.ten_thu_cung,
           petType: app.loai_thu_cung,
-          branchName: app.ten_chi_nhanh || 'Hệ Thống Pet M&M',
+          branchName: app.ten_chi_nhanh || 'Hệ Thống PetM&M',
           service: app.dich_vu,
           dateTime: `${app.gio_hen}, ngày ${app.ngay_hen}`,
           note: cleanNote,
@@ -2165,6 +2167,7 @@ function formatDisplayReviewDate(val?: string | null): string {
   const [memberModalTab, setMemberModalTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingMember, setIsTranslatingMember] = useState(false);
   const [teamCategoryFilter, setTeamCategoryFilter] = useState<'all' | 'lanh_dao' | 'chuyen_gia' | 'bac_si' | 'dieu_duong'>('all');
+  const [teamSubTab, setTeamSubTab] = useState<'members' | 'careers'>('members');
 
   const loadTeamMembers = useCallback(async () => {
     setTeamLoading(true);
@@ -2190,7 +2193,7 @@ function formatDisplayReviewDate(val?: string | null): string {
     setEditingMember({
       ho_ten: '',
       ho_ten_en: '',
-      chuc_danh: teamCategoryFilter === 'dieu_duong' ? 'ĐIỀU DƯỠNG' : teamCategoryFilter === 'chuyen_gia' ? 'CHUYÊN GIA TƯ VẤN' : teamCategoryFilter === 'lanh_dao' ? 'NHÀ SÁNG LẬP · PET M&M' : 'BÁC SĨ THÚ Y',
+      chuc_danh: teamCategoryFilter === 'dieu_duong' ? 'ĐIỀU DƯỠNG' : teamCategoryFilter === 'chuyen_gia' ? 'CHUYÊN GIA TƯ VẤN' : teamCategoryFilter === 'lanh_dao' ? 'NHÀ SÁNG LẬP · PETM&M' : 'BÁC SĨ THÚ Y',
       chuc_danh_en: '',
       hoc_vi_chuc_vu: '',
       hoc_vi_chuc_vu_en: '',
@@ -2376,7 +2379,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       noi_dung: '',
       hinh_anh: '',
       thoi_gian_doc: '4 phút đọc',
-      tac_gia: 'Hội Đồng Y Khoa Pet M&M',
+      tac_gia: 'Hội Đồng Y Khoa PetM&M',
       ngay_dang: dateFormatted,
       thu_tu: nextOrder,
       kich_hoat: true,
@@ -2492,7 +2495,7 @@ function formatDisplayReviewDate(val?: string | null): string {
         noi_dung: editingArticle.noi_dung?.trim() || '',
         hinh_anh: editingArticle.hinh_anh?.trim() || '',
         thoi_gian_doc: editingArticle.thoi_gian_doc?.trim() || '4 phút đọc',
-        tac_gia: editingArticle.tac_gia?.trim() || 'Hội Đồng Y Khoa Pet M&M',
+        tac_gia: editingArticle.tac_gia?.trim() || 'Hội Đồng Y Khoa PetM&M',
         ngay_dang: editingArticle.ngay_dang?.trim() || '',
         thu_tu: Number(editingArticle.thu_tu) || 0,
         kich_hoat: editingArticle.kich_hoat !== false,
@@ -2641,7 +2644,7 @@ function formatDisplayReviewDate(val?: string | null): string {
     try {
       const payload = {
         duong_dan_anh: editingAboutSlide.duong_dan_anh.trim(),
-        tieu_de: editingAboutSlide.tieu_de?.trim() || 'Hình ảnh Bệnh viện Pet M&M',
+        tieu_de: editingAboutSlide.tieu_de?.trim() || 'Hình ảnh Bệnh viện PetM&M',
         alt_text: editingAboutSlide.alt_text?.trim() || 'Đội ngũ chuyên môn',
         tieu_de_en: (editingAboutSlide as any).tieu_de_en?.trim() || '',
         alt_text_en: (editingAboutSlide as any).alt_text_en?.trim() || '',
@@ -2878,7 +2881,7 @@ function formatDisplayReviewDate(val?: string | null): string {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-wide text-white">Pet M&M</span>
+                <span className="font-bold text-sm tracking-wide text-white">PetM&M</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
                   ERP
                 </span>
@@ -3577,7 +3580,7 @@ function formatDisplayReviewDate(val?: string | null): string {
 
                               <td className="py-3.5 px-4">
                                 <div className="font-semibold text-slate-900">
-                                  {banner.tieu_de || 'Ảnh Nền Hero Pet M&M'}
+                                  {banner.tieu_de || 'Ảnh Nền Hero PetM&M'}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
                                   <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
@@ -4250,7 +4253,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               type="text"
                               value={smtpForm.smtp_sender_name}
                               onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_sender_name: e.target.value }))}
-                              placeholder="Bệnh Viện Thú Y Pet M&M 5★"
+                              placeholder="Bệnh Viện Thú Y PetM&M 5★"
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                             />
                             <p className="text-[11px] text-slate-400 mt-1">
@@ -4560,7 +4563,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
                         <div>
                           <div className="text-xs font-bold text-slate-900 leading-tight">
-                            Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu Pet M&amp;M)
+                            Sứ Mệnh &amp; Triết Lý Y Khoa (Giới Thiệu PetM&amp;M)
                           </div>
                           <div className="text-[11px] text-slate-500">
                             Lựa chọn Tiếng Việt hoặc English để chỉnh sửa.
@@ -5986,7 +5989,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                   }`}
                 >
                   <PhoneCall className="w-4 h-4 text-emerald-600" />
-                  <span>Mục "Bạn Cần Pet M&M Hỗ Trợ?"</span>
+                  <span>Mục "Bạn Cần PetM&M Hỗ Trợ?"</span>
                 </button>
               </div>
 
@@ -6153,7 +6156,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 </div>
               )}
 
-              {/* SUBTAB 2: CÀI ĐẶT MỤC "BẠN CẦN PET M&M HỖ TRỢ?" */}
+              {/* SUBTAB 2: CÀI ĐẶT MỤC "BẠN CẦN PETM&M HỖ TRỢ?" */}
               {faqSubTab === 'support_panel' && (
                 <div className="space-y-4">
                   {/* Header Card với nút Lưu Cài Đặt */}
@@ -6161,7 +6164,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                     <div>
                       <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                         <PhoneCall className="w-5 h-5 text-emerald-600" />
-                        <span>Cài Đặt Mục &ldquo;Bạn Cần Pet M&amp;M Hỗ Trợ?&rdquo;</span>
+                        <span>Cài Đặt Mục &ldquo;Bạn Cần PetM&amp;M Hỗ Trợ?&rdquo;</span>
                       </h1>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Tùy chỉnh tiêu đề và 3 thẻ liên hệ hiển thị ngoài Trang Chủ &amp; sidebar Chi Nhánh / Cẩm Nang
@@ -6250,7 +6253,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, tieu_de_vi: e.target.value }))
                               }
-                              placeholder="Ví dụ: Bạn cần Pet M&M hỗ trợ?"
+                              placeholder="Ví dụ: Bạn cần PetM&M hỗ trợ?"
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
                             />
                           </div>
@@ -6300,7 +6303,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, card1_desc_vi: e.target.value }))
                               }
-                              placeholder="Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn."
+                              placeholder="Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để PetM&M xác nhận lịch hẹn."
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
                             />
                           </div>
@@ -6400,7 +6403,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, tieu_de_en: e.target.value }))
                               }
-                              placeholder="Need Pet M&M support?"
+                              placeholder="Need PetM&M support?"
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                             />
                           </div>
@@ -6450,7 +6453,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, card1_desc_en: e.target.value }))
                               }
-                              placeholder="Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment."
+                              placeholder="Send your pet info, desired service, branch, and preferred time. PetM&M will confirm your appointment."
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                             />
                           </div>
@@ -6759,12 +6762,55 @@ function formatDisplayReviewDate(val?: string | null): string {
           )}
 
           {/* ========================================================= */}
-          {/* TAB 7: QUẢN LÝ ĐỘI NGŨ Y TẾ (4 HẠN MỤC)                   */}
+          {/* TAB 7: QUẢN LÝ ĐỘI NGŨ Y TẾ & TUYỂN DỤNG (2 NHÁNH)        */}
           {/* ========================================================= */}
           {activeTab === 'team' && (
             <div className="space-y-6">
-              {/* Header Card */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+              {/* THANH CHUYỂN NHÁNH TRONG ĐỘI NGŨ Y TẾ */}
+              <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-2xs flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTeamSubTab('members')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
+                    teamSubTab === 'members'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'bg-transparent hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Đội Ngũ Bác Sĩ &amp; Chuyên Gia</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    teamSubTab === 'members' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {teamMembers.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTeamSubTab('careers')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
+                    teamSubTab === 'careers'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'bg-transparent hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>Tuyển Dụng &amp; Vị Trí Mở</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950">
+                    Cơ Hội Nghề Nghiệp
+                  </span>
+                </button>
+              </div>
+
+              {teamSubTab === 'careers' && (
+                <AdminCareersManager showNotification={showNotification} />
+              )}
+
+              {teamSubTab === 'members' && (
+                <div className="space-y-6">
+                  {/* Header Card */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <UserCheck className="w-5 h-5 text-[#2D5A27]" />
@@ -7003,6 +7049,8 @@ function formatDisplayReviewDate(val?: string | null): string {
               </div>
             </div>
           )}
+        </div>
+      )}
 
           {/* ========================================================= */}
           {/* TAB 8: QUẢN LÝ BÀI VIẾT & CẨM NANG KIẾN THỨC             */}
@@ -7660,7 +7708,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         value={editingBranch.ten_chi_nhanh || ''}
                         onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_chi_nhanh: e.target.value }))}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                        placeholder="Ví dụ: Bệnh Viện Thú Y Pet M&M - Chi Nhánh Quận 7"
+                        placeholder="Ví dụ: Bệnh Viện Thú Y PetM&M - Chi Nhánh Quận 7"
                       />
                     </div>
 
@@ -7840,7 +7888,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         value={(editingBranch as any).ten_chi_nhanh_en || ''}
                         onChange={(e) => setEditingBranch((prev) => ({ ...prev, ten_chi_nhanh_en: e.target.value } as any))}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                        placeholder="e.g. Pet M&M Veterinary Hospital - District 7 Branch"
+                        placeholder="e.g. PetM&M Veterinary Hospital - District 7 Branch"
                       />
                     </div>
 
@@ -9091,7 +9139,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                   <div className="relative z-10">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold shadow-lg">
                       <span className="w-2 h-2 rounded-full bg-[#FFB800] animate-pulse" />
-                      <span>Pet M&amp;M Medical Center</span>
+                      <span>PetM&amp;M Medical Center</span>
                     </div>
                   </div>
 
@@ -9807,7 +9855,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         prev?.chuc_danh && prev.chuc_danh !== 'BÁC SĨ THÚ Y' && prev.chuc_danh !== 'ĐIỀU DƯỠNG' && prev.chuc_danh !== 'CHUYÊN GIA TƯ VẤN'
                           ? prev.chuc_danh
                           : val === 'lanh_dao'
-                          ? 'NHÀ SÁNG LẬP · PET M&M'
+                          ? 'NHÀ SÁNG LẬP · PETM&M'
                           : val === 'chuyen_gia'
                           ? 'CHUYÊN GIA TƯ VẤN'
                           : val === 'dieu_duong'
@@ -10367,7 +10415,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         value={editingArticle.tac_gia || ''}
                         onChange={(e) => setEditingArticle((prev) => ({ ...prev, tac_gia: e.target.value }))}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                        placeholder="Ví dụ: Hội Đồng Y Khoa Pet M&M"
+                        placeholder="Ví dụ: Hội Đồng Y Khoa PetM&M"
                       />
                     </div>
                   </div>
@@ -10462,7 +10510,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         value={(editingArticle as any).tac_gia_en || ''}
                         onChange={(e) => setEditingArticle((prev) => ({ ...prev, tac_gia_en: e.target.value } as any))}
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                        placeholder="e.g. Pet M&M Medical Board"
+                        placeholder="e.g. PetM&M Medical Board"
                       />
                     </div>
                   </div>

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       if ((cleanInput === 'admin' || cleanInput === 'admin@petmm.vn') && (password === 'admin123' || password === 'admin')) {
         authenticatedUser = {
           username: 'admin',
-          ho_ten: 'Quản Trị Viên Pet M&M',
+          ho_ten: 'Quản Trị Viên PetM&M',
           vai_tro: 'super_admin',
         };
       }

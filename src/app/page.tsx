@@ -10,8 +10,8 @@ import ReviewsSection from '@/components/ReviewsSection';
 import BookingSection from '@/components/BookingSection';
 import KnowledgeSection from '@/components/KnowledgeSection';
 import FaqSection from '@/components/FaqSection';
+import CareersSection from '@/components/CareersSection';
 import Footer from '@/components/Footer';
-import MobileStickyBar from '@/components/MobileStickyBar';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
 
@@ -51,7 +51,7 @@ export default function HomePage() {
         {/* Hero Banner Section */}
         <HeroSection onOpenBookingModal={handleScrollToBooking} />
 
-        {/* 1. Về Pet M&M (Giới thiệu & Triết lý y đức lên đầu) */}
+        {/* 1. Về PetM&M (Giới thiệu & Triết lý y đức lên đầu) */}
         <AboutSection />
 
         {/* 2. Dịch Vụ */}
@@ -66,7 +66,10 @@ export default function HomePage() {
         {/* 5. FAQ (Câu Hỏi Thường Gặp) */}
         <FaqSection />
 
-        {/* 6. Đánh Giá Khách Hàng */}
+        {/* 6. Tuyển Dụng & Cơ Hội Nghề Nghiệp Chuẩn Fear-Free */}
+        <CareersSection />
+
+        {/* 7. Đánh Giá Khách Hàng */}
         <ReviewsSection />
 
         {/* 7. Liên Hệ / Đặt Lịch Hẹn Trực Tuyến */}
@@ -75,9 +78,6 @@ export default function HomePage() {
 
       {/* 8. Footer */}
       <Footer />
-
-      {/* Mobile-First Bottom Sticky Action Bar */}
-      <MobileStickyBar onOpenBookingModal={handleScrollToBooking} />
 
       {/* Floating Action Contact Widgets (Zalo, Messenger, Hotline 24/7) */}
       <FloatingContactWidgets />

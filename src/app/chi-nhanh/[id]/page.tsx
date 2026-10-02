@@ -60,9 +60,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const data = await getBranch(id);
 
-  if (!data) return { title: 'Chi nhánh | Pet M&M' };
+  if (!data) return { title: 'Chi nhánh | PetM&M' };
   return {
-    title: `${data.ten_chi_nhanh} | Pet M&M`,
+    title: `${data.ten_chi_nhanh} | PetM&M`,
     description: `Thông tin chi tiết về ${data.ten_chi_nhanh} - ${data.dia_chi}`,
     openGraph: data.anh_dai_dien ? { images: [data.anh_dai_dien] } : undefined,
   };

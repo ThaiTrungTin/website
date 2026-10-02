@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useNavDatabase, ServiceTier1Group, KnowledgeCategoryGroup } from '@/hooks/useNavDatabase';
+import PetMMBrand from './PetMMBrand';
 
 interface NavDesktopMenuProps {
   /** Variant determines minor spacing or pill text styles */
@@ -25,9 +26,12 @@ export default function NavDesktopMenu({ variant = 'header', onItemClick }: NavD
 
   return (
     <nav className="flex items-center gap-1 sm:gap-2">
-      {/* 1. VỀ PET M&M (KHÔNG ĐỔ XUỐNG) */}
+      {/* 1. VỀ PETM&M (KHÔNG ĐỔ XUỐNG) */}
       <a href="/#about" onClick={onItemClick} className={linkClass}>
-        <span>{t('nav_about', 'Về Pet M&M')}</span>
+        <span>
+          {isEn ? 'About ' : 'Về '}
+          <PetMMBrand />
+        </span>
       </a>
 
       {variant === 'pill' && <span className="text-slate-300 select-none">•</span>}
@@ -240,7 +244,14 @@ export default function NavDesktopMenu({ variant = 'header', onItemClick }: NavD
 
       {variant === 'pill' && <span className="text-slate-300 select-none">•</span>}
 
-      {/* 7. LIÊN HỆ (KHÔNG ĐỔ XUỐNG) */}
+      {/* 7. TUYỂN DỤNG (KHÔNG ĐỔ XUỐNG) */}
+      <Link href="/tuyen-dung" onClick={onItemClick} className={linkClass}>
+        <span>{t('nav_careers', 'Tuyển Dụng')}</span>
+      </Link>
+
+      {variant === 'pill' && <span className="text-slate-300 select-none">•</span>}
+
+      {/* 8. LIÊN HỆ (KHÔNG ĐỔ XUỐNG) */}
       <a href="/#contact" onClick={onItemClick} className={linkClass}>
         <span>{t('nav_contact', 'Liên Hệ')}</span>
       </a>

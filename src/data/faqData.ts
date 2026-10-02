@@ -13,10 +13,10 @@ export const faqData: FaqItem[] = [
     id: 'faq-1',
     category: 'Cấp cứu & Hotline',
     category_en: 'Emergency & Hotline',
-    question: 'Pet M&M có nhận khám cấp cứu không?',
-    question_en: 'Does Pet M&M provide emergency veterinary care?',
-    answer: 'Có. Đội ngũ bác sĩ và điều dưỡng Pet M&M luôn túc trực Hotline 24/7 (Hotline: 0903 599 339) và sẵn sàng tiếp nhận sơ cứu, hồi sức khẩn cấp, phẫu thuật ban đêm tại cơ sở Quận 1 với trang thiết bị phòng mổ áp lực dương hiện đại.',
-    answer_en: "Yes. Pet M&M's team of veterinary surgeons and nurses is on duty 24/7 (Hotline: 0903 599 339), ready for emergency first aid, intensive resuscitation, and overnight surgery at our District 1 hospital equipped with state-of-the-art positive-pressure surgical suites."
+    question: 'PetM&M có nhận khám cấp cứu không?',
+    question_en: 'Does PetM&M provide emergency veterinary care?',
+    answer: 'Có. Đội ngũ bác sĩ và điều dưỡng PetM&M luôn túc trực Hotline 24/7 (Hotline: 0903 599 339) và sẵn sàng tiếp nhận sơ cứu, hồi sức khẩn cấp, phẫu thuật ban đêm tại cơ sở Quận 1 với trang thiết bị phòng mổ áp lực dương hiện đại.',
+    answer_en: "Yes. PetM&M's team of veterinary surgeons and nurses is on duty 24/7 (Hotline: 0903 599 339), ready for emergency first aid, intensive resuscitation, and overnight surgery at our District 1 hospital equipped with state-of-the-art positive-pressure surgical suites."
   },
   {
     id: 'faq-2',
@@ -33,25 +33,25 @@ export const faqData: FaqItem[] = [
     category_en: 'Boarding & Resort',
     question: 'Dịch vụ lưu trú và Resort thú cưng có ở tất cả cơ sở không?',
     question_en: 'Is luxury pet hotel & resort boarding available at all branches?',
-    answer: 'Dịch vụ khách sạn & resort thú cưng chuẩn 5 sao có mặt tại tất cả hệ thống cơ sở Pet M&M. Mỗi phòng đều có điều hòa lọc khí ion âm, camera Full HD xem trực tiếp 24/24 trên điện thoại của ba mẹ và nhật ký sinh hoạt gửi qua Zalo mỗi ngày.',
-    answer_en: 'Our 5-star pet hotel & resort boarding service is available across all Pet M&M locations. Every suite features negative-ion air conditioning, 24/7 live-stream Full HD cameras accessible from your smartphone, and daily activity logs shared via Zalo.'
+    answer: 'Dịch vụ khách sạn & resort thú cưng chuẩn 5 sao có mặt tại tất cả hệ thống cơ sở PetM&M. Mỗi phòng đều có điều hòa lọc khí ion âm, camera Full HD xem trực tiếp 24/24 trên điện thoại của ba mẹ và nhật ký sinh hoạt gửi qua Zalo mỗi ngày.',
+    answer_en: 'Our 5-star pet hotel & resort boarding service is available across all PetM&M locations. Every suite features negative-ion air conditioning, 24/7 live-stream Full HD cameras accessible from your smartphone, and daily activity logs shared via Zalo.'
   },
   {
     id: 'faq-4',
     category: 'Vận chuyển Pet Taxi',
     category_en: 'Pet Taxi & Relocation',
-    question: 'Pet M&M có hỗ trợ luân chuyển thú cưng đi nội địa / quốc tế không?',
-    question_en: 'Does Pet M&M support domestic and international pet relocation?',
-    answer: 'Có. Dịch vụ Pet Taxi chuyên dụng của Pet M&M nhận đưa đón các bé tận nơi trong nội ô TP.HCM, chuyển tuyến liên tỉnh an toàn và hỗ trợ trọn gói thủ tục vi mạch ISO, xét nghiệm kháng thể dại, giấy chứng nhận kiểm dịch xuất cảnh quốc tế.',
-    answer_en: "Yes. Pet M&M's dedicated Pet Taxi provides door-to-door transportation within Ho Chi Minh City, safe inter-provincial transfers, and full-package assistance for ISO microchipping, rabies titer testing, and international export quarantine certificates."
+    question: 'PetM&M có hỗ trợ luân chuyển thú cưng đi nội địa / quốc tế không?',
+    question_en: 'Does PetM&M support domestic and international pet relocation?',
+    answer: 'Có. Dịch vụ Pet Taxi chuyên dụng của PetM&M nhận đưa đón các bé tận nơi trong nội ô TP.HCM, chuyển tuyến liên tỉnh an toàn và hỗ trợ trọn gói thủ tục vi mạch ISO, xét nghiệm kháng thể dại, giấy chứng nhận kiểm dịch xuất cảnh quốc tế.',
+    answer_en: "Yes. PetM&M's dedicated Pet Taxi provides door-to-door transportation within Ho Chi Minh City, safe inter-provincial transfers, and full-package assistance for ISO microchipping, rabies titer testing, and international export quarantine certificates."
   },
   {
     id: 'faq-5',
     category: 'Tư vấn & Lựa chọn dịch vụ',
     category_en: 'Consultation & Guidance',
-    question: 'Tôi chưa biết nên chọn dịch vụ nào — Pet M&M có tư vấn không?',
-    question_en: 'I am unsure which service to choose — can Pet M&M advise me?',
-    answer: 'Hoàn toàn có! Đội ngũ bác sĩ và chuyên viên tư vấn Pet M&M luôn sẵn sàng hỗ trợ trực tiếp qua Zalo OA hoặc Hotline 0903 599 339 để lắng nghe tình trạng thể trạng của bé, tư vấn giải pháp tối ưu và cung cấp bảng giá chi tiết trước khi quý khách đưa ra quyết định.',
+    question: 'Tôi chưa biết nên chọn dịch vụ nào — PetM&M có tư vấn không?',
+    question_en: 'I am unsure which service to choose — can PetM&M advise me?',
+    answer: 'Hoàn toàn có! Đội ngũ bác sĩ và chuyên viên tư vấn PetM&M luôn sẵn sàng hỗ trợ trực tiếp qua Zalo OA hoặc Hotline 0903 599 339 để lắng nghe tình trạng thể trạng của bé, tư vấn giải pháp tối ưu và cung cấp bảng giá chi tiết trước khi quý khách đưa ra quyết định.',
     answer_en: 'Absolutely! Our veterinarians and customer care specialists are always available via Zalo OA or Hotline 0903 599 339 to assess your pet\'s condition, recommend optimal solutions, and provide transparent fee estimates before you make any decision.'
   },
   {
@@ -60,7 +60,7 @@ export const faqData: FaqItem[] = [
     category_en: 'Infection Control',
     question: 'Quy trình vô trùng và phòng chống lây nhiễm chéo như thế nào?',
     question_en: 'What are your sterilization and cross-infection prevention protocols?',
-    answer: 'Pet M&M áp dụng quy trình kiểm soát nhiễm khuẩn chuẩn quốc tế: 100% dụng cụ khám và phẫu thuật được hấp tiệt trùng Autoclave ở 134°C, khu nội trú và phòng khám được chiếu đèn cực tím UV-C khử khuẩn mỗi ngày, phân luồng tách biệt hoàn toàn giữa khu Chó - Mèo.',
-    answer_en: 'Pet M&M enforces international-standard infection control protocols: 100% of diagnostic and surgical instruments undergo 134°C Autoclave steam sterilization, inpatient wards and consultation rooms are disinfected daily with UV-C germicidal light, and dog and cat facilities are completely segregated.'
+    answer: 'PetM&M áp dụng quy trình kiểm soát nhiễm khuẩn chuẩn quốc tế: 100% dụng cụ khám và phẫu thuật được hấp tiệt trùng Autoclave ở 134°C, khu nội trú và phòng khám được chiếu đèn cực tím UV-C khử khuẩn mỗi ngày, phân luồng tách biệt hoàn toàn giữa khu Chó - Mèo.',
+    answer_en: 'PetM&M enforces international-standard infection control protocols: 100% of diagnostic and surgical instruments undergo 134°C Autoclave steam sterilization, inpatient wards and consultation rooms are disinfected daily with UV-C germicidal light, and dog and cat facilities are completely segregated.'
   }
 ];

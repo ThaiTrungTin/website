@@ -159,7 +159,7 @@ export default function KnowledgeSection() {
       <div className="absolute inset-0 z-0">
         <Image
           src={getAssetUrl('/services_bg.jpg')}
-          alt="Cẩm nang chăm sóc thú cưng Pet M&M"
+          alt="Cẩm nang chăm sóc thú cưng PetM&M"
           fill
           quality={90}
           className="object-cover object-center scale-105 opacity-15"
@@ -173,7 +173,7 @@ export default function KnowledgeSection() {
           <ScrollRevealTitle>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase mb-4 shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-              <span>{isEn ? 'VETERINARY MEDICAL GUIDE' : 'CẨM NANG BÁC SĨ PET M&M'}</span>
+              <span>{isEn ? 'VETERINARY MEDICAL GUIDE' : 'CẨM NANG BÁC SĨ PETM&M'}</span>
             </div>
             <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
               {isEn ? 'Pet Health, Wellness &' : 'Kiến Thức &'} <br />
@@ -185,8 +185,8 @@ export default function KnowledgeSection() {
 
           <p className="text-xs sm:text-sm text-slate-600 max-w-md font-light text-left md:text-right mt-4 md:mt-0">
             {isEn
-              ? 'Expert articles curated by Pet M&M veterinary specialists to empower pet parents with evidence-based care.'
-              : 'Các bài viết được biên soạn trực tiếp bởi hội đồng y khoa Pet M&M nhằm hỗ trợ ba mẹ chăm sóc bé khoa học mỗi ngày.'}
+              ? 'Expert articles curated by PetM&M veterinary specialists to empower pet parents with evidence-based care.'
+              : 'Các bài viết được biên soạn trực tiếp bởi hội đồng y khoa PetM&M nhằm hỗ trợ ba mẹ chăm sóc bé khoa học mỗi ngày.'}
           </p>
         </div>
 

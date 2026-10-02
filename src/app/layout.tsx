@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "PetM&M - Trang Chủ",
   description:
-    "Hệ thống Bệnh viện Thú Y & Spa Chăm Sóc Thú Cưng Pet M&M chuẩn y khoa quốc tế tại TP.HCM. Hotline 24/7, phẫu thuật ngoại khoa, tiêm phòng vaccine và khách sạn thú cưng 5 sao.",
+    "Hệ thống Bệnh viện Thú Y & Spa Chăm Sóc Thú Cưng PetM&M chuẩn y khoa quốc tế tại TP.HCM. Hotline 24/7, phẫu thuật ngoại khoa, tiêm phòng vaccine và khách sạn thú cưng 5 sao.",
   keywords: [
     "thú y",
     "bệnh viện thú y",
@@ -27,16 +27,16 @@ export const metadata: Metadata = {
     "khách sạn thú cưng",
     "tiêm phòng chó mèo",
     "hotline thú y 24/7",
-    "Pet M&M",
+    "PetM&M",
     "pet taxi",
   ],
-  authors: [{ name: "Pet M&M Veterinary Clinic" }],
+  authors: [{ name: "PetM&M Veterinary Clinic" }],
   openGraph: {
-    title: "Pet M&M — Thú Cưng Khỏe Mạnh, Gia Đình An Vui",
+    title: "PetM&M — Thú Cưng Khỏe Mạnh, Gia Đình An Vui",
     description:
       "Hệ thống Bệnh viện Thú Y & Spa Chăm Sóc Thú Cưng toàn diện chuẩn quốc tế tại TP. Hồ Chí Minh.",
     url: "https://petmm.vn",
-    siteName: "Pet M&M Veterinary & Pet Care",
+    siteName: "PetM&M Veterinary & Pet Care",
     locale: "vi_VN",
     type: "website",
   },

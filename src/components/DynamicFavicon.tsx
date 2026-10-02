@@ -26,15 +26,15 @@ export default function DynamicFavicon() {
       // 2. View con Đội ngũ nhân sự / bác sĩ (/doi-ngu)
       if (pathname === '/doi-ngu' || pathname?.startsWith('/doi-ngu')) {
         return isEn
-          ? 'Medical & Veterinary Team | Pet M&M'
-          : 'Đội Ngũ Bác Sĩ & Y Tế | Pet M&M';
+          ? 'Medical & Veterinary Team | PetM&M'
+          : 'Đội Ngũ Bác Sĩ & Y Tế | PetM&M';
       }
 
       // 3. Trang Quản trị hệ thống (/admin)
       if (pathname === '/admin' || pathname?.startsWith('/admin')) {
         return isEn
-          ? 'Admin Portal | Pet M&M'
-          : 'Quản Trị Hệ Thống | Pet M&M';
+          ? 'Admin Portal | PetM&M'
+          : 'Quản Trị Hệ Thống | PetM&M';
       }
 
       // 4. Trang chủ (/) và các đường dẫn gốc

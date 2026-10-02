@@ -525,7 +525,7 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
           src={getAssetUrl('/services_bg.jpg')}
-          alt="Kiến trúc resort bệnh viện thú y Pet M&M"
+          alt="Kiến trúc resort bệnh viện thú y PetM&M"
           fill
           quality={90}
           className="object-cover object-center scale-105 opacity-20"

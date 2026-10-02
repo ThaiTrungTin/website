@@ -22,9 +22,9 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     so_dien_thoai: '0908 234 ***',
     so_sao: 5,
     noi_dung:
-      'Bé Bông nhà mình bị viêm da cơ địa dai dẳng chữa nhiều nơi không dứt. Đến Pet M&M được bác sĩ soi da và lên phác đồ tắm thủy liệu thảo mộc ozone kết hợp dinh dưỡng. Sau 3 tuần lông bé mọc lại dày mượt, hết hẳn ngứa. Bác sĩ và các bạn điều dưỡng cực kỳ nhẹ nhàng, cưng bé như người nhà!',
+      'Bé Bông nhà mình bị viêm da cơ địa dai dẳng chữa nhiều nơi không dứt. Đến PetM&M được bác sĩ soi da và lên phác đồ tắm thủy liệu thảo mộc ozone kết hợp dinh dưỡng. Sau 3 tuần lông bé mọc lại dày mượt, hết hẳn ngứa. Bác sĩ và các bạn điều dưỡng cực kỳ nhẹ nhàng, cưng bé như người nhà!',
     noi_dung_en:
-      'My pet Bong suffered from persistent atopic dermatitis that couldn\'t be cured elsewhere. Coming to Pet M&M, the veterinarian examined his skin and designed an ozone herbal hydrotherapy regimen combined with nutrition. After 3 weeks, his coat grew back thick and glossy, with no itching left. The doctors and nurses are extremely gentle, treating him like family!',
+      'My pet Bong suffered from persistent atopic dermatitis that couldn\'t be cured elsewhere. Coming to PetM&M, the veterinarian examined his skin and designed an ozone herbal hydrotherapy regimen combined with nutrition. After 3 weeks, his coat grew back thick and glossy, with no itching left. The doctors and nurses are extremely gentle, treating him like family!',
     dich_vu_su_dung: 'Spa Thủy Liệu & Trị Liệu Da Thảo Mộc',
     dich_vu_su_dung_en: 'Hydrotherapy & Herbal Skin Therapy',
     hinh_anh_thu_cung: '/pet_golden_spa.jpg',
@@ -41,9 +41,9 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     so_dien_thoai: '0912 678 ***',
     so_sao: 5,
     noi_dung:
-      'Bé cún nghịch ngợm nuốt phải dị vật xương gà lúc 11h đêm. Cả nhà hoảng hốt gọi Hotline thì được tiếp nhận cấp cứu ngay lập tức. Phòng mổ áp lực dương vô trùng chuẩn bệnh viện quốc tế, bác sĩ gắp dị vật nội soi siêu êm, sáng hôm sau bé đã tỉnh táo đòi ăn. Cảm ơn đội ngũ bác sĩ Pet M&M rất nhiều!',
+      'Bé cún nghịch ngợm nuốt phải dị vật xương gà lúc 11h đêm. Cả nhà hoảng hốt gọi Hotline thì được tiếp nhận cấp cứu ngay lập tức. Phòng mổ áp lực dương vô trùng chuẩn bệnh viện quốc tế, bác sĩ gắp dị vật nội soi siêu êm, sáng hôm sau bé đã tỉnh táo đòi ăn. Cảm ơn đội ngũ bác sĩ PetM&M rất nhiều!',
     noi_dung_en:
-      'My pup playfully swallowed a chicken bone at 11 PM. Our whole family panicked and called the Hotline, and we were received immediately. The positive pressure sterile operating room meets international hospital standards, and the doctor removed the foreign object via endoscopy very smoothly. By the next morning, he was awake and asking for food. Thank you so much, Pet M&M team!',
+      'My pup playfully swallowed a chicken bone at 11 PM. Our whole family panicked and called the Hotline, and we were received immediately. The positive pressure sterile operating room meets international hospital standards, and the doctor removed the foreign object via endoscopy very smoothly. By the next morning, he was awake and asking for food. Thank you so much, PetM&M team!',
     dich_vu_su_dung: 'Cấp Cứu Ngoại Khoa & Phẫu Thuật Nội Soi',
     dich_vu_su_dung_en: 'Surgical Emergency & Endoscopy',
     hinh_anh_thu_cung: '/pet_corgi_park.jpg',
@@ -60,9 +60,9 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     so_dien_thoai: '0938 112 ***',
     so_sao: 5,
     noi_dung:
-      'Mỗi lần đi công tác xa mình đều gửi bé ở phòng Suite Hoàng Gia của Pet M&M. Khách sạn không hề có mùi hôi, điều hòa lọc khí ion âm 24/24 và có camera trực tiếp để xem bé ngủ. Ngày nào điều dưỡng cũng gửi video chải lông và nựng bé qua Zalo. Rất an tâm!',
+      'Mỗi lần đi công tác xa mình đều gửi bé ở phòng Suite Hoàng Gia của PetM&M. Khách sạn không hề có mùi hôi, điều hòa lọc khí ion âm 24/24 và có camera trực tiếp để xem bé ngủ. Ngày nào điều dưỡng cũng gửi video chải lông và nựng bé qua Zalo. Rất an tâm!',
     noi_dung_en:
-      'Whenever I go on long business trips, I board Miu Miu at Pet M&M\'s Royal Suite. The hotel has absolutely no unpleasant odors, with 24/7 negative ion air purification and live cameras to check on her sleeping. Every day, the nurse sends videos of grooming and cuddling her via Zalo. Truly peace of mind!',
+      'Whenever I go on long business trips, I board Miu Miu at PetM&M\'s Royal Suite. The hotel has absolutely no unpleasant odors, with 24/7 negative ion air purification and live cameras to check on her sleeping. Every day, the nurse sends videos of grooming and cuddling her via Zalo. Truly peace of mind!',
     dich_vu_su_dung: 'Resort & Khách Sạn Thú Cưng 5 Sao',
     dich_vu_su_dung_en: '5-Star Luxury Pet Resort & Hotel',
     hinh_anh_thu_cung: '/pet_cat_resort.jpg',
@@ -98,9 +98,9 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     so_dien_thoai: '0983 998 ***',
     so_sao: 5,
     noi_dung:
-      'Dịch vụ tiêm phòng và xét nghiệm máu định kỳ tại Pet M&M cực kỳ bài bản. Có phòng khám riêng cho mèo cách ly khỏi tiếng sủa của chó nên bé mèo đi tiêm không hề bị stress hay run sợ. Giá cả niêm yết rõ ràng, minh bạch từng khoản.',
+      'Dịch vụ tiêm phòng và xét nghiệm máu định kỳ tại PetM&M cực kỳ bài bản. Có phòng khám riêng cho mèo cách ly khỏi tiếng sủa của chó nên bé mèo đi tiêm không hề bị stress hay run sợ. Giá cả niêm yết rõ ràng, minh bạch từng khoản.',
     noi_dung_en:
-      'The vaccination and routine blood testing service at Pet M&M is extremely thorough. There is a dedicated feline room isolated from dog barking, so my cat experienced zero stress or trembling during her shots. Transparent, clearly listed pricing.',
+      'The vaccination and routine blood testing service at PetM&M is extremely thorough. There is a dedicated feline room isolated from dog barking, so my cat experienced zero stress or trembling during her shots. Transparent, clearly listed pricing.',
     dich_vu_su_dung: 'Khám Tổng Quát & Tiêm Ngừa Vac-xin',
     dich_vu_su_dung_en: 'General Checkup & Vaccinations',
     hinh_anh_thu_cung: '/pet_kitten_eyes.jpg',

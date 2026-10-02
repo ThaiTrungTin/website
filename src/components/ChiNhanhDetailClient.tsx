@@ -46,7 +46,7 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const name = (isEn && branch.ten_chi_nhanh_en) ? branch.ten_chi_nhanh_en : branch.ten_chi_nhanh;
-    const targetTitle = `${name || (isEn ? 'Branch Detail' : 'Chi Nhánh')} | Pet M&M`;
+    const targetTitle = `${name || (isEn ? 'Branch Detail' : 'Chi Nhánh')} | PetM&M`;
     const apply = () => {
       if (document.title !== targetTitle) {
         document.title = targetTitle;

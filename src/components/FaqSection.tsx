@@ -17,6 +17,7 @@ import {
   ExternalLink,
   HelpCircle,
 } from 'lucide-react';
+import { renderBrandText } from '@/components/PetMMBrand';
 
 const FALLBACK_FAQS: CauHoiThuongGapRecord[] = faqData.map((f, i) => ({
   id: f.id,
@@ -129,7 +130,7 @@ export default function FaqSection() {
       <div className="absolute inset-0 z-0">
         <Image
           src={getAssetUrl('/services_bg.jpg')}
-          alt="Không gian an yên tại Pet M&M"
+          alt="Không gian an yên tại PetM&M"
           fill
           quality={90}
           className="object-cover object-center scale-105 opacity-10"
@@ -138,7 +139,7 @@ export default function FaqSection() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header chuẩn typography font-editorial & màu xanh emerald của web Pet M&M */}
+        {/* Header chuẩn typography font-editorial & màu xanh emerald của web PetM&M */}
         <ScrollRevealTitle className="text-left mb-10 sm:mb-14">
           <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4">
             {isEn ? 'Frequently Asked ' : 'Câu Hỏi '}
@@ -149,8 +150,8 @@ export default function FaqSection() {
 
           <p className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed font-light">
             {isEn
-              ? 'Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at Pet M&M.'
-              : 'Pet M&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo OA chính thức của Pet M&M.'}
+              ? 'Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at PetM&M.'
+              : 'PetM&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo OA chính thức của PetM&M.'}
           </p>
         </ScrollRevealTitle>
 
@@ -210,7 +211,7 @@ export default function FaqSection() {
             )}
           </div>
 
-          {/* TRƯỜNG 2 (BÊN PHẢI): BẠN CẦN PET M&M HỖ TRỢ? */}
+          {/* TRƯỜNG 2 (BÊN PHẢI): BẠN CẦN PETM&M HỖ TRỢ? */}
           <div className="lg:col-span-5">
             <div className="relative rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xl overflow-hidden text-slate-900 sticky top-28">
               {/* Vệt sáng trang trí thương hiệu Emerald */}
@@ -219,14 +220,14 @@ export default function FaqSection() {
               <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mb-2">
                 {isEn ? (
                   <>
-                    {(supportConfig.tieu_de_en || 'Need Pet M&M support?').replace(/support\?$/i, '').trim()}{' '}
+                    {renderBrandText((supportConfig.tieu_de_en || 'Need PetM&M support?').replace(/support\?$/i, '').trim())}{' '}
                     <span className="italic font-light text-[#2D5A27]">
                       {/support\?$/i.test(supportConfig.tieu_de_en || '') ? 'support?' : ''}
                     </span>
                   </>
                 ) : (
                   <>
-                    {(supportConfig.tieu_de_vi || 'Bạn cần Pet M&M hỗ trợ?').replace(/hỗ trợ\?$/i, '').trim()}{' '}
+                    {renderBrandText((supportConfig.tieu_de_vi || 'Bạn cần PetM&M hỗ trợ?').replace(/hỗ trợ\?$/i, '').trim())}{' '}
                     <span className="italic font-light text-[#2D5A27]">
                       {/hỗ trợ\?$/i.test(supportConfig.tieu_de_vi || '') ? 'hỗ trợ?' : ''}
                     </span>
@@ -257,12 +258,12 @@ export default function FaqSection() {
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      {isEn ? (supportConfig.card1_desc_en || 'Send your pet info, desired service, branch, and preferred time. Pet M&M will confirm your appointment.') : (supportConfig.card1_desc_vi || 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để Pet M&M xác nhận lịch hẹn.')}
+                      {isEn ? (supportConfig.card1_desc_en || 'Send your pet info, desired service, branch, and preferred time. PetM&M will confirm your appointment.') : (supportConfig.card1_desc_vi || 'Gửi thông tin thú cưng, dịch vụ cần sử dụng, cơ sở và thời gian mong muốn để PetM&M xác nhận lịch hẹn.')}
                     </p>
                   </div>
                 </a>
 
-                {/* 2. Gọi trực tiếp hotline cơ sở Pet M&M gần nhất */}
+                {/* 2. Gọi trực tiếp hotline cơ sở PetM&M gần nhất */}
                 <a
                   href={`tel:${hotlineRaw}`}
                   className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-50 hover:bg-rose-50/40 border border-slate-200 hover:border-rose-200 transition-all duration-300 cursor-pointer shadow-xs"

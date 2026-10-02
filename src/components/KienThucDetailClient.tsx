@@ -48,7 +48,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
   const summary = (isEn && article.mo_ta_ngan_en) ? article.mo_ta_ngan_en : article.mo_ta_ngan;
   const author = (isEn && article.tac_gia_en)
     ? article.tac_gia_en
-    : (article.tac_gia || (isEn ? 'Pet M&M Veterinary Medical Board' : 'Hội Đồng Y Khoa Bệnh Viện Thú Y Pet M&M'));
+    : (article.tac_gia || (isEn ? 'PetM&M Veterinary Medical Board' : 'Hội Đồng Y Khoa Bệnh Viện Thú Y PetM&M'));
   const readTime = (isEn && article.thoi_gian_doc_en) ? article.thoi_gian_doc_en : article.thoi_gian_doc;
   const heroImg = article.hinh_anh || '/about_consultation.jpg';
 
@@ -56,7 +56,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const currentTitle = (isEn && article.tieu_de_en) ? article.tieu_de_en : article.tieu_de;
-    const targetTitle = `${currentTitle || (isEn ? 'Pet Care Article' : 'Cẩm Nang Kiến Thức')} | Pet M&M`;
+    const targetTitle = `${currentTitle || (isEn ? 'Pet Care Article' : 'Cẩm Nang Kiến Thức')} | PetM&M`;
     const apply = () => {
       if (document.title !== targetTitle) {
         document.title = targetTitle;
@@ -321,7 +321,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
           <div className="space-y-6">
             {/* Form đặt lịch nhanh & tư vấn bác sĩ */}
             <ConsultationSidebar
-              branchName={isEn ? 'Pet M&M Medical Board' : 'Hội Đồng Y Khoa Pet M&M'}
+              branchName={isEn ? 'PetM&M Medical Board' : 'Hội Đồng Y Khoa PetM&M'}
             />
 
             {/* FAQ */}

@@ -6,6 +6,7 @@ import { supabase, ChiNhanhRecord, DichVuRecord } from '@/lib/supabase';
 import { branchesData } from '@/data/branchesData';
 import { servicesData } from '@/data/servicesData';
 import { useLanguage } from '@/context/LanguageContext';
+import { useSystemConfig } from '@/context/SystemConfigContext';
 import { getAssetUrl } from '@/lib/assets';
 import {
   CalendarCheck,
@@ -63,7 +64,11 @@ export default function BookingSection({
   onSuccess,
 }: BookingSectionProps) {
   const { language } = useLanguage();
+  const { config } = useSystemConfig();
   const isEn = language === 'en';
+
+  const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
+  const hotlineRaw = (config.hotline || config.hotline_hien_thi || '0903599339').replace(/\s+/g, '');
 
   const [ownerName, setOwnerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -240,7 +245,7 @@ const getTodayDateVN = () => {
         code: fakeCode,
         ownerName: ownerName.trim(),
         petName: petName.trim(),
-        branchName: isEn ? 'Pet M&M Veterinary Clinic' : 'Cơ sở Pet M&M',
+        branchName: isEn ? 'PetM&M Veterinary Clinic' : 'Cơ sở PetM&M',
         service: service.trim() || (isEn ? 'General Health Check' : 'Khám tổng quát'),
         dateTime: `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}`,
         emailSent: false,
@@ -313,7 +318,7 @@ const getTodayDateVN = () => {
     lastSubmitRef.current = now;
 
     // Tìm tên chi nhánh hiển thị
-    let branchName = isEn ? 'Pet M&M Veterinary Clinic' : 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
+    let branchName = isEn ? 'PetM&M Veterinary Clinic' : 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
     if (dbBranches.length > 0) {
       const found = dbBranches.find((b) => b.id === branch);
       if (found) {
@@ -500,11 +505,11 @@ const getTodayDateVN = () => {
 
             <div className="flex items-center justify-center pt-2">
               <a
-                href="tel:0364605544"
+                href={`tel:${hotlineRaw}`}
                 className="w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-800 hover:to-emerald-900 text-white transition shadow-md inline-flex items-center justify-center gap-2.5"
               >
                 <PhoneCall className="w-4 h-4" />
-                <span>{isEn ? 'Clinic Hotline: 0364 605 544' : 'Tổng đài hỗ trợ: 0364 605 544'}</span>
+                <span>{`Hotline: ${hotlineDisplay}`}</span>
               </a>
             </div>
           </div>
@@ -845,7 +850,7 @@ const getTodayDateVN = () => {
               {/* Ảnh nền giữ hiệu ứng tự nhiên, sáng rõ ràng không bị tối đục */}
               <img
                 src={coverImage || DEFAULT_COVER_IMAGE}
-                alt="Pet M&M Veterinary Clinic"
+                alt="PetM&M Veterinary Clinic"
                 className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 hover:scale-102"
               />
               {/* Chỉ phủ lớp chuyển bóng mờ nhẹ ở phần chân đáy để chữ hiển thị tương phản rõ nét */}
@@ -855,7 +860,7 @@ const getTodayDateVN = () => {
               <div className="relative z-10">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/70 backdrop-blur-md border border-white/25 text-white text-xs font-bold shadow-lg">
                   <span className="w-2 h-2 rounded-full bg-[#FFB800] animate-pulse" />
-                  <span>Pet M&M Medical Center</span>
+                  <span>PetM&M Medical Center</span>
                 </div>
               </div>
 
@@ -882,7 +887,7 @@ const getTodayDateVN = () => {
                 </div>
 
                 <a
-                  href="tel:0364605544"
+                  href={`tel:${hotlineRaw}`}
                   className="flex items-center justify-between p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 transition group"
                 >
                   <div className="flex items-center gap-3">
@@ -891,9 +896,9 @@ const getTodayDateVN = () => {
                     </div>
                     <div>
                       <div className="text-[10px] text-slate-300 font-light uppercase tracking-wider">
-                        {isEn ? 'Hotline 24/7 Support' : 'Hotline Tư Vấn 24/7'}
+                        Hotline
                       </div>
-                      <div className="text-sm font-bold text-white font-mono">0364 605 544</div>
+                      <div className="text-sm font-bold text-white font-mono">{hotlineDisplay}</div>
                     </div>
                   </div>
                   <span className="text-[11px] font-bold text-emerald-400 group-hover:translate-x-1 transition">

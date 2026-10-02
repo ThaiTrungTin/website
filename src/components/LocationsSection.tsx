@@ -148,7 +148,7 @@ export default function LocationsSection() {
       <div className="absolute inset-0 z-0">
         <Image
           src={getAssetUrl('/branches_bg.jpg')}
-          alt="Kiến trúc resort bệnh viện thú y Pet M&M sang trọng lúc hoàng hôn"
+          alt="Kiến trúc resort bệnh viện thú y PetM&M sang trọng lúc hoàng hôn"
           fill
           quality={90}
           className="object-cover object-center scale-105 opacity-20"
