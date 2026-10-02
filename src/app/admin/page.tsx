@@ -9416,34 +9416,31 @@ export default function AdminDashboardPage() {
             <form onSubmit={handleSaveReview} className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Thanh chuyển đổi ngôn ngữ & Nút dịch AI */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">Ngôn ngữ soạn thảo:</span>
-                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setReviewModalTab('vi')}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                        reviewModalTab === 'vi'
-                          ? 'bg-white text-slate-900 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                      <span>Bản Tiếng Việt</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReviewModalTab('en')}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                        reviewModalTab === 'en'
-                          ? 'bg-white text-slate-900 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <UKFlag className="w-4 h-3 rounded-[2px]" />
-                      <span>Bản English</span>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalTab('vi')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      reviewModalTab === 'vi'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản Tiếng Việt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalTab('en')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      reviewModalTab === 'en'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <UKFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản English</span>
+                  </button>
                 </div>
 
                 <button
@@ -9497,13 +9494,13 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Thời gian hiển thị (Tiếng Việt):
+                        Ngày đánh giá (dd/mm/yyyy):
                       </label>
                       <input
                         type="text"
                         value={editingReview.ngay_danh_gia || ''}
                         onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia: e.target.value }))}
-                        placeholder="VD: Hôm qua, 3 ngày trước, 1 tuần trước..."
+                        placeholder="VD: 25/10/2026 hoặc Hôm qua..."
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -9538,11 +9535,6 @@ export default function AdminDashboardPage() {
                 </>
               ) : (
                 <>
-                  <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 text-xs flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>Nội dung Tiếng Anh sẽ tự động xuất hiện khi khách chọn cờ UK. Bạn có thể bấm nút <strong>Chuyển đổi ENG</strong> bên trên để AI dịch nhanh chuẩn Fear-Free.</span>
-                  </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -9559,13 +9551,13 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Thời gian hiển thị (English):
+                        Ngày đánh giá (dd/mm/yyyy):
                       </label>
                       <input
                         type="text"
                         value={editingReview.ngay_danh_gia_en || ''}
                         onChange={(e) => setEditingReview((prev) => ({ ...prev, ngay_danh_gia_en: e.target.value }))}
-                        placeholder="VD: Yesterday, 3 days ago, 1 week ago..."
+                        placeholder="VD: 25/10/2026 hoặc Yesterday..."
                         className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>

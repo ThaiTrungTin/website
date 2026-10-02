@@ -221,113 +221,114 @@ export default function ReviewsSection() {
       className="relative py-14 sm:py-20 overflow-hidden bg-[#FAFBF9] border-b border-slate-200/80"
     >
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header tinh gọn: Tiêu đề bên trái, nút lướt trái/phải bên phải */}
-        <div className="flex items-end justify-between gap-4 mb-8 sm:mb-10">
-          <div>
-            <ScrollRevealTitle>
-              <h2 className="font-editorial text-2xl sm:text-4xl lg:text-[42px] font-normal tracking-tight text-slate-900 leading-[1.2]">
-                {isEn ? 'Client Testimonials & Feedback' : 'Đánh giá từ khách hàng'}
-              </h2>
-            </ScrollRevealTitle>
-          </div>
-
-          {/* Nút lướt qua trái / phải */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => scroll('left')}
-              disabled={!canScrollLeft}
-              aria-label={isEn ? 'Previous reviews' : 'Xem đánh giá trước'}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
-                canScrollLeft
-                  ? 'bg-white border-slate-300 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white shadow-xs'
-                  : 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
-              }`}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll('right')}
-              disabled={!canScrollRight}
-              aria-label={isEn ? 'Next reviews' : 'Xem đánh giá tiếp theo'}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
-                canScrollRight
-                  ? 'bg-white border-slate-300 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white shadow-xs'
-                  : 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
-              }`}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Header tinh gọn: Tiêu đề */}
+        <div className="mb-8 sm:mb-10 text-center sm:text-left">
+          <ScrollRevealTitle>
+            <h2 className="font-editorial text-2xl sm:text-4xl lg:text-[42px] font-normal tracking-tight text-slate-900 leading-[1.2]">
+              {isEn ? 'Client Testimonials & Feedback' : 'Đánh giá từ khách hàng'}
+            </h2>
+          </ScrollRevealTitle>
         </div>
 
-        {/* Danh sách thẻ đánh giá lướt ngang (Scrollable & Swipeable) */}
-        <div
-          ref={scrollRef}
-          onScroll={checkScroll}
-          className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth pb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
-        >
-          {reviews.map((rev) => (
-            <div
-              key={rev.id}
-              className="group relative bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between min-w-[290px] sm:min-w-[340px] max-w-[340px] sm:max-w-[360px] snap-start shrink-0"
-            >
-              <div>
-                {/* 1. Số sao & Xác thực */}
-                <div className="flex items-center justify-between gap-2 mb-3.5">
-                  <div className="flex items-center gap-1">
-                    {[...Array(rev.so_sao || 5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-[#FFB800] text-[#FFB800]" />
-                    ))}
-                  </div>
+        {/* Container Carousel có nút điều hướng ở giữa 2 bên */}
+        <div className="relative group/carousel">
+          {/* Nút lướt qua trái (nằm ở giữa bên trái slider) */}
+          <button
+            type="button"
+            onClick={() => scroll('left')}
+            disabled={!canScrollLeft}
+            aria-label={isEn ? 'Previous reviews' : 'Xem đánh giá trước'}
+            className={`absolute -left-2 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
+              canScrollLeft
+                ? 'bg-white/95 border-slate-200 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white hover:scale-105 active:scale-95 shadow-lg'
+                : 'bg-white/60 border-slate-200 text-slate-300 opacity-0 pointer-events-none'
+            }`}
+          >
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
 
-                  {rev.da_xac_thuc && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                      <span>{isEn ? 'Verified' : 'Đã xác thực'}</span>
-                    </span>
-                  )}
-                </div>
+          {/* Nút lướt qua phải (nằm ở giữa bên phải slider) */}
+          <button
+            type="button"
+            onClick={() => scroll('right')}
+            disabled={!canScrollRight}
+            aria-label={isEn ? 'Next reviews' : 'Xem đánh giá tiếp theo'}
+            className={`absolute -right-2 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
+              canScrollRight
+                ? 'bg-white/95 border-slate-200 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white hover:scale-105 active:scale-95 shadow-lg'
+                : 'bg-white/60 border-slate-200 text-slate-300 opacity-0 pointer-events-none'
+            }`}
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
 
-                {/* 2. Nội dung nhận xét */}
-                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-light mb-5 line-clamp-5">
-                  &ldquo;{(isEn && rev.noi_dung_en) ? rev.noi_dung_en : rev.noi_dung}&rdquo;
-                </p>
-              </div>
+          {/* Danh sách thẻ đánh giá lướt ngang (Scrollable & Swipeable) */}
+          <div
+            ref={scrollRef}
+            onScroll={checkScroll}
+            className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth pb-4 -mx-4 px-4 sm:mx-0 sm:px-0"
+          >
+            {reviews.map((rev) => (
+              <div
+                key={rev.id}
+                className="group relative bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between min-w-[290px] sm:min-w-[340px] max-w-[340px] sm:max-w-[360px] snap-start shrink-0"
+              >
+                <div>
+                  {/* 1. Số sao & Xác thực */}
+                  <div className="flex items-center justify-between gap-2 mb-3.5">
+                    <div className="flex items-center gap-1">
+                      {[...Array(rev.so_sao || 5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-[#FFB800] text-[#FFB800]" />
+                      ))}
+                    </div>
 
-              {/* 3. Tên chủ, SĐT ẩn 4 số cuối & Avatar */}
-              <div className="flex items-center gap-3 pt-3.5 border-t border-slate-100">
-                {/* Avatar thú cưng / khách hàng */}
-                <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 bg-slate-100 border border-slate-200 shadow-2xs">
-                  <Image
-                    src={getAssetUrl(rev.hinh_anh_thu_cung || '/pet_golden_spa.jpg')}
-                    alt={(isEn && rev.ten_khach_hang_en) ? rev.ten_khach_hang_en : rev.ten_khach_hang}
-                    fill
-                    className="object-cover"
-                    sizes="44px"
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                    {(isEn && rev.ten_khach_hang_en) ? rev.ten_khach_hang_en : rev.ten_khach_hang}
-                  </h4>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-500 font-light mt-0.5">
-                    <span className="font-mono font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                      {rev.so_dien_thoai}
-                    </span>
-                    {(rev.ngay_danh_gia || rev.ngay_danh_gia_en) && (
-                      <>
-                        <span>•</span>
-                        <span>{formatReviewTime(rev.ngay_danh_gia, rev.ngay_danh_gia_en, isEn)}</span>
-                      </>
+                    {rev.da_xac_thuc && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <span>{isEn ? 'Verified' : 'Đã xác thực'}</span>
+                      </span>
                     )}
                   </div>
+
+                  {/* 2. Nội dung nhận xét */}
+                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-light mb-5 line-clamp-5">
+                    &ldquo;{(isEn && rev.noi_dung_en) ? rev.noi_dung_en : rev.noi_dung}&rdquo;
+                  </p>
+                </div>
+
+                {/* 3. Tên chủ, SĐT ẩn 4 số cuối & Avatar */}
+                <div className="flex items-center gap-3 pt-3.5 border-t border-slate-100">
+                  {/* Avatar thú cưng / khách hàng */}
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 bg-slate-100 border border-slate-200 shadow-2xs">
+                    <Image
+                      src={getAssetUrl(rev.hinh_anh_thu_cung || '/pet_golden_spa.jpg')}
+                      alt={(isEn && rev.ten_khach_hang_en) ? rev.ten_khach_hang_en : rev.ten_khach_hang}
+                      fill
+                      className="object-cover"
+                      sizes="44px"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                      {(isEn && rev.ten_khach_hang_en) ? rev.ten_khach_hang_en : rev.ten_khach_hang}
+                    </h4>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 font-light mt-0.5">
+                      <span className="font-mono font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                        {rev.so_dien_thoai}
+                      </span>
+                      {(rev.ngay_danh_gia || rev.ngay_danh_gia_en) && (
+                        <>
+                          <span>•</span>
+                          <span>{formatReviewTime(rev.ngay_danh_gia, rev.ngay_danh_gia_en, isEn)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
