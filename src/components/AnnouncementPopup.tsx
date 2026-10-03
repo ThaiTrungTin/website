@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { X, Sparkles, Megaphone, ExternalLink, Calendar, ChevronRight } from 'lucide-react';
+import { X, Sparkles, Megaphone, Calendar, GripVertical, ChevronDown } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announcement/route';
 
@@ -15,8 +14,15 @@ export default function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<PopupAnnouncementConfig>(DEFAULT_ANNOUNCEMENT);
   const [isOpen, setIsOpen] = useState(false);
   const [isBadgeVisible, setIsBadgeVisible] = useState(false);
-  const [isDismissedCompletely, setIsDismissedCompletely] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Kéo thả thanh đóng mở (Draggable state)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const elemStartRef = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   // 1. Tải cấu hình thông báo từ API
   useEffect(() => {
@@ -28,25 +34,15 @@ export default function AnnouncementPopup() {
         if (isMounted && json.success && json.data) {
           setAnnouncement(json.data);
 
-          // Nếu có cấu hình và đang Bật + Có ảnh poster
           if (json.data.isActive && json.data.imageUrl) {
+            setIsBadgeVisible(true);
+
+            // Kiểm tra xem khách đã từng xem/đóng trong phiên này chưa
             const dismissedSession = sessionStorage.getItem('petmm_popup_dismissed');
-            const dismissedBadge = sessionStorage.getItem('petmm_badge_dismissed');
-
-            if (dismissedBadge === 'true') {
-              setIsDismissedCompletely(true);
-              return;
-            }
-
-            if (dismissedSession === 'true') {
-              // Khách đã từng đóng popup trong phiên này -> Chỉ hiện Huy hiệu nổi ở góc
-              setIsBadgeVisible(true);
-            } else {
-              // Khách mới vào -> Hẹn giờ tự động bung popup đón khách
+            if (dismissedSession !== 'true') {
               const delayMs = (json.data.autoOpenDelaySeconds || 1.2) * 1000;
               const timer = setTimeout(() => {
                 setIsOpen(true);
-                setIsBadgeVisible(true);
               }, delayMs);
               return () => clearTimeout(timer);
             }
@@ -65,70 +61,75 @@ export default function AnnouncementPopup() {
     };
   }, []);
 
-  // 2. Đóng popup lớn -> Thu nhỏ thành Huy hiệu nổi
+  // 2. Đóng popup poster lớn
   const handleDismissPopup = () => {
     setIsOpen(false);
-    setIsBadgeVisible(true);
     try {
       sessionStorage.setItem('petmm_popup_dismissed', 'true');
     } catch {}
   };
 
-  // 3. Đóng hoàn toàn huy hiệu nổi nếu khách không muốn thấy nút nhỏ
-  const handleDismissBadgeCompletely = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsBadgeVisible(false);
-    setIsDismissedCompletely(true);
+  // 3. Xử lý Kéo thả (Drag) hoặc Nhấn (Click) trên thanh nổi
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Chỉ xử lý nút chuột trái hoặc chạm ngón tay
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const el = badgeRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    elemStartRef.current = { x: rect.left, y: rect.top };
+
     try {
-      sessionStorage.setItem('petmm_badge_dismissed', 'true');
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {}
   };
 
-  // 4. Mở lại popup từ Huy hiệu nổi
-  const handleReopenPopup = () => {
-    setIsOpen(true);
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      hasMovedRef.current = true;
+    }
+
+    if (hasMovedRef.current) {
+      const el = badgeRef.current;
+      const width = el?.offsetWidth || 180;
+      const height = el?.offsetHeight || 44;
+      const maxX = Math.max(8, window.innerWidth - width - 8);
+      const maxY = Math.max(8, window.innerHeight - height - 8);
+
+      const newX = Math.min(Math.max(8, elemStartRef.current.x + dx), maxX);
+      const newY = Math.min(Math.max(68, elemStartRef.current.y + dy), maxY);
+
+      setPosition({ x: newX, y: newY });
+    }
   };
 
-  // 5. Xử lý khi bấm vào poster hoặc nút hành động
-  const handleActionClick = () => {
-    if (!announcement.linkUrl) {
-      handleDismissPopup();
-      return;
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
+
+    // Nếu không kéo (di chuyển < 5px) -> Tính là click để đóng/mở popup
+    if (!hasMovedRef.current) {
+      setIsOpen((prev) => !prev);
     }
-
-    const targetUrl = announcement.linkUrl.trim();
-
-    // Nếu là anchor link nội bộ trên trang (như #booking, #services...)
-    if (targetUrl.startsWith('#')) {
-      handleDismissPopup();
-      setTimeout(() => {
-        const el = document.querySelector(targetUrl);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 250);
-      return;
-    }
-
-    // Nếu là link gọi điện thoại hoặc gửi email hoặc link ngoài
-    if (targetUrl.startsWith('tel:') || targetUrl.startsWith('mailto:')) {
-      window.location.href = targetUrl;
-      handleDismissPopup();
-      return;
-    }
-
-    // Link web ngoài
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
-    handleDismissPopup();
   };
 
-  // Không hiển thị trên trang quản trị Admin
+  // Ẩn hoàn toàn trên trang quản trị Admin
   if (pathname?.startsWith('/admin')) {
     return null;
   }
 
-  // Nếu không kích hoạt hoặc không có ảnh poster -> không render gì cả
-  if (!announcement.isActive || !announcement.imageUrl || isDismissedCompletely) {
+  // Không hiển thị nếu chưa kích hoạt hoặc chưa có ảnh
+  if (!announcement.isActive || !announcement.imageUrl) {
     return null;
   }
 
@@ -136,27 +137,44 @@ export default function AnnouncementPopup() {
     ? announcement.imageUrlEn.trim()
     : announcement.imageUrl.trim();
 
+  const category = announcement.category || 'holiday';
+
+  const defaultBadgeText = category === 'promotion'
+    ? (isEn ? '🎁 Special Offers' : '🎁 Ưu Đãi Đặc Biệt')
+    : (category === 'custom'
+      ? (isEn ? '📢 Notice' : '📢 Thông Báo')
+      : (isEn ? '🧧 Holiday Schedule' : '🧧 Lịch Nghỉ Lễ / Tết'));
+
   const currentBadgeText = isEn
-    ? (announcement.badgeTextEn?.trim() || announcement.badgeTextVi || '🧧 Special Notice')
-    : (announcement.badgeTextVi?.trim() || '🧧 Thông Báo Quan Trọng');
+    ? (announcement.badgeTextEn?.trim() || announcement.badgeTextVi || defaultBadgeText)
+    : (announcement.badgeTextVi?.trim() || defaultBadgeText);
+
+  const defaultTitle = category === 'promotion'
+    ? (isEn ? 'Special Offers & Promotions' : 'Chương Trình Ưu Đãi Đặc Biệt')
+    : (category === 'custom'
+      ? (isEn ? 'Official Announcement' : 'Thông Báo Chính Thức')
+      : (isEn ? 'Holiday Schedule & Duty Notice' : 'Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết'));
 
   const currentTitle = isEn
-    ? (announcement.titleEn?.trim() || announcement.titleVi || 'Notice & Offers')
-    : (announcement.titleVi?.trim() || 'Thông Báo & Khuyến Mãi');
+    ? (announcement.titleEn?.trim() || announcement.titleVi || defaultTitle)
+    : (announcement.titleVi?.trim() || defaultTitle);
 
-  const currentBtnText = isEn
-    ? (announcement.btnTextEn?.trim() || 'Book Appointment Now')
-    : (announcement.btnTextVi?.trim() || 'Đặt Lịch Khám Ngay');
+  // Giao diện màu sắc theo chủ đề
+  const badgeThemeClasses = category === 'promotion'
+    ? 'bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 shadow-purple-950/40 border-amber-300/60'
+    : (category === 'custom'
+      ? 'bg-gradient-to-r from-[#173014] via-[#2D5A27] to-amber-600 shadow-emerald-950/40 border-amber-300/60'
+      : 'bg-gradient-to-r from-red-700 via-rose-600 to-amber-600 shadow-red-950/40 border-amber-300/60');
 
   return (
     <>
-      {/* ── 1. POPUP POSTER ĐÓN KHÁCH (LIGHTBOX MODAL) ── */}
+      {/* ── 1. POPUP POSTER THÔNG BÁO (LIGHTBOX MODAL) ── */}
       {isOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label={currentTitle}
-          className="fixed inset-0 z-[9998] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9998] flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-300"
         >
           {/* Backdrop tối mờ sang trọng */}
           <div
@@ -164,15 +182,15 @@ export default function AnnouncementPopup() {
             className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity cursor-pointer"
           />
 
-          {/* Khung nội dung Poster nổi bật */}
+          {/* Khung nội dung Poster */}
           <div className="relative z-10 w-full max-w-[420px] sm:max-w-[480px] md:max-w-[540px] my-auto animate-in zoom-in-95 duration-300">
             {/* Nút đóng (✕) lớn, chuẩn tay bấm */}
             <button
               type="button"
               onClick={handleDismissPopup}
               aria-label={isEn ? 'Close announcement' : 'Đóng thông báo'}
-              className="absolute -top-3.5 -right-3.5 sm:-top-4 sm:-right-4 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-900/90 hover:bg-rose-600 text-white border-2 border-white/80 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer focus:outline-none"
-              title={isEn ? 'Close & minimize to corner' : 'Đóng & thu nhỏ vào góc màn hình'}
+              className="absolute -top-3.5 -right-3.5 sm:-top-4 sm:-right-4 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-900/95 hover:bg-rose-600 text-white border-2 border-white/80 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer focus:outline-none"
+              title={isEn ? 'Close notice' : 'Đóng thông báo'}
             >
               <X className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
@@ -192,91 +210,99 @@ export default function AnnouncementPopup() {
                 </span>
               </div>
 
-              {/* Tấm ảnh Poster (Click vào sẽ kích hoạt hành động) */}
+              {/* Tấm ảnh Poster (ĐÃ BỎ NÚT ĐẶT LỊCH THEO YÊU CẦU CỦA USER) */}
               <div
-                onClick={handleActionClick}
-                className="relative w-full max-h-[65vh] sm:max-h-[70vh] bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center"
+                onClick={handleDismissPopup}
+                className="relative w-full max-h-[72vh] sm:max-h-[78vh] bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center"
+                title={isEn ? 'Click to close' : 'Bấm vào ảnh hoặc nền để đóng'}
               >
                 <img
                   src={currentImage}
                   alt={currentTitle}
-                  className="w-full h-auto max-h-[65vh] sm:max-h-[70vh] object-contain transition-transform duration-500 group-hover/card:scale-[1.015]"
+                  className="w-full h-auto max-h-[72vh] sm:max-h-[78vh] object-contain transition-transform duration-500 group-hover/card:scale-[1.01]"
                   loading="eager"
                 />
               </div>
 
-              {/* Footer nút hành động (CTA) */}
-              <div className="p-3.5 sm:p-4 bg-slate-950/95 border-t border-white/10 flex flex-col gap-2">
+              {/* Footer thanh lịch, tối giản (không có nút Đặt lịch) */}
+              <div className="py-2.5 px-4 bg-slate-950/95 border-t border-white/10 flex items-center justify-between text-slate-400 text-xs">
+                <span className="text-[11px] text-slate-400">
+                  {isEn ? 'Tap anywhere or ✕ to close' : 'Chạm vào ảnh hoặc nút ✕ để đóng'}
+                </span>
                 <button
                   type="button"
-                  onClick={handleActionClick}
-                  className="w-full py-3 px-5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-rose-600 to-red-600 hover:from-amber-400 hover:to-red-500 text-white font-extrabold text-xs sm:text-sm tracking-wide shadow-lg shadow-rose-950/50 hover:shadow-rose-900/80 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={handleDismissPopup}
+                  className="px-3.5 py-1 rounded-lg bg-white/10 hover:bg-rose-600/80 hover:text-white text-slate-200 font-semibold text-xs transition cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-200 animate-spin" style={{ animationDuration: '6s' }} />
-                  <span>{currentBtnText}</span>
-                  <ChevronRight className="w-4 h-4" />
+                  {isEn ? 'Close' : 'Đóng'}
                 </button>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5 px-1">
-                  <span>{isEn ? 'Tap poster to view details' : 'Chạm vào ảnh để xem chi tiết'}</span>
-                  <button
-                    type="button"
-                    onClick={handleDismissPopup}
-                    className="text-slate-400 hover:text-white underline underline-offset-2 transition cursor-pointer"
-                  >
-                    {isEn ? 'Minimize to corner' : 'Đóng (Thu nhỏ vào góc)'}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── 2. HUY HIỆU NỔI THU NHỎ Ở GÓC MÀN HÌNH (FLOATING BADGE) ── */}
-      {/* Vị trí: Desktop ở góc trái dưới (left-6 bottom-8) để đối xứng với Hotline/Zalo ở góc phải; Mobile ở góc phải dưới (right-3.5 bottom-6) để đối xứng với widget bên trái */}
-      {isBadgeVisible && !isOpen && (
+      {/* ── 2. THANH ĐÓNG/MỞ NỔI Ở GÓC TRÊN BÊN PHẢI (DRAGGABLE & KHÔNG TẮT ĐƯỢC) ── */}
+      {isBadgeVisible && (
         <div
+          ref={badgeRef}
           role="button"
           tabIndex={0}
-          onClick={handleReopenPopup}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              handleReopenPopup();
+              setIsOpen((prev) => !prev);
             }
           }}
           aria-label={currentBadgeText}
-          className="fixed left-3.5 md:left-6 bottom-20 md:bottom-8 z-40 group cursor-pointer select-none animate-in fade-in slide-in-from-bottom-3 duration-300 focus:outline-none"
+          style={position ? { left: `${position.x}px`, top: `${position.y}px` } : undefined}
+          className={`fixed z-[9990] touch-none select-none cursor-grab active:cursor-grabbing transition-transform focus:outline-none ${
+            position ? '' : 'top-20 md:top-24 right-3 sm:right-6'
+          }`}
+          title={isEn ? 'Drag to move, click to toggle notice' : 'Kéo để di chuyển, bấm để đóng/mở thông báo'}
         >
-          {/* Khung nút huy hiệu nổi dạng viên thuốc */}
-          <div className="relative inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-amber-600 via-rose-600 to-red-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-rose-950/40 border border-amber-300/60 hover:scale-105 active:scale-95 transition-all duration-300 hover:shadow-rose-900/60">
+          {/* Khung thanh đóng mở ưu đãi nổi */}
+          <div
+            className={`relative inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-full text-white font-bold text-xs sm:text-sm shadow-2xl border hover:scale-105 active:scale-95 transition-all duration-200 ${badgeThemeClasses}`}
+          >
             {/* Vòng hào quang phát sáng nhẹ */}
             <span
-              className="absolute -inset-1 rounded-full bg-rose-500/40 animate-ping pointer-events-none"
-              style={{ animationDuration: '2.5s' }}
+              className="absolute -inset-1 rounded-full bg-amber-400/25 animate-ping pointer-events-none"
+              style={{ animationDuration: '3s' }}
             />
 
-            {/* Icon thông báo / Tết */}
-            <span className="relative flex items-center justify-center text-sm sm:text-base animate-bounce">
-              <Megaphone className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-200 fill-amber-300/20" />
+            {/* Tay nắm kéo (Grip Handle Indicator) */}
+            <span className="relative flex items-center justify-center text-white/60 hover:text-white shrink-0">
+              <GripVertical className="w-3.5 h-3.5" />
             </span>
 
-            {/* Nội dung nhãn (VD: 🧧 Lịch Trực Tết / 🎁 Ưu Đãi HOT) */}
-            <span className="relative font-extrabold tracking-tight drop-shadow-sm whitespace-nowrap pr-1">
+            {/* Icon theo chủ đề */}
+            <span className="relative flex items-center justify-center text-sm sm:text-base shrink-0 animate-bounce">
+              {category === 'promotion' ? (
+                <Sparkles className="w-4 h-4 text-amber-200" />
+              ) : category === 'custom' ? (
+                <Megaphone className="w-4 h-4 text-amber-200" />
+              ) : (
+                <Calendar className="w-4 h-4 text-amber-200" />
+              )}
+            </span>
+
+            {/* Nội dung nhãn (Lịch Nghỉ Lễ / Ưu Đãi) */}
+            <span className="relative font-extrabold tracking-tight drop-shadow-sm whitespace-nowrap pr-0.5">
               {currentBadgeText}
             </span>
 
-            {/* Nút đóng hoàn toàn huy hiệu nếu không muốn thấy */}
-            <button
-              type="button"
-              onClick={handleDismissBadgeCompletely}
-              className="relative p-0.5 rounded-full bg-black/25 hover:bg-black/60 text-white/80 hover:text-white transition ml-0.5 cursor-pointer"
-              title={isEn ? 'Dismiss badge' : 'Ẩn huy hiệu này'}
-              aria-label={isEn ? 'Dismiss badge' : 'Ẩn huy hiệu này'}
-            >
-              <X className="w-3 h-3" />
-            </button>
+            {/* Biểu tượng mũi tên mở/đóng */}
+            <span className="relative text-amber-200 shrink-0">
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                  isOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </span>
           </div>
         </div>
       )}

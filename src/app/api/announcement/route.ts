@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/adminAuth';
 
 export interface PopupAnnouncementConfig {
   isActive: boolean;
+  category?: 'holiday' | 'promotion' | 'custom';
   titleVi: string;
   titleEn: string;
   badgeTextVi: string;
@@ -19,15 +20,16 @@ export interface PopupAnnouncementConfig {
 
 export const DEFAULT_ANNOUNCEMENT: PopupAnnouncementConfig = {
   isActive: false,
-  titleVi: 'Thông Báo Lịch Trực Tết & Ưu Đãi',
-  titleEn: 'Tet Holiday Schedule & Special Offers',
-  badgeTextVi: '🧧 Lịch Trực Tết & Ưu Đãi',
-  badgeTextEn: '🧧 Tet Schedule & Offers',
+  category: 'holiday',
+  titleVi: 'Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết',
+  titleEn: 'Holiday Schedule & Duty Notice',
+  badgeTextVi: '🧧 Lịch Nghỉ Lễ / Tết',
+  badgeTextEn: '🧧 Holiday Schedule',
   imageUrl: '',
   imageUrlEn: '',
-  linkUrl: '#booking',
-  btnTextVi: 'Đặt Lịch Khám Ngay',
-  btnTextEn: 'Book Appointment Now',
+  linkUrl: '',
+  btnTextVi: '',
+  btnTextEn: '',
   autoOpenDelaySeconds: 1.2,
 };
 
@@ -84,15 +86,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const configToSave: PopupAnnouncementConfig = {
       isActive: Boolean(body.isActive),
+      category: body.category === 'promotion' ? 'promotion' : (body.category === 'custom' ? 'custom' : 'holiday'),
       titleVi: (body.titleVi || '').trim() || DEFAULT_ANNOUNCEMENT.titleVi,
       titleEn: (body.titleEn || '').trim() || DEFAULT_ANNOUNCEMENT.titleEn,
       badgeTextVi: (body.badgeTextVi || '').trim() || DEFAULT_ANNOUNCEMENT.badgeTextVi,
       badgeTextEn: (body.badgeTextEn || '').trim() || DEFAULT_ANNOUNCEMENT.badgeTextEn,
       imageUrl: (body.imageUrl || '').trim(),
       imageUrlEn: (body.imageUrlEn || '').trim(),
-      linkUrl: (body.linkUrl || '').trim() || '#booking',
-      btnTextVi: (body.btnTextVi || '').trim() || DEFAULT_ANNOUNCEMENT.btnTextVi,
-      btnTextEn: (body.btnTextEn || '').trim() || DEFAULT_ANNOUNCEMENT.btnTextEn,
+      linkUrl: (body.linkUrl || '').trim(),
+      btnTextVi: (body.btnTextVi || '').trim(),
+      btnTextEn: (body.btnTextEn || '').trim(),
       autoOpenDelaySeconds: typeof body.autoOpenDelaySeconds === 'number' ? body.autoOpenDelaySeconds : 1.2,
       updatedAt: new Date().toISOString(),
     };

@@ -58,6 +58,9 @@ import {
   LogOut,
   Briefcase,
   Megaphone,
+  GripVertical,
+  ChevronDown,
+  Calendar,
 } from 'lucide-react';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
@@ -6063,16 +6066,72 @@ function formatDisplayReviewDate(val?: string | null): string {
                       </div>
                     </div>
 
+                    {/* Droplist chọn Chủ đề / Loại thông báo */}
+                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
+                      <div className="space-y-0.5">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Chủ Đề Thông Báo (Droplist):</span>
+                        </label>
+                        <p className="text-[11px] text-slate-500">
+                          Chọn chủ đề để hệ thống tự động gán biểu tượng và câu chữ mẫu cho thanh đóng mở.
+                        </p>
+                      </div>
+
+                      <select
+                        value={announcementForm.category || 'holiday'}
+                        onChange={(e) => {
+                          const cat = e.target.value as 'holiday' | 'promotion' | 'custom';
+                          setAnnouncementForm((prev) => {
+                            if (cat === 'holiday') {
+                              return {
+                                ...prev,
+                                category: cat,
+                                badgeTextVi: '🧧 Lịch Nghỉ Lễ / Tết',
+                                badgeTextEn: '🧧 Holiday Schedule',
+                                titleVi: 'Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết',
+                                titleEn: 'Holiday Schedule & Tet Duty Notice',
+                              };
+                            } else if (cat === 'promotion') {
+                              return {
+                                ...prev,
+                                category: cat,
+                                badgeTextVi: '🎁 Ưu Đãi Đặc Biệt',
+                                badgeTextEn: '🎁 Special Offers',
+                                titleVi: 'Chương Trình Ưu Đãi Đặc Biệt',
+                                titleEn: 'Special Offers & Promotions',
+                              };
+                            } else {
+                              return {
+                                ...prev,
+                                category: cat,
+                                badgeTextVi: '📢 Thông Báo Quan Trọng',
+                                badgeTextEn: '📢 Special Notice',
+                                titleVi: 'Thông Báo Chính Thức',
+                                titleEn: 'Official Announcement',
+                              };
+                            }
+                          });
+                        }}
+                        className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[220px]"
+                      >
+                        <option value="holiday">🧧 Lịch Nghỉ Lễ / Tết</option>
+                        <option value="promotion">🎁 Chương Trình Ưu Đãi</option>
+                        <option value="custom">📢 Thông Báo Chung / Khác</option>
+                      </select>
+                    </div>
+
                     {/* Hướng dẫn ngắn & Cơ chế hoạt động */}
                     <div className="mt-4 p-4 rounded-xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 space-y-1.5">
                       <div className="font-bold flex items-center gap-1.5 text-amber-800">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Cơ chế trải nghiệm thông minh cho khách hàng:</span>
+                        <span>Cơ chế thanh đóng mở ưu đãi thông minh (Cập nhật):</span>
                       </div>
                       <ul className="list-disc pl-5 space-y-1 text-amber-900/90 text-[11px] leading-relaxed">
-                        <li><strong>Khách mới vào trang:</strong> Sau khoảng thời gian định sẵn (mặc định 1.2s), popup poster sẽ tự động hiển thị trang nhã.</li>
-                        <li><strong>Khi khách đóng popup (bấm ✕ hoặc bấm ra ngoài):</strong> Popup biến mất và thu nhỏ thành <strong>Huy hiệu nổi</strong> ở góc màn hình.</li>
-                        <li><strong>Khách cần xem lại:</strong> Khách chỉ cần nhấn vào huy hiệu nổi bất kỳ lúc nào để mở lại toàn bộ poster chi tiết. Không làm phiền trải nghiệm lướt web.</li>
+                        <li><strong>Thanh nổi ở góc trên bên phải:</strong> Mặc định thanh mở ưu đãi nằm ở góc trên bên phải màn hình (dưới menu).</li>
+                        <li><strong>Có thể kéo di chuyển tự do:</strong> Khách hàng hoặc người xem có thể kéo thanh nổi đến bất kỳ vị trí nào trên màn hình để không che nội dung.</li>
+                        <li><strong>Không tắt được:</strong> Thanh nổi luôn hiển thị để khách có thể bấm xem lại poster bất cứ lúc nào (không có nút ✕ xóa mất thanh).</li>
+                        <li><strong>Đã bỏ nút Đặt Lịch Khám:</strong> Ảnh poster hiển thị nguyên bản, sang trọng và tập trung 100% vào nội dung thông báo.</li>
                       </ul>
                     </div>
                   </div>
@@ -6157,7 +6216,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </p>
                       </div>
 
-                      {/* Tiêu đề & Chữ trên Huy hiệu nổi */}
+                      {/* Tiêu đề & Chữ trên thanh nổi */}
                       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
                         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100">
                           Nội Dung &amp; Văn Bản Hiển Thị
@@ -6174,7 +6233,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                                 type="text"
                                 value={announcementForm.titleVi || ''}
                                 onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, titleVi: e.target.value }))}
-                                placeholder="Thông Báo Lịch Trực Tết & Ưu Đãi"
+                                placeholder="Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết"
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
                               />
                             </div>
@@ -6182,17 +6241,17 @@ function formatDisplayReviewDate(val?: string | null): string {
                             <div>
                               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                                 <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                                <span>Chữ hiển thị trên Huy hiệu nổi thu nhỏ (Floating Badge): *</span>
+                                <span>Chữ trên thanh đóng mở nổi ở góc trên (Draggable Bar Text): *</span>
                               </label>
                               <input
                                 type="text"
                                 value={announcementForm.badgeTextVi || ''}
                                 onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, badgeTextVi: e.target.value }))}
-                                placeholder="🧧 Lịch Trực Tết 2026 hoặc 🎁 Ưu Đãi HOT"
+                                placeholder="🧧 Lịch Nghỉ Lễ / Tết hoặc 🎁 Ưu Đãi Đặc Biệt"
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
                               />
                               <p className="text-[11px] text-slate-500 mt-1">
-                                Dòng chữ ngắn gọn kèm icon cảm xúc (emoji) hiển thị ở nút nổi góc dưới màn hình khi khách đã tắt modal.
+                                Dòng chữ hiển thị trên thanh nổi ở góc trên bên phải màn hình (khách có thể kéo thả di chuyển tự do).
                               </p>
                             </div>
                           </div>
@@ -6207,7 +6266,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                                 type="text"
                                 value={announcementForm.titleEn || ''}
                                 onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, titleEn: e.target.value }))}
-                                placeholder="Tet Holiday Schedule & Special Offers"
+                                placeholder="Holiday Schedule & Tet Duty Notice"
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
                               />
                             </div>
@@ -6215,13 +6274,13 @@ function formatDisplayReviewDate(val?: string | null): string {
                             <div>
                               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                                 <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                                <span>Chữ trên Huy hiệu nổi (Tiếng Anh):</span>
+                                <span>Chữ trên thanh đóng mở nổi (Tiếng Anh):</span>
                               </label>
                               <input
                                 type="text"
                                 value={announcementForm.badgeTextEn || ''}
                                 onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, badgeTextEn: e.target.value }))}
-                                placeholder="🧧 Tet Schedule & Offers"
+                                placeholder="🧧 Holiday Schedule hoặc 🎁 Special Offers"
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
                               />
                             </div>
@@ -6229,76 +6288,36 @@ function formatDisplayReviewDate(val?: string | null): string {
                         )}
                       </div>
 
-                      {/* Nút hành động & Cài đặt hiển thị */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100">
-                          Nút Hành Động &amp; Cài Đặt Hiển Thị
+                      {/* Cài đặt thời gian trễ tự bung Popup */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-3">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center justify-between">
+                          <span>Thời Gian Trễ Tự Bung Popup</span>
+                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            Đã bỏ nút Đặt lịch trên Poster
+                          </span>
                         </h3>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              Đường dẫn liên kết (Link CTA):
-                            </label>
-                            <input
-                              type="text"
-                              value={announcementForm.linkUrl || ''}
-                              onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, linkUrl: e.target.value }))}
-                              placeholder="#booking (hoặc https://...)"
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                            />
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              Mặc định là <code className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded font-bold">#booking</code> để cuộn đến form đặt lịch khám.
-                            </p>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              Thời gian trễ tự bung Popup (giây):
-                            </label>
-                            <input
-                              type="number"
-                              min="0.5"
-                              max="10"
-                              step="0.1"
-                              value={announcementForm.autoOpenDelaySeconds ?? 1.2}
-                              onChange={(e) =>
-                                setAnnouncementForm((prev) => ({
-                                  ...prev,
-                                  autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
-                                }))
-                              }
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-bold"
-                            />
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              Mặc định: 1.2s. Chờ trang tải êm dịu trước khi bật modal.
-                            </p>
-                          </div>
-                        </div>
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            {announcementLangTab === 'vi'
-                              ? 'Chữ trên nút bấm hành động (Tiếng Việt):'
-                              : 'Chữ trên nút bấm hành động (Tiếng Anh):'}
+                            Thời gian trễ tự bung Popup khi khách vừa vào trang (giây):
                           </label>
                           <input
-                            type="text"
-                            value={
-                              announcementLangTab === 'vi'
-                                ? announcementForm.btnTextVi || ''
-                                : announcementForm.btnTextEn || ''
+                            type="number"
+                            min="0.5"
+                            max="10"
+                            step="0.1"
+                            value={announcementForm.autoOpenDelaySeconds ?? 1.2}
+                            onChange={(e) =>
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
+                              }))
                             }
-                            onChange={(e) => {
-                              if (announcementLangTab === 'vi') {
-                                setAnnouncementForm((prev) => ({ ...prev, btnTextVi: e.target.value }));
-                              } else {
-                                setAnnouncementForm((prev) => ({ ...prev, btnTextEn: e.target.value }));
-                              }
-                            }}
-                            placeholder={announcementLangTab === 'vi' ? 'Đặt Lịch Khám Ngay' : 'Book Appointment Now'}
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
+                            className="w-full max-w-xs text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-bold"
                           />
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Mặc định: 1.2s. Khách vào trang web sau 1.2 giây sẽ tự bung poster thông báo.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -6310,7 +6329,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         <div className="flex items-center justify-between pb-3 border-b border-white/10">
                           <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>Mô Phỏng Popup Đón Khách</span>
+                            <span>Mô Phỏng Popup Poster (Đã Bỏ Đặt Lịch)</span>
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {announcementForm.isActive ? '🟢 Sẽ hiển thị' : '⚪ Đang ẩn'}
@@ -6325,7 +6344,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               <span className="w-2 h-2 rounded-full bg-red-400 animate-ping"></span>
                               <span className="text-xs font-bold text-amber-200 truncate max-w-[200px]">
                                 {announcementLangTab === 'vi'
-                                  ? announcementForm.titleVi || 'Thông Báo Lịch Trực Tết'
+                                  ? announcementForm.titleVi || 'Thông Báo Lịch Nghỉ Lễ & Tết'
                                   : announcementForm.titleEn || 'Holiday Schedule'}
                               </span>
                             </div>
@@ -6351,54 +6370,63 @@ function formatDisplayReviewDate(val?: string | null): string {
                             )}
                           </div>
 
-                          {/* Modal Action Footer */}
-                          <div className="p-3 bg-slate-950/80 border-t border-white/5 flex items-center justify-between gap-2">
-                            <button
-                              type="button"
-                              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-xs shadow-md text-center"
-                            >
-                              {announcementLangTab === 'vi'
-                                ? announcementForm.btnTextVi || 'Đặt Lịch Khám Ngay'
-                                : announcementForm.btnTextEn || 'Book Appointment Now'}
-                            </button>
-                            <span className="text-[11px] text-slate-400 px-2 py-1">Đóng</span>
+                          {/* Modal Footer Thanh Lịch (Không có nút Đặt lịch) */}
+                          <div className="py-2.5 px-4 bg-slate-950/95 border-t border-white/10 flex items-center justify-between text-slate-400 text-xs">
+                            <span className="text-[11px] text-slate-400">Chạm vào ảnh để đóng</span>
+                            <span className="px-3 py-1 rounded-lg bg-white/10 text-slate-300 font-medium text-xs">
+                              Đóng
+                            </span>
                           </div>
                         </div>
 
                         <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                          Khi khách bấm nút <strong>&ldquo;✕&rdquo;</strong> hoặc click ra ngoài, popup sẽ biến mất và thu nhỏ thành nút nổi bên dưới!
+                          Poster hiển thị nguyên bản và trực quan, không có nút đặt lịch gây rối mắt.
                         </p>
                       </div>
 
-                      {/* Preview 2: Mô phỏng Huy Hiệu Nổi Góc Màn Hình */}
+                      {/* Preview 2: Mô phỏng Thanh Đóng Mở Ở Góc Trên Bên Phải (Có Thể Kéo) */}
                       <div className="bg-slate-900/95 rounded-2xl p-5 border border-slate-700 text-white shadow-xl space-y-3">
                         <div className="flex items-center justify-between pb-3 border-b border-white/10">
                           <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>Mô Phỏng Huy Hiệu Nổi (Khi Đã Thu Nhỏ)</span>
+                            <span>Mô Phỏng Thanh Nổi Góc Trên Bên Phải</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
+                            Có thể kéo thả • Không tắt
                           </span>
                         </div>
 
                         {/* Miniature Corner Simulation */}
-                        <div className="h-32 bg-slate-800/60 rounded-xl border border-slate-700/60 relative p-4 flex items-end justify-start overflow-hidden">
+                        <div className="h-36 bg-slate-800/60 rounded-xl border border-slate-700/60 relative p-4 flex items-start justify-end overflow-hidden">
                           <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none text-xs text-slate-400">
-                            Giao diện góc màn hình website
+                            Giao diện góc trên bên phải website
                           </div>
 
-                          {/* The Badge */}
-                          <div className="relative z-10 inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-[#B91C1C] via-[#DC2626] to-[#991B1B] text-white shadow-lg border border-amber-300/40 animate-bounce">
-                            <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping"></span>
-                            <span className="text-xs font-bold tracking-wide">
-                              {announcementLangTab === 'vi'
-                                ? announcementForm.badgeTextVi || '🧧 Lịch Trực Tết 2026'
-                                : announcementForm.badgeTextEn || '🧧 Tet Schedule & Offers'}
+                          {/* The Draggable Bar */}
+                          <div
+                            className={`relative z-10 inline-flex items-center gap-2 px-3 py-2 rounded-full text-white font-bold text-xs shadow-2xl border ${
+                              announcementForm.category === 'promotion'
+                                ? 'bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 border-amber-300/60'
+                                : (announcementForm.category === 'custom'
+                                  ? 'bg-gradient-to-r from-[#173014] via-[#2D5A27] to-amber-600 border-amber-300/60'
+                                  : 'bg-gradient-to-r from-red-700 via-rose-600 to-amber-600 border-amber-300/60')
+                            }`}
+                          >
+                            <GripVertical className="w-3.5 h-3.5 text-white/50" />
+                            <span>
+                              {announcementForm.category === 'promotion' ? '🎁' : (announcementForm.category === 'custom' ? '📢' : '🧧')}
                             </span>
-                            <ChevronRight className="w-3.5 h-3.5 text-amber-200" />
+                            <span className="font-extrabold tracking-wide text-xs">
+                              {announcementLangTab === 'vi'
+                                ? (announcementForm.badgeTextVi || '🧧 Lịch Nghỉ Lễ / Tết')
+                                : (announcementForm.badgeTextEn || '🧧 Holiday Schedule')}
+                            </span>
+                            <ChevronDown className="w-3.5 h-3.5 text-amber-200" />
                           </div>
                         </div>
 
                         <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                          Khách hàng chỉ cần chạm vào nút này là poster sẽ lập tức bung mở lại!
+                          Nằm ở góc trên bên phải, khách có thể kéo di chuyển tự do và bấm vào để mở xem poster bất cứ lúc nào (không có nút tắt).
                         </p>
                       </div>
                     </div>

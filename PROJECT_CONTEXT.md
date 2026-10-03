@@ -803,7 +803,7 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
 
 ---
 
-## 26. HỆ THỐNG THÔNG BÁO NỔI & LỊCH TẾT / ƯU ĐÃI (POPUP ĐÓN KHÁCH + HUY HIỆU NỔI - CÁCH 1)
+## 26. HỆ THỐNG THÔNG BÁO NỔI & LỊCH TẾT / ƯU ĐÃI (POPUP ĐÓN KHÁCH + THANH NỔI KÉO THẢ - CÁCH 1)
 - **Tập tin liên quan**:
   - API Cấu hình: [`src/app/api/announcement/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/announcement/route.ts)
   - Component Khách hàng: [`src/components/AnnouncementPopup.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/AnnouncementPopup.tsx)
@@ -811,24 +811,24 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
   - Layout tổng: [`src/app/layout.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/layout.tsx)
 
 ### 1. Cơ Chế Hoạt Động (UX Flow)
-1. **Popup Đón Khách (Welcome Lightbox Modal)**:
-   - Khi khách truy cập website, sau một khoảng trễ tự nhiên (mặc định 1.2 giây), modal thông báo trang trọng bung mở hiển thị ảnh Poster chương trình (Lịch trực Tết, Ưu đãi khai xuân, Tri ân...).
-   - Hỗ trợ đầy đủ song ngữ: Tiếng Việt và English.
-   - Nút hành động (CTA) nổi bật dẫn thẳng đến mục đặt lịch khám (`#booking`) hoặc liên kết tuỳ chỉnh.
-2. **Thu Nhỏ Thành Huy Hiệu Nổi (Minimized Floating Badge)**:
-   - Khi khách tắt popup (bấm nút `✕`, click ngoài nền mờ backdrop, hoặc bấm "Đóng"), modal đóng lại và **ngay lập tức thu nhỏ thành một Huy hiệu nổi (Floating Badge)** ở góc màn hình (ví dụ: `🧧 Lịch Trực Tết 2026` / `🎁 Ưu Đãi HOT`).
-   - Khách có thể chạm vào huy hiệu bất kỳ lúc nào trong quá trình lướt web để mở lại poster chi tiết.
-   - Tránh spam: Trong cùng 1 phiên lướt web (`sessionStorage`), khi khách đã đóng thì lần reload/chuyển trang tiếp theo sẽ không tự động bung popup đập vào mắt nữa mà chỉ hiển thị sẵn Huy hiệu nổi ở góc.
-3. **Bố Cục Chống Trùng Lặp Widget (No Visual Collision)**:
-   - Vị trí huy hiệu nổi được đặt tại `left-3.5 md:left-6 bottom-20 md:bottom-8 z-40`, hoàn toàn tách biệt và không che khuất cụm nút liên hệ nhanh `FloatingContactWidgets` (Zalo, Hotline, Messenger).
-   - Tự động ẩn trên tất cả các trang quản trị `/admin`.
+1. **Popup Poster Tinh Gọn (Không Nút Đặt Lịch)**:
+   - Khi khách truy cập website, sau một khoảng trễ tự nhiên (mặc định 1.2 giây), modal thông báo trang trọng bung mở hiển thị ảnh Poster chương trình (Lịch trực Tết, Lịch nghỉ lễ, Ưu đãi khai xuân...).
+   - **Đã lược bỏ nút Đặt Lịch Khám**: Poster hiển thị nguyên bản, sang trọng, tập trung 100% vào nội dung thông báo. Khách có thể chạm vào ảnh, nút `✕` trên đầu hoặc nút `Đóng` phía dưới để đóng modal.
+2. **Thanh Đóng/Mở Nổi Ở Góc Trên Bên Phải (Draggable Floating Bar)**:
+   - **Vị trí mặc định**: Nằm ở góc trên bên phải màn hình (`top-20 md:top-24 right-3 sm:right-6`, ngay dưới thanh điều hướng), cực kỳ tiện tay bấm.
+   - **Kéo di chuyển tự do (Draggable)**: Khách hàng có thể dùng chuột hoặc ngón tay chạm giữ để kéo thanh nổi đến bất kỳ vị trí nào trên màn hình nếu sợ che mất chữ. Hệ thống tự động giới hạn vùng kéo (clamp) không cho trôi ra ngoài mép màn hình.
+   - **Không tắt được**: Thanh nổi luôn luôn hiện diện (không có nút ✕ xóa hẳn) để khách có thể bấm xem lại poster thông báo bất kỳ lúc nào trong quá trình lướt web.
+   - **Phân biệt Click vs Drag**: Kéo di chuyển > 5px sẽ chỉ dời vị trí thanh nổi; click/chạm nhẹ < 5px sẽ kích hoạt đóng/mở popup poster.
 
 ### 2. Trang Quản Trị Hệ Thống (`/admin` -> Cài Đặt Hệ Thống -> Thông Báo Nổi & Lịch Tết)
-- **Công tắc Bật / Tắt (Active Switch)**: Quản trị viên kích hoạt hoặc tạm dừng hiển thị thông báo bất kỳ lúc nào chỉ bằng 1 cú nhấp.
-- **Trình tải ảnh Poster chuyên dụng (`AdminImageInput`)**: Tải ảnh trực tiếp từ máy, dán ảnh qua clipboard (<kbd>Ctrl + V</kbd>), hoặc điền URL. Lưu trữ tại bucket `hinh_anh/banners/`.
-- **Hỗ trợ Song Ngữ & Dịch AI 1 Chạm**: Tùy chỉnh tiêu đề, chữ trên huy hiệu nổi, nhãn nút bấm cho cả Tiếng Việt và English; có nút AI tự động dịch.
-- **Tùy chỉnh thời gian trễ tự bung**: Cho phép cấu hình số giây chờ trước khi mở modal (mặc định 1.2s).
-- **Mô phỏng trực quan thực tế (Live Preview)**: Xem trước 1:1 cả giao diện Modal Poster và Huy hiệu nổi góc màn hình ngay trong trang quản trị.
+- **Công tắc Bật / Tắt (Active Switch)**: Kích hoạt hoặc tạm dừng hiển thị thông báo.
+- **Droplist Chọn Chủ Đề (Lịch Nghỉ Lễ / Ưu Đãi / Khác)**:
+  - `🧧 Lịch Nghỉ Lễ / Tết`: Tự động áp dụng preset chữ `🧧 Lịch Nghỉ Lễ / Tết` và tiêu đề `Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết`.
+  - `🎁 Chương Trình Ưu Đãi`: Tự động áp dụng preset chữ `🎁 Ưu Đãi Đặc Biệt` và tiêu đề `Chương Trình Ưu Đãi Đặc Biệt`.
+  - `📢 Thông Báo Chung / Khác`: Cho phép tùy biến tự do.
+- **Trình tải ảnh Poster chuyên dụng (`AdminImageInput`)**: Tải ảnh trực tiếp, dán ảnh qua clipboard (<kbd>Ctrl + V</kbd>), hoặc điền URL. Lưu trữ tại bucket `hinh_anh/banners/`.
+- **Hỗ trợ Song Ngữ & Dịch AI 1 Chạm**: Tùy chỉnh tiêu đề và chữ trên thanh nổi cho cả Tiếng Việt và English; có nút AI tự động dịch.
+- **Mô phỏng trực quan thực tế (Live Preview)**: Xem trước 1:1 cả Popup Poster (đã bỏ đặt lịch) và Thanh nổi góc trên bên phải có thể kéo thả.
 
 
 
