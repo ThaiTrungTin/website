@@ -21,11 +21,11 @@ export default function NavDesktopMenu({ variant = 'header', onItemClick }: NavD
 
   const linkClass =
     variant === 'pill'
-      ? 'inline-flex items-center gap-1 text-xs font-semibold text-slate-800 hover:text-[#2D5A27] transition-colors py-1 cursor-pointer'
-      : 'inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-[#2D5A27] transition-colors px-3 py-1.5 rounded-full hover:bg-slate-50 cursor-pointer';
+      ? 'inline-flex items-center gap-1 text-xs font-semibold whitespace-nowrap shrink-0 text-slate-800 hover:text-[#2D5A27] transition-colors py-1 cursor-pointer'
+      : 'inline-flex items-center gap-1 text-xs font-semibold whitespace-nowrap shrink-0 text-slate-700 hover:text-[#2D5A27] transition-colors px-3 py-1.5 rounded-full hover:bg-slate-50 cursor-pointer';
 
   return (
-    <nav className="flex items-center gap-1 sm:gap-2">
+    <nav className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
       {/* 1. VỀ PETM&M (KHÔNG ĐỔ XUỐNG) */}
       <a href="/#about" onClick={onItemClick} className={linkClass}>
         <span>

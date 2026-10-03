@@ -97,9 +97,9 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
           </div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           {/* Brand Logo PetM&M */}
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center shrink-0">
             <PetLogo size="default" />
           </Link>
 
@@ -109,23 +109,9 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
           </div>
 
           {/* Header Actions */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
             {/* Language Switcher */}
             <LanguageSwitcher variant="light" />
-
-            {/* Hotline Button */}
-            <a
-              href={`tel:${hotlineRaw}`}
-              suppressHydrationWarning
-              className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold text-[#2D5A27] bg-emerald-50 hover:bg-emerald-100 transition-all duration-300 border border-emerald-200/80 shadow-sm group"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-              </span>
-              <PhoneCall className="w-3.5 h-3.5 text-[#2D5A27] animate-phone-ring" />
-              <strong suppressHydrationWarning className="text-slate-900 font-black tracking-wide">{hotlineDisplay}</strong>
-            </a>
 
             {/* Booking CTA Button - Fixed width & concise label across languages */}
             <button
