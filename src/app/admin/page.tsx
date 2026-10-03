@@ -6033,14 +6033,8 @@ function formatDisplayReviewDate(val?: string | null): string {
                           </div>
                           <div>
                             <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                              <span>Thông Báo Nổi (Popup &amp; Lịch Nghỉ Tết / Khuyến Mãi)</span>
-                              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                Cách 1: Popup + Huy Hiệu Nổi
-                              </span>
+                              <span>Thông Báo Nổi (Poster)</span>
                             </h2>
-                            <p className="text-xs text-slate-500">
-                              Tự động hiện pop-up đón khách khi truy cập. Khi khách bấm tắt, poster thu nhỏ thành huy hiệu nổi ở góc màn hình để khách mở lại khi cần.
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -6067,17 +6061,12 @@ function formatDisplayReviewDate(val?: string | null): string {
                       </div>
                     </div>
 
-                    {/* Droplist GOM LẠI LÀ 1: Tiêu đề & Chữ trên thanh đóng mở nổi */}
+                    {/* Droplist Chủ đề & Tiêu đề nổi */}
                     <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/90 p-4 rounded-xl border border-slate-200">
-                      <div className="space-y-0.5">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Chủ Đề &amp; Tiêu Đề Nổi (Gom lại làm 1): *</span>
-                        </label>
-                        <p className="text-[11px] text-slate-500">
-                          Chọn chủ đề để áp dụng đồng bộ cho cả tiêu đề thông báo và chữ trên thanh đóng mở nổi.
-                        </p>
-                      </div>
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Chủ Đề &amp; Tiêu Đề:</span>
+                      </label>
 
                       <select
                         value={announcementForm.category || 'holiday'}
@@ -6168,18 +6157,6 @@ function formatDisplayReviewDate(val?: string | null): string {
                       </div>
                     )}
 
-                    {/* Hướng dẫn ngắn & Cơ chế hoạt động */}
-                    <div className="mt-4 p-4 rounded-xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 space-y-1.5">
-                      <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Cơ chế hiển thị thông báo &amp; đóng mở thông minh:</span>
-                      </div>
-                      <ul className="list-disc pl-5 space-y-1 text-amber-900/90 text-[11px] leading-relaxed">
-                        <li><strong>Thanh nổi ở góc trên bên phải:</strong> Mặc định nằm ở góc trên bên phải màn hình (dưới menu), có thể kéo di chuyển tự do và không bị tắt mất.</li>
-                        <li><strong>Ảnh Poster riêng cho 2 ngôn ngữ:</strong> Có thể tải ảnh riêng cho Tiếng Việt và Tiếng Anh. Nếu Tiếng Anh không có ảnh, hệ thống tự lấy ảnh Tiếng Việt.</li>
-                        <li><strong>Đóng chỉ bằng 1 dấu ✕ nhỏ gọn trên ảnh:</strong> Đã bỏ hoàn toàn huy hiệu 5★ và thanh chữ đóng ở dưới, mang lại trải nghiệm poster sạch và đẳng cấp.</li>
-                      </ul>
-                    </div>
                   </div>
 
                   {/* Form 2 cột: Cột trái nhập liệu + Cột phải Live Preview */}
@@ -6248,33 +6225,115 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
                       </div>
 
-                      {/* Cài đặt thời gian trễ tự bung Popup */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-slate-800">
-                            Thời gian trễ tự bung Popup khi khách vừa vào trang (giây):
-                          </label>
-                          <span className="text-xs font-extrabold text-[#2D5A27]">
-                            {announcementForm.autoOpenDelaySeconds ?? 1.2}s
-                          </span>
+                      {/* Cài đặt khoảng thời gian xuất hiện cho Poster */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-[#2D5A27]" />
+                            <span>Khoảng Thời Gian Xuất Hiện Poster</span>
+                          </h3>
+                          {(announcementForm.startDate || announcementForm.endDate) && (
+                            <button
+                              type="button"
+                              onClick={() => setAnnouncementForm((prev) => ({ ...prev, startDate: '', endDate: '' }))}
+                              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                            >
+                              ✕ Xóa giới hạn ngày
+                            </button>
+                          )}
                         </div>
-                        <input
-                          type="number"
-                          min="0.5"
-                          max="10"
-                          step="0.1"
-                          value={announcementForm.autoOpenDelaySeconds ?? 1.2}
-                          onChange={(e) =>
-                            setAnnouncementForm((prev) => ({
-                              ...prev,
-                              autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
-                            }))
-                          }
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-bold"
-                        />
-                        <p className="text-[11px] text-slate-400">
-                          Mặc định: 1.2s. Khách truy cập sau 1.2 giây sẽ tự bung poster đón khách.
-                        </p>
+
+                        {/* Từ ngày - Đến ngày */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Từ ngày (Bắt đầu):
+                            </label>
+                            <input
+                              type="date"
+                              value={announcementForm.startDate ? announcementForm.startDate.slice(0, 10) : ''}
+                              onChange={(e) =>
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  startDate: e.target.value,
+                                }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-slate-50/50"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              Đến ngày (Kết thúc):
+                            </label>
+                            <input
+                              type="date"
+                              value={announcementForm.endDate ? announcementForm.endDate.slice(0, 10) : ''}
+                              onChange={(e) =>
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  endDate: e.target.value,
+                                }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-slate-50/50"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Độ trễ mở & Tự động đóng */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700">
+                                Trễ tự bung Popup:
+                              </label>
+                              <span className="text-xs font-extrabold text-[#2D5A27]">
+                                {announcementForm.autoOpenDelaySeconds ?? 1.2}s
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0.5"
+                              max="10"
+                              step="0.1"
+                              value={announcementForm.autoOpenDelaySeconds ?? 1.2}
+                              onChange={(e) =>
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
+                                }))
+                              }
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700">
+                                Tự động đóng sau:
+                              </label>
+                              <span className="text-xs font-extrabold text-[#2D5A27]">
+                                {announcementForm.autoCloseSeconds ? `${announcementForm.autoCloseSeconds}s` : 'Không tự đóng'}
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              max="60"
+                              step="1"
+                              placeholder="0 = Chỉ đóng khi bấm ✕"
+                              value={announcementForm.autoCloseSeconds ?? ''}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  autoCloseSeconds: !isNaN(val) && val > 0 ? val : undefined,
+                                }));
+                              }}
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -6359,10 +6418,6 @@ function formatDisplayReviewDate(val?: string | null): string {
                             );
                           })()}
                         </div>
-
-                        <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                          ✨ Poster hiển thị sạch đẹp, không 5★, không dòng chữ đóng, chỉ có 1 dấu ✕ nhỏ gọn trên ảnh.
-                        </p>
                       </div>
 
                       {/* Preview 2: Mô phỏng Thanh Đóng Mở Ở Góc Trên Bên Phải (Có Thể Kéo) */}
@@ -6421,10 +6476,6 @@ function formatDisplayReviewDate(val?: string | null): string {
                             );
                           })()}
                         </div>
-
-                        <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                          Nằm ở góc trên bên phải, khách có thể kéo di chuyển tự do và bấm vào để mở xem poster bất cứ lúc nào.
-                        </p>
                       </div>
                     </div>
                   </div>

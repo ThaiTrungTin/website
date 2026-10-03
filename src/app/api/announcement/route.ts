@@ -15,6 +15,9 @@ export interface PopupAnnouncementConfig {
   btnTextVi?: string;
   btnTextEn?: string;
   autoOpenDelaySeconds?: number;
+  startDate?: string;
+  endDate?: string;
+  autoCloseSeconds?: number;
   updatedAt?: string;
 }
 
@@ -31,6 +34,9 @@ export const DEFAULT_ANNOUNCEMENT: PopupAnnouncementConfig = {
   btnTextVi: '',
   btnTextEn: '',
   autoOpenDelaySeconds: 1.2,
+  startDate: '',
+  endDate: '',
+  autoCloseSeconds: undefined,
 };
 
 // 1. GET: Lấy cấu hình thông báo popup cho cả khách xem và trang admin
@@ -97,6 +103,9 @@ export async function POST(req: NextRequest) {
       btnTextVi: (body.btnTextVi || '').trim(),
       btnTextEn: (body.btnTextEn || '').trim(),
       autoOpenDelaySeconds: typeof body.autoOpenDelaySeconds === 'number' ? body.autoOpenDelaySeconds : 1.2,
+      startDate: (body.startDate || '').trim(),
+      endDate: (body.endDate || '').trim(),
+      autoCloseSeconds: typeof body.autoCloseSeconds === 'number' && body.autoCloseSeconds > 0 ? body.autoCloseSeconds : undefined,
       updatedAt: new Date().toISOString(),
     };
 

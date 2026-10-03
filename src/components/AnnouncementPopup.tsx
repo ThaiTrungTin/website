@@ -39,6 +39,17 @@ export default function AnnouncementPopup() {
         if (isMounted && json.success && json.data) {
           setAnnouncement(json.data);
 
+          // Kiểm tra khoảng thời gian xuất hiện (nếu có cấu hình)
+          const now = Date.now();
+          if (json.data.startDate) {
+            const start = new Date(json.data.startDate).getTime();
+            if (!isNaN(start) && now < start) return;
+          }
+          if (json.data.endDate) {
+            const end = new Date(json.data.endDate).getTime();
+            if (!isNaN(end) && now > end) return;
+          }
+
           if (json.data.isActive && json.data.imageUrl) {
             setIsBadgeVisible(true);
 
@@ -63,6 +74,15 @@ export default function AnnouncementPopup() {
     loadAnnouncement();
     return () => { isMounted = false; };
   }, []);
+
+  // Tự động đóng popup sau X giây (nếu có cấu hình)
+  useEffect(() => {
+    if (!isOpen || !announcement.autoCloseSeconds || announcement.autoCloseSeconds <= 0) return;
+    const timer = setTimeout(() => {
+      setIsOpen(false);
+    }, announcement.autoCloseSeconds * 1000);
+    return () => clearTimeout(timer);
+  }, [isOpen, announcement.autoCloseSeconds]);
 
   // 2. Đóng popup poster
   const handleDismissPopup = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
@@ -148,6 +168,17 @@ export default function AnnouncementPopup() {
 
   // Không hiển thị nếu chưa kích hoạt hoặc chưa có ảnh
   if (!announcement.isActive || !announcement.imageUrl) return null;
+
+  // Không hiển thị nếu ngoài khoảng thời gian xuất hiện đã cài đặt
+  const nowTime = Date.now();
+  if (announcement.startDate) {
+    const start = new Date(announcement.startDate).getTime();
+    if (!isNaN(start) && nowTime < start) return null;
+  }
+  if (announcement.endDate) {
+    const end = new Date(announcement.endDate).getTime();
+    if (!isNaN(end) && nowTime > end) return null;
+  }
 
   const currentImage = (isEn && announcement.imageUrlEn?.trim())
     ? announcement.imageUrlEn.trim()
