@@ -831,22 +831,16 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
      - *Giải pháp*: Áp dụng time guard `Date.now() - lastOpenTimeRef.current < 450ms` trên `handleBackdropClick` cùng `e.stopPropagation()` trên cả thanh nổi và backdrop. Nhờ đó, thao tác tap mở lại poster trên điện thoại hoạt động trơn tru 100%, không bị chớp tắt.
 
 ### 2. Trang Quản Trị Hệ Thống (`/admin` → Cài Đặt Hệ Thống → Thông Báo Nổi & Lịch Tết)
-- **Giao diện tối giản, sạch đẹp (Đã loại bỏ toàn bộ chú thích dài dòng rườm rà)**:
-  - Bỏ dải ribbon phụ, bỏ đoạn mô tả cơ chế dài dòng, bỏ ghi chú giải thích bên dưới các bản xem trước preview.
-- **Công tắc Bật / Tắt (Active Switch)**: Kích hoạt hoặc tạm dừng hiển thị thông báo.
-- **Droplist Chủ Đề & Tiêu Đề**:
-  - `🧧 Lịch Nghỉ Lễ`: preset VI = `🧧 Lịch Nghỉ Lễ` / EN = `🧧 Holiday Schedule`.
-  - `🎁 Ưu Đãi`: preset VI = `🎁 Ưu Đãi` / EN = `🎁 Special Offers`.
-  - `🔔 Tùy Chỉnh (Tự nhập chữ / Tự động dùng Chuông Rung)`: Hiện 2 ô nhập chữ VI + EN tùy biến tự do. Nếu người dùng không nhập emoji, hệ thống tự hiển thị icon Cái Chuông rung.
-- **Ảnh Poster — Chèn Riêng Cho Cả 2 Ngôn Ngữ**:
-  - **Ảnh 1 — Tiếng Việt (Bắt buộc)**: `announcementForm.imageUrl` — ảnh chính/mặc định.
-  - **Ảnh 2 — Tiếng Anh (Tùy chọn)**: `announcementForm.imageUrlEn` — nếu bỏ trống, frontend tự fallback về ảnh Tiếng Việt.
-- **Cài Đặt Khoảng Thời Gian Xuất Hiện Cho Poster (Mới bổ sung)**:
-  - **Từ ngày (Bắt đầu) & Đến ngày (Kết thúc)**: Chọn khoảng ngày chiến dịch áp dụng. Quá hạn hoặc chưa đến ngày, poster sẽ tự ẩn (để trống = không giới hạn). Có nút "✕ Xóa giới hạn ngày".
-  - **Thời gian trễ tự bung Popup (giây)**: Mặc định 1.2s khi khách vào web.
-  - **Tự động đóng Popup sau (giây)**: Tùy chọn (0 hoặc để trống = chỉ đóng khi khách bấm ✕ hoặc click ngoài).
-- **Live Preview Đồng Bộ**:
-  - Thanh nổi preview trong admin mô phỏng đúng chuẩn capsule nhỏ gọn, 1 icon rung (hoặc chuông rung), chữ mảnh mai và mũi tên chevron.
+- **Gom toàn bộ cấu hình chính về CHUNG 1 Ô (Card duy nhất phía trên)**:
+  1. **Thông Báo Nổi (Poster)**: Header + Công tắc BẬT / TẮT trạng thái.
+  2. **Chủ Đề & Tiêu Đề**: Droplist chọn `🧧 Lịch Nghỉ Lễ`, `🎁 Ưu Đãi`, hoặc `🔔 Tùy Chỉnh` (hỗ trợ nhập chữ VI/EN, tự động chuyển icon chuông rung nếu không có emoji).
+  3. **Khoảng Thời Gian Xuất Hiện Poster**:
+     - *Từ ngày (Bắt đầu) & Đến ngày (Kết thúc)*: Chọn khoảng ngày chiến dịch áp dụng. Quá hạn hoặc chưa đến ngày, poster sẽ tự ẩn (để trống = không giới hạn). Có nút "✕ Xóa giới hạn ngày".
+     - *Trễ tự bung*: Điều chỉnh số giây chờ trước khi tự bung popup (mặc định 1.2s).
+     - *Tự đóng sau*: Tùy chọn số giây tự đóng (để trống hoặc 0 = chỉ đóng khi khách chạm ✕).
+- **Phía dưới phân chia 2 cột gọn gàng**:
+  - **Cột trái**: *Ảnh Poster Thông Báo* (chèn ảnh riêng biệt cho Tiếng Việt & Tiếng Anh, tự fallback về VI).
+  - **Cột phải**: *Live Preview Trực Quan* (xem trước Modal Poster và Thanh capsule nổi kéo thả).
 
 ### 3. Interface Data Model (`PopupAnnouncementConfig`)
 ```ts
