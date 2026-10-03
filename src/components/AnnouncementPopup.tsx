@@ -140,24 +140,14 @@ export default function AnnouncementPopup() {
   const category = announcement.category || 'holiday';
 
   const defaultBadgeText = category === 'promotion'
-    ? (isEn ? '🎁 Special Offers' : '🎁 Ưu Đãi Đặc Biệt')
+    ? (isEn ? '🎁 Special Offers' : '🎁 Ưu Đãi')
     : (category === 'custom'
       ? (isEn ? '📢 Notice' : '📢 Thông Báo')
-      : (isEn ? '🧧 Holiday Schedule' : '🧧 Lịch Nghỉ Lễ / Tết'));
+      : (isEn ? '🧧 Holiday Schedule' : '🧧 Lịch Nghỉ Lễ'));
 
   const currentBadgeText = isEn
-    ? (announcement.badgeTextEn?.trim() || announcement.badgeTextVi || defaultBadgeText)
-    : (announcement.badgeTextVi?.trim() || defaultBadgeText);
-
-  const defaultTitle = category === 'promotion'
-    ? (isEn ? 'Special Offers & Promotions' : 'Chương Trình Ưu Đãi Đặc Biệt')
-    : (category === 'custom'
-      ? (isEn ? 'Official Announcement' : 'Thông Báo Chính Thức')
-      : (isEn ? 'Holiday Schedule & Duty Notice' : 'Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết'));
-
-  const currentTitle = isEn
-    ? (announcement.titleEn?.trim() || announcement.titleVi || defaultTitle)
-    : (announcement.titleVi?.trim() || defaultTitle);
+    ? (announcement.badgeTextEn?.trim() || announcement.titleEn?.trim() || defaultBadgeText)
+    : (announcement.badgeTextVi?.trim() || announcement.titleVi?.trim() || defaultBadgeText);
 
   // Giao diện màu sắc theo chủ đề
   const badgeThemeClasses = category === 'promotion'
@@ -173,70 +163,36 @@ export default function AnnouncementPopup() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={currentTitle}
+          aria-label={currentBadgeText}
           className="fixed inset-0 z-[9998] flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-300"
         >
-          {/* Backdrop tối mờ sang trọng */}
+          {/* Backdrop tối mờ sang trọng - bấm ra ngoài để đóng */}
           <div
             onClick={handleDismissPopup}
             className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity cursor-pointer"
           />
 
-          {/* Khung nội dung Poster */}
+          {/* Khung nội dung Poster (Tối giản, sang trọng, tập trung 100% vào poster) */}
           <div className="relative z-10 w-full max-w-[420px] sm:max-w-[480px] md:max-w-[540px] my-auto animate-in zoom-in-95 duration-300">
-            {/* Nút đóng (✕) lớn, chuẩn tay bấm */}
-            <button
-              type="button"
-              onClick={handleDismissPopup}
-              aria-label={isEn ? 'Close announcement' : 'Đóng thông báo'}
-              className="absolute -top-3.5 -right-3.5 sm:-top-4 sm:-right-4 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-900/95 hover:bg-rose-600 text-white border-2 border-white/80 shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer focus:outline-none"
-              title={isEn ? 'Close notice' : 'Đóng thông báo'}
-            >
-              <X className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
+            {/* Thẻ chứa ảnh Poster: Bỏ 5★, bỏ footer đóng, chỉ để 1 dấu ✕ nhỏ gọn nằm trên ảnh */}
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-[0_20px_70px_-10px_rgba(0,0,0,0.95)] flex items-center justify-center group/card bg-transparent">
+              <img
+                src={currentImage}
+                alt={currentBadgeText}
+                className="w-full h-auto max-h-[85vh] object-contain rounded-2xl sm:rounded-3xl shadow-2xl"
+                loading="eager"
+              />
 
-            {/* Thẻ chứa ảnh Poster */}
-            <div className="overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-950 border-2 border-amber-400/40 shadow-[0_15px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(251,191,36,0.25)] flex flex-col group/card">
-              {/* Header dải băng tiêu đề nhỏ */}
-              <div className="px-4 py-2.5 bg-gradient-to-r from-amber-600 via-rose-700 to-red-700 text-white flex items-center justify-between gap-2 border-b border-white/15">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="flex h-2 w-2 rounded-full bg-amber-300 animate-ping" />
-                  <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide truncate drop-shadow-sm">
-                    {currentTitle}
-                  </h3>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/25 text-amber-200 shrink-0 border border-white/20">
-                  PetM&M 5★
-                </span>
-              </div>
-
-              {/* Tấm ảnh Poster (ĐÃ BỎ NÚT ĐẶT LỊCH THEO YÊU CẦU CỦA USER) */}
-              <div
+              {/* Dấu ✕ nhỏ gọn nằm trực tiếp trên ảnh (Góc trên bên phải) */}
+              <button
+                type="button"
                 onClick={handleDismissPopup}
-                className="relative w-full max-h-[72vh] sm:max-h-[78vh] bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center"
-                title={isEn ? 'Click to close' : 'Bấm vào ảnh hoặc nền để đóng'}
+                aria-label={isEn ? 'Close' : 'Đóng'}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/60 hover:bg-black/90 active:scale-95 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-lg transition-all duration-200 cursor-pointer focus:outline-none"
+                title={isEn ? 'Close' : 'Đóng'}
               >
-                <img
-                  src={currentImage}
-                  alt={currentTitle}
-                  className="w-full h-auto max-h-[72vh] sm:max-h-[78vh] object-contain transition-transform duration-500 group-hover/card:scale-[1.01]"
-                  loading="eager"
-                />
-              </div>
-
-              {/* Footer thanh lịch, tối giản (không có nút Đặt lịch) */}
-              <div className="py-2.5 px-4 bg-slate-950/95 border-t border-white/10 flex items-center justify-between text-slate-400 text-xs">
-                <span className="text-[11px] text-slate-400">
-                  {isEn ? 'Tap anywhere or ✕ to close' : 'Chạm vào ảnh hoặc nút ✕ để đóng'}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleDismissPopup}
-                  className="px-3.5 py-1 rounded-lg bg-white/10 hover:bg-rose-600/80 hover:text-white text-slate-200 font-semibold text-xs transition cursor-pointer"
-                >
-                  {isEn ? 'Close' : 'Đóng'}
-                </button>
-              </div>
+                <X className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+              </button>
             </div>
           </div>
         </div>

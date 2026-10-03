@@ -21,9 +21,9 @@ export interface PopupAnnouncementConfig {
 export const DEFAULT_ANNOUNCEMENT: PopupAnnouncementConfig = {
   isActive: false,
   category: 'holiday',
-  titleVi: 'Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết',
-  titleEn: 'Holiday Schedule & Duty Notice',
-  badgeTextVi: '🧧 Lịch Nghỉ Lễ / Tết',
+  titleVi: '🧧 Lịch Nghỉ Lễ',
+  titleEn: '🧧 Holiday Schedule',
+  badgeTextVi: '🧧 Lịch Nghỉ Lễ',
   badgeTextEn: '🧧 Holiday Schedule',
   imageUrl: '',
   imageUrlEn: '',

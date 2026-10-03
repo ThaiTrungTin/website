@@ -6066,15 +6066,15 @@ function formatDisplayReviewDate(val?: string | null): string {
                       </div>
                     </div>
 
-                    {/* Droplist chọn Chủ đề / Loại thông báo */}
-                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
+                    {/* Droplist GOM LẠI LÀ 1: Tiêu đề & Chữ trên thanh đóng mở nổi */}
+                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/90 p-4 rounded-xl border border-slate-200">
                       <div className="space-y-0.5">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Chủ Đề Thông Báo (Droplist):</span>
+                          <span>Chủ Đề &amp; Tiêu Đề Nổi (Gom lại làm 1): *</span>
                         </label>
                         <p className="text-[11px] text-slate-500">
-                          Chọn chủ đề để hệ thống tự động gán biểu tượng và câu chữ mẫu cho thanh đóng mở.
+                          Chọn chủ đề để áp dụng đồng bộ cho cả tiêu đề thông báo và chữ trên thanh đóng mở nổi.
                         </p>
                       </div>
 
@@ -6086,239 +6086,194 @@ function formatDisplayReviewDate(val?: string | null): string {
                             if (cat === 'holiday') {
                               return {
                                 ...prev,
-                                category: cat,
-                                badgeTextVi: '🧧 Lịch Nghỉ Lễ / Tết',
+                                category: 'holiday',
+                                badgeTextVi: '🧧 Lịch Nghỉ Lễ',
                                 badgeTextEn: '🧧 Holiday Schedule',
-                                titleVi: 'Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết',
-                                titleEn: 'Holiday Schedule & Tet Duty Notice',
+                                titleVi: '🧧 Lịch Nghỉ Lễ',
+                                titleEn: '🧧 Holiday Schedule',
                               };
                             } else if (cat === 'promotion') {
                               return {
                                 ...prev,
-                                category: cat,
-                                badgeTextVi: '🎁 Ưu Đãi Đặc Biệt',
+                                category: 'promotion',
+                                badgeTextVi: '🎁 Ưu Đãi',
                                 badgeTextEn: '🎁 Special Offers',
-                                titleVi: 'Chương Trình Ưu Đãi Đặc Biệt',
-                                titleEn: 'Special Offers & Promotions',
+                                titleVi: '🎁 Ưu Đãi',
+                                titleEn: '🎁 Special Offers',
                               };
                             } else {
                               return {
                                 ...prev,
-                                category: cat,
-                                badgeTextVi: '📢 Thông Báo Quan Trọng',
-                                badgeTextEn: '📢 Special Notice',
-                                titleVi: 'Thông Báo Chính Thức',
-                                titleEn: 'Official Announcement',
+                                category: 'custom',
+                                badgeTextVi: prev.badgeTextVi || '📢 Thông Báo',
+                                badgeTextEn: prev.badgeTextEn || '📢 Notice',
+                                titleVi: prev.titleVi || '📢 Thông Báo',
+                                titleEn: prev.titleEn || '📢 Notice',
                               };
                             }
                           });
                         }}
-                        className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[220px]"
+                        className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[240px]"
                       >
-                        <option value="holiday">🧧 Lịch Nghỉ Lễ / Tết</option>
-                        <option value="promotion">🎁 Chương Trình Ưu Đãi</option>
-                        <option value="custom">📢 Thông Báo Chung / Khác</option>
+                        <option value="holiday">🧧 Lịch Nghỉ Lễ</option>
+                        <option value="promotion">🎁 Ưu Đãi</option>
+                        <option value="custom">✍️ Tùy Chỉnh Khác...</option>
                       </select>
                     </div>
+
+                    {/* Nếu chọn Tùy chỉnh khác: Cho phép nhập chữ tùy biến */}
+                    {announcementForm.category === 'custom' && (
+                      <div className="mt-3 p-4 bg-amber-50/60 rounded-xl border border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                            <span>Chữ Hiển Thị Tiếng Việt:</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={announcementForm.badgeTextVi || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                badgeTextVi: val,
+                                titleVi: val,
+                              }));
+                            }}
+                            placeholder="VD: 📢 Thông Báo Tuyển Dụng"
+                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                            <span>Chữ Hiển Thị Tiếng Anh (English):</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={announcementForm.badgeTextEn || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                badgeTextEn: val,
+                                titleEn: val,
+                              }));
+                            }}
+                            placeholder="VD: 📢 Special Notice"
+                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Hướng dẫn ngắn & Cơ chế hoạt động */}
                     <div className="mt-4 p-4 rounded-xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 space-y-1.5">
                       <div className="font-bold flex items-center gap-1.5 text-amber-800">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Cơ chế thanh đóng mở ưu đãi thông minh (Cập nhật):</span>
+                        <span>Cơ chế hiển thị thông báo &amp; đóng mở thông minh:</span>
                       </div>
                       <ul className="list-disc pl-5 space-y-1 text-amber-900/90 text-[11px] leading-relaxed">
-                        <li><strong>Thanh nổi ở góc trên bên phải:</strong> Mặc định thanh mở ưu đãi nằm ở góc trên bên phải màn hình (dưới menu).</li>
-                        <li><strong>Có thể kéo di chuyển tự do:</strong> Khách hàng hoặc người xem có thể kéo thanh nổi đến bất kỳ vị trí nào trên màn hình để không che nội dung.</li>
-                        <li><strong>Không tắt được:</strong> Thanh nổi luôn hiển thị để khách có thể bấm xem lại poster bất cứ lúc nào (không có nút ✕ xóa mất thanh).</li>
-                        <li><strong>Đã bỏ nút Đặt Lịch Khám:</strong> Ảnh poster hiển thị nguyên bản, sang trọng và tập trung 100% vào nội dung thông báo.</li>
+                        <li><strong>Thanh nổi ở góc trên bên phải:</strong> Mặc định nằm ở góc trên bên phải màn hình (dưới menu), có thể kéo di chuyển tự do và không bị tắt mất.</li>
+                        <li><strong>Ảnh Poster riêng cho 2 ngôn ngữ:</strong> Có thể tải ảnh riêng cho Tiếng Việt và Tiếng Anh. Nếu Tiếng Anh không có ảnh, hệ thống tự lấy ảnh Tiếng Việt.</li>
+                        <li><strong>Đóng chỉ bằng 1 dấu ✕ nhỏ gọn trên ảnh:</strong> Đã bỏ hoàn toàn huy hiệu 5★ và thanh chữ đóng ở dưới, mang lại trải nghiệm poster sạch và đẳng cấp.</li>
                       </ul>
                     </div>
-                  </div>
-
-                  {/* Thanh chuyển đổi ngôn ngữ & Dịch AI */}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="inline-flex p-1 bg-white border border-slate-200 rounded-xl shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => setAnnouncementLangTab('vi')}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          announcementLangTab === 'vi'
-                            ? 'bg-[#2D5A27] text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                        }`}
-                      >
-                        <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                        <span>Tiếng Việt</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAnnouncementLangTab('en')}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          announcementLangTab === 'en'
-                            ? 'bg-[#2D5A27] text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                        }`}
-                      >
-                        <UKFlag className="w-4 h-3 rounded-[2px]" />
-                        <span>Tiếng Anh (English)</span>
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleAutoTranslateAnnouncement}
-                      disabled={isTranslatingAnnouncement}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition cursor-pointer disabled:opacity-50"
-                    >
-                      {isTranslatingAnnouncement ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-3.5 h-3.5" />
-                      )}
-                      <span>{isTranslatingAnnouncement ? 'Đang dịch AI...' : 'Tự Động Dịch Sang ENG (AI)'}</span>
-                    </button>
                   </div>
 
                   {/* Form 2 cột: Cột trái nhập liệu + Cột phải Live Preview */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     {/* Cột trái: Nhập liệu */}
                     <div className="lg:col-span-7 space-y-5">
-                      {/* Ảnh Poster */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                      {/* Ảnh Poster Thông Báo (Chèn cả Tiếng Việt & Tiếng Anh) */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                          <label className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                            <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
-                            <span>
-                              {announcementLangTab === 'vi'
-                                ? 'Ảnh Poster Thông Báo (Tiếng Việt): *'
-                                : 'Ảnh Poster Thông Báo (Tiếng Anh - Tùy chọn):'}
-                            </span>
-                          </label>
-                          <span className="text-[10px] text-slate-400">JPG, PNG, WEBP</span>
+                          <div className="space-y-0.5">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                              <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
+                              <span>Ảnh Poster Thông Báo (Tiếng Việt &amp; Tiếng Anh)</span>
+                            </h3>
+                            <p className="text-[11px] text-slate-500">
+                              Hỗ trợ chèn poster riêng cho từng ngôn ngữ. Khuyên dùng ảnh khổ đứng (3:4 hoặc 4:5 hoặc 1:1).
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium">JPG, PNG, WEBP</span>
                         </div>
 
-                        <AdminImageInput
-                          label=""
-                          folder="banners"
-                          value={announcementLangTab === 'vi' ? announcementForm.imageUrl : (announcementForm.imageUrlEn || '')}
-                          onChange={(url) => {
-                            if (announcementLangTab === 'vi') {
-                              setAnnouncementForm((prev) => ({ ...prev, imageUrl: url }));
-                            } else {
-                              setAnnouncementForm((prev) => ({ ...prev, imageUrlEn: url }));
-                            }
-                          }}
-                        />
-
-                        <p className="text-[11px] text-slate-500 leading-relaxed">
-                          💡 <strong>Mẹo:</strong> Khuyên dùng ảnh khổ đứng (tỷ lệ 3:4 hoặc 4:5 hoặc 1:1) để khi hiển thị lên điện thoại không bị tràn màn hình. Có thể tải ảnh lên từ máy tính hoặc bấm <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px]">Ctrl + V</kbd> dán trực tiếp.
-                        </p>
-                      </div>
-
-                      {/* Tiêu đề & Chữ trên thanh nổi */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100">
-                          Nội Dung &amp; Văn Bản Hiển Thị
-                        </h3>
-
-                        {announcementLangTab === 'vi' ? (
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                                <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                                <span>Tiêu đề thông báo (Hiển thị đầu modal):</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={announcementForm.titleVi || ''}
-                                onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, titleVi: e.target.value }))}
-                                placeholder="Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                                <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                                <span>Chữ trên thanh đóng mở nổi ở góc trên (Draggable Bar Text): *</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={announcementForm.badgeTextVi || ''}
-                                onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, badgeTextVi: e.target.value }))}
-                                placeholder="🧧 Lịch Nghỉ Lễ / Tết hoặc 🎁 Ưu Đãi Đặc Biệt"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                              />
-                              <p className="text-[11px] text-slate-500 mt-1">
-                                Dòng chữ hiển thị trên thanh nổi ở góc trên bên phải màn hình (khách có thể kéo thả di chuyển tự do).
-                              </p>
-                            </div>
+                        {/* 1. Ảnh Poster Tiếng Việt (Bắt buộc / Mặc định) */}
+                        <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                              <span>1. Ảnh Poster Tiếng Việt (Bắt buộc): *</span>
+                            </label>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              Ảnh chính / Mặc định
+                            </span>
                           </div>
-                        ) : (
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                                <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                                <span>Tiêu đề thông báo (Tiếng Anh):</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={announcementForm.titleEn || ''}
-                                onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, titleEn: e.target.value }))}
-                                placeholder="Holiday Schedule & Tet Duty Notice"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                              />
-                            </div>
+                          <AdminImageInput
+                            label=""
+                            folder="banners"
+                            value={announcementForm.imageUrl}
+                            onChange={(url) => setAnnouncementForm((prev) => ({ ...prev, imageUrl: url }))}
+                          />
+                          <p className="text-[11px] text-slate-500">
+                            Hiển thị khi khách xem website Tiếng Việt. <strong>Nếu Tiếng Anh không tải ảnh riêng, hệ thống sẽ tự động dùng ảnh Tiếng Việt này.</strong>
+                          </p>
+                        </div>
 
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                                <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                                <span>Chữ trên thanh đóng mở nổi (Tiếng Anh):</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={announcementForm.badgeTextEn || ''}
-                                onChange={(e) => setAnnouncementForm((prev) => ({ ...prev, badgeTextEn: e.target.value }))}
-                                placeholder="🧧 Holiday Schedule hoặc 🎁 Special Offers"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                              />
-                            </div>
+                        {/* 2. Ảnh Poster Tiếng Anh (Tùy chọn) */}
+                        <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <UKFlag className="w-4 h-3 rounded-[2px]" />
+                              <span>2. Ảnh Poster Tiếng Anh (Tùy chọn - English Poster):</span>
+                            </label>
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                              {announcementForm.imageUrlEn?.trim() ? '✅ Có ảnh tiếng Anh riêng' : 'Tự lấy ảnh Tiếng Việt'}
+                            </span>
                           </div>
-                        )}
+                          <AdminImageInput
+                            label=""
+                            folder="banners"
+                            value={announcementForm.imageUrlEn || ''}
+                            onChange={(url) => setAnnouncementForm((prev) => ({ ...prev, imageUrlEn: url }))}
+                          />
+                          <p className="text-[11px] text-slate-500">
+                            {announcementForm.imageUrlEn?.trim()
+                              ? 'Khách xem giao diện Tiếng Anh sẽ nhìn thấy ảnh poster riêng này.'
+                              : '💡 Chưa tải ảnh tiếng Anh — Hệ thống sẽ tự động hiển thị ảnh Tiếng Việt ở trên cho khách nước ngoài.'}
+                          </p>
+                        </div>
                       </div>
 
                       {/* Cài đặt thời gian trễ tự bung Popup */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-3">
-                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center justify-between">
-                          <span>Thời Gian Trễ Tự Bung Popup</span>
-                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                            Đã bỏ nút Đặt lịch trên Poster
-                          </span>
-                        </h3>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800">
                             Thời gian trễ tự bung Popup khi khách vừa vào trang (giây):
                           </label>
-                          <input
-                            type="number"
-                            min="0.5"
-                            max="10"
-                            step="0.1"
-                            value={announcementForm.autoOpenDelaySeconds ?? 1.2}
-                            onChange={(e) =>
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
-                              }))
-                            }
-                            className="w-full max-w-xs text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-bold"
-                          />
-                          <p className="text-[11px] text-slate-400 mt-1">
-                            Mặc định: 1.2s. Khách vào trang web sau 1.2 giây sẽ tự bung poster thông báo.
-                          </p>
+                          <span className="text-xs font-extrabold text-[#2D5A27]">
+                            {announcementForm.autoOpenDelaySeconds ?? 1.2}s
+                          </span>
                         </div>
+                        <input
+                          type="number"
+                          min="0.5"
+                          max="10"
+                          step="0.1"
+                          value={announcementForm.autoOpenDelaySeconds ?? 1.2}
+                          onChange={(e) =>
+                            setAnnouncementForm((prev) => ({
+                              ...prev,
+                              autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
+                            }))
+                          }
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-bold"
+                        />
+                        <p className="text-[11px] text-slate-400">
+                          Mặc định: 1.2s. Khách truy cập sau 1.2 giây sẽ tự bung poster đón khách.
+                        </p>
                       </div>
                     </div>
 
@@ -6329,58 +6284,83 @@ function formatDisplayReviewDate(val?: string | null): string {
                         <div className="flex items-center justify-between pb-3 border-b border-white/10">
                           <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>Mô Phỏng Popup Poster (Đã Bỏ Đặt Lịch)</span>
+                            <span>Mô Phỏng Popup Poster</span>
                           </span>
-                          <span className="text-[10px] text-slate-400">
-                            {announcementForm.isActive ? '🟢 Sẽ hiển thị' : '⚪ Đang ẩn'}
-                          </span>
+
+                          {/* Bộ chuyển đổi xem trước VI / EN */}
+                          <div className="inline-flex p-0.5 bg-slate-800 rounded-lg border border-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => setAnnouncementLangTab('vi')}
+                              className={`px-2.5 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
+                                announcementLangTab === 'vi'
+                                  ? 'bg-[#2D5A27] text-white shadow-xs'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              🇻🇳 VI
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAnnouncementLangTab('en')}
+                              className={`px-2.5 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
+                                announcementLangTab === 'en'
+                                  ? 'bg-[#2D5A27] text-white shadow-xs'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              🇬🇧 EN
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Modal Mockup Box */}
-                        <div className="bg-slate-900 border border-amber-500/30 rounded-2xl overflow-hidden shadow-2xl">
-                          {/* Modal Header */}
-                          <div className="bg-gradient-to-r from-[#173014] via-[#2D5A27] to-[#173014] px-4 py-2.5 flex items-center justify-between border-b border-amber-500/20">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-red-400 animate-ping"></span>
-                              <span className="text-xs font-bold text-amber-200 truncate max-w-[200px]">
-                                {announcementLangTab === 'vi'
-                                  ? announcementForm.titleVi || 'Thông Báo Lịch Nghỉ Lễ & Tết'
-                                  : announcementForm.titleEn || 'Holiday Schedule'}
-                              </span>
-                            </div>
-                            <span className="w-6 h-6 rounded-full bg-white/10 text-white/70 flex items-center justify-center text-xs">
-                              ✕
-                            </span>
-                          </div>
+                        {/* Modal Mockup Box: Không có dải 5★, không có footer, chỉ 1 dấu ✕ nhỏ gọn trên ảnh */}
+                        <div className="relative bg-black/60 border border-white/15 rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center p-2 min-h-[220px]">
+                          {(() => {
+                            const isEnPreview = announcementLangTab === 'en';
+                            const previewImg = isEnPreview
+                              ? (announcementForm.imageUrlEn?.trim() || announcementForm.imageUrl?.trim())
+                              : announcementForm.imageUrl?.trim();
+                            const isUsingFallback = isEnPreview && !announcementForm.imageUrlEn?.trim() && Boolean(announcementForm.imageUrl?.trim());
 
-                          {/* Modal Poster Image */}
-                          <div className="relative bg-black/60 min-h-[220px] max-h-[300px] flex items-center justify-center overflow-hidden">
-                            {(announcementLangTab === 'vi' ? announcementForm.imageUrl : (announcementForm.imageUrlEn || announcementForm.imageUrl)) ? (
-                              <img
-                                src={announcementLangTab === 'vi' ? announcementForm.imageUrl : (announcementForm.imageUrlEn || announcementForm.imageUrl)}
-                                alt="Poster Preview"
-                                className="w-full h-auto max-h-[300px] object-contain"
-                              />
-                            ) : (
+                            if (previewImg) {
+                              return (
+                                <div className="relative w-full flex items-center justify-center">
+                                  <img
+                                    src={previewImg}
+                                    alt="Poster Preview"
+                                    className="w-full h-auto max-h-[340px] object-contain rounded-xl shadow-lg"
+                                  />
+
+                                  {/* Dấu ✕ nhỏ gọn nằm trực tiếp trên ảnh */}
+                                  <div
+                                    className="absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-lg text-xs font-bold cursor-pointer"
+                                    title="Dấu ✕ nhỏ gọn đóng poster"
+                                  >
+                                    ✕
+                                  </div>
+
+                                  {isUsingFallback && (
+                                    <div className="absolute bottom-2 left-2 z-20 text-[10px] bg-amber-950/80 text-amber-200 border border-amber-600/60 px-2 py-0.5 rounded-md backdrop-blur-xs font-medium">
+                                      💡 Đang dùng ảnh Tiếng Việt dự phòng
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            return (
                               <div className="p-8 text-center space-y-2">
                                 <ImageIcon className="w-10 h-10 text-slate-500 mx-auto" />
-                                <p className="text-xs text-slate-400 font-medium">Chưa chọn ảnh poster</p>
+                                <p className="text-xs text-slate-400 font-medium">Chưa có ảnh poster</p>
                                 <p className="text-[10px] text-slate-500">Tải ảnh hoặc dán link ảnh ở cột bên trái</p>
                               </div>
-                            )}
-                          </div>
-
-                          {/* Modal Footer Thanh Lịch (Không có nút Đặt lịch) */}
-                          <div className="py-2.5 px-4 bg-slate-950/95 border-t border-white/10 flex items-center justify-between text-slate-400 text-xs">
-                            <span className="text-[11px] text-slate-400">Chạm vào ảnh để đóng</span>
-                            <span className="px-3 py-1 rounded-lg bg-white/10 text-slate-300 font-medium text-xs">
-                              Đóng
-                            </span>
-                          </div>
+                            );
+                          })()}
                         </div>
 
                         <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                          Poster hiển thị nguyên bản và trực quan, không có nút đặt lịch gây rối mắt.
+                          ✨ Poster hiển thị sạch đẹp, không 5★, không dòng chữ đóng, chỉ có 1 dấu ✕ nhỏ gọn trên ảnh.
                         </p>
                       </div>
 
@@ -6389,7 +6369,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         <div className="flex items-center justify-between pb-3 border-b border-white/10">
                           <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>Mô Phỏng Thanh Nổi Góc Trên Bên Phải</span>
+                            <span>Mô Phỏng Thanh Nổi Góc Trên</span>
                           </span>
                           <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
                             Có thể kéo thả • Không tắt
@@ -6397,14 +6377,14 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
 
                         {/* Miniature Corner Simulation */}
-                        <div className="h-36 bg-slate-800/60 rounded-xl border border-slate-700/60 relative p-4 flex items-start justify-end overflow-hidden">
+                        <div className="h-32 bg-slate-800/60 rounded-xl border border-slate-700/60 relative p-4 flex items-start justify-end overflow-hidden">
                           <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none text-xs text-slate-400">
                             Giao diện góc trên bên phải website
                           </div>
 
                           {/* The Draggable Bar */}
                           <div
-                            className={`relative z-10 inline-flex items-center gap-2 px-3 py-2 rounded-full text-white font-bold text-xs shadow-2xl border ${
+                            className={`relative z-10 inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-white font-bold text-xs shadow-2xl border ${
                               announcementForm.category === 'promotion'
                                 ? 'bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 border-amber-300/60'
                                 : (announcementForm.category === 'custom'
@@ -6418,7 +6398,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                             </span>
                             <span className="font-extrabold tracking-wide text-xs">
                               {announcementLangTab === 'vi'
-                                ? (announcementForm.badgeTextVi || '🧧 Lịch Nghỉ Lễ / Tết')
+                                ? (announcementForm.badgeTextVi || '🧧 Lịch Nghỉ Lễ')
                                 : (announcementForm.badgeTextEn || '🧧 Holiday Schedule')}
                             </span>
                             <ChevronDown className="w-3.5 h-3.5 text-amber-200" />
@@ -6426,7 +6406,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
 
                         <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                          Nằm ở góc trên bên phải, khách có thể kéo di chuyển tự do và bấm vào để mở xem poster bất cứ lúc nào (không có nút tắt).
+                          Nằm ở góc trên bên phải, khách có thể kéo di chuyển tự do và bấm vào để mở xem poster bất cứ lúc nào.
                         </p>
                       </div>
                     </div>
