@@ -61,6 +61,7 @@ import {
   GripVertical,
   ChevronDown,
   Calendar,
+  Bell,
 } from 'lucide-react';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
@@ -6117,7 +6118,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                       >
                         <option value="holiday">🧧 Lịch Nghỉ Lễ</option>
                         <option value="promotion">🎁 Ưu Đãi</option>
-                        <option value="custom">✍️ Tùy Chỉnh Khác...</option>
+                        <option value="custom">🔔 Tùy Chỉnh (Tự nhập chữ / Tự động dùng Chuông Rung)</option>
                       </select>
                     </div>
 
@@ -6382,27 +6383,43 @@ function formatDisplayReviewDate(val?: string | null): string {
                             Giao diện góc trên bên phải website
                           </div>
 
-                          {/* The Draggable Bar */}
-                          <div
-                            className={`relative z-10 inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-white font-bold text-xs shadow-2xl border ${
-                              announcementForm.category === 'promotion'
-                                ? 'bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 border-amber-300/60'
-                                : (announcementForm.category === 'custom'
-                                  ? 'bg-gradient-to-r from-[#173014] via-[#2D5A27] to-amber-600 border-amber-300/60'
-                                  : 'bg-gradient-to-r from-red-700 via-rose-600 to-amber-600 border-amber-300/60')
-                            }`}
-                          >
-                            <GripVertical className="w-3.5 h-3.5 text-white/50" />
-                            <span>
-                              {announcementForm.category === 'promotion' ? '🎁' : (announcementForm.category === 'custom' ? '📢' : '🧧')}
-                            </span>
-                            <span className="font-extrabold tracking-wide text-xs">
-                              {announcementLangTab === 'vi'
-                                ? (announcementForm.badgeTextVi || '🧧 Lịch Nghỉ Lễ')
-                                : (announcementForm.badgeTextEn || '🧧 Holiday Schedule')}
-                            </span>
-                            <ChevronDown className="w-3.5 h-3.5 text-amber-200" />
-                          </div>
+                          {/* The Draggable Bar Preview — Nhỏ gọn, 1 icon rung, chữ mảnh mai */}
+                          {(() => {
+                            const rawText = announcementLangTab === 'vi'
+                              ? (announcementForm.badgeTextVi || '🧧 Lịch Nghỉ Lễ')
+                              : (announcementForm.badgeTextEn || '🧧 Holiday Schedule');
+                            const match = rawText.match(/^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u2600-\u27BF])\s*/u);
+                            const previewEmoji = match ? match[1] : null;
+                            const cleanText = match ? rawText.replace(/^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u2600-\u27BF])\s*/u, '').trim() : rawText;
+
+                            return (
+                              <div
+                                className={`relative z-10 inline-flex items-center gap-1.5 pl-2.5 pr-2.5 py-1.5 rounded-full text-white shadow-md border ${
+                                  announcementForm.category === 'promotion'
+                                    ? 'bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 border-amber-300/40'
+                                    : (announcementForm.category === 'custom'
+                                      ? 'bg-gradient-to-r from-[#173014] via-[#2D5A27] to-amber-600 border-amber-300/40'
+                                      : 'bg-gradient-to-r from-red-700 via-rose-600 to-amber-500 border-amber-300/40')
+                                }`}
+                              >
+                                {/* 1 icon duy nhất và rung */}
+                                <span className="relative shrink-0 inline-flex items-center justify-center animate-bounce">
+                                  {previewEmoji ? (
+                                    <span className="text-xs sm:text-[13px] leading-none select-none">{previewEmoji}</span>
+                                  ) : (
+                                    <Bell className="w-3.5 h-3.5 text-amber-200 fill-amber-300/30" />
+                                  )}
+                                </span>
+
+                                {/* Chữ mảnh mai */}
+                                <span className="text-[11px] sm:text-xs font-normal tracking-wide whitespace-nowrap text-white/95 leading-none">
+                                  {cleanText}
+                                </span>
+
+                                <ChevronDown className="w-3 h-3 text-amber-200/80 shrink-0" />
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <p className="text-[11px] text-slate-400 leading-relaxed text-center">
