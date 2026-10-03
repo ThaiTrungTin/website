@@ -165,13 +165,39 @@ export default function AboutSection() {
 
   // 3. Quản lý chuyển slide ảnh xem lần lượt với dấu <, >, vuốt cảm ứng & kéo chuột
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [animatingFrom, setAnimatingFrom] = useState<number | null>(null);
+  const [flipDirection, setFlipDirection] = useState<'next' | 'prev'>('next');
+  const [isFlipping, setIsFlipping] = useState(false);
+  const flipTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (flipTimeoutRef.current) clearTimeout(flipTimeoutRef.current);
+    };
+  }, []);
+
+  const goToSlide = (targetIndex: number, dir: 'next' | 'prev') => {
+    if (isFlipping || targetIndex === currentSlide || slides.length === 0) return;
+    setIsFlipping(true);
+    setAnimatingFrom(currentSlide);
+    setFlipDirection(dir);
+    setCurrentSlide(targetIndex);
+
+    if (flipTimeoutRef.current) clearTimeout(flipTimeoutRef.current);
+    flipTimeoutRef.current = setTimeout(() => {
+      setIsFlipping(false);
+      setAnimatingFrom(null);
+    }, 700);
+  };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+    const prevIdx = (currentSlide - 1 + slides.length) % slides.length;
+    goToSlide(prevIdx, 'prev');
   };
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
+    const nextIdx = (currentSlide + 1) % slides.length;
+    goToSlide(nextIdx, 'next');
   };
 
   // Cảm ứng vuốt tay (Touch Swipe cho điện thoại)
@@ -231,30 +257,42 @@ export default function AboutSection() {
   };
 
   // Tính toán hiệu ứng 3D Lật Trang Giấy (Paper Page Flip) cho từng slide
+  // Khi tĩnh (không lật), CHỈ CÓ slide hiện tại hiển thị, các slide khác ẩn hoàn toàn để tránh đè ảnh/chữ
   const getSlideFlipClass = (idx: number) => {
     if (slides.length <= 1) {
-      return idx === currentSlide ? 'opacity-100 z-20 [transform:rotateY(0deg)]' : 'opacity-0 z-10 pointer-events-none';
+      return idx === currentSlide
+        ? 'z-10 origin-left [transform:rotateY(0deg)] opacity-100 shadow-2xl pointer-events-auto'
+        : 'z-0 opacity-0 pointer-events-none hidden';
     }
 
-    if (idx === currentSlide) {
-      // Trang đang hiển thị (phẳng phiu, độ bóng chuẩn, nằm trên cùng)
-      return 'z-20 origin-left [transform:rotateY(0deg)] opacity-100 shadow-2xl pointer-events-auto';
+    if (!isFlipping) {
+      if (idx === currentSlide) {
+        return 'z-10 origin-left [transform:rotateY(0deg)] opacity-100 shadow-2xl pointer-events-auto';
+      }
+      return 'z-0 origin-left [transform:rotateY(0deg)] opacity-0 pointer-events-none hidden';
     }
 
-    const diff = (idx - currentSlide + slides.length) % slides.length;
-
-    if (diff === slides.length - 1) {
-      // Trang vừa lật qua bên trái (xoay quanh gáy bên trái góc -115 độ như lật trang sách)
-      return 'z-30 origin-left [transform:rotateY(-115deg)_scale(0.95)] opacity-0 pointer-events-none shadow-none';
+    if (flipDirection === 'next') {
+      if (idx === animatingFrom) {
+        // Trang vừa rời đi lật gập sang trái như trang sách
+        return 'z-20 origin-left [transform:rotateY(-115deg)_scale(0.95)] opacity-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] pointer-events-none shadow-none';
+      }
+      if (idx === currentSlide) {
+        // Trang kế tiếp nằm sẵn bên dưới lộ ra
+        return 'z-10 origin-left [transform:rotateY(0deg)_scale(1)] opacity-100 transition-none pointer-events-auto';
+      }
+      return 'z-0 opacity-0 pointer-events-none hidden';
+    } else {
+      if (idx === animatingFrom) {
+        // Trang rời đi lật gập sang phải
+        return 'z-20 origin-right [transform:rotateY(115deg)_scale(0.95)] opacity-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] pointer-events-none shadow-none';
+      }
+      if (idx === currentSlide) {
+        // Trang trước đó nằm bên dưới lộ ra
+        return 'z-10 origin-right [transform:rotateY(0deg)_scale(1)] opacity-100 transition-none pointer-events-auto';
+      }
+      return 'z-0 opacity-0 pointer-events-none hidden';
     }
-
-    if (diff === 1) {
-      // Trang kế tiếp nằm sẵn bên dưới (sẵn sàng lộ ra khi trang trên lật qua)
-      return 'z-10 origin-left [transform:rotateY(0deg)_scale(0.98)] opacity-100 pointer-events-none';
-    }
-
-    // Các trang còn lại nằm sâu bên dưới
-    return 'z-0 origin-left [transform:rotateY(0deg)_scale(0.95)] opacity-0 pointer-events-none';
   };
 
   const pillars = [
@@ -370,7 +408,7 @@ export default function AboutSection() {
                   return (
                     <div
                       key={slide.id || idx}
-                      className={`absolute inset-0 w-full h-full transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] [backface-visibility:hidden] [transform-style:preserve-3d] ${flipClass}`}
+                      className={`absolute inset-0 w-full h-full bg-slate-950 [backface-visibility:hidden] [transform-style:preserve-3d] ${flipClass}`}
                     >
                       <Image
                         src={getAssetUrl(slide.image || '/about_team_entrance.jpg')}
@@ -439,7 +477,11 @@ export default function AboutSection() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCurrentSlide(i);
+                        if (i > currentSlide) {
+                          goToSlide(i, 'next');
+                        } else if (i < currentSlide) {
+                          goToSlide(i, 'prev');
+                        }
                       }}
                       aria-label={isEn ? `Go to slide ${i + 1}` : `Chuyển đến ảnh ${i + 1}`}
                       className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
