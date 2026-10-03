@@ -519,6 +519,25 @@ body {
   background: #1E3F1B;
 }
 
+/* Facebook Card Scrollbar */
+.fb-card-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.fb-card-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.fb-card-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+}
+.fb-card-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.fb-card-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
 /* Instant Zero-Delay Firefly Animations (100% GPU Composite - No Layout Reflow) */
 @keyframes fireflyAscend {
   0% {

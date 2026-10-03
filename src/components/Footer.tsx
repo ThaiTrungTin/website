@@ -423,11 +423,11 @@ export default function Footer({ branch }: FooterProps) {
               </a>
             </div>
 
-            {/* Thẻ Fanpage 5★ Sắc Nét Y Hệt Ảnh Facebook Thật */}
-            <div className="relative w-full h-[250px] rounded-xl overflow-hidden border border-white/20 shadow-md bg-white text-slate-800 flex flex-col">
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {/* Thẻ Fanpage 5★ Sắc Nét Y Hệt Ảnh Facebook Thật (Hỗ trợ lướt dòng thời gian bài viết) */}
+            <div className="relative w-full h-[275px] rounded-xl overflow-hidden border border-white/20 shadow-md bg-white text-slate-800 flex flex-col">
+              <div className="flex-1 overflow-y-auto fb-card-scrollbar overscroll-contain">
                 {/* 1. Ảnh bìa cover HD thật của viện */}
-                <div className="relative h-18 w-full overflow-hidden bg-emerald-950">
+                <div className="relative h-18 w-full overflow-hidden bg-emerald-950 shrink-0">
                   <img
                     src="/images/facebook/cover.webp"
                     alt="Bệnh viện thú cưng PetM&M Facebook Cover"
@@ -493,38 +493,151 @@ export default function Footer({ branch }: FooterProps) {
                     </p>
                   </div>
 
-                  {/* 3. Bài viết mới nhất (Featured Post Tiêm Phòng Dại) */}
-                  <div className="mt-2 pt-2 border-t border-slate-100 space-y-1.5 bg-slate-50/80 p-2 rounded-lg border border-slate-200/70">
-                    <div className="flex items-center justify-between text-[10px] text-slate-500">
-                      <span className="font-bold text-[#2D5A27] flex items-center gap-1">
-                        <span>📢 Bài viết mới</span>
-                      </span>
-                      <span>2 giờ trước • 🌐</span>
+                  {/* 3. Dòng Thời Gian Nhiều Bài Viết (Feed Timeline) */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-2.5">
+                    {/* BÀI VIẾT 1: Tiêm phòng dại miễn phí */}
+                    <div className="bg-slate-50/90 p-2.5 rounded-lg border border-slate-200/80 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <img
+                            src="/images/facebook/avatar.png"
+                            alt="PetM&M Avatar"
+                            className="w-4 h-4 rounded-full border border-slate-300 object-cover"
+                          />
+                          <span className="font-bold text-slate-800">PetM&amp;M Hospital</span>
+                        </div>
+                        <span>2 giờ trước • 🌐</span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-900 leading-snug">
+                        TIÊM PHÒNG DẠI MIỄN PHÍ CHO THÚ CƯNG 🐶🐱
+                      </p>
+                      <p className="text-[10px] text-slate-600 leading-relaxed">
+                        Chung tay bảo vệ bé yêu và cộng đồng với chương trình tiêm phòng dại định kỳ 100% miễn phí!
+                      </p>
+                      <a
+                        href={facebookUrl || 'https://www.facebook.com/petmmhospital'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block relative rounded-md overflow-hidden border border-slate-200 shadow-2xs group"
+                      >
+                        <img
+                          src="/images/facebook/post_sample.png"
+                          alt="Tiêm phòng dại miễn phí PetM&M"
+                          className="w-full h-auto object-cover group-hover:scale-102 transition duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 transition bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs">
+                            Xem trên Facebook ↗
+                          </span>
+                        </div>
+                      </a>
+                      <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-200/60">
+                        <span>👍❤️ 142 lượt thích</span>
+                        <span>28 bình luận • 15 chia sẻ</span>
+                      </div>
                     </div>
-                    <p className="text-[11px] font-semibold text-slate-800 leading-snug line-clamp-2">
-                      TIÊM PHÒNG DẠI MIỄN PHÍ CHO THÚ CƯNG 🐶🐱
-                    </p>
+
+                    {/* BÀI VIẾT 2: Phẫu thuật cấp cứu nội soi */}
+                    <div className="bg-slate-50/90 p-2.5 rounded-lg border border-slate-200/80 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <img
+                            src="/images/facebook/avatar.png"
+                            alt="PetM&M Avatar"
+                            className="w-4 h-4 rounded-full border border-slate-300 object-cover"
+                          />
+                          <span className="font-bold text-slate-800">PetM&amp;M Hospital</span>
+                        </div>
+                        <span>Hôm qua lúc 15:30 • 🌐</span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-900 leading-snug">
+                        CẤP CỨU &amp; PHẪU THUẬT NỘI SOI 24/7 🩺🏥
+                      </p>
+                      <p className="text-[10px] text-slate-600 leading-relaxed">
+                        Bé Mướp nuốt dị vật gây tắc ruột đã được các bác sĩ chuyên khoa nội soi can thiệp kịp thời. Bé đã hồi phục hoàn toàn và xuất viện khỏe mạnh!
+                      </p>
+                      <a
+                        href={facebookUrl || 'https://www.facebook.com/petmmhospital'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block relative rounded-md overflow-hidden border border-slate-200 shadow-2xs group h-28"
+                      >
+                        <img
+                          src="/about_surgery.jpg"
+                          alt="Phẫu thuật cấp cứu PetM&M"
+                          className="w-full h-full object-cover group-hover:scale-102 transition duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 transition bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs">
+                            Xem trên Facebook ↗
+                          </span>
+                        </div>
+                      </a>
+                      <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-200/60">
+                        <span>👍❤️ 89 lượt thích</span>
+                        <span>19 bình luận • 7 chia sẻ</span>
+                      </div>
+                    </div>
+
+                    {/* BÀI VIẾT 3: Spa & Grooming 5 Sao */}
+                    <div className="bg-slate-50/90 p-2.5 rounded-lg border border-slate-200/80 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <img
+                            src="/images/facebook/avatar.png"
+                            alt="PetM&M Avatar"
+                            className="w-4 h-4 rounded-full border border-slate-300 object-cover"
+                          />
+                          <span className="font-bold text-slate-800">PetM&amp;M Hospital</span>
+                        </div>
+                        <span>3 ngày trước • 🌐</span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-900 leading-snug">
+                        SPA &amp; GROOMING 5 SAO CHUẨN FEAR-FREE ✂️🛁
+                      </p>
+                      <p className="text-[10px] text-slate-600 leading-relaxed">
+                        Quy trình chăm sóc lông móng nhẹ nhàng, không gây căng thẳng với dòng sữa tắm thảo mộc cao cấp.
+                      </p>
+                      <a
+                        href={facebookUrl || 'https://www.facebook.com/petmmhospital'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block relative rounded-md overflow-hidden border border-slate-200 shadow-2xs group h-28"
+                      >
+                        <img
+                          src="/pet_golden_spa.jpg"
+                          alt="Spa & Grooming PetM&M"
+                          className="w-full h-full object-cover group-hover:scale-102 transition duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 transition bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs">
+                            Xem trên Facebook ↗
+                          </span>
+                        </div>
+                      </a>
+                      <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-200/60">
+                        <span>👍❤️ 115 lượt thích</span>
+                        <span>34 bình luận • 12 chia sẻ</span>
+                      </div>
+                    </div>
+
+                    {/* Nút Xem Tất Cả Bài Viết */}
                     <a
                       href={facebookUrl || 'https://www.facebook.com/petmmhospital'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block relative rounded-md overflow-hidden border border-slate-200 shadow-2xs group"
+                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-100 hover:bg-[#1877F2] hover:text-white text-slate-700 text-[11px] font-bold transition border border-slate-200 shadow-2xs"
                     >
-                      <img
-                        src="/images/facebook/post_sample.png"
-                        alt="Tiêm phòng dại miễn phí PetM&M"
-                        className="w-full h-auto object-cover group-hover:scale-102 transition duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition flex items-center justify-center">
-                        <span className="opacity-0 group-hover:opacity-100 transition bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs">
-                          Xem trên Facebook ↗
-                        </span>
-                      </div>
+                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      </svg>
+                      <span>Xem tất cả bài viết trên Fanpage ↗</span>
                     </a>
                   </div>
                 </div>
               </div>
             </div>
+
 
             {/* Chú thích & Nút theo dõi */}
             <div className="flex items-center justify-between text-[11px] text-emerald-100/70 pt-0.5">
