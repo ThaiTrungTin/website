@@ -236,30 +236,30 @@ export default function KnowledgeSection() {
 
         {/* Danh sách bài viết: Lướt ngang với mũi tên <> ở giữa */}
         <div className="relative group/slider">
-          {/* Nút ◁ ở giữa bên trái */}
+          {/* Nút ◁ ở giữa bên trái (ẩn trên điện thoại, hiện từ tablet/laptop) */}
           {canLeft && (
             <button
               type="button"
               onClick={() => scroll('left')}
               aria-label="Xem bài viết trước"
-              className="absolute left-0 sm:-left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-20
+              className="hidden sm:flex absolute left-0 sm:-left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-20
                          w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl
-                         flex items-center justify-center text-[#2D5A27] hover:bg-[#2D5A27] hover:text-white hover:border-[#2D5A27]
+                         items-center justify-center text-[#2D5A27] hover:bg-[#2D5A27] hover:text-white hover:border-[#2D5A27]
                          active:scale-95 transition-all duration-200 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           )}
 
-          {/* Nút ▷ ở giữa bên phải */}
+          {/* Nút ▷ ở giữa bên phải (ẩn trên điện thoại, hiện từ tablet/laptop) */}
           {canRight && (
             <button
               type="button"
               onClick={() => scroll('right')}
               aria-label="Xem bài viết tiếp theo"
-              className="absolute right-0 sm:-right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-20
+              className="hidden sm:flex absolute right-0 sm:-right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-20
                          w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl
-                         flex items-center justify-center text-[#2D5A27] hover:bg-[#2D5A27] hover:text-white hover:border-[#2D5A27]
+                         items-center justify-center text-[#2D5A27] hover:bg-[#2D5A27] hover:text-white hover:border-[#2D5A27]
                          active:scale-95 transition-all duration-200 cursor-pointer"
             >
               <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />

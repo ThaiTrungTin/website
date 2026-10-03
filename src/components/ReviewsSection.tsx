@@ -244,13 +244,13 @@ export default function ReviewsSection() {
 
         {/* Container Carousel có nút điều hướng ở giữa 2 bên */}
         <div className="relative group/carousel">
-          {/* Nút lướt qua trái (nằm ở giữa bên trái slider) */}
+          {/* Nút lướt qua trái (ẩn trên điện thoại, hiện từ tablet/laptop) */}
           <button
             type="button"
             onClick={() => scroll('left')}
             disabled={!canScrollLeft}
             aria-label={isEn ? 'Previous reviews' : 'Xem đánh giá trước'}
-            className={`absolute -left-2 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
+            className={`hidden sm:flex absolute -left-2 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
               canScrollLeft
                 ? 'bg-white/95 border-slate-200 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white hover:scale-105 active:scale-95 shadow-lg'
                 : 'bg-white/60 border-slate-200 text-slate-300 opacity-0 pointer-events-none'
@@ -259,13 +259,13 @@ export default function ReviewsSection() {
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
 
-          {/* Nút lướt qua phải (nằm ở giữa bên phải slider) */}
+          {/* Nút lướt qua phải (ẩn trên điện thoại, hiện từ tablet/laptop) */}
           <button
             type="button"
             onClick={() => scroll('right')}
             disabled={!canScrollRight}
             aria-label={isEn ? 'Next reviews' : 'Xem đánh giá tiếp theo'}
-            className={`absolute -right-2 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
+            className={`hidden sm:flex absolute -right-2 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
               canScrollRight
                 ? 'bg-white/95 border-slate-200 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white hover:scale-105 active:scale-95 shadow-lg'
                 : 'bg-white/60 border-slate-200 text-slate-300 opacity-0 pointer-events-none'
