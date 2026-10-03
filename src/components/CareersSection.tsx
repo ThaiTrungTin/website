@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Briefcase,
   MapPin,
@@ -10,11 +9,7 @@ import {
   DollarSign,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   ArrowRight,
-  ShieldCheck,
-  GraduationCap,
-  HeartHandshake,
 } from 'lucide-react';
 import { supabase, TuyenDungRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
@@ -177,77 +172,20 @@ export default function CareersSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header chuẩn typography font-editorial & hiệu ứng xuất hiện */}
-        <ScrollRevealTitle className="text-center max-w-3xl mx-auto mb-14 sm:mb-16">
+        <ScrollRevealTitle className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold uppercase tracking-wider mb-4 shadow-xs">
             <Briefcase className="w-3.5 h-3.5 text-[#FFB800]" />
             <span>{isEn ? 'CAREERS & OPPORTUNITIES' : 'CƠ HỘI NGHỀ NGHIỆP'}</span>
           </div>
 
-          <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4 leading-tight">
+          <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
             {isEn ? 'Join The ' : 'Gia Nhập Đại Gia Đình '}
             <br className="hidden sm:inline" />
             <span className="italic font-light text-[#2D5A27]">
               <PetMMBrand />
             </span>
           </h2>
-
-          <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed font-light">
-            {isEn
-              ? 'Build a rewarding career in an internationally certified Fear-Free hospital environment with leading medical technology, high respect, and continuous career growth.'
-              : 'Kiến tạo sự nghiệp vững chắc trong môi trường bệnh viện thú y chuẩn Fear-Free 5 sao quốc tế — nơi y đức, sự tận tâm và tình yêu động vật luôn được tôn vinh xứng tầm.'}
-          </p>
         </ScrollRevealTitle>
-
-        {/* 3 Core Working Values Highlights */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="flex items-start gap-4 p-5 rounded-2xl bg-[#F8FAF7] border border-emerald-950/10 hover:border-emerald-500/30 transition shadow-xs">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-6 h-6 text-emerald-700" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                {isEn ? 'Fear-Free 5-Star Standard' : 'Chuẩn Lâm Sàng Fear-Free'}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {isEn
-                  ? 'A gentle, stress-free clinical environment for both pets and the veterinary team.'
-                  : 'Không gian y tế an yên, hạn chế tối đa căng thẳng cho cả thú cưng và đội ngũ nhân sự.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 p-5 rounded-2xl bg-[#F8FAF7] border border-emerald-950/10 hover:border-emerald-500/30 transition shadow-xs">
-            <div className="w-12 h-12 rounded-xl bg-amber-100/80 text-amber-800 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-6 h-6 text-amber-700" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                {isEn ? 'Continuous Training' : 'Đào Tạo & Thăng Tiến'}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {isEn
-                  ? 'Sponsorship for advanced clinical seminars, surgery workshops, and international certificates.'
-                  : 'Tài trợ 100% các khóa đào tạo nâng cao chuyên môn, hội thảo ngoại khoa và chứng chỉ quốc tế.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 p-5 rounded-2xl bg-[#F8FAF7] border border-emerald-950/10 hover:border-emerald-500/30 transition shadow-xs">
-            <div className="w-12 h-12 rounded-xl bg-blue-100/80 text-blue-800 flex items-center justify-center shrink-0">
-              <HeartHandshake className="w-6 h-6 text-blue-700" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                {isEn ? 'VIP Care Package' : 'Đãi Ngộ & Phúc Lợi VIP'}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {isEn
-                  ? 'Attractive compensation, performance surgery bonuses, and free care for staff pets.'
-                  : 'Lương thưởng minh bạch, thưởng ca mổ, bảo hiểm sức khỏe và chăm sóc thú cưng riêng miễn phí.'}
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Danh sách thẻ vị trí tuyển dụng trượt ngang (Horizontal Slider) */}
         <div className="relative group/careers-slider">
