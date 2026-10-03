@@ -6157,6 +6157,114 @@ function formatDisplayReviewDate(val?: string | null): string {
                       </div>
                     )}
 
+                    {/* Hàng 3: Khoảng Thời Gian Xuất Hiện Poster (Gom chung về 1 ô) */}
+                    <div className="pt-5 border-t border-slate-100 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Khoảng Thời Gian Xuất Hiện Poster:</span>
+                        </label>
+                        {(announcementForm.startDate || announcementForm.endDate) && (
+                          <button
+                            type="button"
+                            onClick={() => setAnnouncementForm((prev) => ({ ...prev, startDate: '', endDate: '' }))}
+                            className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                          >
+                            ✕ Xóa giới hạn ngày
+                          </button>
+                        )}
+                      </div>
+
+                      {/* 4 cài đặt thời gian gom hàng ngang tiện dụng */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
+                          <label className="block text-xs font-bold text-slate-700">
+                            Từ ngày (Bắt đầu):
+                          </label>
+                          <input
+                            type="date"
+                            value={announcementForm.startDate ? announcementForm.startDate.slice(0, 10) : ''}
+                            onChange={(e) =>
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                startDate: e.target.value,
+                              }))
+                            }
+                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
+                          <label className="block text-xs font-bold text-slate-700">
+                            Đến ngày (Kết thúc):
+                          </label>
+                          <input
+                            type="date"
+                            value={announcementForm.endDate ? announcementForm.endDate.slice(0, 10) : ''}
+                            onChange={(e) =>
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                endDate: e.target.value,
+                              }))
+                            }
+                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">
+                              Trễ tự bung:
+                            </label>
+                            <span className="text-xs font-extrabold text-[#2D5A27]">
+                              {announcementForm.autoOpenDelaySeconds ?? 1.2}s
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0.5"
+                            max="10"
+                            step="0.1"
+                            value={announcementForm.autoOpenDelaySeconds ?? 1.2}
+                            onChange={(e) =>
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
+                              }))
+                            }
+                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">
+                              Tự đóng sau:
+                            </label>
+                            <span className="text-xs font-extrabold text-[#2D5A27]">
+                              {announcementForm.autoCloseSeconds ? `${announcementForm.autoCloseSeconds}s` : 'Không đóng'}
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            max="60"
+                            step="1"
+                            placeholder="0 = Không tự đóng"
+                            value={announcementForm.autoCloseSeconds ?? ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              setAnnouncementForm((prev) => ({
+                                ...prev,
+                                autoCloseSeconds: !isNaN(val) && val > 0 ? val : undefined,
+                              }));
+                            }}
+                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
 
                   {/* Form 2 cột: Cột trái nhập liệu + Cột phải Live Preview */}
@@ -6225,116 +6333,6 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
                       </div>
 
-                      {/* Cài đặt khoảng thời gian xuất hiện cho Poster */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-[#2D5A27]" />
-                            <span>Khoảng Thời Gian Xuất Hiện Poster</span>
-                          </h3>
-                          {(announcementForm.startDate || announcementForm.endDate) && (
-                            <button
-                              type="button"
-                              onClick={() => setAnnouncementForm((prev) => ({ ...prev, startDate: '', endDate: '' }))}
-                              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
-                            >
-                              ✕ Xóa giới hạn ngày
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Từ ngày - Đến ngày */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-700">
-                              Từ ngày (Bắt đầu):
-                            </label>
-                            <input
-                              type="date"
-                              value={announcementForm.startDate ? announcementForm.startDate.slice(0, 10) : ''}
-                              onChange={(e) =>
-                                setAnnouncementForm((prev) => ({
-                                  ...prev,
-                                  startDate: e.target.value,
-                                }))
-                              }
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-slate-50/50"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-700">
-                              Đến ngày (Kết thúc):
-                            </label>
-                            <input
-                              type="date"
-                              value={announcementForm.endDate ? announcementForm.endDate.slice(0, 10) : ''}
-                              onChange={(e) =>
-                                setAnnouncementForm((prev) => ({
-                                  ...prev,
-                                  endDate: e.target.value,
-                                }))
-                              }
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-slate-50/50"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Độ trễ mở & Tự động đóng */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-bold text-slate-700">
-                                Trễ tự bung Popup:
-                              </label>
-                              <span className="text-xs font-extrabold text-[#2D5A27]">
-                                {announcementForm.autoOpenDelaySeconds ?? 1.2}s
-                              </span>
-                            </div>
-                            <input
-                              type="number"
-                              min="0.5"
-                              max="10"
-                              step="0.1"
-                              value={announcementForm.autoOpenDelaySeconds ?? 1.2}
-                              onChange={(e) =>
-                                setAnnouncementForm((prev) => ({
-                                  ...prev,
-                                  autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
-                                }))
-                              }
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-bold text-slate-700">
-                                Tự động đóng sau:
-                              </label>
-                              <span className="text-xs font-extrabold text-[#2D5A27]">
-                                {announcementForm.autoCloseSeconds ? `${announcementForm.autoCloseSeconds}s` : 'Không tự đóng'}
-                              </span>
-                            </div>
-                            <input
-                              type="number"
-                              min="0"
-                              max="60"
-                              step="1"
-                              placeholder="0 = Chỉ đóng khi bấm ✕"
-                              value={announcementForm.autoCloseSeconds ?? ''}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                setAnnouncementForm((prev) => ({
-                                  ...prev,
-                                  autoCloseSeconds: !isNaN(val) && val > 0 ? val : undefined,
-                                }));
-                              }}
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
                     {/* Cột phải: Live Preview Mô Phỏng Trực Quan */}
