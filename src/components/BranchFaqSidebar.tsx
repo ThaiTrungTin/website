@@ -161,7 +161,7 @@ export function SupportPanel() {
         </h3>
       </div>
       <div className="p-3.5 space-y-2">
-        {/* Zalo OA */}
+        {/* Zalo */}
         <a
           href={zaloLink}
           target="_blank"
@@ -173,7 +173,7 @@ export function SupportPanel() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-slate-800 group-hover:text-[#2D5A27] transition-colors leading-snug">
-              {isEn ? (supportConfig.card1_title_en || 'Book via Zalo OA') : (supportConfig.card1_title_vi || 'Đặt lịch qua Zalo OA')}
+              {isEn ? (supportConfig.card1_title_en || 'Book via Zalo') : (supportConfig.card1_title_vi || 'Đặt lịch qua Zalo')}
             </p>
             <p className="text-[11px] text-slate-500 font-light truncate">
               {isEn ? (supportConfig.card1_desc_en || 'Send info, confirm appointment') : (supportConfig.card1_desc_vi || 'Gửi thông tin, xác nhận lịch hẹn')}
@@ -198,7 +198,7 @@ export function SupportPanel() {
           </div>
         </a>
 
-        {/* Zalo OA tư vấn đặc thù */}
+        {/* Zalo tư vấn đặc thù */}
         <a
           href={zaloLink}
           target="_blank"

@@ -151,7 +151,7 @@ export default function FaqSection() {
           <p className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed font-light">
             {isEn
               ? 'Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at PetM&M.'
-              : 'PetM&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo OA chính thức của PetM&M.'}
+              : 'PetM&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo chính thức của PetM&M.'}
           </p>
         </ScrollRevealTitle>
 
@@ -240,7 +240,7 @@ export default function FaqSection() {
 
               {/* 3 Thẻ liên hệ trực tiếp */}
               <div className="space-y-3.5 relative z-10">
-                {/* 1. Đặt lịch dịch vụ qua Zalo OA */}
+                {/* 1. Đặt lịch dịch vụ qua Zalo */}
                 <a
                   href={zaloUrl}
                   target="_blank"
@@ -253,7 +253,7 @@ export default function FaqSection() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#2D5A27] transition-colors">
-                        {isEn ? (supportConfig.card1_title_en || 'Book via Zalo OA') : (supportConfig.card1_title_vi || 'Đặt lịch dịch vụ qua Zalo OA')}
+                        {isEn ? (supportConfig.card1_title_en || 'Book via Zalo') : (supportConfig.card1_title_vi || 'Đặt lịch dịch vụ qua Zalo')}
                       </h4>
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
@@ -305,7 +305,7 @@ export default function FaqSection() {
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed font-light">
-                      {isEn ? (supportConfig.card3_desc_en || 'Send your pet\'s medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs.') : (supportConfig.card3_desc_vi || 'Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.')}
+                      {isEn ? (supportConfig.card3_desc_en || 'Send your pet\'s medical records via Zalo for chronic conditions, special diets, or long-term boarding needs.') : (supportConfig.card3_desc_vi || 'Gửi hồ sơ và thông tin qua Zalo khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn.')}
                     </p>
                   </div>
                 </a>

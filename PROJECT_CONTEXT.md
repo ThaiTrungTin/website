@@ -305,7 +305,7 @@ Tích hợp cơ sở dữ liệu đám mây **Supabase (PostgreSQL)** và xây d
 ## 13. CẢI TIẾN TRANG CÀI ĐẶT ADMIN & TỐI ƯU TRẢI NGHIỆM ĐỘI NGŨ / MẠNG XÃ HỘI
 - **Cấu Trúc Trang Cài Đặt Hệ Thống (`/admin`) Chia Nhỏ Thành 5 Phân Nhánh Riêng Biệt**:
   1. 📞 **Hotline & Mạng Xã Hội (`contact`)**:
-     - Quản lý Hotline gọi nhanh 24/7 (`hotline`), Hotline hiển thị định dạng số đẹp (`hotline_hien_thi`), Chat Zalo OA (`link_zalo`), Fanpage Facebook (`link_facebook`), Facebook Messenger (`link_messenger`), Kênh TikTok (`link_tiktok`), Gmail / Email tiếp nhận liên hệ (`email`), và Trụ sở chính (`dia_chi_chinh`).
+     - Quản lý Hotline gọi nhanh 24/7 (`hotline`), Hotline hiển thị định dạng số đẹp (`hotline_hien_thi`), Chat Zalo (`link_zalo`), Fanpage Facebook (`link_facebook`), Facebook Messenger (`link_messenger`), Kênh TikTok (`link_tiktok`), Gmail / Email tiếp nhận liên hệ (`email`), và Trụ sở chính (`dia_chi_chinh`).
      - **Quy tắc ẩn icon thông minh**: Kênh nào để trống sẽ **tự động ẩn hoàn toàn** biểu tượng liên hệ của kênh đó trên toàn bộ trang web (thanh nổi liên hệ `FloatingContactWidgets`, chân trang `Footer`, Header, v.v.).
      - **Gmail liên hệ**: Biểu tượng chuẩn SVG Google Gmail; khi khách hàng chạm vào icon sẽ tự động mở ứng dụng gửi thư (`mailto:`) để liên hệ ngay.
   2. 🏛️ **Giới Thiệu & Triết Lý (`about`)**:
@@ -897,6 +897,37 @@ interface PopupAnnouncementConfig {
   4. **Cột 4 (`xl:col-span-2 lg:col-span-2`)**: Vị Trí & Bản Đồ Google Maps (Maps embed `h-[180px]` + Nút Mở Chỉ Đường).
   5. **Cột 5 (`xl:col-span-3 lg:col-span-3`)**: Fanpage Facebook PetM&M (Thẻ Fanpage 5★ Cao Cấp `h-[250px]`, nút Xem trang ↗ và + Theo dõi).
 - Chiều cao 2 khối Bản đồ Maps và Thẻ Fanpage được cân đối đồng đều (~280px), tạo tổng thể chân trang hài hòa, bề thế và chuẩn đẳng cấp bệnh viện thú y 5 sao.
+
+---
+
+## 28. HỆ THỐNG TÌM KIẾM TOÀN TRANG TỨC THÌ (GLOBAL INSTANT SEARCH - "BẠN CẦN GÌ HÔM NAY...")
+- **Tập tin liên quan**:
+  - API Tìm kiếm: [`src/app/api/search/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/search/route.ts)
+  - Cửa sổ tìm kiếm Spotlight: [`src/components/SearchModal.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/SearchModal.tsx)
+  - Thanh Header điều hướng: [`src/components/Header.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/Header.tsx)
+  - Hiệu ứng động CSS: [`src/app/globals.css`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/globals.css)
+
+### 1. Trải Nghiệm Người Dùng (UX - Tối Giản & Thanh Lịch)
+- **Nút kích hoạt**:
+  - Nút tìm kiếm kính lúp 🔍 sang trọng trên Header với nhãn *"Bạn cần gì hôm nay..."* (đã bỏ huy hiệu phím tắt `Ctrl K` rườm rà).
+  - Mobile: nút kính lúp cạnh cờ ngôn ngữ & thanh tìm kiếm đầu ngăn kéo menu.
+- **Tiêu đề & Trạng thái mở**:
+  - Tiêu đề & Placeholder: **"Bạn cần gì hôm nay..."** (English: *"What do you need today..."*).
+  - Đã lược bỏ hoàn toàn nút `ESC`, thay bằng nút `✕` đóng tinh tế.
+  - Đã lược bỏ hoàn toàn thanh điều hướng đáy (`↑↓ Di chuyển`, `↵ Chọn`).
+  - Đã lược bỏ hoàn toàn câu phụ đề dài dòng ("Nhập từ khóa để tìm nhanh..."), chỉ giữ lại tiêu đề ngắn gọn chuẩn xác.
+- **Bộ Nhận Diện Ý Định Tìm Kiếm Thông Minh (Search Intent Engine)**:
+  - Khi tìm theo chuyên mục (ví dụ *"tuyển dụng"*, *"bác sĩ"*, *"chi nhánh"*, *"cẩm nang"*...):
+    - Tự động nhận diện và hiển thị đầy đủ tất cả các bản ghi đang mở (ví dụ tìm *"tuyển dụng"* hiển thị toàn bộ 3 vị trí việc làm + liên kết dẫn đến trang tuyển dụng).
+  - Tự động chuẩn hóa tiếng Việt không dấu và hỗ trợ song ngữ.
+- **Phân loại kết quả rõ ràng theo 6 nhóm dữ liệu**:
+  1. 🏥 **Dịch Vụ Thú Y**: Bấm vào tự động cuộn mượt đến phần Dịch vụ và mở chi tiết gói.
+  2. 📚 **Cẩm Nang Y Khoa**: Chuyển thẳng đến bài viết chi tiết.
+  3. 👨‍⚕️ **Đội Ngũ Bác Sĩ**: Xem thông tin bác sĩ chuyên khoa & trang đội ngũ.
+  4. 📍 **Hệ Thống Chi Nhánh**: Xem thông tin phòng khám và cơ sở.
+  5. ❓ **Hỏi Đáp Thường Gặp (FAQ)**: Giải đáp nhanh thắc mắc.
+  6. 💼 **Tuyển Dụng & Cơ Hội Nghề Nghiệp**: Toàn bộ vị trí việc làm đang tuyển.
+
 
 
 

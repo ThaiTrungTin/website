@@ -4247,7 +4247,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Liên kết Chat Zalo (Zalo OA hoặc Zalo cá nhân):
+                          Liên kết Chat Zalo:
                         </label>
                         <input
                           type="text"
@@ -7187,11 +7187,11 @@ function formatDisplayReviewDate(val?: string | null): string {
                           </div>
                         </div>
 
-                        {/* Thẻ 1: Zalo OA */}
+                        {/* Thẻ 1: Zalo */}
                         <div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                           <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
                             <CalendarDays className="w-4 h-4 text-emerald-700" />
-                            <span>Thẻ 1: Đặt Lịch Dịch Vụ Qua Zalo OA</span>
+                            <span>Thẻ 1: Đặt Lịch Dịch Vụ Qua Zalo</span>
                           </h3>
                           <div>
                             <label className="block text-xs font-bold text-slate-800 mb-1.5">
@@ -7203,7 +7203,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, card1_title_vi: e.target.value }))
                               }
-                              placeholder="Đặt lịch dịch vụ qua Zalo OA"
+                              placeholder="Đặt lịch dịch vụ qua Zalo"
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
                             />
                           </div>
@@ -7292,7 +7292,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, card3_desc_vi: e.target.value }))
                               }
-                              placeholder="Gửi hồ sơ và thông tin qua Zalo OA khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn."
+                              placeholder="Gửi hồ sơ và thông tin qua Zalo khi thú cưng có bệnh lý nền, chế độ ăn kiêng riêng hoặc cần lưu trú dài hạn."
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
                             />
                           </div>
@@ -7341,7 +7341,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         <div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                           <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
                             <CalendarDays className="w-4 h-4 text-indigo-700" />
-                            <span>Card 1: Book via Zalo OA (English)</span>
+                            <span>Card 1: Book via Zalo (English)</span>
                           </h3>
                           <div>
                             <label className="block text-xs font-bold text-slate-800 mb-1.5">
@@ -7353,7 +7353,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, card1_title_en: e.target.value }))
                               }
-                              placeholder="Book via Zalo OA"
+                              placeholder="Book via Zalo"
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                             />
                           </div>
@@ -7442,7 +7442,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                               onChange={(e) =>
                                 setSupportPanelData((prev) => ({ ...prev, card3_desc_en: e.target.value }))
                               }
-                              placeholder="Send your pet's medical records via Zalo OA for chronic conditions, special diets, or long-term boarding needs."
+                              placeholder="Send your pet's medical records via Zalo for chronic conditions, special diets, or long-term boarding needs."
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                             />
                           </div>

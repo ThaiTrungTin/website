@@ -25,7 +25,7 @@ export default function ConsultationSidebar({ branchName = 'Hệ Thống PetM&M'
     if (!name.trim() || !phone.trim()) return;
     setLoading(true);
 
-    // Gửi tin nhắn Zalo OA (format link Zalo pre-filled message)
+    // Gửi tin nhắn Zalo (format link Zalo pre-filled message)
     const msg = isEn
       ? encodeURIComponent(
           `Hello PetM&M! I am ${name.trim()}, phone number ${phone.trim()}. I would like to request consultation for ${effectiveBranchName}.`

@@ -51,8 +51,8 @@ export const faqData: FaqItem[] = [
     category_en: 'Consultation & Guidance',
     question: 'Tôi chưa biết nên chọn dịch vụ nào — PetM&M có tư vấn không?',
     question_en: 'I am unsure which service to choose — can PetM&M advise me?',
-    answer: 'Hoàn toàn có! Đội ngũ bác sĩ và chuyên viên tư vấn PetM&M luôn sẵn sàng hỗ trợ trực tiếp qua Zalo OA hoặc Hotline 0903 599 339 để lắng nghe tình trạng thể trạng của bé, tư vấn giải pháp tối ưu và cung cấp bảng giá chi tiết trước khi quý khách đưa ra quyết định.',
-    answer_en: 'Absolutely! Our veterinarians and customer care specialists are always available via Zalo OA or Hotline 0903 599 339 to assess your pet\'s condition, recommend optimal solutions, and provide transparent fee estimates before you make any decision.'
+    answer: 'Hoàn toàn có! Đội ngũ bác sĩ và chuyên viên tư vấn PetM&M luôn sẵn sàng hỗ trợ trực tiếp qua Zalo hoặc Hotline 0903 599 339 để lắng nghe tình trạng thể trạng của bé, tư vấn giải pháp tối ưu và cung cấp bảng giá chi tiết trước khi quý khách đưa ra quyết định.',
+    answer_en: 'Absolutely! Our veterinarians and customer care specialists are always available via Zalo or Hotline 0903 599 339 to assess your pet\'s condition, recommend optimal solutions, and provide transparent fee estimates before you make any decision.'
   },
   {
     id: 'faq-6',

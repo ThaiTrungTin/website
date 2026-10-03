@@ -21,6 +21,7 @@ import {
   Sparkles,
   Star,
   Briefcase,
+  Search,
 } from 'lucide-react';
 import PetLogo from './PetLogo';
 import PetMMBrand from './PetMMBrand';
@@ -29,6 +30,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
 import NavDesktopMenu from './NavDesktopMenu';
 import { useNavDatabase } from '@/hooks/useNavDatabase';
+import SearchModal from './SearchModal';
 
 interface HeaderProps {
   onOpenBookingModal?: (preselectedService?: string) => void;
@@ -42,6 +44,25 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global hotkey Ctrl+K / Cmd+K and custom event listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    const handleOpenCustom = () => setIsSearchOpen(true);
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-search-modal', handleOpenCustom);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-search-modal', handleOpenCustom);
+    };
+  }, []);
 
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
@@ -109,7 +130,20 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
           </div>
 
           {/* Header Actions */}
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
+          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+            {/* Search Trigger Button */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              aria-label={isEn ? 'What do you need today...' : 'Bạn cần gì hôm nay...'}
+              title={isEn ? 'What do you need today...' : 'Bạn cần gì hôm nay...'}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-100/90 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700 border border-slate-200/80 shadow-2xs hover:border-emerald-300 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            >
+              <Search className="w-4 h-4 text-[#2D5A27]" />
+              <span className="text-xs text-slate-600 font-medium hidden xl:inline">
+                {isEn ? 'What do you need today...' : 'Bạn cần gì hôm nay...'}
+              </span>
+            </button>
+
             {/* Language Switcher */}
             <LanguageSwitcher variant="light" />
 
@@ -123,8 +157,16 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
             </button>
           </div>
 
-          {/* Mobile Hamburger & Language Flag */}
-          <div className="flex items-center gap-2 lg:hidden">
+          {/* Mobile Hamburger, Search & Language Flag */}
+          <div className="flex items-center gap-1.5 lg:hidden">
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              aria-label={isEn ? 'Search website' : 'Tìm kiếm'}
+              className="p-2 rounded-xl text-slate-800 hover:text-[#2D5A27] hover:bg-slate-100 transition cursor-pointer"
+              title={isEn ? 'Search' : 'Tìm kiếm'}
+            >
+              <Search className="w-5 h-5 text-[#2D5A27]" />
+            </button>
             <LanguageSwitcher variant="light" flagOnly={true} />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -157,13 +199,32 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
         >
           <div>
             {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-5 border-b border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <PetLogo size="sm" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
               >
                 <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Search Button in Mobile Drawer */}
+            <div className="pt-3 pb-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsSearchOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-emerald-50 border border-slate-200/90 text-slate-600 text-xs font-medium transition cursor-pointer shadow-2xs"
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-[#2D5A27]" />
+                  <span>{isEn ? 'What do you need today...' : 'Bạn cần gì hôm nay...'}</span>
+                </span>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                  {isEn ? 'Search' : 'Tìm'}
+                </span>
               </button>
             </div>
 
@@ -426,6 +487,9 @@ export default function Header({ onOpenBookingModal, alwaysVisible = false }: He
           </div>
         </div>
       </div>
+
+      {/* Global Luxury Search Modal */}
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }
