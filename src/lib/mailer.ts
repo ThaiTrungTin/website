@@ -98,6 +98,76 @@ export async function getEmailTemplateConfig(): Promise<EmailTemplateConfig> {
   }
 }
 
+// CẤU HÌNH MẪU THƯ XÁC NHẬN TIẾP NHẬN ỨNG TUYỂN (SONG NGỮ)
+export interface RecruitmentEmailTemplateConfig {
+  logoUrl?: string;
+  subjectVi: string;
+  bannerTitleVi: string;
+  bannerSubtitleVi: string;
+  introVi: string;
+  checklistVi: string;
+  footerVi: string;
+  subjectEn: string;
+  bannerTitleEn: string;
+  bannerSubtitleEn: string;
+  introEn: string;
+  checklistEn: string;
+  footerEn: string;
+}
+
+export const DEFAULT_RECRUITMENT_TEMPLATE: RecruitmentEmailTemplateConfig = {
+  logoUrl: '',
+  // TIẾNG VIỆT
+  subjectVi: '[PetM&M] Xác Nhận Đã Nhận Hồ Sơ Ứng Tuyển: {job_title}',
+  bannerTitleVi: 'Hệ Thống Y Tế & Bệnh Viện Thú Y PetM&M',
+  bannerSubtitleVi: 'Phiếu Tiếp Nhận Hồ Sơ Ứng Tuyển & CV',
+  introVi: 'Cảm ơn bạn <strong>{candidate_name}</strong> đã quan tâm và nộp hồ sơ ứng tuyển vị trí <strong>{job_title}</strong> tại Bệnh Viện Thú Y PetM&M. Ban Nhân Sự đã tiếp nhận đầy đủ thông tin của bạn.',
+  checklistVi: `• Ban Nhân Sự sẽ cẩn trọng đánh giá hồ sơ và liên hệ với các ứng viên phù hợp qua điện thoại hoặc Zalo trong vòng 24 – 48 giờ làm việc.
+• Vui lòng chú ý điện thoại để không bỏ lỡ lịch hẹn phỏng vấn.
+• Mọi thắc mắc về tuyển dụng có thể liên hệ trực tiếp Hotline Tuyển Dụng: 0903 599 339.`,
+  footerVi: 'Trân trọng,\nBan Nhân Sự & Tuyển Dụng Bệnh Viện Thú Y PetM&M',
+
+  // TIẾNG ANH
+  subjectEn: '[PetM&M] Application Received: {job_title}',
+  bannerTitleEn: 'PetM&M Veterinary Hospital System',
+  bannerSubtitleEn: 'Application & CV Receipt Confirmation',
+  introEn: 'Dear <strong>{candidate_name}</strong>, thank you for your interest and applying for the position of <strong>{job_title}</strong> at PetM&M Veterinary Hospital. Our HR Department has successfully received your application.',
+  checklistEn: `• Our HR team will carefully review your credentials and reach out within 24 – 48 business hours via phone or Zalo.
+• Please keep your phone available for interview arrangements.
+• For urgent recruitment queries, contact Hotline: 0903 599 339.`,
+  footerEn: 'Best regards,\nHR & Talent Acquisition Team, PetM&M Veterinary Hospital',
+};
+
+// Lấy cấu hình Template thư tuyển dụng từ bảng cau_hinh
+export async function getRecruitmentEmailTemplateConfig(): Promise<RecruitmentEmailTemplateConfig> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('cau_hinh')
+      .select('*')
+      .eq('id', 'email_template_recruitment')
+      .maybeSingle();
+
+    if (error || !data) {
+      return DEFAULT_RECRUITMENT_TEMPLATE;
+    }
+
+    if (data.slogan_cuoi_trang_noi_dung) {
+      try {
+        const parsed = JSON.parse(data.slogan_cuoi_trang_noi_dung);
+        return {
+          ...DEFAULT_RECRUITMENT_TEMPLATE,
+          ...parsed,
+        };
+      } catch {}
+    }
+
+    return DEFAULT_RECRUITMENT_TEMPLATE;
+  } catch (err) {
+    console.error('Lỗi đọc cấu hình recruitment template:', err);
+    return DEFAULT_RECRUITMENT_TEMPLATE;
+  }
+}
+
 // Lấy cấu hình SMTP từ bảng cau_hinh
 export async function getSmtpConfig(): Promise<SmtpConfig> {
   try {
@@ -328,6 +398,86 @@ export async function sendTestEmail(
   return sendBookingConfirmationEmail({
     toEmail,
     ...sampleBooking,
+  });
+}
+
+// GỬI EMAIL THỬ NGHIỆM TIẾP NHẬN TUYỂN DỤNG & CV CHO HR VÀ ỨNG VIÊN
+export async function sendTestRecruitmentEmail(
+  toEmail: string,
+  overrideConfig?: Partial<SmtpConfig>,
+  testOptions?: { isEn?: boolean; customTemplate?: Partial<RecruitmentEmailTemplateConfig> }
+) {
+  const isEn = Boolean(testOptions?.isEn);
+  const sampleCandidate = {
+    candidateName: isEn ? 'Dr. John Doe, DVM' : 'Bác Sĩ Thú Y Nguyễn Văn An',
+    phone: '0903 599 339',
+    email: toEmail,
+    jobTitle: isEn ? 'Senior Veterinary Surgeon (Test Role)' : 'Bác Sĩ Thú Y Điều Trị Nội Trú (Vị Trí Thử Nghiệm)',
+    cvLink: 'https://petsmm.vercel.app',
+    cvFileName: 'CV_BacSi_NguyenVanAn.pdf',
+    notes: isEn
+      ? 'This is a TEST recruitment application email sent from PetM&M Admin to verify your HR inbox configuration.'
+      : 'Đây là email THỬ NGHIỆM tiếp nhận hồ sơ ứng tuyển gửi từ trang Quản Trị PetM&M để kiểm tra kết nối hòm thư tuyển dụng của bạn.',
+    isEn,
+    ip: '127.0.0.1 (Thử nghiệm)',
+    notifyEmail: toEmail,
+    overrideConfig,
+    customTemplate: testOptions?.customTemplate,
+  };
+
+  return sendRecruitmentApplicationEmail(sampleCandidate);
+}
+
+// GỬI EMAIL THỬ NGHIỆM GÓP Ý & LIÊN HỆ CHUNG
+export async function sendTestContactEmail(
+  toEmail: string,
+  overrideConfig?: Partial<SmtpConfig>,
+  testOptions?: { isEn?: boolean }
+) {
+  const isEn = Boolean(testOptions?.isEn);
+  const subject = isEn
+    ? '[PetM&M] [Test] Customer Feedback & Contact Notification'
+    : '[PetM&M] [Thử Nghiệm] Tiếp Nhận Ý Kiến Đóng Góp & Liên Hệ Mới';
+
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head><meta charset="utf-8"></head>
+  <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding: 24px;">
+      <tr>
+        <td align="center">
+          <table width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+            <tr>
+              <td style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 28px; text-align: center; color: #ffffff;">
+                <h2 style="margin: 0; font-size: 20px;">✉️ Thư Thử Nghiệm Hòm Thư Liên Hệ & CSKH</h2>
+                <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Hệ thống y tế thú y PetM&M</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 28px; font-size: 14px; color: #334155; line-height: 1.6;">
+                <p>Xin chào Ban Quản Lý / CSKH,</p>
+                <p>Đây là <strong>email thử nghiệm</strong> nhằm kiểm tra kết nối hòm thư nhận góp ý & liên hệ chung (Contact Email). Hệ thống máy chủ SMTP gửi thư đang hoạt động ổn định và sẵn sàng tiếp nhận thông tin từ khách hàng.</p>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 18px 0; font-size: 13px;">
+                  <div>• <strong>Hòm thư nhận:</strong> ${toEmail}</div>
+                  <div>• <strong>Thời gian gửi:</strong> ${new Date().toLocaleString('vi-VN')}</div>
+                  <div>• <strong>Trạng thái:</strong> ✅ Kết nối thành công 100%</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  return sendMail({
+    to: toEmail,
+    subject,
+    html,
+    text: `${subject} - Kết nối hòm thư liên hệ thành công tới ${toEmail}.`,
   });
 }
 
@@ -570,6 +720,8 @@ export async function sendRecruitmentApplicationEmail(params: {
   isEn?: boolean;
   ip?: string;
   notifyEmail?: string;
+  overrideConfig?: Partial<SmtpConfig>;
+  customTemplate?: Partial<RecruitmentEmailTemplateConfig>;
 }) {
   const {
     candidateName,
@@ -582,9 +734,15 @@ export async function sendRecruitmentApplicationEmail(params: {
     isEn = false,
     ip,
     notifyEmail,
+    overrideConfig,
+    customTemplate,
   } = params;
 
-  const smtpConfig = await getSmtpConfig();
+  const baseConfig = await getSmtpConfig();
+  const smtpConfig: SmtpConfig = {
+    ...baseConfig,
+    ...(overrideConfig || {}),
+  };
   const hrRecipient = (
     notifyEmail ||
     smtpConfig.smtp_notify_recruitment_email ||
@@ -728,10 +886,49 @@ export async function sendRecruitmentApplicationEmail(params: {
   </html>
   `;
 
-  // 2. EMAIL XÁC NHẬN GỬI CHO ỨNG VIÊN
-  const candidateSubject = isEn
-    ? `[PetM&M] Application Received: ${jobTitle}`
-    : `[PetM&M] Xác Nhận Đã Nhận Hồ Sơ Ứng Tuyển: ${jobTitle}`;
+  // 2. EMAIL XÁC NHẬN GỬI CHO ỨNG VIÊN (SỬ DỤNG MẪU TUYỂN DỤNG SONG NGỮ TÙY BIẾN)
+  const baseTpl = await getRecruitmentEmailTemplateConfig();
+  const tpl: RecruitmentEmailTemplateConfig = {
+    ...baseTpl,
+    ...(customTemplate || {}),
+  };
+  const vars: Record<string, string> = {
+    candidate_name: candidateName,
+    job_title: jobTitle,
+    phone: phone,
+    email: email,
+    apply_time: applyTimeVN,
+    hotline: '0903 599 339',
+  };
+
+  const candidateSubject = replacePlaceholders(
+    isEn ? tpl.subjectEn : tpl.subjectVi,
+    vars
+  );
+  const bannerTitle = replacePlaceholders(
+    isEn ? tpl.bannerTitleEn : tpl.bannerTitleVi,
+    vars
+  );
+  const bannerSubtitle = replacePlaceholders(
+    isEn ? tpl.bannerSubtitleEn : tpl.bannerSubtitleVi,
+    vars
+  );
+  const introText = replacePlaceholders(
+    isEn ? tpl.introEn : tpl.introVi,
+    vars
+  );
+  const checklistRaw = isEn ? tpl.checklistEn : tpl.checklistVi;
+  const footerNote = replacePlaceholders(
+    isEn ? tpl.footerEn : tpl.footerVi,
+    vars
+  );
+
+  const checklistHtml = checklistRaw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<div style="margin-bottom: 6px; line-height: 1.5;">${line}</div>`)
+    .join('');
 
   const candidateHtml = `
   <!DOCTYPE html>
@@ -749,10 +946,10 @@ export async function sendRecruitmentApplicationEmail(params: {
             <tr>
               <td style="background: linear-gradient(135deg, #183B16 0%, #2D5A27 100%); padding: 32px 30px; text-align: center;">
                 <div style="font-size: 13px; font-weight: 700; color: #FFB800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
-                  PETM&M VETERINARY HOSPITAL
+                  ${bannerTitle}
                 </div>
                 <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
-                  ${isEn ? 'Application Received Successfully' : 'Đã Tiếp Nhận Hồ Sơ Ứng Tuyển'}
+                  ${bannerSubtitle}
                 </h1>
                 <p style="margin: 8px 0 0 0; font-size: 14px; color: #e2e8f0;">
                   ${isEn ? 'Position:' : 'Vị trí:'} <strong style="color: #ffffff;">${jobTitle}</strong>
@@ -764,12 +961,7 @@ export async function sendRecruitmentApplicationEmail(params: {
             <tr>
               <td style="padding: 28px 30px;">
                 <p style="margin: 0 0 16px 0; font-size: 15px; color: #0f172a; line-height: 1.6;">
-                  ${isEn ? `Dear <strong>${candidateName}</strong>,` : `Chào bạn <strong>${candidateName}</strong>,`}
-                </p>
-                <p style="margin: 0 0 18px 0; font-size: 14px; color: #475569; line-height: 1.6;">
-                  ${isEn
-                    ? `Thank you for your interest in joining the PetM&M Veterinary Hospital family. We have successfully received your application for the position of <strong>${jobTitle}</strong>.`
-                    : `Cảm ơn bạn đã quan tâm và mong muốn gia nhập đại gia đình Bệnh Viện Thú Y PetM&M. Ban Nhân Sự đã tiếp nhận hồ sơ ứng tuyển của bạn cho vị trí <strong>${jobTitle}</strong>.`}
+                  ${introText}
                 </p>
 
                 <div style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px; margin-bottom: 22px;">
@@ -784,18 +976,19 @@ export async function sendRecruitmentApplicationEmail(params: {
                   </ul>
                 </div>
 
+                ${checklistHtml ? `
                 <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 16px; margin-bottom: 22px;">
-                  <p style="margin: 0; font-size: 13px; color: #065f46; line-height: 1.6;">
-                    💡 ${isEn
-                      ? 'Our HR team will carefully review your credentials and reach out to qualified candidates via phone or Zalo within <strong>24 – 48 business hours</strong>.'
-                      : 'Ban Nhân Sự sẽ cẩn trọng đánh giá hồ sơ và liên hệ với các ứng viên phù hợp qua điện thoại hoặc Zalo trong vòng <strong>24 – 48 giờ làm việc</strong>.'}
+                  <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #065f46;">
+                    💡 ${isEn ? 'Next Steps & Interview Process:' : 'Quy trình xét duyệt & Phỏng vấn:'}
                   </p>
-                </div>
+                  <div style="font-size: 13px; color: #065f46; line-height: 1.6;">
+                    ${checklistHtml}
+                  </div>
+                </div>` : ''}
 
-                <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
-                  ${isEn ? 'Best regards,' : 'Trân trọng,'}<br>
-                  <strong style="color: #2D5A27;">Ban Nhân Sự & Tuyển Dụng PetM&M</strong>
-                </p>
+                <div style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6; white-space: pre-wrap;">
+                  ${footerNote}
+                </div>
               </td>
             </tr>
 
@@ -826,6 +1019,7 @@ export async function sendRecruitmentApplicationEmail(params: {
         subject: hrSubject,
         html: hrHtml,
         text: `Hồ sơ ứng tuyển mới: ${jobTitle} - ${candidateName} (${phone}) - Email: ${email}. CV: ${cvLink || 'Không có link'}`,
+        overrideConfig,
       }).catch((err) => {
         console.warn('[Recruitment Mailer] Lỗi gửi email đến HR:', err.message);
       })
@@ -840,6 +1034,7 @@ export async function sendRecruitmentApplicationEmail(params: {
         subject: candidateSubject,
         html: candidateHtml,
         text: `${candidateSubject}. Cảm ơn bạn ${candidateName} đã ứng tuyển vị trí ${jobTitle} tại PetM&M.`,
+        overrideConfig,
       }).catch((err) => {
         console.warn('[Recruitment Mailer] Lỗi gửi email xác nhận cho ứng viên:', err.message);
       })

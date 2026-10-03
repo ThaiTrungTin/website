@@ -936,6 +936,40 @@ export default function AdminDashboardPage() {
   const [isTranslatingTemplate, setIsTranslatingTemplate] = useState(false);
   const [isTemplateSaving, setIsTemplateSaving] = useState(false);
 
+  // Phân loại mẫu email đang chỉnh sửa: 'booking' (Đặt Lịch Khám) hoặc 'recruitment' (Tuyển Dụng & CV)
+  const [activeTemplateType, setActiveTemplateType] = useState<'booking' | 'recruitment'>('booking');
+
+  // Cấu hình Template Email Tiếp Nhận Tuyển Dụng & CV (Song ngữ)
+  const [recruitmentTemplateForm, setRecruitmentTemplateForm] = useState<{
+    logoUrl: string;
+    subjectVi: string;
+    bannerTitleVi: string;
+    bannerSubtitleVi: string;
+    introVi: string;
+    checklistVi: string;
+    footerVi: string;
+    subjectEn: string;
+    bannerTitleEn: string;
+    bannerSubtitleEn: string;
+    introEn: string;
+    checklistEn: string;
+    footerEn: string;
+  }>({
+    logoUrl: '',
+    subjectVi: '[PetM&M] Xác Nhận Đã Nhận Hồ Sơ Ứng Tuyển: {job_title}',
+    bannerTitleVi: 'Hệ Thống Y Tế & Bệnh Viện Thú Y PetM&M',
+    bannerSubtitleVi: 'Phiếu Tiếp Nhận Hồ Sơ Ứng Tuyển & CV',
+    introVi: 'Cảm ơn bạn <strong>{candidate_name}</strong> đã quan tâm và nộp hồ sơ ứng tuyển vị trí <strong>{job_title}</strong> tại Bệnh Viện Thú Y PetM&M. Ban Nhân Sự đã tiếp nhận đầy đủ thông tin của bạn.',
+    checklistVi: `• Ban Nhân Sự sẽ cẩn trọng đánh giá hồ sơ và liên hệ với các ứng viên phù hợp qua điện thoại hoặc Zalo trong vòng 24 – 48 giờ làm việc.\n• Vui lòng chú ý điện thoại để không bỏ lỡ lịch hẹn phỏng vấn.\n• Mọi thắc mắc về tuyển dụng có thể liên hệ trực tiếp Hotline Tuyển Dụng: 0903 599 339.`,
+    footerVi: 'Trân trọng,\nBan Nhân Sự & Tuyển Dụng Bệnh Viện Thú Y PetM&M',
+    subjectEn: '[PetM&M] Application Received: {job_title}',
+    bannerTitleEn: 'PetM&M Veterinary Hospital System',
+    bannerSubtitleEn: 'Application & CV Receipt Confirmation',
+    introEn: 'Dear <strong>{candidate_name}</strong>, thank you for your interest and applying for the position of <strong>{job_title}</strong> at PetM&M Veterinary Hospital. Our HR Department has successfully received your application.',
+    checklistEn: `• Our HR team will carefully review your credentials and reach out within 24 – 48 business hours via phone or Zalo.\n• Please keep your phone available for interview arrangements.\n• For urgent recruitment queries, contact Hotline: 0903 599 339.`,
+    footerEn: 'Best regards,\nHR & Talent Acquisition Team, PetM&M Veterinary Hospital',
+  });
+
   const loadSmtpConfig = useCallback(async () => {
     setIsSmtpLoading(true);
     try {
@@ -956,6 +990,12 @@ export default function AdminDashboardPage() {
         setEmailTemplateForm((prev) => ({
           ...prev,
           ...data.template,
+        }));
+      }
+      if (data.success && data.recruitmentTemplate) {
+        setRecruitmentTemplateForm((prev) => ({
+          ...prev,
+          ...data.recruitmentTemplate,
         }));
       }
     } catch (err: any) {
@@ -998,10 +1038,19 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleTestSmtp = async (targetOverride?: string | React.MouseEvent) => {
-    const actualTarget = typeof targetOverride === 'string' && targetOverride.trim()
-      ? targetOverride.trim()
-      : smtpForm.smtp_notify_email;
+  const handleTestSmtp = async (
+    targetOverride?: string | React.MouseEvent,
+    testType: 'booking' | 'recruitment' | 'contact' = 'booking'
+  ) => {
+    let actualTarget = smtpForm.smtp_notify_email;
+    if (typeof targetOverride === 'string' && targetOverride.trim()) {
+      actualTarget = targetOverride.trim();
+    } else if (testType === 'recruitment') {
+      actualTarget = smtpForm.smtp_notify_recruitment_email || smtpForm.smtp_email;
+    } else if (testType === 'contact') {
+      actualTarget = smtpForm.smtp_notify_contact_email || smtpForm.smtp_email;
+    }
+
     setIsSmtpTesting(true);
     try {
       const res = await fetch('/api/admin/email-config/test', {
@@ -1009,7 +1058,10 @@ export default function AdminDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...smtpForm,
+          type: testType,
           target_email: actualTarget,
+          template: emailTemplateForm,
+          recruitmentTemplate: recruitmentTemplateForm,
         }),
       });
       const data = await res.json();
@@ -1017,7 +1069,7 @@ export default function AdminDashboardPage() {
         showNotification('error', data.message || 'Gửi thư thử nghiệm thất bại!');
         return;
       }
-      showNotification('success', data.message || `Đã gửi thư thử nghiệm thành công tới "${actualTarget}"! Vui lòng kiểm tra Gmail.`);
+      showNotification('success', data.message || `Đã gửi thư thử nghiệm (${testType}) thành công tới "${actualTarget}"!`);
     } catch (err: any) {
       showNotification('error', 'Lỗi: ' + (err.message || 'Gửi thử thất bại'));
     } finally {
@@ -1025,7 +1077,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Lưu cấu hình Mẫu Email Template
+  // Lưu cấu hình Mẫu Email Template (Cả Đặt Lịch & Tuyển Dụng)
   const handleSaveEmailTemplate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsTemplateSaving(true);
@@ -1035,6 +1087,7 @@ export default function AdminDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           template: emailTemplateForm,
+          recruitmentTemplate: recruitmentTemplateForm,
         }),
       });
       const data = await res.json();
@@ -1042,7 +1095,7 @@ export default function AdminDashboardPage() {
         showNotification('error', data.message || 'Không thể lưu mẫu email!');
         return;
       }
-      showNotification('success', 'Đã lưu cấu hình Mẫu Thư Xác Nhận Lịch Hẹn thành công!');
+      showNotification('success', 'Đã lưu cấu hình Mẫu Thư (Đặt Lịch & Tuyển Dụng) thành công!');
       loadSmtpConfig();
     } catch (err: any) {
       showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
@@ -1051,35 +1104,49 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Dịch mẫu email sang Tiếng Anh bằng AI
+  // Dịch mẫu email sang Tiếng Anh bằng AI (theo mẫu đang chọn)
   const handleTranslateEmailTemplate = async () => {
     setIsTranslatingTemplate(true);
     try {
+      const isBooking = activeTemplateType === 'booking';
+      const currentVi = isBooking ? emailTemplateForm : recruitmentTemplateForm;
       const res = await fetch('/api/admin/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fields: {
-            subject: emailTemplateForm.subjectVi,
-            bannerTitle: emailTemplateForm.bannerTitleVi,
-            bannerSubtitle: emailTemplateForm.bannerSubtitleVi,
-            intro: emailTemplateForm.introVi,
-            checklist: emailTemplateForm.checklistVi,
-            footer: emailTemplateForm.footerVi,
+            subject: currentVi.subjectVi,
+            bannerTitle: currentVi.bannerTitleVi,
+            bannerSubtitle: currentVi.bannerSubtitleVi,
+            intro: currentVi.introVi,
+            checklist: currentVi.checklistVi,
+            footer: currentVi.footerVi,
           },
         }),
       });
       const data = await res.json();
       if (data.success && data.translations) {
-        setEmailTemplateForm((prev) => ({
-          ...prev,
-          subjectEn: data.translations.subject || prev.subjectEn,
-          bannerTitleEn: data.translations.bannerTitle || prev.bannerTitleEn,
-          bannerSubtitleEn: data.translations.bannerSubtitle || prev.bannerSubtitleEn,
-          introEn: data.translations.intro || prev.introEn,
-          checklistEn: data.translations.checklist || prev.checklistEn,
-          footerEn: data.translations.footer || prev.footerEn,
-        }));
+        if (isBooking) {
+          setEmailTemplateForm((prev) => ({
+            ...prev,
+            subjectEn: data.translations.subject || prev.subjectEn,
+            bannerTitleEn: data.translations.bannerTitle || prev.bannerTitleEn,
+            bannerSubtitleEn: data.translations.bannerSubtitle || prev.bannerSubtitleEn,
+            introEn: data.translations.intro || prev.introEn,
+            checklistEn: data.translations.checklist || prev.checklistEn,
+            footerEn: data.translations.footer || prev.footerEn,
+          }));
+        } else {
+          setRecruitmentTemplateForm((prev) => ({
+            ...prev,
+            subjectEn: data.translations.subject || prev.subjectEn,
+            bannerTitleEn: data.translations.bannerTitle || prev.bannerTitleEn,
+            bannerSubtitleEn: data.translations.bannerSubtitle || prev.bannerSubtitleEn,
+            introEn: data.translations.intro || prev.introEn,
+            checklistEn: data.translations.checklist || prev.checklistEn,
+            footerEn: data.translations.footer || prev.footerEn,
+          }));
+        }
         setTemplateLangTab('en');
         showNotification('success', 'Đã dịch mẫu email sang Tiếng Anh bằng AI thành công!');
       } else {
@@ -1092,17 +1159,25 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Gửi thử nghiệm mẫu email theo ngôn ngữ đang chọn
+  // Gửi thử nghiệm mẫu email theo phân loại & ngôn ngữ đang chọn
   const handleTestTemplateEmail = async () => {
     setIsSmtpTesting(true);
     try {
+      const isBooking = activeTemplateType === 'booking';
+      const targetEmail = isBooking
+        ? (smtpForm.smtp_notify_email || smtpForm.smtp_email)
+        : (smtpForm.smtp_notify_recruitment_email || smtpForm.smtp_email);
+
       const res = await fetch('/api/admin/email-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...smtpForm,
+          type: isBooking ? 'booking' : 'recruitment',
+          target_email: targetEmail,
           isEn: templateLangTab === 'en',
           template: emailTemplateForm,
+          recruitmentTemplate: recruitmentTemplateForm,
         }),
       });
       const data = await res.json();
@@ -1110,7 +1185,7 @@ export default function AdminDashboardPage() {
         showNotification('error', data.message || 'Gửi thư thử nghiệm thất bại!');
         return;
       }
-      showNotification('success', data.message || 'Đã gửi thư thử nghiệm thành công! Vui lòng kiểm tra Gmail.');
+      showNotification('success', data.message || 'Đã gửi thư thử nghiệm thành công! Vui lòng kiểm tra hộp thư.');
     } catch (err: any) {
       showNotification('error', 'Lỗi: ' + (err.message || 'Gửi thử thất bại'));
     } finally {
@@ -4251,7 +4326,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_email)}
+                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_email, 'booking')}
                                   disabled={isSmtpTesting}
                                   className="px-3 py-2.5 rounded-xl border border-emerald-300 hover:bg-emerald-100/70 text-emerald-800 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                   title="Gửi thư thử nghiệm tới hòm thư Đặt Lịch này"
@@ -4287,7 +4362,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_recruitment_email)}
+                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_recruitment_email, 'recruitment')}
                                   disabled={isSmtpTesting}
                                   className="px-3 py-2.5 rounded-xl border border-blue-300 hover:bg-blue-100/70 text-blue-800 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                   title="Gửi thư thử nghiệm tới hòm thư Tuyển Dụng này"
@@ -4322,7 +4397,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_contact_email)}
+                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_contact_email, 'contact')}
                                   disabled={isSmtpTesting}
                                   className="px-3 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-200/70 text-slate-700 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                   title="Gửi thư thử nghiệm tới hòm thư Liên Hệ này"
@@ -4419,7 +4494,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                     <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                       <button
                         type="button"
-                        onClick={handleTestSmtp}
+                        onClick={() => handleTestSmtp(smtpForm.smtp_notify_email, 'booking')}
                         disabled={isSmtpTesting || isSmtpSaving}
                         className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
                         title="Gửi 1 email thử nghiệm đến địa chỉ Email nhận thông báo để kiểm tra kết nối"
@@ -4440,52 +4515,62 @@ function formatDisplayReviewDate(val?: string | null): string {
                   </div>
                 </form>
 
-                {/* THẺ 2: CÀI ĐẶT MẪU EMAIL XÁC NHẬN GỬI KHÁCH HÀNG (SONG NGỮ VIỆT - ANH & LOGO) */}
+                {/* THẺ 2: CÀI ĐẶT MẪU EMAIL XÁC NHẬN GỬI KHÁCH HÀNG & ỨNG VIÊN (SONG NGỮ VIỆT - ANH & LOGO) */}
                 <form onSubmit={handleSaveEmailTemplate} className="space-y-6 pt-2">
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
-                    {/* Header Thẻ: Tiêu đề + Chuyển Ngôn Ngữ + Nút AI Dịch nằm chung hàng */}
-                    <div className="pb-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 shrink-0">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span>Mẫu Email Xác Nhận Đặt Lịch Hẹn (Gửi Cho Khách Hàng)</span>
-                            <span className="text-[11px] font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              Song Ngữ VI / EN
-                            </span>
-                          </h2>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            Tự động gửi email tiếng Việt khi khách dùng tiếng Việt trên website, và gửi email tiếng Anh khi khách dùng tiếng Anh.
-                          </p>
-                        </div>
+                    {/* BỘ CHUYỂN ĐỔI MẪU THƯ: ĐẶT LỊCH vs TUYỂN DỤNG */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+                      <div className="flex flex-1 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTemplateType('booking')}
+                          className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                            activeTemplateType === 'booking'
+                              ? 'bg-[#2D5A27] text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                          }`}
+                        >
+                          <CalendarCheck className="w-4 h-4" />
+                          <span>1. Mẫu Thư Xác Nhận Đặt Lịch Khám</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTemplateType('recruitment')}
+                          className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                            activeTemplateType === 'recruitment'
+                              ? 'bg-blue-700 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                          }`}
+                        >
+                          <Briefcase className="w-4 h-4" />
+                          <span>2. Mẫu Thư Tiếp Nhận Tuyển Dụng & CV</span>
+                        </button>
                       </div>
 
                       {/* Nút chuyển đổi ngôn ngữ & Dịch AI */}
-                      <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
-                        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                        <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
                           <button
                             type="button"
                             onClick={() => setTemplateLangTab('vi')}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                               templateLangTab === 'vi'
-                                ? 'bg-white text-[#2D5A27] shadow-xs'
+                                ? 'bg-emerald-50 text-[#2D5A27] font-extrabold border border-emerald-200'
                                 : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
-                            <span>🇻🇳 Bản Tiếng Việt</span>
+                            <span>🇻🇳 Tiếng Việt</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setTemplateLangTab('en')}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                               templateLangTab === 'en'
-                                ? 'bg-white text-[#2D5A27] shadow-xs'
+                                ? 'bg-blue-50 text-blue-800 font-extrabold border border-blue-200'
                                 : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
-                            <span>🇬🇧 Bản English</span>
+                            <span>🇬🇧 English</span>
                           </button>
                         </div>
 
@@ -4493,8 +4578,8 @@ function formatDisplayReviewDate(val?: string | null): string {
                           type="button"
                           onClick={handleTranslateEmailTemplate}
                           disabled={isTranslatingTemplate}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold shadow-2xs transition cursor-pointer"
-                          title="Tự động dịch các nội dung tiếng Việt sang tiếng Anh bằng AI"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold shadow-2xs transition cursor-pointer"
+                          title="Tự động dịch các nội dung tiếng Việt của mẫu này sang tiếng Anh bằng AI"
                         >
                           {isTranslatingTemplate ? (
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -4506,6 +4591,38 @@ function formatDisplayReviewDate(val?: string | null): string {
                       </div>
                     </div>
 
+                    {/* Header Thẻ: Tiêu đề chi tiết theo mẫu đang chọn */}
+                    <div className="pb-4 border-b border-slate-100 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${
+                        activeTemplateType === 'booking'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {activeTemplateType === 'booking' ? <FileText className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                          <span>
+                            {activeTemplateType === 'booking'
+                              ? 'Mẫu Email Xác Nhận Đặt Lịch Hẹn (Gửi Khách Hàng)'
+                              : 'Mẫu Email Xác Nhận Tiếp Nhận Tuyển Dụng & CV (Gửi Ứng Viên)'}
+                          </span>
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                            activeTemplateType === 'booking'
+                              ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                              : 'text-blue-700 bg-blue-50 border-blue-200'
+                          }`}>
+                            Song Ngữ VI / EN
+                          </span>
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {activeTemplateType === 'booking'
+                            ? 'Tự động gửi email xác nhận đặt lịch khám/spa đến khách hàng sau khi gửi form trực tuyến.'
+                            : 'Tự động gửi email xác nhận đã tiếp nhận hồ sơ ứng tuyển & CV đến hòm thư của ứng viên sau khi nộp đơn.'}
+                        </p>
+                      </div>
+                    </div>
+
                     {/* KHỐI 1: CẤU HÌNH LOGO HIỂN THỊ TRONG EMAIL */}
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
                       <div className="w-full sm:w-2/3">
@@ -4514,8 +4631,15 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </label>
                         <input
                           type="text"
-                          value={emailTemplateForm.logoUrl || ''}
-                          onChange={(e) => setEmailTemplateForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
+                          value={activeTemplateType === 'booking' ? (emailTemplateForm.logoUrl || '') : (recruitmentTemplateForm.logoUrl || '')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, logoUrl: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, logoUrl: val }));
+                            }
+                          }}
                           placeholder="/logo_petmm_full.png hoặc link ảnh online https://..."
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
                         />
@@ -4526,7 +4650,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                       <div className="w-full sm:w-1/3 flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900 border border-slate-700 min-h-[70px]">
                         <span className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Xem trước Logo:</span>
                         <img
-                          src={emailTemplateForm.logoUrl || '/logo_petmm_full.png'}
+                          src={(activeTemplateType === 'booking' ? emailTemplateForm.logoUrl : recruitmentTemplateForm.logoUrl) || '/logo_petmm_full.png'}
                           alt="Logo Preview"
                           className="max-h-10 max-w-[160px] object-contain"
                           onError={(e) => {
@@ -4545,13 +4669,20 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </label>
                         <input
                           type="text"
-                          value={templateLangTab === 'vi' ? emailTemplateForm.subjectVi : emailTemplateForm.subjectEn}
-                          onChange={(e) =>
-                            setEmailTemplateForm((prev) => ({
-                              ...prev,
-                              [templateLangTab === 'vi' ? 'subjectVi' : 'subjectEn']: e.target.value,
-                            }))
+                          value={
+                            activeTemplateType === 'booking'
+                              ? (templateLangTab === 'vi' ? emailTemplateForm.subjectVi : emailTemplateForm.subjectEn)
+                              : (templateLangTab === 'vi' ? recruitmentTemplateForm.subjectVi : recruitmentTemplateForm.subjectEn)
                           }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const key = templateLangTab === 'vi' ? 'subjectVi' : 'subjectEn';
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            }
+                          }}
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -4563,13 +4694,20 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </label>
                         <input
                           type="text"
-                          value={templateLangTab === 'vi' ? emailTemplateForm.bannerTitleVi : emailTemplateForm.bannerTitleEn}
-                          onChange={(e) =>
-                            setEmailTemplateForm((prev) => ({
-                              ...prev,
-                              [templateLangTab === 'vi' ? 'bannerTitleVi' : 'bannerTitleEn']: e.target.value,
-                            }))
+                          value={
+                            activeTemplateType === 'booking'
+                              ? (templateLangTab === 'vi' ? emailTemplateForm.bannerTitleVi : emailTemplateForm.bannerTitleEn)
+                              : (templateLangTab === 'vi' ? recruitmentTemplateForm.bannerTitleVi : recruitmentTemplateForm.bannerTitleEn)
                           }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const key = templateLangTab === 'vi' ? 'bannerTitleVi' : 'bannerTitleEn';
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            }
+                          }}
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -4581,13 +4719,20 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </label>
                         <input
                           type="text"
-                          value={templateLangTab === 'vi' ? emailTemplateForm.bannerSubtitleVi : emailTemplateForm.bannerSubtitleEn}
-                          onChange={(e) =>
-                            setEmailTemplateForm((prev) => ({
-                              ...prev,
-                              [templateLangTab === 'vi' ? 'bannerSubtitleVi' : 'bannerSubtitleEn']: e.target.value,
-                            }))
+                          value={
+                            activeTemplateType === 'booking'
+                              ? (templateLangTab === 'vi' ? emailTemplateForm.bannerSubtitleVi : emailTemplateForm.bannerSubtitleEn)
+                              : (templateLangTab === 'vi' ? recruitmentTemplateForm.bannerSubtitleVi : recruitmentTemplateForm.bannerSubtitleEn)
                           }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const key = templateLangTab === 'vi' ? 'bannerSubtitleVi' : 'bannerSubtitleEn';
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            }
+                          }}
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
@@ -4595,35 +4740,53 @@ function formatDisplayReviewDate(val?: string | null): string {
                       {/* Lời nhắn mở đầu / Cảm ơn */}
                       <div className="md:col-span-2">
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Lời cảm ơn / Thông điệp mở đầu {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                          {activeTemplateType === 'booking'
+                            ? `Lời cảm ơn / Thông điệp mở đầu ${templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:`
+                            : `Lời mở đầu gửi ứng viên ${templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:`}
                         </label>
                         <textarea
                           rows={2}
-                          value={templateLangTab === 'vi' ? emailTemplateForm.introVi : emailTemplateForm.introEn}
-                          onChange={(e) =>
-                            setEmailTemplateForm((prev) => ({
-                              ...prev,
-                              [templateLangTab === 'vi' ? 'introVi' : 'introEn']: e.target.value,
-                            }))
+                          value={
+                            activeTemplateType === 'booking'
+                              ? (templateLangTab === 'vi' ? emailTemplateForm.introVi : emailTemplateForm.introEn)
+                              : (templateLangTab === 'vi' ? recruitmentTemplateForm.introVi : recruitmentTemplateForm.introEn)
                           }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const key = templateLangTab === 'vi' ? 'introVi' : 'introEn';
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            }
+                          }}
                           className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none"
                         />
                       </div>
 
-                      {/* Lưu ý chuẩn bị trước khi đến (Checklist) */}
+                      {/* Lưu ý chuẩn bị trước khi đến / Quy trình xét duyệt (Checklist) */}
                       <div className="md:col-span-2">
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Lưu ý chuẩn bị trước khi đến (Mỗi dòng 1 lưu ý) {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                          {activeTemplateType === 'booking'
+                            ? `Lưu ý chuẩn bị trước khi đến (Mỗi dòng 1 lưu ý) ${templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:`
+                            : `Quy trình xét duyệt & Hướng dẫn phỏng vấn (Mỗi dòng 1 lưu ý) ${templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:`}
                         </label>
                         <textarea
                           rows={3}
-                          value={templateLangTab === 'vi' ? emailTemplateForm.checklistVi : emailTemplateForm.checklistEn}
-                          onChange={(e) =>
-                            setEmailTemplateForm((prev) => ({
-                              ...prev,
-                              [templateLangTab === 'vi' ? 'checklistVi' : 'checklistEn']: e.target.value,
-                            }))
+                          value={
+                            activeTemplateType === 'booking'
+                              ? (templateLangTab === 'vi' ? emailTemplateForm.checklistVi : emailTemplateForm.checklistEn)
+                              : (templateLangTab === 'vi' ? recruitmentTemplateForm.checklistVi : recruitmentTemplateForm.checklistEn)
                           }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const key = templateLangTab === 'vi' ? 'checklistVi' : 'checklistEn';
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            }
+                          }}
                           className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-sans"
                         />
                       </div>
@@ -4631,44 +4794,68 @@ function formatDisplayReviewDate(val?: string | null): string {
                       {/* Lời nhắn chân thư */}
                       <div className="md:col-span-2">
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Lời nhắn chân thư / Hotline {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
+                          Lời nhắn chân thư / Chữ ký ban quản lý {templateLangTab === 'vi' ? '(🇻🇳 Tiếng Việt)' : '(🇬🇧 English)'}:
                         </label>
                         <input
                           type="text"
-                          value={templateLangTab === 'vi' ? emailTemplateForm.footerVi : emailTemplateForm.footerEn}
-                          onChange={(e) =>
-                            setEmailTemplateForm((prev) => ({
-                              ...prev,
-                              [templateLangTab === 'vi' ? 'footerVi' : 'footerEn']: e.target.value,
-                            }))
+                          value={
+                            activeTemplateType === 'booking'
+                              ? (templateLangTab === 'vi' ? emailTemplateForm.footerVi : emailTemplateForm.footerEn)
+                              : (templateLangTab === 'vi' ? recruitmentTemplateForm.footerVi : recruitmentTemplateForm.footerEn)
                           }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const key = templateLangTab === 'vi' ? 'footerVi' : 'footerEn';
+                            if (activeTemplateType === 'booking') {
+                              setEmailTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            } else {
+                              setRecruitmentTemplateForm((prev) => ({ ...prev, [key]: val }));
+                            }
+                          }}
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
                         />
                       </div>
                     </div>
 
                     {/* HƯỚNG DẪN THẺ ĐỘNG (TAGS) */}
-                    <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                      <div className="font-bold mb-1 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Các thẻ biến động tự thay thế thông minh:</span>
+                    {activeTemplateType === 'booking' ? (
+                      <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                        <div className="font-bold mb-1 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Các thẻ biến động tự thay thế thông minh (Đặt Lịch Khám):</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] font-mono mt-1.5">
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{booking_code}"} : Mã đặt lịch</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{pet_name}"} : Tên bé cưng</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{owner_name}"} : Tên chủ nuôi</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{branch_name}"} : Cơ sở tiếp đón</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{service}"} : Tên dịch vụ</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{date_time}"} : Ngày & Khung giờ</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{hotline}"} : Hotline phòng khám</span>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2 text-[11px] font-mono mt-1.5">
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{booking_code}"} : Mã đặt lịch</span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{pet_name}"} : Tên bé cưng</span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{owner_name}"} : Tên chủ nuôi</span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{branch_name}"} : Cơ sở tiếp đón</span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{service}"} : Tên dịch vụ</span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{date_time}"} : Ngày & Khung giờ</span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-amber-300">{"{hotline}"} : Hotline phòng khám</span>
+                    ) : (
+                      <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 leading-relaxed">
+                        <div className="font-bold mb-1 flex items-center gap-1.5">
+                          <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Các thẻ biến động tự thay thế thông minh (Tiếp Nhận Tuyển Dụng & CV):</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] font-mono mt-1.5">
+                          <span className="px-2 py-0.5 rounded bg-white border border-blue-300">{"{candidate_name}"} : Tên ứng viên</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-blue-300">{"{job_title}"} : Vị trí ứng tuyển</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-blue-300">{"{phone}"} : Số điện thoại</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-blue-300">{"{email}"} : Email ứng viên</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-blue-300">{"{apply_time}"} : Thời gian nộp</span>
+                          <span className="px-2 py-0.5 rounded bg-white border border-blue-300">{"{hotline}"} : Hotline tuyển dụng</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Nút lưu mẫu thư & gửi thử */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
                     <p className="text-xs text-slate-500">
-                      Khách hàng đang xem web bằng ngôn ngữ nào sẽ nhận được email theo đúng ngôn ngữ đó.
+                      Hệ thống tự động chọn phiên bản Tiếng Việt hoặc English tùy theo ngôn ngữ khách hàng đang xem trên website.
                     </p>
                     <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                       <button
@@ -4676,10 +4863,18 @@ function formatDisplayReviewDate(val?: string | null): string {
                         onClick={handleTestTemplateEmail}
                         disabled={isSmtpTesting || isTemplateSaving}
                         className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
-                        title="Gửi 1 email mẫu theo ngôn ngữ đang chọn tới Email nhận thông báo để kiểm tra"
+                        title="Gửi 1 email mẫu theo loại và ngôn ngữ đang chọn để kiểm tra"
                       >
-                        {isSmtpTesting ? <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" /> : <Send className="w-4 h-4 text-emerald-600" />}
-                        <span>Gửi Thử Mẫu ({templateLangTab === 'en' ? 'English' : 'Tiếng Việt'})</span>
+                        {isSmtpTesting ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" />
+                        ) : (
+                          <Send className="w-4 h-4 text-emerald-600" />
+                        )}
+                        <span>
+                          {activeTemplateType === 'booking'
+                            ? `Gửi Thử Mẫu Lịch Hẹn (${templateLangTab === 'en' ? 'English' : 'Tiếng Việt'})`
+                            : `Gửi Thử Mẫu Tuyển Dụng (${templateLangTab === 'en' ? 'English' : 'Tiếng Việt'})`}
+                        </span>
                       </button>
 
                       <button
@@ -4688,7 +4883,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                         className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
                       >
                         {isTemplateSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        <span>{isTemplateSaving ? 'Đang lưu...' : 'Lưu Mẫu Email'}</span>
+                        <span>{isTemplateSaving ? 'Đang lưu...' : 'Lưu Tất Cả Mẫu Email'}</span>
                       </button>
                     </div>
                   </div>

@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
     if (error) throw error;
 
     const templateConfig = await getEmailTemplateConfig();
+    const { getRecruitmentEmailTemplateConfig } = await import('@/lib/mailer');
+    const recruitmentTemplateConfig = await getRecruitmentEmailTemplateConfig();
 
     return NextResponse.json({
       success: true,
@@ -37,6 +39,7 @@ export async function GET(req: NextRequest) {
         hasPassword: Boolean(data?.smtp_password && data.smtp_password.trim().length > 0),
       },
       template: templateConfig,
+      recruitmentTemplate: recruitmentTemplateConfig,
     });
   } catch (err: any) {
     console.error('Lỗi GET email-config:', err);
@@ -128,6 +131,36 @@ export async function POST(req: NextRequest) {
         .upsert(templatePayload);
 
       if (tplErr) throw tplErr;
+    }
+
+    // 3. Cập nhật Recruitment Template song ngữ nếu có
+    if (body.recruitmentTemplate) {
+      const rec = body.recruitmentTemplate;
+      const recPayload = {
+        id: 'email_template_recruitment',
+        hotline: '0903599339',
+        logo_favicon: rec.logoUrl || null,
+        tieu_de_trang: rec.subjectVi,
+        tieu_de_trang_en: rec.subjectEn,
+        slogan_dau_trang_tieu_de: rec.bannerTitleVi,
+        slogan_dau_trang_tieu_de_en: rec.bannerTitleEn,
+        slogan_dau_trang_noi_dung: rec.bannerSubtitleVi,
+        slogan_dau_trang_noi_dung_en: rec.bannerSubtitleEn,
+        gioi_thieu_mo_ta: rec.introVi,
+        gioi_thieu_mo_ta_en: rec.introEn,
+        gioi_thieu_cam_ket_phu: rec.checklistVi,
+        gioi_thieu_cam_ket_phu_en: rec.checklistEn,
+        gioi_thieu_trich_dan: rec.footerVi,
+        gioi_thieu_trich_dan_en: rec.footerEn,
+        slogan_cuoi_trang_noi_dung: JSON.stringify(rec),
+        ngay_cap_nhat: new Date().toISOString(),
+      };
+
+      const { error: recErr } = await supabaseAdmin
+        .from('cau_hinh')
+        .upsert(recPayload);
+
+      if (recErr) throw recErr;
     }
 
     return NextResponse.json({

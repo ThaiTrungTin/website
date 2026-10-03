@@ -753,7 +753,7 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
 2. **Email Nhận Hồ Sơ Tuyển Dụng & CV (Recruitment)**: `smtp_notify_recruitment_email`
    - **Đối tượng**: Ban Nhân Sự (HR).
    - **Chức năng**: Nhận email hồ sơ ứng tuyển mới, số điện thoại, vị trí và link xem/tải CV trực tiếp 1 chạm.
-   - **Nút gửi thử nghiệm độc lập**: Bấm nút **"Thử"** để gửi thư test riêng đến hòm thư HR.
+   - **Nút gửi thử nghiệm độc lập**: Bấm nút **"Thử"** để gửi thư test riêng đến hòm thư HR (sử dụng mẫu tuyển dụng, không gửi nhầm lịch hẹn).
 3. **Email Nhận Góp Ý & Liên Hệ Chung (Contact)**: `smtp_notify_contact_email`
    - **Đối tượng**: Ban Quản Lý / CSKH.
    - **Chức năng**: Tiếp nhận các câu hỏi chung, thắc mắc dịch vụ hoặc góp ý từ khách hàng.
@@ -763,6 +763,42 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
 - Tại [`src/lib/mailer.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/mailer.ts):
   - Tuyển dụng: Hệ thống ưu tiên chọn `smtp_notify_recruitment_email` $\rightarrow$ nếu chưa cài sẽ fallback về `smtp_notify_email` $\rightarrow$ rồi đến `smtp_email` $\rightarrow$ mặc định `tuyendung@petmm.vn`.
   - Đặt lịch khám: Tiếp tục sử dụng `smtp_notify_email` đảm bảo tính nhất quán 100%.
-  - API Test [`/api/admin/email-config/test`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/test/route.ts): Nhận diện linh hoạt trường `target_email` để gửi mẫu kiểm tra tới đúng hòm thư mà quản trị viên muốn thử nghiệm.
+  - API Test [`/api/admin/email-config/test`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/test/route.ts): Nhận diện linh hoạt trường `type: 'recruitment' | 'contact' | 'booking'` và `target_email` để gửi đúng loại thư kiểm tra tới đúng hòm thư mà quản trị viên muốn thử nghiệm.
+
+---
+
+## 28. TÁCH BIỆT MẪU EMAIL TUYỂN DỤNG & LỊCH HẸN VÀ BỘ SOẠN THẢO TEMPLATE SONG NGỮ (DUAL EMAIL TEMPLATES)
+- **Tập tin liên quan**:
+  - Giao diện Quản trị Email: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - API Cấu hình Email: [`src/app/api/admin/email-config/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/route.ts)
+  - API Test Email: [`src/app/api/admin/email-config/test/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/test/route.ts)
+  - Bộ máy gửi Email: [`src/lib/mailer.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/mailer.ts)
+  - Supabase table: `public.cau_hinh` (row `id = 'email_template_recruitment'`)
+
+### 1. Nguyên Nhân Vấn Đề Gửi Nhầm Nội Dung Lịch Hẹn Khi Setup Tuyển Dụng
+- **Nguyên nhân 1**: Trước đây, endpoint API `/api/admin/email-config/test` gọi cứng hàm `sendTestEmail(...)`, hàm này vốn chỉ gửi mẫu phiếu tiếp nhận đặt lịch khám cho bé Đậu ("PMM-XXXXXX"), không có logic phân loại cho email tuyển dụng.
+- **Nguyên nhân 2**: Ở Thẻ 1 (Cấu hình hòm thư nhận), nút bấm "Thử" cạnh ô Email Tuyển dụng chỉ truyền địa chỉ email mà không kèm phân loại `type = 'recruitment'`.
+- **Nguyên nhân 3**: Ở Thẻ 2 (Soạn thảo mẫu email), hệ thống chỉ có một khung soạn thảo mẫu duy nhất cho Lịch Hẹn Khám, chưa có giao diện tùy chỉnh và xem trước mẫu thư Tiếp Nhận Tuyển Dụng & CV.
+
+### 2. Giải Pháp Hoàn Chỉnh Đã Triển Khai
+1. **Bộ chuyển đổi Mẫu Thư (Tab Switcher) trong Admin Thẻ 2**:
+   - Tab 1: **"1. Mẫu Thư Xác Nhận Đặt Lịch Khám"** (Gửi khách hàng sau khi đặt lịch khám/spa thành công).
+     - Hỗ trợ song ngữ Tiếng Việt & Tiếng Anh.
+     - Hỗ trợ dịch tự động sang Tiếng Anh bằng AI.
+     - Thẻ biến động tự thay thế: `{booking_code}`, `{pet_name}`, `{owner_name}`, `{branch_name}`, `{service}`, `{date_time}`, `{hotline}`.
+     - Nút gửi thử nghiệm riêng: "Gửi Thử Mẫu Lịch Hẹn (Tiếng Việt / English)".
+   - Tab 2: **"2. Mẫu Thư Tiếp Nhận Tuyển Dụng & CV"** (Gửi ứng viên sau khi nộp hồ sơ xin việc).
+     - Hỗ trợ song ngữ Tiếng Việt & Tiếng Anh.
+     - Hỗ trợ dịch tự động sang Tiếng Anh bằng AI.
+     - Thẻ biến động tự thay thế: `{candidate_name}`, `{job_title}`, `{phone}`, `{email}`, `{apply_time}`, `{hotline}`.
+     - Nút gửi thử nghiệm riêng: "Gửi Thử Mẫu Tuyển Dụng (Tiếng Việt / English)".
+2. **API Phân Loại Thử Nghiệm Thông Minh ([`/api/admin/email-config/test`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/test/route.ts))**:
+   - Hỗ trợ tham số `type`:
+     - `type === 'recruitment'`: Gọi `sendTestRecruitmentEmail(...)` $\rightarrow$ gửi đúng hồ sơ ứng tuyển thử nghiệm (Bác Sĩ Thú Y Nguyễn Văn An, vị trí thử nghiệm, link CV) và thư xác nhận ứng tuyển, nội dung 100% về tuyển dụng.
+     - `type === 'contact'`: Gọi `sendTestContactEmail(...)` $\rightarrow$ gửi thông báo kiểm tra kết nối hòm thư liên hệ & CSKH.
+     - `type === 'booking'`: Gọi `sendTestEmail(...)` $\rightarrow$ gửi phiếu khám thú cưng.
+   - Tự động fallback: nếu không có `type`, hệ thống tự đối chiếu `target_email` với địa chỉ email tuyển dụng / liên hệ trong cấu hình để tự động chọn đúng mẫu.
+3. **Lưu trữ Cấu hình Mẫu Tuyển Dụng Độc Lập**:
+   - Bảng `cau_hinh` lưu dòng riêng `id = 'email_template_recruitment'`, quản trị viên có thể tùy biến mọi câu chữ, lời mở đầu, quy trình xét duyệt và hotline tuyển dụng mà không làm ảnh hưởng đến mẫu lịch hẹn.
 
 
