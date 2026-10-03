@@ -817,29 +817,30 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
    - **Đã lược bỏ hoàn toàn footer "Chạm vào ảnh hoặc nút ✕ để đóng" + nút Đóng**: Giao diện poster gọn, sạch, tập trung 100% vào nội dung ảnh.
    - **Chỉ còn 1 dấu ✕ nhỏ gọn nằm TRỰC TIẾP TRÊN ẢNH** (góc trên bên phải): `absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/30`.
    - Khách có thể click vào nền mờ xung quanh để đóng.
-2. **Thanh Đóng/Mở Nổi Ở Góc Trên Bên Phải (Draggable Floating Bar)**:
-   - **Vị trí mặc định**: `top-20 md:top-24 right-3 sm:right-6` (ngay dưới thanh điều hướng).
+2. **Thanh Đóng/Mở Nổi Ở Góc Trên Bên Phải (Draggable Floating Capsule Bar - Tối Giản, Nhỏ Gọn)**:
+   - **Vị trí mặc định**: `top-20 md:top-24 right-3 sm:right-5` (ngay dưới header).
    - **Kéo di chuyển tự do (Draggable)**: Dùng Pointer Capture API (`onPointerDown/Move/Up`), giới hạn clamp vùng kéo trong viewport.
-   - **Không tắt được**: Thanh nổi luôn hiển thị, không có nút ✕ xóa hẳn.
-   - **Phân biệt Click vs Drag**: Di chuyển > 5px → chỉ dời vị trí; click < 5px → đóng/mở popup poster.
-   - Chữ hiển thị trên thanh = `badgeTextVi` / `badgeTextEn` (đồng bộ với tiêu đề chủ đề).
+   - **Không tắt được**: Thanh nổi luôn hiển thị để khách có thể xem lại bất cứ lúc nào.
+   - **Nhỏ gọn & Mảnh mai**: Bỏ hoàn toàn tay nắm GripVertical thô cứng, kích thước capsule siêu gọn (`pl-2.5 pr-2.5 py-1.5 rounded-full`), viền mỏng tinh tế, hào quang ping nhẹ.
+   - **Phía trước chỉ có 1 ICON DUY NHẤT và RUNG (`petmm-icon-shake`)**:
+     - Tự động tách emoji ở đầu chuỗi (ví dụ `🧧`, `🎁`): hiển thị icon này và rung nhẹ nhàng lôi cuốn, không bị lặp 2 icon (không còn tình trạng icon Calendar + icon 🧧 đi kèm).
+     - **Nếu trong cài đặt không có icon/emoji** (ví dụ nhập chữ thường): Hệ thống tự động chuyển sang hình **Cái Chuông (`Bell`) và Rung lắc**.
+   - **Chữ mảnh mai, thanh thoát**: Dùng `font-normal` hoặc `font-medium`, size `text-[11px] sm:text-xs`, màu `text-white/95`, không dùng font-black thô to.
+   - **Khắc phục triệt để lỗi "Chớp rồi tắt" trên điện thoại di động**:
+     - *Nguyên nhân*: Trên màn hình cảm ứng, sau `pointerup` (mở popup), trình duyệt mobile phát sinh chuỗi sự kiện chuột ảo (synthetic `click` sau 100-350ms). Do backdrop modal (`fixed inset-0 z-[9998]`) vừa xuất hiện ngay dưới ngón tay, click ảo rơi trúng backdrop làm backdrop kích hoạt đóng modal ngay tức thì.
+     - *Giải pháp*: Áp dụng time guard `Date.now() - lastOpenTimeRef.current < 450ms` trên `handleBackdropClick` cùng `e.stopPropagation()` trên cả thanh nổi và backdrop. Nhờ đó, thao tác tap mở lại poster trên điện thoại hoạt động trơn tru 100%, không bị chớp tắt.
 
 ### 2. Trang Quản Trị Hệ Thống (`/admin` → Cài Đặt Hệ Thống → Thông Báo Nổi & Lịch Tết)
 - **Công tắc Bật / Tắt (Active Switch)**: Kích hoạt hoặc tạm dừng hiển thị thông báo.
-- **Droplist GOM LẠI LÀM 1 — Chủ Đề & Tiêu Đề** (cập nhật mới):
-  - Admin chọn 1 trong 3 tùy chọn, hệ thống đồng bộ cả `titleVi = badgeTextVi` và `titleEn = badgeTextEn` cùng lúc:
+- **Droplist GOM LẠI LÀM 1 — Chủ Đề & Tiêu Đề**:
   - `🧧 Lịch Nghỉ Lễ`: preset VI = `🧧 Lịch Nghỉ Lễ` / EN = `🧧 Holiday Schedule`.
   - `🎁 Ưu Đãi`: preset VI = `🎁 Ưu Đãi` / EN = `🎁 Special Offers`.
-  - `✍️ Tùy Chỉnh Khác...`: Hiện thêm 2 ô nhập chữ VI + EN tùy biến tự do; typing đồng bộ cả `badgeTextVi = titleVi` và `badgeTextEn = titleEn`.
-- **Ảnh Poster — Chèn Riêng Cho Cả 2 Ngôn Ngữ** (cập nhật mới):
+  - `🔔 Tùy Chỉnh (Tự nhập chữ / Tự động dùng Chuông Rung)`: Hiện 2 ô nhập chữ VI + EN tùy biến tự do. Nếu người dùng không nhập emoji, hệ thống tự hiển thị icon Cái Chuông rung.
+- **Ảnh Poster — Chèn Riêng Cho Cả 2 Ngôn Ngữ**:
   - **Ảnh 1 — Tiếng Việt (Bắt buộc)**: `announcementForm.imageUrl` — ảnh chính/mặc định.
   - **Ảnh 2 — Tiếng Anh (Tùy chọn)**: `announcementForm.imageUrlEn` — nếu bỏ trống, frontend tự fallback về ảnh Tiếng Việt.
-  - Fallback logic: `const currentImage = (isEn && announcement.imageUrlEn?.trim()) ? announcement.imageUrlEn.trim() : announcement.imageUrl.trim()`.
-  - Mỗi ô ảnh dùng `<AdminImageInput>` đầy đủ: upload file, dán ảnh Ctrl+V, điền URL.
-  - Label trạng thái tự động: `✅ Có ảnh tiếng Anh riêng` / `Tự lấy ảnh Tiếng Việt`.
-- **Live Preview (Cột phải, 2 preview)**:
-  - Preview 1 — Popup Poster: Dark mockup, hiển thị ảnh trực tiếp với dấu ✕ nhỏ gọn trên ảnh, không còn header 5★ hay footer. Có mini toggle VI/EN để xem preview fallback ảnh.
-  - Preview 2 — Thanh nổi góc trên: Mô phỏng pill badge với màu sắc theo chủ đề, GripVertical icon, emoji, chữ badge và ChevronDown.
+- **Live Preview Đồng Bộ**:
+  - Thanh nổi preview trong admin mô phỏng đúng chuẩn capsule nhỏ gọn, 1 icon rung (hoặc chuông rung), chữ mảnh mai và mũi tên chevron.
 
 ### 3. Interface Data Model (`PopupAnnouncementConfig`)
 ```ts
