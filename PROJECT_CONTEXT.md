@@ -878,8 +878,15 @@ interface PopupAnnouncementConfig {
 ## 27. TÍCH HỢP FANPAGE FACEBOOK TRỰC TIẾP TRONG CHÂN TRANG (FOOTER)
 ### 1. Mục Đích & Trải Nghiệm Khách Hàng
 - Khách hàng lướt đến chân trang (Footer) có thể xem trực tiếp 1 đoạn dòng thời gian (Timeline bài viết, ảnh, hoạt động điều trị) của Fanpage chính thức Bệnh Viện Thú Y PetM&M mà không cần phải thoát khỏi website.
-- Nút **"Thích Trang"** và **"Nhắn tin"** trực tiếp giúp gia tăng tương tác thật cho Fanpage.
-- Cung cấp nút xem trang ngoài và link theo dõi nhanh.
+- Thiết kế **Thẻ Fanpage 5★ Cao Cấp (Custom Facebook Native Card)** tái hiện 100% chuẩn xác giao diện Fanpage thật của bệnh viện:
+  - Ảnh bìa HD thật của viện: 2 bé cún trắng trên thảm lông + biểu tượng lá mầm xanh (`/images/facebook/cover.webp`).
+  - Avatar tròn chính thức của PetM&M với viền trắng nổi (`/images/facebook/avatar.png`).
+  - Tiêu đề "Bệnh viện thú cưng PetM&M" kèm dấu tích xanh chính thức ✓.
+  - Số lượng người theo dõi: "190 người theo dõi • 6 đang theo dõi".
+  - Slogan & định vị: "📍 PET M&M HOSPITAL • 🐾 Touch • Trust • Love".
+  - 2 nút hành động trực tiếp: `[Nhắn tin]` màu xanh `#1877F2` (mở ngay Messenger chat) và `[+ Theo dõi]`.
+  - Khung bài viết mới nhất (Featured Post): "TIÊM PHÒNG DẠI MIỄN PHÍ CHO THÚ CƯNG 🐶🐱" kèm poster sắc nét (`/images/facebook/post_sample.png`) có nút mở trực tiếp trên Facebook.
+  - Tải tức thì 0ms, không bị giật lag, không bị xô lệch, không phụ thuộc vào iframe Meta bị chặn hay bóp méo.
 
 ### 2. Thiết Kế & Cấu Trúc Giao Diện 5 Cột Trên Cùng 1 Hàng
 - **Độ rộng lề tối ưu (`max-w-[1780px]`)**: Mở rộng toàn diện không gian chân trang sát lề trên màn hình lớn, loại bỏ khoảng trống thừa 2 bên lề.
@@ -888,8 +895,8 @@ interface PopupAnnouncementConfig {
   2. **Cột 2 (`xl:col-span-2 lg:col-span-2`)**: Về PetM&M (Menu links).
   3. **Cột 3 (`xl:col-span-2 lg:col-span-2`)**: Dịch Vụ Thú Y (Menu dịch vụ).
   4. **Cột 4 (`xl:col-span-2 lg:col-span-2`)**: Vị Trí & Bản Đồ Google Maps (Maps embed `h-[180px]` + Nút Mở Chỉ Đường).
-  5. **Cột 5 (`xl:col-span-3 lg:col-span-2`)**: Fanpage Facebook PetM&M (Iframe Page Plugin `h-[225px]` với Timeline, Nút Thích Trang, Nút Nhắn Tin, Link Xem Trang ↗).
-- Tự động chuẩn hóa link Facebook: Nhận diện mọi biến thể link chia sẻ (`share/1CKNDcSEY1`) về Fanpage chính thức `/petmmhospital`.
+  5. **Cột 5 (`xl:col-span-3 lg:col-span-3`)**: Fanpage Facebook PetM&M (Thẻ Fanpage 5★ Cao Cấp `h-[250px]`, nút Xem trang ↗ và + Theo dõi).
+- Chiều cao 2 khối Bản đồ Maps và Thẻ Fanpage được cân đối đồng đều (~280px), tạo tổng thể chân trang hài hòa, bề thế và chuẩn đẳng cấp bệnh viện thú y 5 sao.
 
 
 
