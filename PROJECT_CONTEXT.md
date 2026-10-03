@@ -881,12 +881,15 @@ interface PopupAnnouncementConfig {
 - Nút **"Thích Trang"** và **"Nhắn tin"** trực tiếp giúp gia tăng tương tác thật cho Fanpage.
 - Cung cấp nút xem trang ngoài và link theo dõi nhanh.
 
-### 2. Thiết Kế & Cấu Trúc Giao Diện
-- **Cột 4 trong Footer (`lg:col-span-4`)**:
-  - Tích hợp 2 tab chuyển đổi mượt mà:
-    1. **`[ 📱 Fanpage ]` (Mặc định)**: Hiển thị khung iframe Facebook Page Plugin chính thức từ Meta (`width=380`, `height=290`, `tabs=timeline`, bo tròn `rounded-xl`).
-    2. **`[ 📍 Bản Đồ ]`**: Hiển thị Google Maps thu nhỏ của chi nhánh cùng nút mở chỉ đường ứng dụng.
-  - Tự động chuẩn hóa link Facebook: Cho dù admin nhập link chia sẻ (VD: `https://www.facebook.com/share/1CKNDcSEY1/`) hay link trực tiếp (`/petmmhospital`), hệ thống đều tự nhận diện để nạp đúng trang chính thức.
-  - Nếu hệ thống chưa cấu hình link Facebook, Cột 4 tự động hiển thị Google Maps như cũ mà không phát sinh lỗi.
+### 2. Thiết Kế & Cấu Trúc Giao Diện 5 Cột Trên Cùng 1 Hàng
+- **Độ rộng lề tối ưu (`max-w-[1780px]`)**: Mở rộng toàn diện không gian chân trang sát lề trên màn hình lớn, loại bỏ khoảng trống thừa 2 bên lề.
+- **5 Cột Nằm Cùng Trên 1 Hàng Độc Lập (Không cần bấm Tab chuyển đổi)**:
+  1. **Cột 1 (`xl:col-span-3 lg:col-span-4`)**: Thương hiệu PetM&M, Slogan, Hotline & 6 icon mạng xã hội tròn.
+  2. **Cột 2 (`xl:col-span-2 lg:col-span-2`)**: Về PetM&M (Menu links).
+  3. **Cột 3 (`xl:col-span-2 lg:col-span-2`)**: Dịch Vụ Thú Y (Menu dịch vụ).
+  4. **Cột 4 (`xl:col-span-2 lg:col-span-2`)**: Vị Trí & Bản Đồ Google Maps (Maps embed `h-[180px]` + Nút Mở Chỉ Đường).
+  5. **Cột 5 (`xl:col-span-3 lg:col-span-2`)**: Fanpage Facebook PetM&M (Iframe Page Plugin `h-[225px]` với Timeline, Nút Thích Trang, Nút Nhắn Tin, Link Xem Trang ↗).
+- Tự động chuẩn hóa link Facebook: Nhận diện mọi biến thể link chia sẻ (`share/1CKNDcSEY1`) về Fanpage chính thức `/petmmhospital`.
+
 
 

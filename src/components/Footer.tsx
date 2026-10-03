@@ -35,7 +35,7 @@ function getFacebookEmbedUrl(rawUrl?: string): string {
 
   return `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(
     pageUrl
-  )}&tabs=timeline&width=380&height=290&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId`;
+  )}&tabs=timeline&width=380&height=240&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId`;
 }
 
 interface FooterProps {
@@ -56,8 +56,6 @@ export default function Footer({ branch }: FooterProps) {
   const { t, language } = useLanguage();
   const { services } = useNavDatabase();
   const isEn = language === 'en';
-
-  const [footerTab, setFooterTab] = useState<'facebook' | 'map'>('facebook');
 
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
@@ -124,11 +122,11 @@ export default function Footer({ branch }: FooterProps) {
       {/* Subtle luxury ambient texture overlay */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-800/15 via-transparent to-transparent pointer-events-none" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Main 4-Column Grid: Brand | Về PetM&M | Dịch Vụ Thú Y | Bản Đồ Gắn Trong Thanh */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-7 items-start">
-          {/* CỘT 1: THƯƠNG HIỆU PETM&M (lg:col-span-3) */}
-          <div className="lg:col-span-3 space-y-3.5">
+      <div className="relative z-10 w-full max-w-[1780px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
+        {/* Main 5-Column Grid: Brand | Về PetM&M | Dịch Vụ Thú Y | Bản Đồ Maps | Fanpage Facebook */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-6 xl:gap-5 2xl:gap-7 items-start">
+          {/* CỘT 1: THƯƠNG HIỆU PETM&M (lg:col-span-4 xl:col-span-3) */}
+          <div className="lg:col-span-4 xl:col-span-3 space-y-3.5">
             <PetLogo size="default" />
 
             <h3 className="text-base sm:text-lg font-bold text-amber-300 font-editorial tracking-wide italic">
@@ -255,8 +253,8 @@ export default function Footer({ branch }: FooterProps) {
             </div>
           </div>
 
-          {/* CỘT 2: VỀ PETM&M (lg:col-span-2) */}
-          <div className="lg:col-span-2 space-y-3">
+          {/* CỘT 2: VỀ PETM&M (lg:col-span-2 xl:col-span-2) */}
+          <div className="lg:col-span-2 xl:col-span-2 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white border-b border-white/15 pb-2">
               {language === 'en' ? (
                 <>About <PetMMBrand /></>
@@ -308,8 +306,8 @@ export default function Footer({ branch }: FooterProps) {
             </ul>
           </div>
 
-          {/* CỘT 3: DỊCH VỤ THÚ Y (lg:col-span-3) */}
-          <div className="lg:col-span-3 space-y-3">
+          {/* CỘT 3: DỊCH VỤ THÚ Y (lg:col-span-2 xl:col-span-2) */}
+          <div className="lg:col-span-2 xl:col-span-2 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white border-b border-white/15 pb-2">
               {language === 'en' ? 'Veterinary Services' : 'Dịch Vụ Thú Y'}
             </h4>
@@ -356,48 +354,65 @@ export default function Footer({ branch }: FooterProps) {
               )}
             </ul>
           </div>
-
-          {/* CỘT 4: FANPAGE FACEBOOK & BẢN ĐỒ CHI NHÁNH (lg:col-span-4) */}
-          <div className="lg:col-span-4 space-y-2.5">
-            {/* Header: Nếu có Facebook thì hiện Tab chuyển đổi mượt mà */}
+          {/* CỘT 4: VỊ TRÍ & BẢN ĐỒ CHI NHÁNH (lg:col-span-2 xl:col-span-2) */}
+          <div className="lg:col-span-2 xl:col-span-2 space-y-2.5">
             <div className="flex items-center justify-between border-b border-white/15 pb-2">
-              {facebookEmbedUrl ? (
-                <div className="inline-flex p-0.5 bg-black/40 rounded-lg border border-white/15">
-                  <button
-                    type="button"
-                    onClick={() => setFooterTab('facebook')}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      footerTab === 'facebook'
-                        ? 'bg-[#1877F2] text-white shadow-xs'
-                        : 'text-emerald-100/70 hover:text-white'
-                    }`}
-                  >
-                    <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                    </svg>
-                    <span>Fanpage</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFooterTab('map')}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      footerTab === 'map'
-                        ? 'bg-[#2D5A27] text-white shadow-xs'
-                        : 'text-emerald-100/70 hover:text-white'
-                    }`}
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{language === 'en' ? 'Map' : 'Bản Đồ'}</span>
-                  </button>
-                </div>
-              ) : (
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>{language === 'en' ? 'Location & Map' : 'Vị Trí & Bản Đồ'}</span>
-                </h4>
-              )}
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>{language === 'en' ? 'Location & Map' : 'Vị Trí & Bản Đồ'}</span>
+              </h4>
+              <span className="text-[10px] text-amber-300 font-mono">Maps</span>
+            </div>
 
-              {footerTab === 'facebook' && facebookUrl ? (
+            {/* Tên & địa chỉ cơ sở đang xem */}
+            <div>
+              <p className="text-xs font-bold text-white line-clamp-1">
+                {branchName}
+              </p>
+              <p className="text-[11px] text-emerald-100/80 font-light line-clamp-2 mt-0.5">
+                {branchAddress}
+              </p>
+            </div>
+
+            {/* Khung iframe Google Maps thu nhỏ */}
+            <div className="relative w-full h-[180px] rounded-xl overflow-hidden border border-white/20 shadow-md bg-black/40">
+              <iframe
+                src={mapEmbedUrl}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full"
+              />
+            </div>
+
+            {/* Nút chỉ đường */}
+            {mapAppUrl && (
+              <a
+                href={getDirectionsUrl(mapAppUrl, branchAddress, branchName)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white/15 hover:bg-amber-400 hover:text-slate-900 text-white text-xs font-semibold transition border border-white/20 shadow-xs cursor-pointer truncate"
+              >
+                <Navigation className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{language === 'en' ? 'Google Maps' : 'Mở Google Maps'}</span>
+              </a>
+            )}
+          </div>
+
+          {/* CỘT 5: FANPAGE FACEBOOK TRỰC TIẾP (lg:col-span-2 xl:col-span-3) */}
+          <div className="lg:col-span-2 xl:col-span-3 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-white/15 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 fill-[#1877F2]" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                <span>Fanpage Facebook</span>
+              </h4>
+
+              {facebookUrl && (
                 <a
                   href={facebookUrl}
                   target="_blank"
@@ -407,85 +422,41 @@ export default function Footer({ branch }: FooterProps) {
                   <span>{language === 'en' ? 'Visit Page' : 'Xem trang'}</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
-              ) : (
-                <span className="text-[10px] text-amber-300 font-mono">Maps</span>
               )}
             </div>
 
-            {/* Nội dung Tab: Facebook Fanpage hoặc Google Maps */}
-            {footerTab === 'facebook' && facebookEmbedUrl ? (
-              <div className="space-y-2">
-                {/* Khung iframe Facebook Page Plugin chính thức từ Meta */}
-                <div className="relative w-full h-[280px] rounded-xl overflow-hidden border border-white/20 shadow-md bg-white">
-                  <iframe
-                    src={facebookEmbedUrl}
-                    width="100%"
-                    height="280"
-                    style={{ border: 'none', overflow: 'hidden' }}
-                    scrolling="no"
-                    frameBorder="0"
-                    allowFullScreen={true}
-                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                    title="PetM&M Official Facebook Page"
-                    className="w-full h-full"
-                  />
-                </div>
+            {/* Khung Facebook Page Plugin iframe */}
+            <div className="relative w-full h-[225px] rounded-xl overflow-hidden border border-white/20 shadow-md bg-white">
+              <iframe
+                src={facebookEmbedUrl}
+                width="100%"
+                height="225"
+                style={{ border: 'none', overflow: 'hidden' }}
+                scrolling="no"
+                frameBorder="0"
+                allowFullScreen={true}
+                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                title="PetM&M Official Facebook Page"
+                className="w-full h-full"
+              />
+            </div>
 
-                {/* Chú thích & Nút theo dõi */}
-                <div className="flex items-center justify-between text-[11px] text-emerald-100/70 pt-0.5">
-                  <span className="truncate">
-                    {language === 'en' ? 'Latest updates & medical news' : 'Cập nhật tin tức & hoạt động viện'}
-                  </span>
-                  <a
-                    href={facebookUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-amber-300 hover:text-white font-medium hover:underline shrink-0 ml-2"
-                  >
-                    {language === 'en' ? '+ Follow' : '+ Theo dõi'}
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {/* Tên & địa chỉ cơ sở đang xem */}
-                <div>
-                  <p className="text-xs font-bold text-white line-clamp-1">
-                    {branchName}
-                  </p>
-                  <p className="text-[11px] text-emerald-100/80 font-light line-clamp-2 mt-0.5">
-                    {branchAddress}
-                  </p>
-                </div>
-
-                {/* Khung iframe Google Maps thu nhỏ gắn trực tiếp trong Footer */}
-                <div className="relative w-full h-36 rounded-xl overflow-hidden border border-white/20 shadow-md bg-black/40">
-                  <iframe
-                    src={mapEmbedUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className="w-full h-full"
-                  />
-                </div>
-
-                {/* Nút chỉ đường */}
-                {mapAppUrl && (
-                  <a
-                    href={getDirectionsUrl(mapAppUrl, branchAddress, branchName)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-white/15 hover:bg-amber-400 hover:text-slate-900 text-white text-xs font-semibold transition border border-white/20 shadow-xs cursor-pointer"
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>{language === 'en' ? 'Open Google Maps Directions' : 'Mở Google Maps Chỉ Đường'}</span>
-                  </a>
-                )}
-              </div>
-            )}
+            {/* Chú thích & Nút theo dõi */}
+            <div className="flex items-center justify-between text-[11px] text-emerald-100/70 pt-0.5">
+              <span className="truncate">
+                {language === 'en' ? 'Latest updates' : 'Cập nhật tin tức & hoạt động'}
+              </span>
+              {facebookUrl && (
+                <a
+                  href={facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-300 hover:text-white font-medium hover:underline shrink-0 ml-2"
+                >
+                  {language === 'en' ? '+ Follow' : '+ Theo dõi'}
+                </a>
+              )}
+            </div>
           </div>
         </div>
 
