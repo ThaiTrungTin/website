@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       password: currentPassword,
     });
 
-    if (signInErr && currentPassword !== 'admin123' && currentPassword !== 'admin') {
+    if (signInErr) {
       return NextResponse.json(
         { success: false, message: 'Mật khẩu hiện tại không chính xác!' },
         { status: 400 }

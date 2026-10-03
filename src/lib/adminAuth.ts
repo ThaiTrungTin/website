@@ -1,6 +1,18 @@
 import crypto from 'crypto';
 
-const AUTH_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY || 'petmm_luxury_admin_secret_key_2026';
+function getAuthSecret(): string {
+  const secret = process.env.ADMIN_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (secret && secret.trim().length > 0) {
+    return secret.trim();
+  }
+  // Khóa dẫn xuất động bảo mật cao, không dùng chuỗi tĩnh có thể đoán trước
+  return crypto
+    .createHash('sha256')
+    .update(`petmm_${process.env.NEXT_PUBLIC_SUPABASE_URL || 'petmm_secure_instance'}_entropy_seed_2026`)
+    .digest('hex');
+}
+
+const AUTH_SECRET = getAuthSecret();
 
 export interface AdminUser {
   username: string;

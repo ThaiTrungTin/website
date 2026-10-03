@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendOtpEmail, getSmtpConfig } from '@/lib/mailer';
 
+// In-memory cooldown chống spam gửi mail liên tục
+const otpCooldownMap = new Map<string, number>();
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -15,6 +18,21 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+
+    // Giới hạn tần suất gửi mã: tối thiểu 60s giữa 2 lần gửi
+    const lastSent = otpCooldownMap.get(cleanEmail);
+    const now = Date.now();
+    if (lastSent && now - lastSent < 60000) {
+      const waitSec = Math.ceil((60000 - (now - lastSent)) / 1000);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Vui lòng đợi ${waitSec} giây trước khi yêu cầu gửi lại mã OTP!`,
+        },
+        { status: 429 }
+      );
+    }
+    otpCooldownMap.set(cleanEmail, now);
 
     // 1. Kiểm tra tài khoản có tồn tại trong Supabase Auth không
     const { data: usersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers();

@@ -62,12 +62,14 @@ const getMobileObjectPosition = (pos?: string | null) => {
   return '50% 15%';
 };
 
+const SUPABASE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+
 // Danh sách banner hoạt động hiện tại (Đã loại bỏ ảnh 9 bị tắt, ảnh 1 là ảnh phòng khám chuẩn)
 const HERO_SLIDES_DEFAULT: HeroBannerItem[] = [
   {
     id: 'aa8eaaf2-ff33-40e9-99ef-549988d98099',
     tieu_de: 'Ảnh nền PetM&M',
-    duong_dan_anh: 'https://ntkpdadakcyugvivvsjw.supabase.co/storage/v1/object/public/hinh_anh/banners/hero_1790088496905_19pds.jpg',
+    duong_dan_anh: SUPABASE_BASE ? `${SUPABASE_BASE}/storage/v1/object/public/hinh_anh/banners/hero_1790088496905_19pds.jpg` : '',
     can_chinh: '50% 15%',
     ti_le_phong: 1.05,
     hieu_ung: 'ken_burns',
@@ -155,7 +157,7 @@ const HERO_SLIDES_DEFAULT: HeroBannerItem[] = [
   {
     id: '8c6bd110-2521-489b-b28d-8cb67bccc4e3',
     tieu_de: 'Ảnh nền PetM&M',
-    duong_dan_anh: 'https://ntkpdadakcyugvivvsjw.supabase.co/storage/v1/object/public/hinh_anh/banners/hero_1790091603217_5217i.jpg',
+    duong_dan_anh: SUPABASE_BASE ? `${SUPABASE_BASE}/storage/v1/object/public/hinh_anh/banners/hero_1790091603217_5217i.jpg` : '',
     can_chinh: '50% 50%',
     ti_le_phong: 1.05,
     hieu_ung: 'ken_burns',

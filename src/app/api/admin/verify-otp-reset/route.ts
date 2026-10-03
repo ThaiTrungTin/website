@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateToken, AdminUser } from '@/lib/adminAuth';
 
+// In-memory tracking số lần nhập sai OTP
+const otpAttemptsMap = new Map<string, number>();
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -34,14 +37,33 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (selectErr || !otpRecords || otpRecords.length === 0) {
+      const currentFailed = (otpAttemptsMap.get(cleanEmail) || 0) + 1;
+      otpAttemptsMap.set(cleanEmail, currentFailed);
+
+      if (currentFailed >= 5) {
+        // Hủy bỏ mã OTP trong database lập tức để chống dò mã
+        await supabaseAdmin.from('admin_otp_codes').delete().eq('email', cleanEmail);
+        otpAttemptsMap.delete(cleanEmail);
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Mã xác thực OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu cấp lại mã OTP mới!',
+          },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: 'Mã xác thực 6 số không chính xác hoặc đã hết hạn (15 phút)! Vui lòng kiểm tra lại.',
+          message: `Mã xác thực 6 số không chính xác! (Còn ${5 - currentFailed} lần thử).`,
         },
         { status: 400 }
       );
     }
+
+    // Nhập đúng -> xóa lịch sử thử sai
+    otpAttemptsMap.delete(cleanEmail);
 
     const matchedRecord = otpRecords[0];
 

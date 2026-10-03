@@ -94,24 +94,17 @@ export default function AdminDashboardPage() {
             setIsAuthenticated(true);
             setCurrentUser(data.user);
           } else {
-            const local = typeof window !== 'undefined' ? localStorage.getItem('petmm_admin_user') : null;
-            if (local) {
-              setIsAuthenticated(true);
-              setCurrentUser(JSON.parse(local));
-            } else {
-              setIsAuthenticated(false);
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('petmm_admin_user');
             }
           }
         }
       } catch {
         if (isMounted) {
-          const local = typeof window !== 'undefined' ? localStorage.getItem('petmm_admin_user') : null;
-          if (local) {
-            setIsAuthenticated(true);
-            setCurrentUser(JSON.parse(local));
-          } else {
-            setIsAuthenticated(false);
-          }
+          setIsAuthenticated(false);
+          setCurrentUser(null);
         }
       }
     };

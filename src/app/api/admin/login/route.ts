@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { generateToken, AdminUser } from '@/lib/adminAuth';
 
+// In-memory rate limiting chống dò mật khẩu brute-force
+const loginAttemptsMap = new Map<string, { count: number; lockedUntil: number }>();
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -15,13 +18,28 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanInput = username.trim().toLowerCase();
-    // Nếu người dùng nhập 'admin', tự động chuyển thành 'admin@petmm.vn' để khớp với Supabase Auth
     const email = cleanInput.includes('@') ? cleanInput : `${cleanInput}@petmm.vn`;
+
+    // Kiểm tra giới hạn số lần thử đăng nhập (Rate limiting)
+    const rateKey = cleanInput;
+    const attemptInfo = loginAttemptsMap.get(rateKey);
+    const now = Date.now();
+
+    if (attemptInfo && attemptInfo.lockedUntil > now) {
+      const remainingMinutes = Math.ceil((attemptInfo.lockedUntil - now) / 60000);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau ${remainingMinutes} phút!`,
+        },
+        { status: 429 }
+      );
+    }
 
     let authenticatedUser: AdminUser | null = null;
     let authErrorMessage = '';
 
-    // 1. Xác thực trực tiếp qua mục BẢO MẬT (Authentication -> Users) của Supabase
+    // 1. Xác thực độc quyền qua Supabase Auth (Không dùng bất kỳ tài khoản mặc định hardcode nào)
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -43,26 +61,34 @@ export async function POST(req: NextRequest) {
       console.warn('Lỗi Supabase Auth:', err);
     }
 
-    // 2. Dự phòng tài khoản quản trị hệ thống
+    // Nếu đăng nhập thất bại, tăng bộ đếm và khóa nếu quá 5 lần
     if (!authenticatedUser) {
-      if ((cleanInput === 'admin' || cleanInput === 'admin@petmm.vn') && (password === 'admin123' || password === 'admin')) {
-        authenticatedUser = {
-          username: 'admin',
-          ho_ten: 'Quản Trị Viên PetM&M',
-          vai_tro: 'super_admin',
-        };
-      }
-    }
+      const current = loginAttemptsMap.get(rateKey) || { count: 0, lockedUntil: 0 };
+      const newCount = current.count + 1;
+      const lockedUntil = newCount >= 5 ? now + 15 * 60 * 1000 : 0;
+      loginAttemptsMap.set(rateKey, { count: newCount, lockedUntil });
 
-    if (!authenticatedUser) {
+      if (newCount >= 5) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Đã nhập sai mật khẩu 5 lần liên tiếp. Vì lý do bảo mật, tài khoản bị tạm khóa 15 phút!',
+          },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: 'Tài khoản hoặc mật khẩu không chính xác! Vui lòng kiểm tra lại thông tin.',
+          message: `Tài khoản hoặc mật khẩu không chính xác! (Còn ${5 - newCount} lần thử)`,
         },
         { status: 401 }
       );
     }
+
+    // Đăng nhập thành công -> xóa bỏ lịch sử thử sai
+    loginAttemptsMap.delete(rateKey);
 
     // 3. Tạo token phiên đăng nhập an toàn
     const token = generateToken(authenticatedUser);

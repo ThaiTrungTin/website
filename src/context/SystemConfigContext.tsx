@@ -3,9 +3,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, CauHinhRecord } from '@/lib/supabase';
 
+const SUPABASE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+
 const DEFAULT_CONFIG: CauHinhRecord = {
   id: 'system',
-  logo_favicon: 'https://ntkpdadakcyugvivvsjw.supabase.co/storage/v1/object/public/hinh_anh/favicons/favicons_1790778595096_y4asw.png',
+  logo_favicon: SUPABASE_BASE ? `${SUPABASE_BASE}/storage/v1/object/public/hinh_anh/favicons/favicons_1790778595096_y4asw.png` : '',
   tieu_de_trang: 'PetM&M - Trang Chủ',
   tieu_de_trang_en: 'PetM&M - Homepage',
   hotline: '0364605544',
@@ -75,6 +77,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed && typeof parsed === 'object') {
+          delete parsed.smtp_password;
           setConfig((prev) => ({ ...prev, ...parsed }));
         }
       }
@@ -84,9 +87,32 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true);
+      // BẢO MẬT: Chỉ select các trường công khai cần thiết cho giao diện, TUYỆT ĐỐI không lấy smtp_password
+      const publicFields = [
+        'id', 'logo_favicon', 'tieu_de_trang', 'tieu_de_trang_en',
+        'hotline', 'hotline_hien_thi', 'link_zalo', 'link_facebook', 'link_messenger', 'link_tiktok',
+        'email', 'dia_chi_chinh',
+        'slogan_dau_trang_tieu_de', 'slogan_dau_trang_tieu_de_en',
+        'slogan_dau_trang_noi_dung', 'slogan_dau_trang_noi_dung_en',
+        'slogan_cuoi_trang_tieu_de', 'slogan_cuoi_trang_tieu_de_en',
+        'slogan_cuoi_trang_noi_dung', 'slogan_cuoi_trang_noi_dung_en',
+        'giay_phep',
+        'gioi_thieu_huy_hieu', 'gioi_thieu_huy_hieu_en',
+        'gioi_thieu_tieu_de_1', 'gioi_thieu_tieu_de_1_en',
+        'gioi_thieu_tieu_de_2', 'gioi_thieu_tieu_de_2_en',
+        'gioi_thieu_mo_ta', 'gioi_thieu_mo_ta_en',
+        'gioi_thieu_cam_ket_tieu_de', 'gioi_thieu_cam_ket_tieu_de_en',
+        'gioi_thieu_cam_ket_phu', 'gioi_thieu_cam_ket_phu_en',
+        'gioi_thieu_trich_dan', 'gioi_thieu_trich_dan_en',
+        'gioi_thieu_bac_si_ten', 'gioi_thieu_bac_si_ten_en',
+        'gioi_thieu_bac_si_chuc_danh', 'gioi_thieu_bac_si_chuc_danh_en',
+        'thong_ke_nam_thanh_lap', 'thong_ke_nam_thanh_lap_nhan', 'thong_ke_nam_thanh_lap_nhan_en',
+        'thong_ke_khach_hang', 'thong_ke_khach_hang_nhan', 'thong_ke_khach_hang_nhan_en',
+      ].join(', ');
+
       const { data, error } = await supabase
         .from('cau_hinh')
-        .select('*')
+        .select(publicFields)
         .eq('id', 'system')
         .single();
 
@@ -96,10 +122,14 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
       }
 
       if (data) {
+        const configData = data as unknown as Partial<CauHinhRecord>;
         setConfig((prev) => {
-          const merged = { ...prev, ...data };
+          const merged = { ...prev, ...configData };
           try {
-            localStorage.setItem('petmm_system_config_cache', JSON.stringify(merged));
+            // Không bao giờ lưu trữ mật khẩu hay thông tin nhạy cảm vào localStorage
+            const safeData = { ...merged };
+            delete (safeData as any).smtp_password;
+            localStorage.setItem('petmm_system_config_cache', JSON.stringify(safeData));
           } catch {}
           return merged;
         });
@@ -109,8 +139,8 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
           try {
             const lang = (localStorage.getItem('petmm_language') as string) || 'vi';
             const pageTitle = lang === 'en'
-              ? (data.tieu_de_trang_en?.trim() || 'PetM&M - Homepage')
-              : (data.tieu_de_trang?.trim() || 'PetM&M - Trang Chủ');
+              ? (configData.tieu_de_trang_en?.trim() || 'PetM&M - Homepage')
+              : (configData.tieu_de_trang?.trim() || 'PetM&M - Trang Chủ');
             if (pageTitle) {
               document.title = pageTitle;
             }

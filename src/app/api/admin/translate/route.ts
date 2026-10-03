@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/adminAuth';
 
 // Từ điển tinh chỉnh chuyên ngành Thú y & Y khoa (Veterinary Domain Tuning)
 const DOMAIN_REPLACEMENTS: [RegExp, string][] = [
@@ -181,8 +182,18 @@ async function translateSingle(text: string): Promise<string> {
   return translated;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: 'Bạn chưa đăng nhập quản trị!' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
 
     // 1. Dịch danh sách các đoạn văn bản: { texts: ["...", "..."] }
