@@ -811,24 +811,61 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
   - Layout tổng: [`src/app/layout.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/layout.tsx)
 
 ### 1. Cơ Chế Hoạt Động (UX Flow)
-1. **Popup Poster Tinh Gọn (Không Nút Đặt Lịch)**:
-   - Khi khách truy cập website, sau một khoảng trễ tự nhiên (mặc định 1.2 giây), modal thông báo trang trọng bung mở hiển thị ảnh Poster chương trình (Lịch trực Tết, Lịch nghỉ lễ, Ưu đãi khai xuân...).
-   - **Đã lược bỏ nút Đặt Lịch Khám**: Poster hiển thị nguyên bản, sang trọng, tập trung 100% vào nội dung thông báo. Khách có thể chạm vào ảnh, nút `✕` trên đầu hoặc nút `Đóng` phía dưới để đóng modal.
+1. **Popup Poster Tối Giản & Đẳng Cấp (Cập Nhật Mới Nhất)**:
+   - Khi khách truy cập website, sau một khoảng trễ tự nhiên (mặc định 1.2 giây), modal thông báo bung mở hiển thị ảnh Poster chương trình nguyên bản.
+   - **Đã lược bỏ 100% phần header dải băng (5★ PetM&M)**: Không còn thanh tiêu đề header phía trên poster.
+   - **Đã lược bỏ hoàn toàn footer "Chạm vào ảnh hoặc nút ✕ để đóng" + nút Đóng**: Giao diện poster gọn, sạch, tập trung 100% vào nội dung ảnh.
+   - **Chỉ còn 1 dấu ✕ nhỏ gọn nằm TRỰC TIẾP TRÊN ẢNH** (góc trên bên phải): `absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/30`.
+   - Khách có thể click vào nền mờ xung quanh để đóng.
 2. **Thanh Đóng/Mở Nổi Ở Góc Trên Bên Phải (Draggable Floating Bar)**:
-   - **Vị trí mặc định**: Nằm ở góc trên bên phải màn hình (`top-20 md:top-24 right-3 sm:right-6`, ngay dưới thanh điều hướng), cực kỳ tiện tay bấm.
-   - **Kéo di chuyển tự do (Draggable)**: Khách hàng có thể dùng chuột hoặc ngón tay chạm giữ để kéo thanh nổi đến bất kỳ vị trí nào trên màn hình nếu sợ che mất chữ. Hệ thống tự động giới hạn vùng kéo (clamp) không cho trôi ra ngoài mép màn hình.
-   - **Không tắt được**: Thanh nổi luôn luôn hiện diện (không có nút ✕ xóa hẳn) để khách có thể bấm xem lại poster thông báo bất kỳ lúc nào trong quá trình lướt web.
-   - **Phân biệt Click vs Drag**: Kéo di chuyển > 5px sẽ chỉ dời vị trí thanh nổi; click/chạm nhẹ < 5px sẽ kích hoạt đóng/mở popup poster.
+   - **Vị trí mặc định**: `top-20 md:top-24 right-3 sm:right-6` (ngay dưới thanh điều hướng).
+   - **Kéo di chuyển tự do (Draggable)**: Dùng Pointer Capture API (`onPointerDown/Move/Up`), giới hạn clamp vùng kéo trong viewport.
+   - **Không tắt được**: Thanh nổi luôn hiển thị, không có nút ✕ xóa hẳn.
+   - **Phân biệt Click vs Drag**: Di chuyển > 5px → chỉ dời vị trí; click < 5px → đóng/mở popup poster.
+   - Chữ hiển thị trên thanh = `badgeTextVi` / `badgeTextEn` (đồng bộ với tiêu đề chủ đề).
 
-### 2. Trang Quản Trị Hệ Thống (`/admin` -> Cài Đặt Hệ Thống -> Thông Báo Nổi & Lịch Tết)
+### 2. Trang Quản Trị Hệ Thống (`/admin` → Cài Đặt Hệ Thống → Thông Báo Nổi & Lịch Tết)
 - **Công tắc Bật / Tắt (Active Switch)**: Kích hoạt hoặc tạm dừng hiển thị thông báo.
-- **Droplist Chọn Chủ Đề (Lịch Nghỉ Lễ / Ưu Đãi / Khác)**:
-  - `🧧 Lịch Nghỉ Lễ / Tết`: Tự động áp dụng preset chữ `🧧 Lịch Nghỉ Lễ / Tết` và tiêu đề `Thông Báo Lịch Nghỉ Lễ & Lịch Trực Tết`.
-  - `🎁 Chương Trình Ưu Đãi`: Tự động áp dụng preset chữ `🎁 Ưu Đãi Đặc Biệt` và tiêu đề `Chương Trình Ưu Đãi Đặc Biệt`.
-  - `📢 Thông Báo Chung / Khác`: Cho phép tùy biến tự do.
-- **Trình tải ảnh Poster chuyên dụng (`AdminImageInput`)**: Tải ảnh trực tiếp, dán ảnh qua clipboard (<kbd>Ctrl + V</kbd>), hoặc điền URL. Lưu trữ tại bucket `hinh_anh/banners/`.
-- **Hỗ trợ Song Ngữ & Dịch AI 1 Chạm**: Tùy chỉnh tiêu đề và chữ trên thanh nổi cho cả Tiếng Việt và English; có nút AI tự động dịch.
-- **Mô phỏng trực quan thực tế (Live Preview)**: Xem trước 1:1 cả Popup Poster (đã bỏ đặt lịch) và Thanh nổi góc trên bên phải có thể kéo thả.
+- **Droplist GOM LẠI LÀM 1 — Chủ Đề & Tiêu Đề** (cập nhật mới):
+  - Admin chọn 1 trong 3 tùy chọn, hệ thống đồng bộ cả `titleVi = badgeTextVi` và `titleEn = badgeTextEn` cùng lúc:
+  - `🧧 Lịch Nghỉ Lễ`: preset VI = `🧧 Lịch Nghỉ Lễ` / EN = `🧧 Holiday Schedule`.
+  - `🎁 Ưu Đãi`: preset VI = `🎁 Ưu Đãi` / EN = `🎁 Special Offers`.
+  - `✍️ Tùy Chỉnh Khác...`: Hiện thêm 2 ô nhập chữ VI + EN tùy biến tự do; typing đồng bộ cả `badgeTextVi = titleVi` và `badgeTextEn = titleEn`.
+- **Ảnh Poster — Chèn Riêng Cho Cả 2 Ngôn Ngữ** (cập nhật mới):
+  - **Ảnh 1 — Tiếng Việt (Bắt buộc)**: `announcementForm.imageUrl` — ảnh chính/mặc định.
+  - **Ảnh 2 — Tiếng Anh (Tùy chọn)**: `announcementForm.imageUrlEn` — nếu bỏ trống, frontend tự fallback về ảnh Tiếng Việt.
+  - Fallback logic: `const currentImage = (isEn && announcement.imageUrlEn?.trim()) ? announcement.imageUrlEn.trim() : announcement.imageUrl.trim()`.
+  - Mỗi ô ảnh dùng `<AdminImageInput>` đầy đủ: upload file, dán ảnh Ctrl+V, điền URL.
+  - Label trạng thái tự động: `✅ Có ảnh tiếng Anh riêng` / `Tự lấy ảnh Tiếng Việt`.
+- **Live Preview (Cột phải, 2 preview)**:
+  - Preview 1 — Popup Poster: Dark mockup, hiển thị ảnh trực tiếp với dấu ✕ nhỏ gọn trên ảnh, không còn header 5★ hay footer. Có mini toggle VI/EN để xem preview fallback ảnh.
+  - Preview 2 — Thanh nổi góc trên: Mô phỏng pill badge với màu sắc theo chủ đề, GripVertical icon, emoji, chữ badge và ChevronDown.
 
+### 3. Interface Data Model (`PopupAnnouncementConfig`)
+```ts
+interface PopupAnnouncementConfig {
+  isActive: boolean;
+  category?: 'holiday' | 'promotion' | 'custom';
+  titleVi: string;       // = badgeTextVi (đồng bộ)
+  titleEn: string;       // = badgeTextEn (đồng bộ)
+  badgeTextVi: string;   // Chữ trên thanh nổi VI
+  badgeTextEn: string;   // Chữ trên thanh nổi EN
+  imageUrl: string;      // Ảnh poster Tiếng Việt (bắt buộc)
+  imageUrlEn?: string;   // Ảnh poster Tiếng Anh (tùy chọn, fallback về imageUrl nếu trống)
+  autoOpenDelaySeconds?: number; // Giây trễ tự bung popup (mặc định 1.2s)
+  updatedAt?: string;
+}
+```
+- Lưu vào `cau_hinh` table, row `id = 'popup_announcement'`, field `slogan_cuoi_trang_noi_dung` (JSON string).
 
+### 4. Thay Đổi Giao Diện Popup So Với Phiên Bản Cũ
+| Thành phần | Phiên bản cũ | Phiên bản mới |
+|---|---|---|
+| Header dải băng | ✅ Có (tên tiêu đề + huy hiệu `PetM&M 5★`) | ❌ Bỏ hoàn toàn |
+| Footer chữ đóng | ✅ Có (`Chạm vào ảnh hoặc nút ✕ để đóng`) | ❌ Bỏ hoàn toàn |
+| Nút Đóng ở dưới | ✅ Có (nút chữ `Đóng`) | ❌ Bỏ hoàn toàn |
+| Nút ✕ ngoài khung | ✅ Có (nằm ngoài góc trên khung card, w-11 h-11) | ❌ Bỏ |
+| Nút ✕ trên ảnh | ❌ Không có | ✅ 1 dấu ✕ nhỏ gọn absolute trên góc ảnh (w-8 h-8 bg-black/60 backdrop-blur) |
+| Ảnh poster VI | ✅ Có | ✅ Giữ nguyên, giao diện sạch hơn |
+| Ảnh poster EN | ✅ Có (fallback về VI) | ✅ Có, thêm ô upload riêng trực quan hơn |
 
