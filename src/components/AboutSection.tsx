@@ -230,6 +230,33 @@ export default function AboutSection() {
     setMouseStartX(null);
   };
 
+  // Tính toán hiệu ứng 3D Lật Trang Giấy (Paper Page Flip) cho từng slide
+  const getSlideFlipClass = (idx: number) => {
+    if (slides.length <= 1) {
+      return idx === currentSlide ? 'opacity-100 z-20 [transform:rotateY(0deg)]' : 'opacity-0 z-10 pointer-events-none';
+    }
+
+    if (idx === currentSlide) {
+      // Trang đang hiển thị (phẳng phiu, độ bóng chuẩn, nằm trên cùng)
+      return 'z-20 origin-left [transform:rotateY(0deg)] opacity-100 shadow-2xl pointer-events-auto';
+    }
+
+    const diff = (idx - currentSlide + slides.length) % slides.length;
+
+    if (diff === slides.length - 1) {
+      // Trang vừa lật qua bên trái (xoay quanh gáy bên trái góc -115 độ như lật trang sách)
+      return 'z-30 origin-left [transform:rotateY(-115deg)_scale(0.95)] opacity-0 pointer-events-none shadow-none';
+    }
+
+    if (diff === 1) {
+      // Trang kế tiếp nằm sẵn bên dưới (sẵn sàng lộ ra khi trang trên lật qua)
+      return 'z-10 origin-left [transform:rotateY(0deg)_scale(0.98)] opacity-100 pointer-events-none';
+    }
+
+    // Các trang còn lại nằm sâu bên dưới
+    return 'z-0 origin-left [transform:rotateY(0deg)_scale(0.95)] opacity-0 pointer-events-none';
+  };
+
   const pillars = [
     {
       title: isEn ? 'Fear-Free Clinical Environment' : 'Môi Trường Fear-Free Chuẩn Hoa Kỳ',
@@ -321,9 +348,9 @@ export default function AboutSection() {
           {/* CỘT PHẢI (6 CỘT): KHỐI ẢNH SLIDESHOW & BẢNG THỐNG KÊ (THÀNH LẬP, CƠ SỞ, KHÁCH HÀNG, ĐỘI NGŨ) */}
           <div className="lg:col-span-6">
             <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/90 bg-white">
-              {/* 1. KHU VỰC ẢNH VỚI DẤU < VÀ > ĐỂ XEM LẦN LƯỢT & VUỐT TAY TRÊN ĐIỆN THOẠI */}
+              {/* 1. KHU VỰC ẢNH VỚI HIỆU ỨNG LẬT TRANG GIẤY 3D & VUỐT TAY TRÊN ĐIỆN THOẠI */}
               <div
-                className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-900 group select-none cursor-grab active:cursor-grabbing touch-pan-y"
+                className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-950 group select-none cursor-grab active:cursor-grabbing touch-pan-y [perspective:1500px]"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -331,55 +358,54 @@ export default function AboutSection() {
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
               >
-                {/* TRACK GẠT QUA (SMOOTH HORIZONTAL SLIDE TRANSITION) */}
-                <div
-                  className="flex w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]"
-                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                >
-                  {slides.map((slide, idx) => {
-                    const slideTitle = isEn && slide.title_en ? slide.title_en : (slide.title || 'PetM&M');
-                    const slideTag = isEn && slide.tag_en ? slide.tag_en : (slide.tag || (isEn ? 'Medical Specialists' : 'Đội ngũ chuyên môn'));
-                    const isActive = currentSlide === idx;
+                {/* Dải bóng gáy sách cố định bên trái (Book Spine Crease Shadow) */}
+                <div className="absolute inset-y-0 left-0 w-8 sm:w-14 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-30" />
 
-                    return (
-                      <div
-                        key={slide.id || idx}
-                        className="relative w-full h-full min-w-full shrink-0 overflow-hidden"
-                      >
-                        <Image
-                          src={getAssetUrl(slide.image || '/about_team_entrance.jpg')}
-                          alt={slideTitle}
-                          fill
-                          sizes="(max-width: 1024px) 100vw, 50vw"
-                          className={`object-cover object-center transition-transform duration-700 ease-out ${
-                            isActive ? 'scale-100' : 'scale-105'
-                          }`}
-                          priority={idx === 0}
-                          draggable={false}
-                        />
+                {/* DANH SÁCH CÁC TRANG ẢNH LẬT 3D (PAPER FLIP PAGES) */}
+                {slides.map((slide, idx) => {
+                  const slideTitle = isEn && slide.title_en ? slide.title_en : (slide.title || 'PetM&M');
+                  const slideTag = isEn && slide.tag_en ? slide.tag_en : (slide.tag || (isEn ? 'Medical Specialists' : 'Đội ngũ chuyên môn'));
+                  const flipClass = getSlideFlipClass(idx);
 
-                        {/* Lớp phủ gradient tạo chiều sâu điện ảnh */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25 pointer-events-none" />
+                  return (
+                    <div
+                      key={slide.id || idx}
+                      className={`absolute inset-0 w-full h-full transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] [backface-visibility:hidden] [transform-style:preserve-3d] ${flipClass}`}
+                    >
+                      <Image
+                        src={getAssetUrl(slide.image || '/about_team_entrance.jpg')}
+                        alt={slideTitle}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        className="object-cover object-center"
+                        priority={idx === 0}
+                        draggable={false}
+                      />
 
-                        {/* Huy hiệu thông tin ảnh */}
-                        <div className="absolute top-4 left-4 z-10 pointer-events-none">
-                          <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/55 text-white backdrop-blur-md border border-white/20 shadow-xs">
-                            {slideTag}
-                          </span>
-                        </div>
+                      {/* Lớp phủ gradient tạo chiều sâu điện ảnh & bảo vệ độ tương phản chữ */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
 
-                        {/* Dòng tiêu đề chú thích ảnh */}
-                        <div className="absolute bottom-3 left-4 right-24 sm:right-28 z-10 text-white pointer-events-none">
-                          <p className="text-xs sm:text-sm font-semibold drop-shadow-md truncate">
-                            {slideTitle}
-                          </p>
-                        </div>
+                      {/* Mép lật sáng phản chiếu ánh sáng trang giấy (Paper Edge Highlight) */}
+                      <div className="absolute inset-y-0 right-0 w-[1.5px] bg-gradient-to-b from-white/40 via-white/70 to-white/30 pointer-events-none z-20 shadow-xs" />
+
+                      {/* Huy hiệu thông tin ảnh */}
+                      <div className="absolute top-4 left-6 z-20 pointer-events-none">
+                        <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/60 text-white backdrop-blur-md border border-white/20 shadow-xs">
+                          {slideTag}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
 
-                {/* NÚT LÙI ẢNH < */}
+                      {/* Dòng tiêu đề chú thích ảnh */}
+                      <div className="absolute bottom-3 left-6 right-20 sm:right-28 z-20 text-white pointer-events-none">
+                        <p className="text-xs sm:text-sm font-semibold drop-shadow-md truncate">
+                          {slideTitle}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* NÚT LÙI ẢNH < (ẨN TRÊN ĐIỆN THOẠI, CHỈ HIỆN TRÊN MÁY TÍNH / TABLET) */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -387,12 +413,12 @@ export default function AboutSection() {
                     prevSlide();
                   }}
                   aria-label={isEn ? "Previous slide" : "Xem ảnh trước"}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-xs"
+                  className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-xs"
                 >
                   <ChevronLeft className="w-5 h-5 text-slate-800" />
                 </button>
 
-                {/* NÚT TIẾP THEO > */}
+                {/* NÚT TIẾP THEO > (ẨN TRÊN ĐIỆN THOẠI, CHỈ HIỆN TRÊN MÁY TÍNH / TABLET) */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -400,13 +426,13 @@ export default function AboutSection() {
                     nextSlide();
                   }}
                   aria-label={isEn ? "Next slide" : "Xem ảnh tiếp theo"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-xs"
+                  className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-xs"
                 >
                   <ChevronRight className="w-5 h-5 text-slate-800" />
                 </button>
 
                 {/* Chỉ báo Dots chuyển ảnh */}
-                <div className="absolute bottom-3 right-3 sm:right-4 z-20 flex items-center gap-1.5 bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-full">
+                <div className="absolute bottom-3 right-3 sm:right-4 z-30 flex items-center gap-1.5 bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-full">
                   {slides.map((_, i) => (
                     <button
                       key={i}
