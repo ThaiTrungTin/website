@@ -25,7 +25,12 @@ export async function POST(req: NextRequest) {
     const smtpEmail = bodyData?.smtp_email?.trim() || dbConfig.smtp_email || 'thaitrtin@gmail.com';
     const smtpPassword = bodyData?.smtp_password?.trim() || dbConfig.smtp_password || '';
     const smtpSenderName = bodyData?.smtp_sender_name?.trim() || dbConfig.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
-    const targetEmail = bodyData?.smtp_notify_email?.trim() || dbConfig.smtp_notify_email || smtpEmail;
+    const targetEmail =
+      bodyData?.target_email?.trim() ||
+      bodyData?.smtp_notify_email?.trim() ||
+      bodyData?.smtp_notify_recruitment_email?.trim() ||
+      dbConfig.smtp_notify_email ||
+      smtpEmail;
     const isEn = Boolean(bodyData?.isEn);
     const customTemplate = bodyData?.template;
 

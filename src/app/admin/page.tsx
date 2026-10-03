@@ -893,6 +893,8 @@ export default function AdminDashboardPage() {
     smtp_password: '',
     smtp_sender_name: 'Bệnh Viện Thú Y PetM&M 5★',
     smtp_notify_email: 'thaitrtin@gmail.com',
+    smtp_notify_recruitment_email: 'tuyendung@petmm.vn',
+    smtp_notify_contact_email: 'thaitrtin@gmail.com',
     hasPassword: false,
   });
   const [isSmtpLoading, setIsSmtpLoading] = useState(false);
@@ -945,6 +947,8 @@ export default function AdminDashboardPage() {
           smtp_email: data.config.smtp_email || 'thaitrtin@gmail.com',
           smtp_sender_name: data.config.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
           smtp_notify_email: data.config.smtp_notify_email || 'thaitrtin@gmail.com',
+          smtp_notify_recruitment_email: data.config.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
+          smtp_notify_contact_email: data.config.smtp_notify_contact_email || data.config.smtp_notify_email || 'thaitrtin@gmail.com',
           hasPassword: Boolean(data.config.hasPassword),
         }));
       }
@@ -994,20 +998,26 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleTestSmtp = async () => {
+  const handleTestSmtp = async (targetOverride?: string | React.MouseEvent) => {
+    const actualTarget = typeof targetOverride === 'string' && targetOverride.trim()
+      ? targetOverride.trim()
+      : smtpForm.smtp_notify_email;
     setIsSmtpTesting(true);
     try {
       const res = await fetch('/api/admin/email-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(smtpForm),
+        body: JSON.stringify({
+          ...smtpForm,
+          target_email: actualTarget,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         showNotification('error', data.message || 'Gửi thư thử nghiệm thất bại!');
         return;
       }
-      showNotification('success', data.message || 'Đã gửi thư thử nghiệm thành công! Vui lòng kiểm tra Gmail.');
+      showNotification('success', data.message || `Đã gửi thư thử nghiệm thành công tới "${actualTarget}"! Vui lòng kiểm tra Gmail.`);
     } catch (err: any) {
       showNotification('error', 'Lỗi: ' + (err.message || 'Gửi thử thất bại'));
     } finally {
@@ -4209,23 +4219,122 @@ function formatDisplayReviewDate(val?: string | null): string {
 
                         {/* CỘT PHẢI: FORM CẤU HÌNH GỒM MAIL NHẬN + KEY + GMAIL GỬI */}
                         <div className="lg:col-span-7 space-y-4">
-                          {/* 1. Mail nhận thông báo */}
-                          <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/70 space-y-1.5">
-                            <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                              <Mail className="w-4 h-4 text-[#2D5A27]" />
-                              <span>Email Tiếp Nhận Thông Báo Đặt Lịch (Mail nhận): *</span>
-                            </label>
-                            <input
-                              type="email"
-                              required
-                              value={smtpForm.smtp_notify_email}
-                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_email: e.target.value }))}
-                              placeholder="thaitrtin@gmail.com"
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white shadow-2xs"
-                            />
-                            <p className="text-[11px] text-emerald-800">
-                              Mỗi khi khách hàng gửi form đặt lịch hẹn, hệ thống sẽ tự động gửi thư báo chi tiết ca khám tới hòm thư này.
-                            </p>
+                          {/* 1. KHU VỰC PHÂN CHIA HẠNG MỤC EMAIL TIẾP NHẬN THÔNG BÁO (MAIL NHẬN) */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                                <Mail className="w-4 h-4 text-[#2D5A27]" />
+                                <span>Phân Chia Hạng Mục Email Tiếp Nhận (Mail Nhận):</span>
+                              </label>
+                              <span className="text-[11px] text-slate-400">Tự động điều hướng theo bộ phận</span>
+                            </div>
+
+                            {/* Hạng mục 1: Đặt Lịch Khám */}
+                            <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5 transition-all hover:bg-emerald-50">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                                  <CalendarCheck className="w-4 h-4 text-[#2D5A27]" />
+                                  <span>1. Email Nhận Đặt Lịch Khám (Booking): *</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/60 text-emerald-900 uppercase">
+                                  Lễ Tân & Bác Sĩ
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="email"
+                                  required
+                                  value={smtpForm.smtp_notify_email}
+                                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_email: e.target.value }))}
+                                  placeholder="letan@petmm.vn hoặc thaitrtin@gmail.com"
+                                  className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white shadow-2xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_email)}
+                                  disabled={isSmtpTesting}
+                                  className="px-3 py-2.5 rounded-xl border border-emerald-300 hover:bg-emerald-100/70 text-emerald-800 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  title="Gửi thư thử nghiệm tới hòm thư Đặt Lịch này"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>Thử</span>
+                                </button>
+                              </div>
+                              <p className="text-[11px] text-emerald-800 leading-relaxed">
+                                Mỗi khi khách hàng gửi form đặt lịch hẹn khám bệnh hoặc spa trên web, hệ thống sẽ tự động gửi thông tin chi tiết ca khám & mã tiếp nhận về hòm thư này.
+                              </p>
+                            </div>
+
+                            {/* Hạng mục 2: Tuyển Dụng & CV */}
+                            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1.5 transition-all hover:bg-blue-50">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+                                  <Briefcase className="w-4 h-4 text-blue-700" />
+                                  <span>2. Email Nhận Hồ Sơ Tuyển Dụng & CV (Recruitment): *</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-200/60 text-blue-900 uppercase">
+                                  Ban Nhân Sự (HR)
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="email"
+                                  required
+                                  value={smtpForm.smtp_notify_recruitment_email}
+                                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_recruitment_email: e.target.value }))}
+                                  placeholder="tuyendung@petmm.vn hoặc hr@petmm.vn"
+                                  className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-blue-600 focus:outline-none bg-white shadow-2xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_recruitment_email)}
+                                  disabled={isSmtpTesting}
+                                  className="px-3 py-2.5 rounded-xl border border-blue-300 hover:bg-blue-100/70 text-blue-800 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  title="Gửi thư thử nghiệm tới hòm thư Tuyển Dụng này"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>Thử</span>
+                                </button>
+                              </div>
+                              <p className="text-[11px] text-blue-800 leading-relaxed">
+                                Mỗi khi ứng viên nộp hồ sơ xin việc hoặc đính kèm CV (PDF/Word), hệ thống sẽ gửi thẳng hồ sơ ứng viên kèm link tải CV 1 chạm tới hòm thư này.
+                              </p>
+                            </div>
+
+                            {/* Hạng mục 3: Góp Ý & Liên Hệ Chung */}
+                            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 transition-all hover:bg-slate-100/60">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                  <Mail className="w-4 h-4 text-slate-700" />
+                                  <span>3. Email Nhận Góp Ý & Liên Hệ Chung (Contact):</span>
+                                </label>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 uppercase">
+                                  CSKH / Quản Lý
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="email"
+                                  value={smtpForm.smtp_notify_contact_email}
+                                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_contact_email: e.target.value }))}
+                                  placeholder="contact@petmm.vn hoặc thaitrtin@gmail.com"
+                                  className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-slate-600 focus:outline-none bg-white shadow-2xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_contact_email)}
+                                  disabled={isSmtpTesting}
+                                  className="px-3 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-200/70 text-slate-700 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  title="Gửi thư thử nghiệm tới hòm thư Liên Hệ này"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>Thử</span>
+                                </button>
+                              </div>
+                              <p className="text-[11px] text-slate-500 leading-relaxed">
+                                Hòm thư tiếp nhận các câu hỏi chung, thắc mắc dịch vụ, hợp tác hoặc đóng góp ý kiến từ khách hàng.
+                              </p>
+                            </div>
                           </div>
 
                           {/* 2. Tài khoản Gmail gửi thư */}

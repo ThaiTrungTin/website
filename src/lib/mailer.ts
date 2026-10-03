@@ -7,7 +7,9 @@ export interface SmtpConfig {
   smtp_email: string;
   smtp_password?: string;
   smtp_sender_name: string;
-  smtp_notify_email: string;
+  smtp_notify_email: string; // Email nhận thông báo đặt lịch khám
+  smtp_notify_recruitment_email?: string; // Email nhận hồ sơ tuyển dụng & CV
+  smtp_notify_contact_email?: string; // Email nhận góp ý & liên hệ chung
 }
 
 export interface EmailTemplateConfig {
@@ -101,7 +103,7 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
   try {
     const { data, error } = await supabaseAdmin
       .from('cau_hinh')
-      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email')
+      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
       .eq('id', 'system')
       .maybeSingle();
 
@@ -111,6 +113,8 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
         smtp_password: '',
         smtp_sender_name: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
         smtp_notify_email: 'thaitrtin@gmail.com',
+        smtp_notify_recruitment_email: 'tuyendung@petmm.vn',
+        smtp_notify_contact_email: 'thaitrtin@gmail.com',
       };
     }
 
@@ -119,6 +123,8 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
       smtp_password: data.smtp_password || '',
       smtp_sender_name: data.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
       smtp_notify_email: data.smtp_notify_email || 'thaitrtin@gmail.com',
+      smtp_notify_recruitment_email: data.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
+      smtp_notify_contact_email: data.smtp_notify_contact_email || data.smtp_notify_email || 'thaitrtin@gmail.com',
     };
   } catch (err) {
     console.error('Lỗi đọc cấu hình SMTP:', err);
@@ -127,6 +133,8 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
       smtp_password: '',
       smtp_sender_name: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
       smtp_notify_email: 'thaitrtin@gmail.com',
+      smtp_notify_recruitment_email: 'tuyendung@petmm.vn',
+      smtp_notify_contact_email: 'thaitrtin@gmail.com',
     };
   }
 }
@@ -577,7 +585,13 @@ export async function sendRecruitmentApplicationEmail(params: {
   } = params;
 
   const smtpConfig = await getSmtpConfig();
-  const hrRecipient = (notifyEmail || smtpConfig.smtp_notify_email || smtpConfig.smtp_email || 'tuyendung@petmm.vn').trim();
+  const hrRecipient = (
+    notifyEmail ||
+    smtpConfig.smtp_notify_recruitment_email ||
+    smtpConfig.smtp_notify_email ||
+    smtpConfig.smtp_email ||
+    'tuyendung@petmm.vn'
+  ).trim();
   const applyTimeVN = new Intl.DateTimeFormat('vi-VN', {
     timeZone: 'Asia/Ho_Chi_Minh',
     year: 'numeric',

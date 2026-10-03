@@ -734,3 +734,35 @@ Khi AI Agent hoặc lập trình viên mở phiên làm việc mới, hãy đọ
 - **Quy tắc 3: Bẫy Honeypot ẩn chống Bot Spam**:
   - Form trang bị trường ẩn `hp_website` vô hình với người dùng. Bất kỳ bot tự động nào cố tình điền vào trường này sẽ bị API âm thầm hấp thụ mà không tốn tài nguyên gửi email hay làm rác database.
 
+---
+
+## 27. PHÂN CHIA HẠNG MỤC EMAIL TIẾP NHẬN THÔNG BÁO TỰ ĐỘNG (CATEGORIZED NOTIFICATION EMAILS)
+- **Tập tin liên quan**:
+  - Giao diện Quản trị Email: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - API Cấu hình Email: [`src/app/api/admin/email-config/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/route.ts)
+  - API Gửi thử nghiệm: [`src/app/api/admin/email-config/test/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/test/route.ts)
+  - Bộ máy gửi Email: [`src/lib/mailer.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/mailer.ts)
+  - Bảng Supabase: `public.cau_hinh` (bổ sung cột `smtp_notify_recruitment_email` và `smtp_notify_contact_email`)
+
+### 1. Phân Chia Hạng Mục Hòm Thư Đến (Recipient Segmentation)
+Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho tất cả các sự kiện, hệ thống đã được chia tách thành 3 phân hệ chuyên trách:
+1. **Email Nhận Đặt Lịch Khám (Booking)**: `smtp_notify_email`
+   - **Đối tượng**: Lễ tân & Bác sĩ phòng khám tiếp nhận ca khám mới.
+   - **Chức năng**: Nhận email tự động chứa mã tiếp nhận, thông tin bé thú cưng, thời gian hẹn, chi nhánh và ghi chú lâm sàng.
+   - **Nút gửi thử nghiệm độc lập**: Bấm nút **"Thử"** bên cạnh ô nhập để kiểm tra đường truyền gửi thư đặt lịch ngay lập tức.
+2. **Email Nhận Hồ Sơ Tuyển Dụng & CV (Recruitment)**: `smtp_notify_recruitment_email`
+   - **Đối tượng**: Ban Nhân Sự (HR).
+   - **Chức năng**: Nhận email hồ sơ ứng tuyển mới, số điện thoại, vị trí và link xem/tải CV trực tiếp 1 chạm.
+   - **Nút gửi thử nghiệm độc lập**: Bấm nút **"Thử"** để gửi thư test riêng đến hòm thư HR.
+3. **Email Nhận Góp Ý & Liên Hệ Chung (Contact)**: `smtp_notify_contact_email`
+   - **Đối tượng**: Ban Quản Lý / CSKH.
+   - **Chức năng**: Tiếp nhận các câu hỏi chung, thắc mắc dịch vụ hoặc góp ý từ khách hàng.
+   - **Nút gửi thử nghiệm độc lập**: Bấm nút **"Thử"** để kiểm tra hòm thư liên hệ.
+
+### 2. Tự Động Điều Hướng & Cơ Chế Dự Phòng (Fallback Mechanism)
+- Tại [`src/lib/mailer.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/mailer.ts):
+  - Tuyển dụng: Hệ thống ưu tiên chọn `smtp_notify_recruitment_email` $\rightarrow$ nếu chưa cài sẽ fallback về `smtp_notify_email` $\rightarrow$ rồi đến `smtp_email` $\rightarrow$ mặc định `tuyendung@petmm.vn`.
+  - Đặt lịch khám: Tiếp tục sử dụng `smtp_notify_email` đảm bảo tính nhất quán 100%.
+  - API Test [`/api/admin/email-config/test`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/email-config/test/route.ts): Nhận diện linh hoạt trường `target_email` để gửi mẫu kiểm tra tới đúng hòm thư mà quản trị viên muốn thử nghiệm.
+
+

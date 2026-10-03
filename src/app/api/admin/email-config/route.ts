@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('cau_hinh')
-      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email')
+      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
       .eq('id', 'system')
       .maybeSingle();
 
@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
         smtp_email: data?.smtp_email || 'thaitrtin@gmail.com',
         smtp_sender_name: data?.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
         smtp_notify_email: data?.smtp_notify_email || 'thaitrtin@gmail.com',
+        smtp_notify_recruitment_email: data?.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
+        smtp_notify_contact_email: data?.smtp_notify_contact_email || data?.smtp_notify_email || 'thaitrtin@gmail.com',
         hasPassword: Boolean(data?.smtp_password && data.smtp_password.trim().length > 0),
       },
       template: templateConfig,
@@ -64,6 +66,8 @@ export async function POST(req: NextRequest) {
       smtp_password,
       smtp_sender_name,
       smtp_notify_email,
+      smtp_notify_recruitment_email,
+      smtp_notify_contact_email,
       template,
     } = body;
 
@@ -80,6 +84,8 @@ export async function POST(req: NextRequest) {
         smtp_email: smtp_email.trim(),
         smtp_sender_name: smtp_sender_name?.trim() || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
         smtp_notify_email: smtp_notify_email?.trim() || smtp_email.trim(),
+        smtp_notify_recruitment_email: smtp_notify_recruitment_email?.trim() || 'tuyendung@petmm.vn',
+        smtp_notify_contact_email: smtp_notify_contact_email?.trim() || smtp_notify_email?.trim() || smtp_email.trim(),
       };
 
       // Chỉ cập nhật mật khẩu nếu người dùng nhập mới
