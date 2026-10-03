@@ -873,3 +873,20 @@ interface PopupAnnouncementConfig {
 | Ảnh poster VI | ✅ Có | ✅ Giữ nguyên, giao diện sạch hơn |
 | Ảnh poster EN | ✅ Có (fallback về VI) | ✅ Có, thêm ô upload riêng trực quan hơn |
 
+---
+
+## 27. TÍCH HỢP FANPAGE FACEBOOK TRỰC TIẾP TRONG CHÂN TRANG (FOOTER)
+### 1. Mục Đích & Trải Nghiệm Khách Hàng
+- Khách hàng lướt đến chân trang (Footer) có thể xem trực tiếp 1 đoạn dòng thời gian (Timeline bài viết, ảnh, hoạt động điều trị) của Fanpage chính thức Bệnh Viện Thú Y PetM&M mà không cần phải thoát khỏi website.
+- Nút **"Thích Trang"** và **"Nhắn tin"** trực tiếp giúp gia tăng tương tác thật cho Fanpage.
+- Cung cấp nút xem trang ngoài và link theo dõi nhanh.
+
+### 2. Thiết Kế & Cấu Trúc Giao Diện
+- **Cột 4 trong Footer (`lg:col-span-4`)**:
+  - Tích hợp 2 tab chuyển đổi mượt mà:
+    1. **`[ 📱 Fanpage ]` (Mặc định)**: Hiển thị khung iframe Facebook Page Plugin chính thức từ Meta (`width=380`, `height=290`, `tabs=timeline`, bo tròn `rounded-xl`).
+    2. **`[ 📍 Bản Đồ ]`**: Hiển thị Google Maps thu nhỏ của chi nhánh cùng nút mở chỉ đường ứng dụng.
+  - Tự động chuẩn hóa link Facebook: Cho dù admin nhập link chia sẻ (VD: `https://www.facebook.com/share/1CKNDcSEY1/`) hay link trực tiếp (`/petmmhospital`), hệ thống đều tự nhận diện để nạp đúng trang chính thức.
+  - Nếu hệ thống chưa cấu hình link Facebook, Cột 4 tự động hiển thị Google Maps như cũ mà không phát sinh lỗi.
+
+
