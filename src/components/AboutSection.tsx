@@ -163,7 +163,7 @@ export default function AboutSection() {
     fetchCounts();
   }, []);
 
-  // 3. Quản lý chuyển slide ảnh xem lần lượt với dấu < và >
+  // 3. Quản lý chuyển slide ảnh xem lần lượt với dấu <, >, vuốt cảm ứng & kéo chuột
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const prevSlide = () => {
@@ -172,6 +172,62 @@ export default function AboutSection() {
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  // Cảm ứng vuốt tay (Touch Swipe cho điện thoại)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const minSwipeDistance = 40;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    if (distance > minSwipeDistance) {
+      nextSlide();
+    } else if (distance < -minSwipeDistance) {
+      prevSlide();
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  // Kéo chuột trên máy tính (Mouse Drag)
+  const [mouseStartX, setMouseStartX] = useState<number | null>(null);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsMouseDown(true);
+    setMouseStartX(e.clientX);
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!isMouseDown || mouseStartX === null) {
+      setIsMouseDown(false);
+      setMouseStartX(null);
+      return;
+    }
+    const distance = mouseStartX - e.clientX;
+    if (distance > minSwipeDistance) {
+      nextSlide();
+    } else if (distance < -minSwipeDistance) {
+      prevSlide();
+    }
+    setIsMouseDown(false);
+    setMouseStartX(null);
+  };
+
+  const handleMouseLeave = () => {
+    setIsMouseDown(false);
+    setMouseStartX(null);
   };
 
   const pillars = [
@@ -265,48 +321,71 @@ export default function AboutSection() {
           {/* CỘT PHẢI (6 CỘT): KHỐI ẢNH SLIDESHOW & BẢNG THỐNG KÊ (THÀNH LẬP, CƠ SỞ, KHÁCH HÀNG, ĐỘI NGŨ) */}
           <div className="lg:col-span-6">
             <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/90 bg-white">
-              {/* 1. KHU VỰC ẢNH VỚI DẤU < VÀ > ĐỂ XEM LẦN LƯỢT */}
-              <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-900 group">
-                {slides.length > 0 && (() => {
-                  const activeSlide = slides[currentSlide];
-                  const currentSlideTitle = isEn && activeSlide?.title_en ? activeSlide.title_en : (activeSlide?.title || 'PetM&M');
-                  const currentSlideTag = isEn && activeSlide?.tag_en ? activeSlide.tag_en : (activeSlide?.tag || (isEn ? 'Medical Specialists' : 'Đội ngũ chuyên môn'));
+              {/* 1. KHU VỰC ẢNH VỚI DẤU < VÀ > ĐỂ XEM LẦN LƯỢT & VUỐT TAY TRÊN ĐIỆN THOẠI */}
+              <div
+                className="relative w-full aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-slate-900 group select-none cursor-grab active:cursor-grabbing touch-pan-y"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
+              >
+                {/* TRACK GẠT QUA (SMOOTH HORIZONTAL SLIDE TRANSITION) */}
+                <div
+                  className="flex w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]"
+                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                >
+                  {slides.map((slide, idx) => {
+                    const slideTitle = isEn && slide.title_en ? slide.title_en : (slide.title || 'PetM&M');
+                    const slideTag = isEn && slide.tag_en ? slide.tag_en : (slide.tag || (isEn ? 'Medical Specialists' : 'Đội ngũ chuyên môn'));
+                    const isActive = currentSlide === idx;
 
-                  return (
-                    <>
-                      <Image
-                        src={getAssetUrl(activeSlide?.image || '/about_team_entrance.jpg')}
-                        alt={currentSlideTitle}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 50vw"
-                        className="object-cover object-center transition-all duration-700 ease-out"
-                        priority
-                      />
+                    return (
+                      <div
+                        key={slide.id || idx}
+                        className="relative w-full h-full min-w-full shrink-0 overflow-hidden"
+                      >
+                        <Image
+                          src={getAssetUrl(slide.image || '/about_team_entrance.jpg')}
+                          alt={slideTitle}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                          className={`object-cover object-center transition-transform duration-700 ease-out ${
+                            isActive ? 'scale-100' : 'scale-105'
+                          }`}
+                          priority={idx === 0}
+                          draggable={false}
+                        />
 
-                      {/* Lớp phủ gradient nhẹ */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+                        {/* Lớp phủ gradient tạo chiều sâu điện ảnh */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25 pointer-events-none" />
 
-                      {/* Huy hiệu thông tin ảnh */}
-                      <div className="absolute top-4 left-4 z-10">
-                        <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/50 text-white backdrop-blur-md border border-white/20 shadow-xs">
-                          {currentSlideTag}
-                        </span>
+                        {/* Huy hiệu thông tin ảnh */}
+                        <div className="absolute top-4 left-4 z-10 pointer-events-none">
+                          <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-black/55 text-white backdrop-blur-md border border-white/20 shadow-xs">
+                            {slideTag}
+                          </span>
+                        </div>
+
+                        {/* Dòng tiêu đề chú thích ảnh */}
+                        <div className="absolute bottom-3 left-4 right-24 sm:right-28 z-10 text-white pointer-events-none">
+                          <p className="text-xs sm:text-sm font-semibold drop-shadow-md truncate">
+                            {slideTitle}
+                          </p>
+                        </div>
                       </div>
-
-                      {/* Dòng tiêu đề chú thích ảnh */}
-                      <div className="absolute bottom-3 left-4 right-4 z-10 text-white">
-                        <p className="text-xs sm:text-sm font-semibold drop-shadow-md truncate">
-                          {currentSlideTitle}
-                        </p>
-                      </div>
-                    </>
-                  );
-                })()}
+                    );
+                  })}
+                </div>
 
                 {/* NÚT LÙI ẢNH < */}
                 <button
                   type="button"
-                  onClick={prevSlide}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevSlide();
+                  }}
                   aria-label={isEn ? "Previous slide" : "Xem ảnh trước"}
                   className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-xs"
                 >
@@ -316,7 +395,10 @@ export default function AboutSection() {
                 {/* NÚT TIẾP THEO > */}
                 <button
                   type="button"
-                  onClick={nextSlide}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextSlide();
+                  }}
                   aria-label={isEn ? "Next slide" : "Xem ảnh tiếp theo"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-xs"
                 >
@@ -324,14 +406,17 @@ export default function AboutSection() {
                 </button>
 
                 {/* Chỉ báo Dots chuyển ảnh */}
-                <div className="absolute bottom-3 right-4 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2 py-1 rounded-full">
+                <div className="absolute bottom-3 right-3 sm:right-4 z-20 flex items-center gap-1.5 bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-full">
                   {slides.map((_, i) => (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setCurrentSlide(i)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentSlide(i);
+                      }}
                       aria-label={isEn ? `Go to slide ${i + 1}` : `Chuyển đến ảnh ${i + 1}`}
-                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
                         currentSlide === i ? 'w-5 bg-amber-400' : 'w-1.5 bg-white/60 hover:bg-white'
                       }`}
                     />
