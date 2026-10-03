@@ -624,8 +624,82 @@ Tích hợp cơ sở dữ liệu đám mây **Supabase (PostgreSQL)** và xây d
 - Gỡ bỏ khối Hero Banner xanh rườm rà ở đầu trang danh sách tuyển dụng.
 - Giữ bố cục trang tập trung vào tiêu đề nghệ thuật `Gia Nhập Đại Gia Đình PetM&M` đồng bộ hiệu ứng chuyển động và danh sách các vị trí mở.
 
+---
 
+## 24. TỐI ƯU TRẢI NGHIỆM DI ĐỘNG & TINH GIẢN GIAO DIỆN CÁC PHÂN MỤC TRANG CHỦ
 
+- **Tập tin liên quan**:
+  - Giới thiệu & Triết lý y khoa: [`src/components/AboutSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/AboutSection.tsx)
+  - Cẩm nang bác sĩ: [`src/components/KnowledgeSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/KnowledgeSection.tsx)
+  - Đánh giá từ khách hàng: [`src/components/ReviewsSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ReviewsSection.tsx)
+  - Tuyển dụng & Vị trí mở: [`src/components/CareersSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/CareersSection.tsx)
 
+### 1. Hiệu Ứng Lật Trang 3D (Paper Page Flip) & Khắc Phục Lỗi Chồng Đè Ảnh Trong Phần Giới Thiệu
+- **Ẩn 2 nút điều hướng `<>` trên điện thoại**:
+  - Chuyển class 2 nút lùi/tiến thành `hidden sm:flex`, ẩn hoàn toàn trên màn hình di động (<640px) và chỉ hiển thị trên máy tính bảng / laptop.
+- **Hiệu ứng lật trang giấy 3D (Paper Page Flip)**:
+  - Tích hợp chuyển động 3D xoay trục gáy trang (`origin-left [transform:rotateY(-115deg)_scale(0.95)]`) mô phỏng cảm giác lật mở trang sách chân thực.
+  - Hỗ trợ đầy đủ cử chỉ vuốt tay trên điện thoại (`onTouchStart`, `onTouchMove`, `onTouchEnd`) và kéo chuột trên máy tính (`onMouseDown`, `onMouseUp`, `onMouseLeave`).
+- **Khắc phục triệt để lỗi chồng đè ảnh PNG trong suốt & phụ đề**:
+  - **Nguyên nhân**: Ảnh logo chữ "PET M&M" trong bảng `hinh_anh` (`chuyen_muc = 'gioi_thieu'`) là định dạng PNG nền trong suốt. Trước đây, slide tiếp theo vẫn giữ `opacity-100` khi ở trạng thái nghỉ, đồng thời khung slide thiếu màu nền đặc, khiến ảnh 3 bác sĩ và dòng phụ đề của slide sau bị lọt và chồng đè lên nhau.
+  - **Giải pháp**:
+    1. Bổ sung nền tối sang trọng `bg-slate-950` cho từng thẻ slide con.
+    2. Khi ở trạng thái nghỉ (`!isFlipping`), **chỉ duy nhất `currentSlide` có `opacity-100 z-10`**, tất cả các slide khác đều được ẩn triệt để bằng `hidden opacity-0 pointer-events-none`.
+    3. Quản lý trạng thái chuyển đổi với `animatingFrom`, `flipDirection` và `isFlipping` trong 700ms, đảm bảo chuyển động mượt mà và không bao giờ xảy ra hiện tượng xuyên nền hay đè chữ.
 
+### 2. Ẩn 2 Nút Điều Hướng `<>` Trên Điện Thoại Cho Cẩm Nang & Đánh Giá
+- **Cẩm nang y khoa (`KnowledgeSection.tsx`)**:
+  - Nút lùi ◁ và tiến ▷ được cấu hình `hidden sm:flex`, không còn xuất hiện che mất thẻ bài viết trên điện thoại.
+  - Người dùng di động lướt chạm ngang (Touch Swipe) tự nhiên với hiệu ứng cuộn mượt (`snap-x snap-mandatory`).
+- **Đánh giá khách hàng (`ReviewsSection.tsx`)**:
+  - Nút lùi ◁ và tiến ▷ được cấu hình `hidden sm:flex`.
+  - Trên điện thoại người dùng vuốt trượt ngang xem đánh giá gọn gàng, nút `<>` chỉ xuất hiện trên tablet và laptop khi danh sách có thể cuộn tiếp.
 
+### 3. Tinh Gọn & Chuyển Đổi Kanban Tuyển Dụng Thành Hàng Ngang Trượt Chạm (`CareersSection.tsx`)
+- **Dàn hàng ngang trượt chạm mượt mà (Horizontal Slider)**:
+  - Thay thế bố cục lưới tĩnh (`grid-cols-1 md:grid-cols-3`) bằng danh sách hàng ngang cuộn mượt (`flex overflow-x-auto snap-x snap-mandatory`).
+  - **Trên điện thoại**: Thẻ tuyển dụng hiển thị theo hàng ngang (`w-[84vw]`), vuốt chạm trượt qua lại dễ dàng, ẩn hoàn toàn 2 nút `<>`.
+  - **Trên laptop / máy tính**: Khi danh sách vị trí việc làm nhiều vượt quá chiều ngang màn hình, tự động kích hoạt tính năng trượt ngang và hiển thị **2 nút điều hướng `<>`** ở hai bên mép.
+- **Lược bỏ thông tin rườm rà**:
+  - Gỡ bỏ đoạn văn mô tả dài: *"Kiến tạo sự nghiệp vững chắc trong môi trường bệnh viện thú y chuẩn Fear-Free 5 sao quốc tế..."*.
+  - Gỡ bỏ hoàn toàn 3 khối giá trị cốt lõi: *"Chuẩn Lâm Sàng Fear-Free"*, *"Đào Tạo & Thăng Tiến"*, *"Đãi Ngộ & Phúc Lợi VIP"*.
+  - Bố cục khu vực Tuyển Dụng hiện tại đi thẳng từ tiêu đề nghệ thuật `Gia Nhập Đại Gia Đình PetM&M` vào thanh trượt danh sách các vị trí ứng tuyển, tạo cảm giác thông thoáng, hiện đại và tập trung.
+
+### 4. Quy Trình & Lệnh Triển Khai Trực Tiếp Lên Vercel Production
+- **Tài khoản Vercel CLI**: `thaitrtingemini-5036` (đã xác thực và liên kết với project `thai-trung-tins-projects/petsmm`).
+- **Tên miền sản phẩm (Production URL)**: `https://petsmm.vercel.app` (Aliased tự động).
+- **Lệnh triển khai trực tiếp từ terminal (không cần đi qua trung gian)**:
+  ```bash
+  # Cách 1 (qua npm script trong package.json)
+  npm run deploy
+
+  # Cách 2 (lệnh trực tiếp Vercel CLI)
+  npx vercel --prod --yes
+  ```
+- **Lưu ý quy trình khi cập nhật code mới**:
+  1. Chạy `npx tsc --noEmit` để đảm bảo 0 lỗi biên dịch.
+  2. Commit và push lên GitHub: `git add . ; git commit -m "..." ; git push origin main`.
+  3. Deploy ngay lên Vercel: `npx vercel --prod --yes`.
+
+---
+
+## 25. KẾ HOẠCH & NHIỆM VỤ PHÁT TRIỂN TIẾP THEO (ROADMAP / NEXT STEPS)
+
+Khi AI Agent hoặc lập trình viên mở phiên làm việc mới, hãy đọc các mục dưới đây để nắm ngay các hạng mục cần triển khai tiếp theo:
+
+### 1. Quản Trị Đơn Ứng Tuyển & Hồ Sơ Ứng Viên (Job Applications Management)
+- **Mục tiêu**: Xây dựng phân hệ tiếp nhận hồ sơ ứng tuyển của ứng viên tại trang Quản trị (`/admin`).
+- **Chi tiết**:
+  - Tạo bảng `ho_so_tuyen_dung` trên Supabase: Lưu họ tên ứng viên, số điện thoại, email, vị trí ứng tuyển (`tuyen_dung_id`), link CV file đính kèm (upload lên Storage bucket), thư giới thiệu/lời nhắn, trạng thái duyệt (`moi_ung_tuyen`, `da_lien_he`, `hen_phong_van`, `trung_tuyen`, `tu_choi`).
+  - Form nộp hồ sơ tại trang chi tiết tuyển dụng Frontend ([`TuyenDungDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/TuyenDungDetailClient.tsx)): Kết nối form gửi CV trực tiếp vào bảng trên.
+  - Tab "Hồ sơ ứng viên" trong mục Tuyển Dụng tại Admin: Cho phép quản trị viên xem danh sách, lọc theo vị trí, tải file CV và cập nhật trạng thái liên hệ.
+
+### 2. Tự Động Hóa Thông Báo Email & Zalo Cho Khách Đặt Lịch & Ứng Tuyển
+- Tích hợp gửi email tự động (qua Nodemailer / Resend / SendGrid) khi:
+  - Khách hàng hoàn tất đặt lịch khám thành công (gửi kèm vé khám điện tử).
+  - Ứng viên nộp hồ sơ tuyển dụng thành công.
+  - Thông báo email khẩn về hòm thư lễ tân / HR khi có lịch hẹn hoặc ứng viên mới.
+
+### 3. Tối Ưu Hóa Hiệu Năng & Trải Nghiệm Responsive
+- Kiểm tra toàn diện hiển thị trên các kích thước màn hình phổ biến: iPhone (375px - 430px), iPad / Tablet (768px - 1024px), Laptop (1366px - 1920px).
+- Đảm bảo tất cả các hình ảnh tải lên từ Supabase Storage được nạp nhanh và tối ưu SEO (alt tag đầy đủ).
