@@ -881,7 +881,7 @@ export default function AdminDashboardPage() {
         slides: 'Slide ảnh giới thiệu',
         stats: 'Thông số thống kê',
         slogans: 'Khẩu hiệu & Slogan',
-        announcement: 'Thông Báo Nổi & Lịch Tết (Popup)',
+        announcement: 'Cài Đặt Thông Báo Nổi (Poster)',
       };
       showNotification('success', `Đã lưu cài đặt ${tabNames[configSubTab] || 'hệ thống'} thành công!`);
     } catch (err: any) {
@@ -3589,7 +3589,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                       activeTab === 'config' && configSubTab === 'announcement' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
                     }`}
                   />
-                  <span>Thông Báo Nổi &amp; Lịch Tết</span>
+                  <span>Thông Báo Nổi (Poster)</span>
                 </div>
                 {announcementForm.isActive && (
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Đang Bật trên website" />
@@ -4184,7 +4184,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                   }`}
                 >
                   <Megaphone className="w-3.5 h-3.5" />
-                  <span>Thông Báo Nổi &amp; Lịch Tết</span>
+                  <span>Thông Báo Nổi (Poster)</span>
                   {announcementForm.isActive && (
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Đang Bật trên website" />
                   )}
@@ -6023,278 +6023,268 @@ function formatDisplayReviewDate(val?: string | null): string {
               {/* NHÁNH 7: THÔNG BÁO NỔI & LỊCH TẾT (POPUP ĐÓN KHÁCH + HUY HIỆU NỔI) */}
               {configSubTab === 'announcement' && (
                 <div className="space-y-6">
-                  {/* Card 1: Header + Bật / Tắt trạng thái */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-                      <div className="space-y-1">
+                  {/* Grid 2 cột: Cột trái là 1 Ô DUY NHẤT gom toàn bộ cài đặt + Cột phải Live Preview */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* Cột trái (lg:col-span-7): ĐÚNG 1 Ô DUY NHẤT "Cài Đặt Thông Báo Nổi (Poster)" */}
+                    <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+                      {/* Tiêu đề & Công tắc Bật/Tắt */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
                         <div className="flex items-center gap-2.5">
                           <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
                             <Megaphone className="w-5 h-5" />
                           </div>
-                          <div>
-                            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                              <span>Thông Báo Nổi (Poster)</span>
-                            </h2>
-                          </div>
+                          <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                            Cài Đặt Thông Báo Nổi (Poster)
+                          </h2>
                         </div>
-                      </div>
 
-                      {/* Công tắc Bật / Tắt */}
-                      <div className="flex items-center gap-3 bg-slate-50 p-2.5 px-4 rounded-xl border border-slate-200 self-start md:self-auto">
-                        <span className="text-xs font-bold text-slate-700">Trạng thái:</span>
-                        <button
-                          type="button"
-                          onClick={() => setAnnouncementForm((prev) => ({ ...prev, isActive: !prev.isActive }))}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            announcementForm.isActive ? 'bg-[#2D5A27]' : 'bg-slate-300'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              announcementForm.isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                        <span className={`text-xs font-bold ${announcementForm.isActive ? 'text-emerald-700' : 'text-slate-400'}`}>
-                          {announcementForm.isActive ? 'ĐANG BẬT' : 'ĐANG TẮT'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Droplist Chủ đề & Tiêu đề nổi */}
-                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/90 p-4 rounded-xl border border-slate-200">
-                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Chủ Đề &amp; Tiêu Đề:</span>
-                      </label>
-
-                      <select
-                        value={announcementForm.category || 'holiday'}
-                        onChange={(e) => {
-                          const cat = e.target.value as 'holiday' | 'promotion' | 'custom';
-                          setAnnouncementForm((prev) => {
-                            if (cat === 'holiday') {
-                              return {
-                                ...prev,
-                                category: 'holiday',
-                                badgeTextVi: '🧧 Lịch Nghỉ Lễ',
-                                badgeTextEn: '🧧 Holiday Schedule',
-                                titleVi: '🧧 Lịch Nghỉ Lễ',
-                                titleEn: '🧧 Holiday Schedule',
-                              };
-                            } else if (cat === 'promotion') {
-                              return {
-                                ...prev,
-                                category: 'promotion',
-                                badgeTextVi: '🎁 Ưu Đãi',
-                                badgeTextEn: '🎁 Special Offers',
-                                titleVi: '🎁 Ưu Đãi',
-                                titleEn: '🎁 Special Offers',
-                              };
-                            } else {
-                              return {
-                                ...prev,
-                                category: 'custom',
-                                badgeTextVi: prev.badgeTextVi || '📢 Thông Báo',
-                                badgeTextEn: prev.badgeTextEn || '📢 Notice',
-                                titleVi: prev.titleVi || '📢 Thông Báo',
-                                titleEn: prev.titleEn || '📢 Notice',
-                              };
-                            }
-                          });
-                        }}
-                        className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[240px]"
-                      >
-                        <option value="holiday">🧧 Lịch Nghỉ Lễ</option>
-                        <option value="promotion">🎁 Ưu Đãi</option>
-                        <option value="custom">🔔 Tùy Chỉnh (Tự nhập chữ / Tự động dùng Chuông Rung)</option>
-                      </select>
-                    </div>
-
-                    {/* Nếu chọn Tùy chỉnh khác: Cho phép nhập chữ tùy biến */}
-                    {announcementForm.category === 'custom' && (
-                      <div className="mt-3 p-4 bg-amber-50/60 rounded-xl border border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                            <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                            <span>Chữ Hiển Thị Tiếng Việt:</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={announcementForm.badgeTextVi || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                badgeTextVi: val,
-                                titleVi: val,
-                              }));
-                            }}
-                            placeholder="VD: 📢 Thông Báo Tuyển Dụng"
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                            <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
-                            <span>Chữ Hiển Thị Tiếng Anh (English):</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={announcementForm.badgeTextEn || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                badgeTextEn: val,
-                                titleEn: val,
-                              }));
-                            }}
-                            placeholder="VD: 📢 Special Notice"
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Hàng 3: Khoảng Thời Gian Xuất Hiện Poster (Gom chung về 1 ô) */}
-                    <div className="pt-5 border-t border-slate-100 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Khoảng Thời Gian Xuất Hiện Poster:</span>
-                        </label>
-                        {(announcementForm.startDate || announcementForm.endDate) && (
+                        {/* Công tắc Bật / Tắt */}
+                        <div className="flex items-center gap-3 bg-slate-50 p-2 px-3.5 rounded-xl border border-slate-200 self-start sm:self-auto">
+                          <span className="text-xs font-bold text-slate-700">Trạng thái:</span>
                           <button
                             type="button"
-                            onClick={() => setAnnouncementForm((prev) => ({ ...prev, startDate: '', endDate: '' }))}
-                            className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                            onClick={() => setAnnouncementForm((prev) => ({ ...prev, isActive: !prev.isActive }))}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              announcementForm.isActive ? 'bg-[#2D5A27]' : 'bg-slate-300'
+                            }`}
                           >
-                            ✕ Xóa giới hạn ngày
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                announcementForm.isActive ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
                           </button>
+                          <span className={`text-xs font-bold ${announcementForm.isActive ? 'text-emerald-700' : 'text-slate-400'}`}>
+                            {announcementForm.isActive ? 'ĐANG BẬT' : 'ĐANG TẮT'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 1. Chủ Đề & Tiêu Đề */}
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Chủ Đề &amp; Tiêu Đề:</span>
+                          </label>
+
+                          <select
+                            value={announcementForm.category || 'holiday'}
+                            onChange={(e) => {
+                              const cat = e.target.value as 'holiday' | 'promotion' | 'custom';
+                              setAnnouncementForm((prev) => {
+                                if (cat === 'holiday') {
+                                  return {
+                                    ...prev,
+                                    category: 'holiday',
+                                    badgeTextVi: '🧧 Lịch Nghỉ Lễ',
+                                    badgeTextEn: '🧧 Holiday Schedule',
+                                    titleVi: '🧧 Lịch Nghỉ Lễ',
+                                    titleEn: '🧧 Holiday Schedule',
+                                  };
+                                } else if (cat === 'promotion') {
+                                  return {
+                                    ...prev,
+                                    category: 'promotion',
+                                    badgeTextVi: '🎁 Ưu Đãi',
+                                    badgeTextEn: '🎁 Special Offers',
+                                    titleVi: '🎁 Ưu Đãi',
+                                    titleEn: '🎁 Special Offers',
+                                  };
+                                } else {
+                                  return {
+                                    ...prev,
+                                    category: 'custom',
+                                    badgeTextVi: prev.badgeTextVi || '📢 Thông Báo',
+                                    badgeTextEn: prev.badgeTextEn || '📢 Notice',
+                                    titleVi: prev.titleVi || '📢 Thông Báo',
+                                    titleEn: prev.titleEn || '📢 Notice',
+                                  };
+                                }
+                              });
+                            }}
+                            className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[200px]"
+                          >
+                            <option value="holiday">🧧 Lịch Nghỉ Lễ</option>
+                            <option value="promotion">🎁 Ưu Đãi</option>
+                            <option value="custom">✍️ Tùy Chỉnh Khác</option>
+                          </select>
+                        </div>
+
+                        {/* Nếu chọn Tùy chỉnh khác: Cho phép nhập chữ tùy biến */}
+                        {announcementForm.category === 'custom' && (
+                          <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                                <span>Chữ Hiển Thị Tiếng Việt:</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={announcementForm.badgeTextVi || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setAnnouncementForm((prev) => ({
+                                    ...prev,
+                                    badgeTextVi: val,
+                                    titleVi: val,
+                                  }));
+                                }}
+                                placeholder="VD: 📢 Thông Báo Tuyển Dụng"
+                                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                                <span>Chữ Hiển Thị Tiếng Anh:</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={announcementForm.badgeTextEn || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setAnnouncementForm((prev) => ({
+                                    ...prev,
+                                    badgeTextEn: val,
+                                    titleEn: val,
+                                  }));
+                                }}
+                                placeholder="VD: 📢 Special Notice"
+                                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
 
-                      {/* 4 cài đặt thời gian gom hàng ngang tiện dụng */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
-                          <label className="block text-xs font-bold text-slate-700">
-                            Từ ngày (Bắt đầu):
+                      {/* 2. Khoảng Thời Gian Xuất Hiện Poster */}
+                      <div className="pt-5 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-[#2D5A27]" />
+                            <span>Khoảng Thời Gian Xuất Hiện Poster:</span>
                           </label>
-                          <input
-                            type="date"
-                            value={announcementForm.startDate ? announcementForm.startDate.slice(0, 10) : ''}
-                            onChange={(e) =>
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                startDate: e.target.value,
-                              }))
-                            }
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
-                          />
+                          {(announcementForm.startDate || announcementForm.endDate) && (
+                            <button
+                              type="button"
+                              onClick={() => setAnnouncementForm((prev) => ({ ...prev, startDate: '', endDate: '' }))}
+                              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                            >
+                              ✕ Xóa giới hạn ngày
+                            </button>
+                          )}
                         </div>
 
-                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
-                          <label className="block text-xs font-bold text-slate-700">
-                            Đến ngày (Kết thúc):
-                          </label>
-                          <input
-                            type="date"
-                            value={announcementForm.endDate ? announcementForm.endDate.slice(0, 10) : ''}
-                            onChange={(e) =>
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                endDate: e.target.value,
-                              }))
-                            }
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700">
-                              Trễ tự bung:
+                        {/* 4 cài đặt thời gian */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200">
+                            <label className="block text-[11px] font-bold text-slate-700">
+                              Từ ngày (Bắt đầu):
                             </label>
-                            <span className="text-xs font-extrabold text-[#2D5A27]">
-                              {announcementForm.autoOpenDelaySeconds ?? 1.2}s
-                            </span>
+                            <input
+                              type="date"
+                              value={announcementForm.startDate ? announcementForm.startDate.slice(0, 10) : ''}
+                              onChange={(e) =>
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  startDate: e.target.value,
+                                }))
+                              }
+                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
                           </div>
-                          <input
-                            type="number"
-                            min="0.5"
-                            max="10"
-                            step="0.1"
-                            value={announcementForm.autoOpenDelaySeconds ?? 1.2}
-                            onChange={(e) =>
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
-                              }))
-                            }
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
-                          />
-                        </div>
 
-                        <div className="space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700">
-                              Tự đóng sau:
+                          <div className="space-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200">
+                            <label className="block text-[11px] font-bold text-slate-700">
+                              Đến ngày (Kết thúc):
                             </label>
-                            <span className="text-xs font-extrabold text-[#2D5A27]">
-                              {announcementForm.autoCloseSeconds ? `${announcementForm.autoCloseSeconds}s` : 'Không đóng'}
-                            </span>
+                            <input
+                              type="date"
+                              value={announcementForm.endDate ? announcementForm.endDate.slice(0, 10) : ''}
+                              onChange={(e) =>
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  endDate: e.target.value,
+                                }))
+                              }
+                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
                           </div>
-                          <input
-                            type="number"
-                            min="0"
-                            max="60"
-                            step="1"
-                            placeholder="0 = Không tự đóng"
-                            value={announcementForm.autoCloseSeconds ?? ''}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10);
-                              setAnnouncementForm((prev) => ({
-                                ...prev,
-                                autoCloseSeconds: !isNaN(val) && val > 0 ? val : undefined,
-                              }));
-                            }}
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
-                          />
+
+                          <div className="space-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-slate-700">
+                                Trễ tự bung:
+                              </label>
+                              <span className="text-[11px] font-extrabold text-[#2D5A27]">
+                                {announcementForm.autoOpenDelaySeconds ?? 1.2}s
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0.5"
+                              max="10"
+                              step="0.1"
+                              value={announcementForm.autoOpenDelaySeconds ?? 1.2}
+                              onChange={(e) =>
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  autoOpenDelaySeconds: parseFloat(e.target.value) || 1.2,
+                                }))
+                              }
+                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-slate-700">
+                                Tự đóng sau:
+                              </label>
+                              <span className="text-[11px] font-extrabold text-[#2D5A27]">
+                                {announcementForm.autoCloseSeconds ? `${announcementForm.autoCloseSeconds}s` : 'Không đóng'}
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              max="60"
+                              step="1"
+                              placeholder="0 = Không đóng"
+                              value={announcementForm.autoCloseSeconds ?? ''}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  autoCloseSeconds: !isNaN(val) && val > 0 ? val : undefined,
+                                }));
+                              }}
+                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                  </div>
-
-                  {/* Form 2 cột: Cột trái nhập liệu + Cột phải Live Preview */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* Cột trái: Nhập liệu */}
-                    <div className="lg:col-span-7 space-y-5">
-                      {/* Ảnh Poster Thông Báo (Chèn cả Tiếng Việt & Tiếng Anh) */}
-                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                          <div className="space-y-0.5">
-                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                              <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
-                              <span>Ảnh Poster Thông Báo (Tiếng Việt &amp; Tiếng Anh)</span>
-                            </h3>
-                            <p className="text-[11px] text-slate-500">
-                              Hỗ trợ chèn poster riêng cho từng ngôn ngữ. Khuyên dùng ảnh khổ đứng (3:4 hoặc 4:5 hoặc 1:1).
-                            </p>
-                          </div>
+                      {/* 3. Ảnh Poster Thông Báo (Tiếng Việt & Tiếng Anh) */}
+                      <div className="pt-5 border-t border-slate-100 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
+                            <span>Ảnh Poster Thông Báo</span>
+                          </label>
                           <span className="text-[10px] text-slate-400 font-medium">JPG, PNG, WEBP</span>
                         </div>
 
                         {/* 1. Ảnh Poster Tiếng Việt (Bắt buộc / Mặc định) */}
-                        <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                           <div className="flex items-center justify-between">
                             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                               <VietnamFlag className="w-4 h-3 rounded-[2px]" />
                               <span>1. Ảnh Poster Tiếng Việt (Bắt buộc): *</span>
                             </label>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              Ảnh chính / Mặc định
+                              Ảnh chính
                             </span>
                           </div>
                           <AdminImageInput
@@ -6303,17 +6293,14 @@ function formatDisplayReviewDate(val?: string | null): string {
                             value={announcementForm.imageUrl}
                             onChange={(url) => setAnnouncementForm((prev) => ({ ...prev, imageUrl: url }))}
                           />
-                          <p className="text-[11px] text-slate-500">
-                            Hiển thị khi khách xem website Tiếng Việt. <strong>Nếu Tiếng Anh không tải ảnh riêng, hệ thống sẽ tự động dùng ảnh Tiếng Việt này.</strong>
-                          </p>
                         </div>
 
                         {/* 2. Ảnh Poster Tiếng Anh (Tùy chọn) */}
-                        <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                           <div className="flex items-center justify-between">
                             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                               <UKFlag className="w-4 h-3 rounded-[2px]" />
-                              <span>2. Ảnh Poster Tiếng Anh (Tùy chọn - English Poster):</span>
+                              <span>2. Ảnh Poster Tiếng Anh (Tùy chọn):</span>
                             </label>
                             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
                               {announcementForm.imageUrlEn?.trim() ? '✅ Có ảnh tiếng Anh riêng' : 'Tự lấy ảnh Tiếng Việt'}
@@ -6325,14 +6312,29 @@ function formatDisplayReviewDate(val?: string | null): string {
                             value={announcementForm.imageUrlEn || ''}
                             onChange={(url) => setAnnouncementForm((prev) => ({ ...prev, imageUrlEn: url }))}
                           />
-                          <p className="text-[11px] text-slate-500">
-                            {announcementForm.imageUrlEn?.trim()
-                              ? 'Khách xem giao diện Tiếng Anh sẽ nhìn thấy ảnh poster riêng này.'
-                              : '💡 Chưa tải ảnh tiếng Anh — Hệ thống sẽ tự động hiển thị ảnh Tiếng Việt ở trên cho khách nước ngoài.'}
-                          </p>
                         </div>
                       </div>
 
+                      {/* Nút Lưu Cài Đặt (Nằm ngay trong ô duy nhất) */}
+                      <div className="pt-5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="text-xs text-slate-500">
+                          {announcementForm.updatedAt ? (
+                            <span>Lần cập nhật: {new Date(announcementForm.updatedAt).toLocaleString('vi-VN')}</span>
+                          ) : (
+                            <span>Chưa lưu cấu hình</span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSaveAnnouncement()}
+                          disabled={isAnnouncementSaving}
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                        >
+                          {isAnnouncementSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          <span>{isAnnouncementSaving ? 'Đang lưu...' : 'Lưu Cài Đặt Thông Báo Nổi (Poster)'}</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Cột phải: Live Preview Mô Phỏng Trực Quan */}
@@ -6475,29 +6477,6 @@ function formatDisplayReviewDate(val?: string | null): string {
                           })()}
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Thanh Lưu Dưới Cùng */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="text-xs text-slate-500">
-                      {announcementForm.updatedAt ? (
-                        <span>Lần cập nhật gần nhất: {new Date(announcementForm.updatedAt).toLocaleString('vi-VN')}</span>
-                      ) : (
-                        <span>Chưa lưu cấu hình</span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleSaveAnnouncement()}
-                        disabled={isAnnouncementSaving}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-                      >
-                        {isAnnouncementSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        <span>{isAnnouncementSaving ? 'Đang lưu...' : 'Lưu Thông Báo Nổi & Lịch Tết'}</span>
-                      </button>
                     </div>
                   </div>
                 </div>

@@ -830,17 +830,17 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
      - *Nguyên nhân*: Trên màn hình cảm ứng, sau `pointerup` (mở popup), trình duyệt mobile phát sinh chuỗi sự kiện chuột ảo (synthetic `click` sau 100-350ms). Do backdrop modal (`fixed inset-0 z-[9998]`) vừa xuất hiện ngay dưới ngón tay, click ảo rơi trúng backdrop làm backdrop kích hoạt đóng modal ngay tức thì.
      - *Giải pháp*: Áp dụng time guard `Date.now() - lastOpenTimeRef.current < 450ms` trên `handleBackdropClick` cùng `e.stopPropagation()` trên cả thanh nổi và backdrop. Nhờ đó, thao tác tap mở lại poster trên điện thoại hoạt động trơn tru 100%, không bị chớp tắt.
 
-### 2. Trang Quản Trị Hệ Thống (`/admin` → Cài Đặt Hệ Thống → Thông Báo Nổi & Lịch Tết)
-- **Gom toàn bộ cấu hình chính về CHUNG 1 Ô (Card duy nhất phía trên)**:
-  1. **Thông Báo Nổi (Poster)**: Header + Công tắc BẬT / TẮT trạng thái.
-  2. **Chủ Đề & Tiêu Đề**: Droplist chọn `🧧 Lịch Nghỉ Lễ`, `🎁 Ưu Đãi`, hoặc `🔔 Tùy Chỉnh` (hỗ trợ nhập chữ VI/EN, tự động chuyển icon chuông rung nếu không có emoji).
+### 2. Trang Quản Trị Hệ Thống (`/admin` → Cài Đặt Hệ Thống → Cài Đặt Thông Báo Nổi (Poster))
+- **Gom toàn bộ về DUY NHẤT 1 Ô (Card Cài Đặt Thông Báo Nổi (Poster))**:
+  1. **Header + Trạng thái**: Tiêu đề chuẩn `Cài Đặt Thông Báo Nổi (Poster)` kèm công tắc BẬT / TẮT trực tiếp.
+  2. **Chủ Đề & Tiêu Đề**: Droplist tối giản gồm `🧧 Lịch Nghỉ Lễ`, `🎁 Ưu Đãi`, `✍️ Tùy Chỉnh Khác` (đã bỏ toàn bộ chú thích dài dòng như tự nhập/chuông rung; khi chọn tùy chỉnh sẽ mở 2 ô nhập tên VI / EN).
   3. **Khoảng Thời Gian Xuất Hiện Poster**:
      - *Từ ngày (Bắt đầu) & Đến ngày (Kết thúc)*: Chọn khoảng ngày chiến dịch áp dụng. Quá hạn hoặc chưa đến ngày, poster sẽ tự ẩn (để trống = không giới hạn). Có nút "✕ Xóa giới hạn ngày".
-     - *Trễ tự bung*: Điều chỉnh số giây chờ trước khi tự bung popup (mặc định 1.2s).
+     - *Trễ bung Popup*: Điều chỉnh số giây chờ trước khi tự bung popup (mặc định 1.2s).
      - *Tự đóng sau*: Tùy chọn số giây tự đóng (để trống hoặc 0 = chỉ đóng khi khách chạm ✕).
-- **Phía dưới phân chia 2 cột gọn gàng**:
-  - **Cột trái**: *Ảnh Poster Thông Báo* (chèn ảnh riêng biệt cho Tiếng Việt & Tiếng Anh, tự fallback về VI).
-  - **Cột phải**: *Live Preview Trực Quan* (xem trước Modal Poster và Thanh capsule nổi kéo thả).
+  4. **Ảnh Poster Thông Báo**: Chèn ảnh riêng biệt cho Tiếng Việt (bắt buộc) & Tiếng Anh (tùy chọn, tự động fallback về VI).
+  5. **Nút Lưu Cài Đặt**: Nằm ngay bên trong ô cài đặt duy nhất, hiển thị thời gian cập nhật gần nhất.
+- **Cột phải**: Live Preview Trực Quan (xem trước Modal Poster và Thanh capsule nổi kéo thả).
 
 ### 3. Interface Data Model (`PopupAnnouncementConfig`)
 ```ts
