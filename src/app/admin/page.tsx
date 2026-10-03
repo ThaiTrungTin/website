@@ -3133,34 +3133,71 @@ function formatDisplayReviewDate(val?: string | null): string {
               </button>
 
               {/* Menu 7: Team */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('team');
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
-                  activeTab === 'team'
-                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <UserCheck
-                    className={`w-4 h-4 transition ${
-                      activeTab === 'team' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
-                    }`}
-                  />
-                  <span>Đội Ngũ Y Tế</span>
-                </div>
-                <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    activeTab === 'team' ? 'bg-black/30 text-amber-300' : 'bg-slate-800 text-slate-400'
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('team');
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group cursor-pointer ${
+                    activeTab === 'team'
+                      ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
-                  {teamMembers.length}
-                </span>
-              </button>
+                  <div className="flex items-center gap-3">
+                    <UserCheck
+                      className={`w-4 h-4 transition ${
+                        activeTab === 'team' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                      }`}
+                    />
+                    <span>Đội Ngũ Y Tế</span>
+                  </div>
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      activeTab === 'team' ? 'bg-black/30 text-amber-300' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {teamMembers.length}
+                  </span>
+                </button>
+
+                {/* Luôn hiển thị đổ xuống 2 mục con theo yêu cầu */}
+                <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('team');
+                      setTeamSubTab('members');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'team' && teamSubTab === 'members'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span>• Danh sách bác sĩ ({teamMembers.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('team');
+                      setTeamSubTab('careers');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'team' && teamSubTab === 'careers'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Briefcase className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>Tuyển dụng &amp; Vị trí mở</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Menu 8: Articles / Cẩm Nang */}
               <button
@@ -5964,35 +6001,6 @@ function formatDisplayReviewDate(val?: string | null): string {
           {/* ===================================================== */}
           {activeTab === 'faqs' && (
             <div className="space-y-4">
-              {/* Sub-tab Navigation: FAQ vs Cấu hình Support Panel */}
-              <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl w-fit border border-slate-200/80 shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setFaqSubTab('list')}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    faqSubTab === 'list'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4 text-[#2D5A27]" />
-                  <span>Danh Sách Câu Hỏi FAQ ({faqs.length})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFaqSubTab('support_panel')}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    faqSubTab === 'support_panel'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <PhoneCall className="w-4 h-4 text-emerald-600" />
-                  <span>Mục "Bạn Cần PetM&M Hỗ Trợ?"</span>
-                </button>
-              </div>
-
               {/* SUBTAB 1: DANH SÁCH CÂU HỎI FAQ */}
               {faqSubTab === 'list' && (
                 <div className="space-y-4">
@@ -6766,43 +6774,6 @@ function formatDisplayReviewDate(val?: string | null): string {
           {/* ========================================================= */}
           {activeTab === 'team' && (
             <div className="space-y-6">
-              {/* THANH CHUYỂN NHÁNH TRONG ĐỘI NGŨ Y TẾ */}
-              <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-2xs flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setTeamSubTab('members')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
-                    teamSubTab === 'members'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'bg-transparent hover:bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  <UserCheck className="w-4 h-4" />
-                  <span>Đội Ngũ Bác Sĩ &amp; Chuyên Gia</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    teamSubTab === 'members' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
-                  }`}>
-                    {teamMembers.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTeamSubTab('careers')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
-                    teamSubTab === 'careers'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'bg-transparent hover:bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  <Briefcase className="w-4 h-4" />
-                  <span>Tuyển Dụng &amp; Vị Trí Mở</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950">
-                    Cơ Hội Nghề Nghiệp
-                  </span>
-                </button>
-              </div>
-
               {teamSubTab === 'careers' && (
                 <AdminCareersManager showNotification={showNotification} />
               )}

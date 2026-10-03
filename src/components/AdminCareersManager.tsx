@@ -533,100 +533,79 @@ export default function AdminCareersManager({ showNotification }: Props) {
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleTranslateJob}
-                  disabled={isTranslating}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold border border-emerald-200 transition cursor-pointer disabled:opacity-50"
-                  title="Dịch nội dung sang tiếng Anh"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>{isTranslating ? 'Đang dịch...' : 'Dịch AI (ENG)'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setEditingJob(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setEditingJob(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Language Switcher Tabs */}
-            <div className="px-6 pt-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50/30">
-              <button
-                type="button"
-                onClick={() => setModalTab('vi')}
-                className={`flex items-center gap-2 px-4 py-2 border-b-2 font-bold text-xs transition cursor-pointer ${
-                  modalTab === 'vi'
-                    ? 'border-[#2D5A27] text-[#2D5A27] bg-white rounded-t-lg'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <VietnamFlag className="w-4 h-3 rounded-xs shadow-2xs" />
-                <span>Tiếng Việt</span>
-              </button>
+            {/* Language Switcher Tabs & Auto-Translate (Theo Ảnh 2) */}
+            <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
+              {/* Tab Ngôn ngữ */}
+              <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setModalTab('vi')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    modalTab === 'vi'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                  <span>Bản Tiếng Việt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('en')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    modalTab === 'en'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <UKFlag className="w-4 h-3 rounded-[2px]" />
+                  <span>Bản English</span>
+                </button>
+              </div>
 
+              {/* Nút Chuyển đổi ENG */}
               <button
                 type="button"
-                onClick={() => setModalTab('en')}
-                className={`flex items-center gap-2 px-4 py-2 border-b-2 font-bold text-xs transition cursor-pointer ${
-                  modalTab === 'en'
-                    ? 'border-[#2D5A27] text-[#2D5A27] bg-white rounded-t-lg'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
+                onClick={handleTranslateJob}
+                disabled={isTranslating}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                title="Tự động dịch sang tiếng Anh bằng AI"
               >
-                <UKFlag className="w-4 h-3 rounded-xs shadow-2xs" />
-                <span>English</span>
-                {editingJob.tieu_de_en && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                {isTranslating ? (
+                  <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
                 )}
+                <span>{isTranslating ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
               </button>
             </div>
 
             {/* Modal Body Form */}
             <form onSubmit={handleSaveJob} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-              {/* Mã định danh / Slug */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-semibold text-slate-700">
-                      Mã định danh (Slug đường dẫn): *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (editingJob.tieu_de?.trim()) {
-                          const newSlug = generateSlug(editingJob.tieu_de);
-                          setEditingJob((prev) => ({ ...prev, id: newSlug }));
-                          notify('success', 'Đã tự động tạo mã đường dẫn từ tiêu đề');
-                        } else {
-                          notify('error', 'Vui lòng nhập tiêu đề vị trí trước');
-                        }
-                      }}
-                      className="text-[11px] text-emerald-800 hover:text-emerald-950 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer transition"
-                      title="Tự động sinh mã từ Tiêu đề"
-                    >
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      Tự động sinh từ tiêu đề
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={editingJob.id || ''}
-                    onChange={(e) => setEditingJob((prev) => ({ ...prev, id: generateSlug(e.target.value) }))}
-                    placeholder="Tự động điền theo tiêu đề..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white font-mono focus:border-[#2D5A27] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-slate-500 block mt-0.5">
-                    Hệ thống tự động điền từ tiêu đề. Đường dẫn: <strong className="text-emerald-800 font-mono">/tuyen-dung/{editingJob.id || 'slug-vi-tri'}</strong>
-                  </span>
-                </div>
+              {/* 1. Ảnh bìa vị trí tuyển dụng đưa lên đầu */}
+              <div className="space-y-1.5 pb-1">
+                <label className="block font-semibold text-slate-700">
+                  Ảnh bìa vị trí tuyển dụng:
+                </label>
+                <AdminImageInput
+                  folder="general"
+                  value={editingJob.hinh_anh || ''}
+                  onChange={(url) => setEditingJob((prev) => ({ ...prev, hinh_anh: url }))}
+                  onNotification={notify}
+                />
+              </div>
 
+              {/* Thứ tự sắp xếp & Trạng thái hiển thị (Mã định danh đã được ẩn) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 items-center">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
                     Thứ tự sắp xếp:
@@ -638,6 +617,18 @@ export default function AdminCareersManager({ showNotification }: Props) {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none font-mono"
                   />
                 </div>
+
+                <div className="pt-2 sm:pt-5">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingJob.kich_hoat !== false}
+                      onChange={(e) => setEditingJob((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                      className="w-4 h-4 text-[#2D5A27] rounded focus:ring-0 cursor-pointer"
+                    />
+                    <span>Kích hoạt hiển thị công khai trên website</span>
+                  </label>
+                </div>
               </div>
 
               {/* Tiêu đề & Phòng ban */}
@@ -645,7 +636,7 @@ export default function AdminCareersManager({ showNotification }: Props) {
                 <>
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Tiêu đề vị trí (Tiếng Việt): *
+                      Tiêu đề vị trí: *
                     </label>
                     <input
                       type="text"
@@ -655,15 +646,13 @@ export default function AdminCareersManager({ showNotification }: Props) {
                         const newTitle = e.target.value;
                         setEditingJob((prev) => {
                           if (!prev) return prev;
-                          const shouldUpdateSlug = isCreatingNew || !prev.id || prev.id === generateSlug(prev.tieu_de || '');
                           return {
                             ...prev,
                             tieu_de: newTitle,
-                            id: shouldUpdateSlug ? generateSlug(newTitle) : prev.id,
+                            id: isCreatingNew || !prev.id ? generateSlug(newTitle) : prev.id,
                           };
                         });
                       }}
-                      placeholder="VD: Bác Sĩ Thú Y Khám Lâm Sàng & Phẫu Thuật"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white font-semibold focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
@@ -677,7 +666,6 @@ export default function AdminCareersManager({ showNotification }: Props) {
                         type="text"
                         value={editingJob.phong_ban || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, phong_ban: e.target.value }))}
-                        placeholder="VD: Y Khoa & Điều Trị"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -690,7 +678,6 @@ export default function AdminCareersManager({ showNotification }: Props) {
                         type="text"
                         value={editingJob.hinh_thuc || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, hinh_thuc: e.target.value }))}
-                        placeholder="VD: Toàn thời gian / Theo ca"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -705,7 +692,6 @@ export default function AdminCareersManager({ showNotification }: Props) {
                         type="text"
                         value={editingJob.muc_luong || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, muc_luong: e.target.value }))}
-                        placeholder="VD: 20 – 35 Triệu / Tháng"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white font-bold text-amber-900 focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -718,7 +704,6 @@ export default function AdminCareersManager({ showNotification }: Props) {
                         type="text"
                         value={editingJob.kinh_nghiem || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, kinh_nghiem: e.target.value }))}
-                        placeholder="VD: Tối thiểu 2 năm kinh nghiệm"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -745,7 +730,6 @@ export default function AdminCareersManager({ showNotification }: Props) {
                         type="text"
                         value={editingJob.han_nop || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, han_nop: e.target.value }))}
-                        placeholder="VD: 30/11/2026"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -759,7 +743,6 @@ export default function AdminCareersManager({ showNotification }: Props) {
                       type="text"
                       value={editingJob.dia_diem || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, dia_diem: e.target.value }))}
-                      placeholder="VD: 19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
@@ -767,39 +750,36 @@ export default function AdminCareersManager({ showNotification }: Props) {
                   {/* Mô tả, Yêu cầu, Quyền lợi */}
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Mô tả công việc (Xuống dòng hoặc gạch đầu dòng - ):
+                      Mô tả công việc:
                     </label>
                     <textarea
                       rows={6}
                       value={editingJob.mo_ta || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, mo_ta: e.target.value }))}
-                      placeholder={`Nhập nội dung mô tả (xuống dòng tự do hoặc gạch đầu dòng -):\n- Trực tiếp thăm khám, chẩn đoán và điều trị bệnh cho thú cưng\n- Thực hiện các ca phẫu thuật ngoại khoa từ cơ bản đến nâng cao\n- Phân tích kết quả xét nghiệm, chẩn đoán hình ảnh`}
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white text-sm leading-relaxed focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Yêu cầu ứng viên (Xuống dòng hoặc gạch đầu dòng - ):
+                      Yêu cầu ứng viên:
                     </label>
                     <textarea
                       rows={5}
                       value={editingJob.yeu_cau || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, yeu_cau: e.target.value }))}
-                      placeholder={`Yêu cầu bằng cấp, kỹ năng, kinh nghiệm:\n- Tốt nghiệp Đại học chuyên ngành Thú Y\n- Có chứng chỉ hành nghề hợp lệ\n- Tối thiểu 2 năm kinh nghiệm lâm sàng`}
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white text-sm leading-relaxed focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Quyền lợi & Đãi ngộ (Xuống dòng hoặc gạch đầu dòng - ):
+                      Quyền lợi & Đãi ngộ:
                     </label>
                     <textarea
                       rows={5}
                       value={editingJob.quyen_loi || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, quyen_loi: e.target.value }))}
-                      placeholder={`Chế độ đãi ngộ, bảo hiểm, đào tạo:\n- Mức thu nhập cạnh tranh từ 20 – 35 triệu/tháng + thưởng doanh số\n- Được tài trợ đào tạo y khoa & chứng chỉ Fear-Free quốc tế\n- Chế độ bảo hiểm sức khỏe VIP hàng năm`}
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white text-sm leading-relaxed focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
@@ -808,13 +788,12 @@ export default function AdminCareersManager({ showNotification }: Props) {
                 <>
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Job Title (English):
+                      Job Title:
                     </label>
                     <input
                       type="text"
                       value={editingJob.tieu_de_en || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, tieu_de_en: e.target.value }))}
-                      placeholder="e.g. Veterinary Clinical Care & Surgical Specialist"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white font-semibold focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
@@ -822,26 +801,24 @@ export default function AdminCareersManager({ showNotification }: Props) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        Department (English):
+                        Department:
                       </label>
                       <input
                         type="text"
                         value={editingJob.phong_ban_en || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, phong_ban_en: e.target.value }))}
-                        placeholder="e.g. Medical & Clinical Care"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        Work Type (English):
+                        Work Type:
                       </label>
                       <input
                         type="text"
                         value={editingJob.hinh_thuc_en || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, hinh_thuc_en: e.target.value }))}
-                        placeholder="e.g. Full-time"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -850,26 +827,24 @@ export default function AdminCareersManager({ showNotification }: Props) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        Salary / Compensation (English):
+                        Salary / Compensation:
                       </label>
                       <input
                         type="text"
                         value={editingJob.muc_luong_en || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, muc_luong_en: e.target.value }))}
-                        placeholder="e.g. 20 – 35 Million VND / Month"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white font-bold text-amber-900 focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        Experience (English):
+                        Experience:
                       </label>
                       <input
                         type="text"
                         value={editingJob.kinh_nghiem_en || ''}
                         onChange={(e) => setEditingJob((prev) => ({ ...prev, kinh_nghiem_en: e.target.value }))}
-                        placeholder="e.g. Minimum 2 years experience"
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                       />
                     </div>
@@ -877,83 +852,53 @@ export default function AdminCareersManager({ showNotification }: Props) {
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Work Location (English):
+                      Work Location:
                     </label>
                     <input
                       type="text"
                       value={editingJob.dia_diem_en || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, dia_diem_en: e.target.value }))}
-                      placeholder="e.g. Thu Duc City Headquarters, Ho Chi Minh City"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Job Description (English - Line breaks or bullet points - ):
+                      Job Description:
                     </label>
                     <textarea
                       rows={6}
                       value={editingJob.mo_ta_en || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, mo_ta_en: e.target.value }))}
-                      placeholder={`Key responsibilities (use line breaks or bullet points -):\n- Directly examine, diagnose, and treat pets\n- Perform routine and advanced surgical procedures\n- Consult pet owners on preventive care protocols`}
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white text-sm leading-relaxed focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Candidate Requirements (English - Line breaks or bullet points - ):
+                      Requirements:
                     </label>
                     <textarea
                       rows={5}
                       value={editingJob.yeu_cau_en || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, yeu_cau_en: e.target.value }))}
-                      placeholder={`Candidate qualifications:\n- Degree in Veterinary Medicine\n- Valid veterinary license\n- Minimum 2 years clinical experience`}
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white text-sm leading-relaxed focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Benefits & Privileges (English - Line breaks or bullet points - ):
+                      Benefits & Privileges:
                     </label>
                     <textarea
                       rows={5}
                       value={editingJob.quyen_loi_en || ''}
                       onChange={(e) => setEditingJob((prev) => ({ ...prev, quyen_loi_en: e.target.value }))}
-                      placeholder={`Compensation & perks:\n- Competitive salary package 20 - 35 Million VND/month\n- Sponsored ongoing medical training and certifications\n- Full premium health insurance package`}
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white text-sm leading-relaxed focus:border-[#2D5A27] focus:outline-none"
                     />
                   </div>
                 </>
               )}
-
-              {/* Ảnh minh họa vị trí */}
-              <div className="space-y-1.5 pt-2">
-                <label className="block font-semibold text-slate-700">
-                  Ảnh bìa vị trí tuyển dụng:
-                </label>
-                <AdminImageInput
-                  folder="general"
-                  value={editingJob.hinh_anh || ''}
-                  onChange={(url) => setEditingJob((prev) => ({ ...prev, hinh_anh: url }))}
-                  onNotification={notify}
-                />
-              </div>
-
-              {/* Trạng thái kích hoạt */}
-              <div className="pt-2 flex items-center gap-2">
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingJob.kich_hoat !== false}
-                    onChange={(e) => setEditingJob((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
-                    className="w-4 h-4 text-[#2D5A27] rounded focus:ring-0 cursor-pointer"
-                  />
-                  <span>Kích hoạt hiển thị công khai trên website</span>
-                </label>
-              </div>
 
               {/* Modal Actions */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">

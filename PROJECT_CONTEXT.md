@@ -586,6 +586,45 @@ Tích hợp cơ sở dữ liệu đám mây **Supabase (PostgreSQL)** và xây d
 ### 4. Khắc Phục Lỗi Build Vercel (Error: supabaseKey is required)
 - Tạo module `src/lib/supabaseAdmin.ts` với cơ chế lazy-init qua Proxy và fallback an toàn sang Anon Key, ngăn chặn lỗi crash biên dịch tại bước `Collecting page data` trên Vercel khi chưa cấu hình `SUPABASE_SERVICE_ROLE_KEY`.
 
+---
+
+## 23. TỔNG HỢP NÂNG CẤP HỆ THỐNG TUYỂN DỤNG & TỐI ƯU ĐIỀU HƯỚNG QUẢN TRỊ ADMIN
+- **Tập tin liên quan**:
+  - Trang Quản trị: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - Quản lý Tuyển dụng: [`src/components/AdminCareersManager.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/AdminCareersManager.tsx)
+  - Giao diện Tuyển dụng ngoài Frontend: [`src/components/TuyenDungListClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/TuyenDungListClient.tsx)
+
+### 1. Đồng Bộ Bố Cục Sidebar Menu Quản Trị & Lược Bỏ Thanh Tab Con Trong Nội Dung
+- **Sidebar Menu Đa Tầng Cho Đội Ngũ Y Tế**:
+  - Tái cấu trúc mục **Đội Ngũ Y Tế** trên Sidebar của Admin tương tự như **Câu Hỏi Thường Gặp**:
+    - Mục cha: `👤 Đội Ngũ Y Tế` (hiển thị số lượng nhân sự).
+    - Phân nhánh con 1: `• Danh sách bác sĩ ({teamMembers.length})` ➔ Quản lý bác sĩ, điều dưỡng & lãnh đạo chuyên môn.
+    - Phân nhánh con 2: `💼 Tuyển dụng & Vị trí mở` ➔ Quản lý tin tuyển dụng và vị trí mở.
+  - Chuyển hướng tab mượt mà ngay trên menu điều hướng bên trái, loại bỏ các bước thao tác trung gian.
+- **Lược Bỏ Hoàn Toàn 2 Thanh Sub-Tab Bar Ngang Trong Vùng Nội Dung**:
+  - Gỡ bỏ thanh chọn sub-tab của **Câu Hỏi Thường Gặp** (`[ Danh Sách Câu Hỏi FAQ ] [ Mục "Bạn Cần PetM&M Hỗ Trợ?" ]`).
+  - Gỡ bỏ thanh chọn sub-tab của **Đội Ngũ Y Tế** (`[ Đội Ngũ Bác Sĩ & Chuyên Gia ] [ Tuyển Dụng & Vị Trí Mở ]`).
+  - Toàn bộ điều hướng giờ đây tập trung 100% tại thanh Sidebar bên trái, giúp giao diện nội dung sạch sẽ, thoáng đãng và chuẩn UX hiện đại.
+
+### 2. Tinh Gọn & Tự Động Hóa Form Tuyển Dụng (Admin Careers Manager)
+- **Tự động sinh Slug & Ẩn hoàn toàn khỏi Form**:
+  - Hệ thống tự động chuyển đổi từ `Tiêu đề vị trí` sang slug đường dẫn chuẩn SEO (hỗ trợ chuyển đổi toàn bộ ký tự tiếng Việt có dấu sang không dấu, loại bỏ ký tự đặc biệt).
+  - Ẩn hoàn toàn ô nhập `Mã định danh (Slug đường dẫn)` khỏi cả giao diện thêm mới và chỉnh sửa vị trí tuyển dụng.
+- **Tái bố trí trường Ảnh bìa**:
+  - Đưa trường **Ảnh bìa vị trí tuyển dụng** lên đầu form để tạo ấn tượng thị giác ngay khi mở modal.
+  - Tích hợp công nghệ tải ảnh từ thiết bị và dán trực tiếp (`Ctrl+V`) từ clipboard.
+- **Xóa sạch toàn bộ placeholder và chú thích rườm rà**:
+  - Triệt để tuân thủ **Quy tắc 3 (Rule 3)**: Xóa 100% thuộc tính `placeholder` trong tất cả các ô nhập (`input`, `textarea`).
+  - Lược bỏ mọi dòng chú thích trong ngoặc đơn rườm rà bên cạnh nhãn trường, giữ giao diện nhập liệu tối giản và thanh lịch.
+- **Chuẩn hóa thanh tab ngôn ngữ**:
+  - Chuyển đổi thanh tab ngôn ngữ dạng pill hiện đại `[ 🇻🇳 Bản Tiếng Việt ] [ 🇬🇧 Bản English ]` bên trái và nút `✨ Chuyển đổi ENG` bên phải.
+  - Tính năng AI dịch song ngữ 1 chạm cho toàn bộ thông tin tuyển dụng sang tiếng Anh.
+
+### 3. Tối Giản Hóa Trang Danh Sách Tuyển Dụng Ngoài Frontend (`/tuyen-dung`)
+- Gỡ bỏ khối Hero Banner xanh rườm rà ở đầu trang danh sách tuyển dụng.
+- Giữ bố cục trang tập trung vào tiêu đề nghệ thuật `Gia Nhập Đại Gia Đình PetM&M` đồng bộ hiệu ứng chuyển động và danh sách các vị trí mở.
+
+
 
 
 

@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Briefcase,
   MapPin,
@@ -29,8 +28,6 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import FloatingContactWidgets from '@/components/FloatingContactWidgets';
 import ScrollNavigationButtons from '@/components/ScrollNavigationButtons';
-import PetMMBrand from '@/components/PetMMBrand';
-import { getAssetUrl } from '@/lib/assets';
 
 interface Props {
   initialJobs: TuyenDungRecord[];
@@ -96,37 +93,7 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
       <Header alwaysVisible />
 
       <main className="flex-1 pt-[64px] sm:pt-[72px]">
-        {/* 2. Hero Section Tuyển Dụng */}
-        <div className="relative py-16 sm:py-24 bg-gradient-to-b from-[#183B16] via-[#102B0F] to-[#0B1E0A] text-white overflow-hidden">
-          <div className="absolute inset-0 z-0 opacity-15 pointer-events-none">
-            <Image
-              src={getAssetUrl('/about_hospital.jpg')}
-              alt="PetM&M Veterinary Hospital"
-              fill
-              className="object-cover object-center"
-              priority
-            />
-          </div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,184,0,0.1),transparent_70%)] pointer-events-none" />
-
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-2 sm:pt-4">
-            <h1 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white mb-4 leading-tight max-w-4xl mx-auto">
-              {isEn ? 'Build Your Career at ' : 'Kiến Tạo Sự Nghiệp Y Khoa Cùng '}
-              <br className="hidden sm:inline" />
-              <span className="italic font-light text-amber-300">
-                <PetMMBrand />
-              </span>
-            </h1>
-
-            <p className="mt-4 text-sm sm:text-base text-emerald-100/90 leading-relaxed font-light max-w-2xl mx-auto">
-              {isEn
-                ? 'Join a premier 5-star Fear-Free veterinary system. Work with cutting-edge medical equipment, compassionate mentors, and exceptional compensation packages.'
-                : 'Môi trường thú y chuẩn Fear-Free 5 sao quốc tế hàng đầu tại TP. Hồ Chí Minh. Nơi kiến thức chuyên sâu, y đức và tình yêu thương động vật được nâng đỡ và tỏa sáng.'}
-            </p>
-          </div>
-        </div>
-
-        {/* 3. Search & Filter Bar */}
+        {/* 2. Search & Filter Bar */}
         <div className="sticky top-[64px] sm:top-[72px] z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs py-4">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
