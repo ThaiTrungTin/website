@@ -928,6 +928,70 @@ interface PopupAnnouncementConfig {
   5. ❓ **Hỏi Đáp Thường Gặp (FAQ)**: Giải đáp nhanh thắc mắc.
   6. 💼 **Tuyển Dụng & Cơ Hội Nghề Nghiệp**: Toàn bộ vị trí việc làm đang tuyển.
 
+---
 
+## 29. NÂNG CẤP THƯƠNG HIỆU ZALO & BẢO MẬT HỆ THỐNG TOÀN DIỆN (SECURITY AUDIT & HARDENING)
+- **Ngày thực hiện**: 03/10/2026 - 04/10/2026
+- **Tập tin liên quan**:
+  - `src/lib/supabase.ts`, `src/lib/supabaseAdmin.ts`, `src/lib/adminAuth.ts`
+  - `src/context/SystemConfigContext.tsx`
+  - `src/app/admin/page.tsx`
+  - `src/app/api/admin/login/route.ts`, `src/app/api/admin/change-password/route.ts`
+  - `src/app/api/admin/forgot-password/route.ts`, `src/app/api/admin/verify-otp-reset/route.ts`
+  - `src/app/api/admin/translate/route.ts`
+  - `next.config.ts`, `.env.local`
 
+### 1. Đồng Bộ Thương Hiệu Zalo (Loại bỏ "Zalo OA")
+- Thay thế toàn bộ cụm từ **"Zalo OA"** thành **"Zalo"** trên toàn bộ hệ thống (giao diện người dùng, sidebar chi nhánh, trang quản trị Admin, dữ liệu FAQ, cấu hình hỗ trợ, và tài liệu dự án).
 
+### 2. Khắc Phục Các Lỗ Hổng Bảo Mật (Security Hardening)
+1. **Lỗ hổng lộ Mật khẩu SMTP (Critical)**:
+   - Trong `SystemConfigContext.tsx`, thay thế `select('*')` bằng danh sách các cột công khai cụ thể (`publicFields`).
+   - Loại bỏ hoàn toàn `smtp_password` khỏi mọi truy vấn từ client và tự động dọn sạch cache `localStorage`.
+2. **Lỗ hổng Bypass Admin bằng LocalStorage (Critical)**:
+   - Trong `src/app/admin/page.tsx`, gỡ bỏ hoàn toàn việc đọc `localStorage.getItem('petmm_admin_user')` để cấp quyền đăng nhập.
+   - Chỉ cho phép vào bảng quản trị khi máy chủ `/api/admin/me` xác thực cookie phiên HttpOnly hợp lệ.
+3. **Loại bỏ Tài Khoản & Mật Khẩu Hardcode Mặc Định (`admin123`) (High)**:
+   - Trong `/api/admin/login` và `/api/admin/change-password`, xóa bỏ toàn bộ fallback đăng nhập `admin` / `admin123`.
+   - Bổ sung cơ chế **chống dò mật khẩu (Brute-Force Protection)**: Tạm khóa đăng nhập 15 phút nếu nhập sai quá 5 lần liên tiếp.
+4. **Bảo Vệ Token Phiên Quản Trị (High)**:
+   - Trong `adminAuth.ts`, xóa bỏ chuỗi secret mặc định cố định. Tự động dẫn xuất hàm băm mật mã học (SHA-256) an toàn cao khi thiếu biến môi trường.
+5. **Chống Brute-Force Mã OTP Quên Mật Khẩu (Medium)**:
+   - Trong `/api/admin/verify-otp-reset`, tự động đếm số lần thử và **hủy bỏ mã OTP trong database lập tức** nếu nhập sai quá 5 lần.
+   - Trong `/api/admin/forgot-password`, thêm cooldown 60 giây giữa các lần gửi mã để chống spam hòm thư.
+6. **Bảo Vệ Endpoint Dịch Thuật `/api/admin/translate` (Medium)**:
+   - Bổ sung xác thực phiên quản trị viên (`verifyToken`) để chống lạm dụng tài nguyên dịch thuật công cộng.
+7. **HTTP Security Headers Tiêu Chuẩn**:
+   - Thêm vào `next.config.ts`: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`.
+8. **Dọn Sạch 100% Khóa Supabase Khỏi Mã Nguồn**:
+   - Tạo file `.env.local` nội bộ trên máy phát triển (được `.gitignore` bảo vệ tuyệt đối, không đẩy lên Git, không xuất hiện trên F12).
+   - Loại bỏ hoàn toàn URL và Anon Key hardcode khỏi `supabase.ts`, `supabaseAdmin.ts`, `next.config.ts`, `HeroSection.tsx`, `SystemConfigContext.tsx`. Toàn bộ hệ thống đọc an toàn từ `process.env`.
+
+---
+
+## 30. NHẬT KÝ PHIÊN LÀM VIỆC & MÃ CUỘC TRÒ CHUYỆN (CONVERSATION SESSION LOG)
+
+> [!IMPORTANT]
+> **MÃ CUỘC TRÒ CHUYỆN (CONVERSATION ID)**: `94636bed-0ada-4ce6-a927-5858feaf34b7`
+> **Thời điểm hoàn tất**: 04/10/2026
+> **Người thực hiện**: Antigravity AI Assistant & ThaiTrungTin
+> **Trạng thái triển khai**: 
+> - GitHub: Branch `main` - Commit `68edaca`
+> - Vercel Production: `https://petsmm.vercel.app` (READY)
+
+### Tóm Tắt Tiến Độ Phiên Làm Việc:
+1. **Thiết kế & Tối ưu Tìm Kiếm Toàn Trang**:
+   - Hoàn tất Modal tìm kiếm Spotlight *"Bạn cần gì hôm nay..."*.
+   - Khắc phục lỗi tìm kiếm mục Tuyển Dụng (tìm từ khóa *"tuyển dụng"*, *"việc làm"* trả về cả 3 vị trí tuyển dụng và trang tuyển dụng).
+   - Gỡ bỏ hoàn toàn phím tắt `Ctrl K`, `ESC`, và thanh điều hướng phím mũi tên theo yêu cầu người dùng.
+2. **Đổi Nhận Diện Zalo**:
+   - Đổi toàn bộ "Zalo OA" thành "Zalo" trên 7 tập tin.
+3. **Kiểm Tra & Vá Toàn Diện 8 Lỗ Hổng Bảo Mật**:
+   - Khóa lộ mật khẩu SMTP, xóa bypass admin, chống brute-force, dọn sạch key trong source code.
+4. **Deploy Vercel Production**:
+   - Triển khai thành công 100% không phát sinh lỗi (`READY`).
+5. **Kế Hoạch Bàn Giao Khách Hàng (Checklist Chuẩn Bị)**:
+   - Cấu hình Email SMTP của phòng khám trong Admin (`/admin`).
+   - Gắn tên miền riêng của khách hàng (Custom Domain) trên Vercel.
+   - Tạo tài khoản Admin riêng cho chủ phòng khám.
+   - Rà soát hình ảnh bác sĩ, địa chỉ cơ sở và bài viết thực tế.
