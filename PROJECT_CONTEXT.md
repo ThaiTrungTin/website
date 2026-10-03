@@ -801,4 +801,34 @@ Thay vì dùng chung một hòm thư tiếp nhận (`smtp_notify_email`) cho t�
 3. **Lưu trữ Cấu hình Mẫu Tuyển Dụng Độc Lập**:
    - Bảng `cau_hinh` lưu dòng riêng `id = 'email_template_recruitment'`, quản trị viên có thể tùy biến mọi câu chữ, lời mở đầu, quy trình xét duyệt và hotline tuyển dụng mà không làm ảnh hưởng đến mẫu lịch hẹn.
 
+---
+
+## 26. HỆ THỐNG THÔNG BÁO NỔI & LỊCH TẾT / ƯU ĐÃI (POPUP ĐÓN KHÁCH + HUY HIỆU NỔI - CÁCH 1)
+- **Tập tin liên quan**:
+  - API Cấu hình: [`src/app/api/announcement/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/announcement/route.ts)
+  - Component Khách hàng: [`src/components/AnnouncementPopup.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/AnnouncementPopup.tsx)
+  - Quản trị Admin: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - Layout tổng: [`src/app/layout.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/layout.tsx)
+
+### 1. Cơ Chế Hoạt Động (UX Flow)
+1. **Popup Đón Khách (Welcome Lightbox Modal)**:
+   - Khi khách truy cập website, sau một khoảng trễ tự nhiên (mặc định 1.2 giây), modal thông báo trang trọng bung mở hiển thị ảnh Poster chương trình (Lịch trực Tết, Ưu đãi khai xuân, Tri ân...).
+   - Hỗ trợ đầy đủ song ngữ: Tiếng Việt và English.
+   - Nút hành động (CTA) nổi bật dẫn thẳng đến mục đặt lịch khám (`#booking`) hoặc liên kết tuỳ chỉnh.
+2. **Thu Nhỏ Thành Huy Hiệu Nổi (Minimized Floating Badge)**:
+   - Khi khách tắt popup (bấm nút `✕`, click ngoài nền mờ backdrop, hoặc bấm "Đóng"), modal đóng lại và **ngay lập tức thu nhỏ thành một Huy hiệu nổi (Floating Badge)** ở góc màn hình (ví dụ: `🧧 Lịch Trực Tết 2026` / `🎁 Ưu Đãi HOT`).
+   - Khách có thể chạm vào huy hiệu bất kỳ lúc nào trong quá trình lướt web để mở lại poster chi tiết.
+   - Tránh spam: Trong cùng 1 phiên lướt web (`sessionStorage`), khi khách đã đóng thì lần reload/chuyển trang tiếp theo sẽ không tự động bung popup đập vào mắt nữa mà chỉ hiển thị sẵn Huy hiệu nổi ở góc.
+3. **Bố Cục Chống Trùng Lặp Widget (No Visual Collision)**:
+   - Vị trí huy hiệu nổi được đặt tại `left-3.5 md:left-6 bottom-20 md:bottom-8 z-40`, hoàn toàn tách biệt và không che khuất cụm nút liên hệ nhanh `FloatingContactWidgets` (Zalo, Hotline, Messenger).
+   - Tự động ẩn trên tất cả các trang quản trị `/admin`.
+
+### 2. Trang Quản Trị Hệ Thống (`/admin` -> Cài Đặt Hệ Thống -> Thông Báo Nổi & Lịch Tết)
+- **Công tắc Bật / Tắt (Active Switch)**: Quản trị viên kích hoạt hoặc tạm dừng hiển thị thông báo bất kỳ lúc nào chỉ bằng 1 cú nhấp.
+- **Trình tải ảnh Poster chuyên dụng (`AdminImageInput`)**: Tải ảnh trực tiếp từ máy, dán ảnh qua clipboard (<kbd>Ctrl + V</kbd>), hoặc điền URL. Lưu trữ tại bucket `hinh_anh/banners/`.
+- **Hỗ trợ Song Ngữ & Dịch AI 1 Chạm**: Tùy chỉnh tiêu đề, chữ trên huy hiệu nổi, nhãn nút bấm cho cả Tiếng Việt và English; có nút AI tự động dịch.
+- **Tùy chỉnh thời gian trễ tự bung**: Cho phép cấu hình số giây chờ trước khi mở modal (mặc định 1.2s).
+- **Mô phỏng trực quan thực tế (Live Preview)**: Xem trước 1:1 cả giao diện Modal Poster và Huy hiệu nổi góc màn hình ngay trong trang quản trị.
+
+
 

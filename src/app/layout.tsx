@@ -50,6 +50,7 @@ export const metadata: Metadata = {
 import { SystemConfigProvider } from "@/context/SystemConfigContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import DynamicFavicon from "@/components/DynamicFavicon";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 export default function RootLayout({
   children,
@@ -68,6 +69,7 @@ export default function RootLayout({
           <LanguageProvider>
             <DynamicFavicon />
             {children}
+            <AnnouncementPopup />
           </LanguageProvider>
         </SystemConfigProvider>
       </body>
