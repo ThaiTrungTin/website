@@ -99,6 +99,19 @@ export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
   const [notes, setNotes] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [emailDuplicateWarning, setEmailDuplicateWarning] = useState('');
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [hpWebsite, setHpWebsite] = useState('');
+  const [submittedData, setSubmittedData] = useState<{
+    fullName: string;
+    phoneNumber: string;
+    email: string;
+    jobTitle: string;
+    appliedAt: string;
+    cvName?: string;
+  } | null>(null);
 
   // State upload file PDF trực tiếp
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -156,7 +169,6 @@ export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
     setPdfUploadError('');
 
     try {
-      const ext = file.name.split('.').pop() || 'pdf';
       const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const uniqueFileName = `${Date.now()}_${cleanName}`;
 
@@ -188,48 +200,111 @@ export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
     setPdfUploadError('');
   };
 
-  const handleApplyViaEmail = (e: React.FormEvent) => {
+  // Kiểm tra live xem email này đã từng ứng tuyển vị trí này chưa
+  const checkEmailDuplicate = async (emailVal: string) => {
+    if (!emailVal || !emailVal.includes('@') || !job?.id) {
+      setEmailDuplicateWarning('');
+      return;
+    }
+    setIsCheckingEmail(true);
+    try {
+      const res = await fetch(
+        `/api/recruitment/apply?email=${encodeURIComponent(emailVal.trim())}&jobId=${encodeURIComponent(job.id)}&lang=${language}`
+      );
+      const data = await res.json();
+      if (data?.hasApplied) {
+        setEmailDuplicateWarning(
+          data.message ||
+            (isEn
+              ? 'This email has already applied for this position. Our HR team is reviewing your profile!'
+              : 'Email này đã ứng tuyển vị trí này rồi. Ban nhân sự đang xét duyệt hồ sơ của bạn!')
+        );
+      } else {
+        setEmailDuplicateWarning('');
+      }
+    } catch (err) {
+      console.warn('Lỗi kiểm tra email trùng:', err);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  // Gửi hồ sơ ứng tuyển trực tiếp về nhà tuyển dụng (tương tự đặt lịch khám)
+  const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
+
     if (!fullName.trim() || !phoneNumber.trim()) {
-      alert(isEn ? 'Please fill in your full name and phone number.' : 'Vui lòng nhập họ tên và số điện thoại.');
+      setSubmitError(isEn ? 'Please fill in your full name and phone number.' : 'Vui lòng nhập họ tên và số điện thoại.');
       return;
     }
 
-    const recipient = emailContact || 'tuyendung@petmm.vn';
-    const emailSubject = `[Ứng Tuyển PetM&M] ${jobTitle} - ${fullName} - ${phoneNumber}`;
-    
-    const cvInfo = pdfUrl 
-      ? `Link tải trực tiếp CV đính kèm: ${pdfUrl}`
-      : cvLink 
-        ? `Đường link CV: ${cvLink}` 
-        : 'Ứng viên sẽ đính kèm file CV trực tiếp khi gửi email.';
-
-    const emailBody = `Kính gửi Ban Nhân Sự & Tuyển Dụng Bệnh Viện Thú Y PetM&M,
-
-Tôi xin gửi hồ sơ ứng tuyển vào vị trí: ${jobTitle}
-
-THÔNG TIN ỨNG VIÊN:
-• Họ và tên: ${fullName}
-• Số điện thoại liên hệ: ${phoneNumber}
-• Email ứng viên: ${email || 'Chưa cung cấp'}
-• Hồ sơ CV ứng tuyển: ${cvInfo}
-• Lời giới thiệu / Ghi chú: ${notes || 'Mong muốn được cống hiến và phát triển chuyên môn y khoa cùng PetM&M.'}
-
-Rất mong sớm nhận được phản hồi từ Quý Bệnh Viện.
-Trân trọng,
-${fullName}`;
-
-    // Lưu nội dung vào clipboard để ứng viên dễ dán nếu dùng Webmail
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(emailBody).catch(() => {});
+    const cleanPhone = (phoneNumber || '').replace(/\D/g, '');
+    if (cleanPhone.length < 9 || cleanPhone.length > 11) {
+      setSubmitError(isEn ? 'Please enter a valid phone number (9-11 digits).' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số).');
+      return;
     }
 
-    setFormSubmitted(true);
+    if (!email.trim() || !email.includes('@')) {
+      setSubmitError(isEn ? 'Please enter a valid email address.' : 'Vui lòng nhập địa chỉ email hợp lệ.');
+      return;
+    }
 
-    // Kích hoạt mở ứng dụng mail
-    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-    if (typeof window !== 'undefined') {
-      window.location.href = mailtoUrl;
+    if (emailDuplicateWarning) {
+      setSubmitError(emailDuplicateWarning);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/recruitment/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          jobTitle: jobTitle,
+          fullName: fullName.trim(),
+          phoneNumber: cleanPhone,
+          email: email.trim(),
+          pdfUrl: pdfUrl || '',
+          pdfFileName: pdfFile?.name || '',
+          cvLink: cvLink.trim(),
+          notes: notes.trim(),
+          isEn,
+          hp_website: hpWebsite,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        if (data.code === 'ALREADY_APPLIED') {
+          setEmailDuplicateWarning(data.message);
+        }
+        throw new Error(data.message || (isEn ? 'Failed to submit application.' : 'Không thể gửi hồ sơ ứng tuyển.'));
+      }
+
+      setSubmittedData({
+        fullName: fullName.trim(),
+        phoneNumber: cleanPhone,
+        email: email.trim(),
+        jobTitle: jobTitle,
+        appliedAt: new Intl.DateTimeFormat('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour: '2-digit',
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }).format(new Date()),
+        cvName: pdfFile?.name || (cvLink ? 'Đường link CV trực tuyến' : undefined),
+      });
+
+      setFormSubmitted(true);
+    } catch (err: any) {
+      setSubmitError(err.message || (isEn ? 'An error occurred. Please try again!' : 'Đã có lỗi xảy ra. Vui lòng thử lại!'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -466,46 +541,92 @@ ${fullName}`;
                   </div>
                 </div>
 
-                {formSubmitted ? (
-                  <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 text-center my-6 space-y-3">
-                    <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                    <h3 className="text-base font-bold text-emerald-950">
-                      {isEn ? 'Email Application Prepared!' : 'Đã Tạo Thư Ứng Tuyển Thành Công!'}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-emerald-800 max-w-md mx-auto leading-relaxed">
-                      {isEn
-                        ? 'Your default Email app has been opened with the complete application letter. Please click "Send" in your email client to finish.'
-                        : 'Hệ thống đã mở ứng dụng Email với đầy đủ thông tin vị trí và hồ sơ. Vui lòng bấm "Gửi" (Send) trong ứng dụng mail của bạn để hoàn tất!'}
-                    </p>
-                    <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const recipient = emailContact || 'tuyendung@petmm.vn';
-                          const emailSubject = `[Ứng Tuyển PetM&M] ${jobTitle} - ${fullName} - ${phoneNumber}`;
-                          const cvInfo = pdfUrl ? `Link tải CV: ${pdfUrl}` : cvLink ? `Link CV: ${cvLink}` : 'Đính kèm trong thư';
-                          const text = `Gửi tới: ${recipient}\nTiêu đề: ${emailSubject}\n\nHọ tên: ${fullName}\nSĐT: ${phoneNumber}\nEmail: ${email}\nHồ sơ CV: ${cvInfo}\nLời nhắn: ${notes}`;
-                          navigator.clipboard.writeText(text);
-                          setCopySuccess(true);
-                          setTimeout(() => setCopySuccess(false), 2500);
-                        }}
-                        className="px-4 py-2 rounded-lg bg-emerald-800 text-white text-xs font-semibold hover:bg-emerald-900 transition flex items-center gap-1.5"
-                      >
-                        <FileCheck className="w-3.5 h-3.5" />
-                        <span>{copySuccess ? (isEn ? 'Copied to clipboard!' : 'Đã sao chép nội dung thư!') : (isEn ? 'Copy Email Content' : 'Sao Chép Nội Dung Thư')}</span>
-                      </button>
+                {formSubmitted && submittedData ? (
+                  <div className="p-6 sm:p-8 rounded-2xl bg-emerald-50/90 border border-emerald-200/90 text-center my-6 space-y-5 shadow-sm">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+                    </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setFormSubmitted(false)}
-                        className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition"
+                    <div>
+                      <span className="inline-block px-3 py-1 rounded-full bg-emerald-200/60 text-emerald-900 text-xs font-bold uppercase tracking-wider mb-2">
+                        {isEn ? 'Application Received' : 'Tiếp Nhận Thành Công'}
+                      </span>
+                      <h3 className="text-lg sm:text-xl font-bold text-emerald-950">
+                        {isEn ? 'Your Application Has Been Sent Directly to HR!' : 'Đã Nộp Hồ Sơ Ứng Tuyển Thành Công!'}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-emerald-800 max-w-lg mx-auto mt-2 leading-relaxed font-light">
+                        {isEn
+                          ? `Your application for the position of "${jobTitle}" has been securely forwarded to PetM&M HR. A confirmation receipt has also been sent to your email.`
+                          : `Hồ sơ ứng tuyển vị trí "${jobTitle}" của bạn đã được chuyển thẳng đến Ban Nhân Sự & Tuyển Dụng PetM&M. Một email xác nhận cũng đã được gửi đến ${submittedData.email}.`}
+                      </p>
+                    </div>
+
+                    {/* Bảng tóm tắt thông tin hồ sơ */}
+                    <div className="bg-white rounded-xl p-4 sm:p-5 border border-emerald-200/70 text-left text-xs sm:text-sm space-y-2.5 max-w-lg mx-auto shadow-2xs">
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <span className="text-slate-500">{isEn ? 'Applicant:' : 'Họ và tên:'}</span>
+                        <strong className="text-slate-900">{submittedData.fullName}</strong>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <span className="text-slate-500">{isEn ? 'Phone number:' : 'Số điện thoại:'}</span>
+                        <strong className="text-slate-900 font-mono">{submittedData.phoneNumber}</strong>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <span className="text-slate-500">Email:</span>
+                        <strong className="text-slate-900 font-mono">{submittedData.email}</strong>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <span className="text-slate-500">{isEn ? 'Position:' : 'Vị trí:'}</span>
+                        <strong className="text-[#2D5A27]">{submittedData.jobTitle}</strong>
+                      </div>
+                      {submittedData.cvName && (
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                          <span className="text-slate-500">{isEn ? 'Attached CV:' : 'Hồ sơ CV:'}</span>
+                          <strong className="text-slate-900 truncate max-w-[200px]">{submittedData.cvName}</strong>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">{isEn ? 'Submitted at:' : 'Thời gian nộp:'}</span>
+                        <span className="text-slate-600 font-mono text-xs">{submittedData.appliedAt}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-100/60 rounded-xl p-3.5 text-xs text-emerald-900 max-w-lg mx-auto leading-relaxed">
+                      💡 {isEn
+                        ? 'Our HR department will carefully review your credentials and contact you within 24 – 48 business hours via phone or Zalo.'
+                        : 'Ban Nhân Sự PetM&M sẽ liên hệ trực tiếp với bạn trong vòng 24 – 48 giờ làm việc qua điện thoại hoặc Zalo.'}
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                      <Link
+                        href="/tuyen-dung"
+                        className="px-5 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-bold transition shadow-sm"
                       >
-                        {isEn ? 'Edit Application' : 'Chỉnh sửa thông tin'}
-                      </button>
+                        {isEn ? 'Explore Other Positions' : 'Xem Các Vị Trí Tuyển Dụng Khác'}
+                      </Link>
+
+                      <Link
+                        href="/"
+                        className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200 transition"
+                      >
+                        {isEn ? 'Back to Home' : 'Về Trang Chủ'}
+                      </Link>
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={handleApplyViaEmail} className="mt-6 space-y-4">
+                  <form onSubmit={handleSubmitApplication} className="mt-6 space-y-4">
+                    {/* Bẫy Honeypot chống Bot spam tự động */}
+                    <input
+                      type="text"
+                      name="hp_website"
+                      value={hpWebsite}
+                      onChange={(e) => setHpWebsite(e.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      className="hidden opacity-0 absolute -z-10 w-0 h-0 pointer-events-none"
+                    />
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -538,15 +659,37 @@ ${fullName}`;
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        {isEn ? 'Email Address' : 'Địa chỉ Email'}
+                        {isEn ? 'Email Address *' : 'Địa chỉ Email của bạn *'}
                       </label>
                       <input
                         type="email"
+                        required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (emailDuplicateWarning) setEmailDuplicateWarning('');
+                        }}
+                        onBlur={(e) => checkEmailDuplicate(e.target.value)}
                         placeholder="email@example.com"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2D5A27]"
+                        className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+                          emailDuplicateWarning
+                            ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/20'
+                            : 'border-slate-300 focus:ring-[#2D5A27]'
+                        }`}
                       />
+
+                      {isCheckingEmail && (
+                        <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
+                          <span>{isEn ? 'Checking email...' : 'Đang kiểm tra tình trạng ứng tuyển của email...'}</span>
+                        </p>
+                      )}
+
+                      {emailDuplicateWarning && (
+                        <p className="text-xs text-rose-600 font-semibold mt-1.5 flex items-center gap-1.5 bg-rose-50 border border-rose-200/80 px-3 py-1.5 rounded-lg">
+                          <span>⚠️ {emailDuplicateWarning}</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* VÙNG ĐÍNH KÈM FILE PDF / WORD TRỰC TIẾP HOẶC DÁN LINK CV */}
@@ -645,14 +788,29 @@ ${fullName}`;
                       />
                     </div>
 
+                    {submitError && (
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                        <span>⚠️ {submitError}</span>
+                      </div>
+                    )}
+
                     <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
                       <button
                         type="submit"
-                        disabled={isUploadingPdf}
-                        className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-800 to-[#122A10] hover:from-emerald-900 hover:to-black text-white font-bold text-sm shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                        disabled={isUploadingPdf || isSubmitting || !!emailDuplicateWarning}
+                        className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-800 to-[#122A10] hover:from-emerald-900 hover:to-black text-white font-bold text-sm shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Mail className="w-4 h-4 text-amber-300" />
-                        <span>{isEn ? 'Send Application via Email' : 'Gửi Hồ Sơ Ứng Tuyển Qua Email'}</span>
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                            <span>{isEn ? 'Submitting Application...' : 'Đang Gửi Hồ Sơ Trực Tiếp...'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 text-amber-300" />
+                            <span>{isEn ? 'Submit Application' : 'Gửi Hồ Sơ Ứng Tuyển Ngay'}</span>
+                          </>
+                        )}
                       </button>
 
                       <a

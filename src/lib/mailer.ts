@@ -547,3 +547,292 @@ export async function sendBookingConfirmationEmail({
     attachments,
   });
 }
+
+// ========================================================
+// GỬI EMAIL THÔNG BÁO HỒ SƠ ỨNG TUYỂN MỚI CHO NHÀ TUYỂN DỤNG & ỨNG VIÊN
+// ========================================================
+export async function sendRecruitmentApplicationEmail(params: {
+  candidateName: string;
+  phone: string;
+  email: string;
+  jobTitle: string;
+  cvLink?: string;
+  cvFileName?: string;
+  notes?: string;
+  isEn?: boolean;
+  ip?: string;
+  notifyEmail?: string;
+}) {
+  const {
+    candidateName,
+    phone,
+    email,
+    jobTitle,
+    cvLink,
+    cvFileName,
+    notes,
+    isEn = false,
+    ip,
+    notifyEmail,
+  } = params;
+
+  const smtpConfig = await getSmtpConfig();
+  const hrRecipient = (notifyEmail || smtpConfig.smtp_notify_email || smtpConfig.smtp_email || 'tuyendung@petmm.vn').trim();
+  const applyTimeVN = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date());
+
+  // 1. EMAIL GỬI VỀ NHÀ TUYỂN DỤNG (HR)
+  const hrSubject = `[Hồ Sơ Ứng Tuyển Mới] ${jobTitle} - ${candidateName} (${phone})`;
+  const hrHtml = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>Hồ Sơ Ứng Tuyển Mới PetM&M</title>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 30px 10px;">
+      <tr>
+        <td align="center">
+          <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <!-- Header Banner -->
+            <tr>
+              <td style="background: linear-gradient(135deg, #183B16 0%, #2D5A27 100%); padding: 32px 30px; text-align: center;">
+                <div style="font-size: 13px; font-weight: 700; color: #FFB800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+                  HỆ THỐNG Y TẾ THÚ Y PETM&M
+                </div>
+                <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
+                  📩 Có Hồ Sơ Ứng Tuyển Mới
+                </h1>
+                <p style="margin: 8px 0 0 0; font-size: 14px; color: #e2e8f0;">
+                  Vị trí: <strong style="color: #ffffff;">${jobTitle}</strong>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Body Content -->
+            <tr>
+              <td style="padding: 28px 30px;">
+                <div style="margin-bottom: 22px; border-bottom: 2px dashed #e2e8f0; padding-bottom: 18px;">
+                  <h3 style="margin: 0 0 14px 0; font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
+                    👤 Thông Tin Ứng Viên:
+                  </h3>
+                  <table width="100%" style="font-size: 14px; line-height: 1.8; color: #334155;">
+                    <tr>
+                      <td width="140" style="color: #64748b; font-weight: 600;">Họ và tên:</td>
+                      <td><strong style="color: #0f172a; font-size: 15px;">${candidateName}</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748b; font-weight: 600;">Số điện thoại:</td>
+                      <td>
+                        <a href="tel:${phone}" style="color: #2D5A27; font-weight: 700; text-decoration: none;">
+                          📞 ${phone}
+                        </a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748b; font-weight: 600;">Email liên hệ:</td>
+                      <td>
+                        <a href="mailto:${email}" style="color: #0284c7; text-decoration: none;">
+                          ✉️ ${email}
+                        </a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748b; font-weight: 600;">Thời gian nộp:</td>
+                      <td style="color: #475569;">${applyTimeVN}</td>
+                    </tr>
+                    ${ip ? `
+                    <tr>
+                      <td style="color: #64748b; font-weight: 600;">Địa chỉ IP:</td>
+                      <td style="color: #94a3b8; font-family: monospace; font-size: 12px;">${ip}</td>
+                    </tr>` : ''}
+                  </table>
+                </div>
+
+                <!-- CV File link -->
+                <div style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #cbd5e1; padding: 18px; margin-bottom: 22px;">
+                  <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #0f172a;">
+                    📎 Hồ Sơ Đính Kèm (CV):
+                  </h4>
+                  ${cvLink ? `
+                    <div style="margin-bottom: 12px; font-size: 13px; color: #334155;">
+                      Tên file: <strong>${cvFileName || 'CV_Ung_Tuyen.pdf'}</strong>
+                    </div>
+                    <a href="${cvLink}" target="_blank" style="display: inline-block; background-color: #2D5A27; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13px;">
+                      👉 Xem & Tải File CV Ngay
+                    </a>
+                  ` : `
+                    <p style="margin: 0; font-size: 13px; color: #64748b; font-style: italic;">
+                      Ứng viên không đính kèm file link trực tiếp. Vui lòng liên hệ qua SĐT/Email.
+                    </p>
+                  `}
+                </div>
+
+                <!-- Candidate notes -->
+                ${notes ? `
+                <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 16px; margin-bottom: 22px;">
+                  <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #065f46; text-transform: uppercase;">
+                    📝 Lời Giới Thiệu / Ghi Chú Của Ứng Viên:
+                  </h4>
+                  <p style="margin: 0; font-size: 13px; color: #065f46; line-height: 1.6; white-space: pre-wrap;">
+                    ${notes}
+                  </p>
+                </div>` : ''}
+
+                <!-- Quick actions -->
+                <div style="text-align: center; padding-top: 10px;">
+                  <a href="tel:${phone}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 13px; margin-right: 8px;">
+                    📞 Gọi Cho Ứng Viên
+                  </a>
+                  <a href="mailto:${email}?subject=Phản hồi hồ sơ ứng tuyển vị trí ${encodeURIComponent(jobTitle)} - PetM&M" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 13px;">
+                    ✉️ Phản Hồi Qua Email
+                  </a>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 30px; text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                  Hệ Thống Y Tế & Resort Thú Y PetM&M • Email Thông Báo Tự Động
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  // 2. EMAIL XÁC NHẬN GỬI CHO ỨNG VIÊN
+  const candidateSubject = isEn
+    ? `[PetM&M] Application Received: ${jobTitle}`
+    : `[PetM&M] Xác Nhận Đã Nhận Hồ Sơ Ứng Tuyển: ${jobTitle}`;
+
+  const candidateHtml = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>${candidateSubject}</title>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 30px 10px;">
+      <tr>
+        <td align="center">
+          <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <!-- Header Banner -->
+            <tr>
+              <td style="background: linear-gradient(135deg, #183B16 0%, #2D5A27 100%); padding: 32px 30px; text-align: center;">
+                <div style="font-size: 13px; font-weight: 700; color: #FFB800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+                  PETM&M VETERINARY HOSPITAL
+                </div>
+                <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
+                  ${isEn ? 'Application Received Successfully' : 'Đã Tiếp Nhận Hồ Sơ Ứng Tuyển'}
+                </h1>
+                <p style="margin: 8px 0 0 0; font-size: 14px; color: #e2e8f0;">
+                  ${isEn ? 'Position:' : 'Vị trí:'} <strong style="color: #ffffff;">${jobTitle}</strong>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Body -->
+            <tr>
+              <td style="padding: 28px 30px;">
+                <p style="margin: 0 0 16px 0; font-size: 15px; color: #0f172a; line-height: 1.6;">
+                  ${isEn ? `Dear <strong>${candidateName}</strong>,` : `Chào bạn <strong>${candidateName}</strong>,`}
+                </p>
+                <p style="margin: 0 0 18px 0; font-size: 14px; color: #475569; line-height: 1.6;">
+                  ${isEn
+                    ? `Thank you for your interest in joining the PetM&M Veterinary Hospital family. We have successfully received your application for the position of <strong>${jobTitle}</strong>.`
+                    : `Cảm ơn bạn đã quan tâm và mong muốn gia nhập đại gia đình Bệnh Viện Thú Y PetM&M. Ban Nhân Sự đã tiếp nhận hồ sơ ứng tuyển của bạn cho vị trí <strong>${jobTitle}</strong>.`}
+                </p>
+
+                <div style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px; margin-bottom: 22px;">
+                  <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #0f172a; text-transform: uppercase;">
+                    📋 ${isEn ? 'Application Details:' : 'Thông Tin Đã Gửi:'}
+                  </h4>
+                  <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.8;">
+                    <li>${isEn ? 'Full name:' : 'Họ và tên:'} <strong>${candidateName}</strong></li>
+                    <li>${isEn ? 'Phone number:' : 'Số điện thoại:'} <strong>${phone}</strong></li>
+                    <li>${isEn ? 'Applied position:' : 'Vị trí ứng tuyển:'} <strong>${jobTitle}</strong></li>
+                    <li>${isEn ? 'Submitted at:' : 'Thời gian nộp:'} <strong>${applyTimeVN}</strong></li>
+                  </ul>
+                </div>
+
+                <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 16px; margin-bottom: 22px;">
+                  <p style="margin: 0; font-size: 13px; color: #065f46; line-height: 1.6;">
+                    💡 ${isEn
+                      ? 'Our HR team will carefully review your credentials and reach out to qualified candidates via phone or Zalo within <strong>24 – 48 business hours</strong>.'
+                      : 'Ban Nhân Sự sẽ cẩn trọng đánh giá hồ sơ và liên hệ với các ứng viên phù hợp qua điện thoại hoặc Zalo trong vòng <strong>24 – 48 giờ làm việc</strong>.'}
+                  </p>
+                </div>
+
+                <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
+                  ${isEn ? 'Best regards,' : 'Trân trọng,'}<br>
+                  <strong style="color: #2D5A27;">Ban Nhân Sự & Tuyển Dụng PetM&M</strong>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 30px; text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                  Bệnh Viện Thú Y PetM&M • Hotline Tuyển Dụng: 0903 599 339
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+
+  // Gửi song song: Thư cho HR và Thư xác nhận cho ứng viên
+  const promises: Promise<any>[] = [];
+
+  // Gửi cho HR
+  if (hrRecipient) {
+    promises.push(
+      sendMail({
+        to: hrRecipient,
+        subject: hrSubject,
+        html: hrHtml,
+        text: `Hồ sơ ứng tuyển mới: ${jobTitle} - ${candidateName} (${phone}) - Email: ${email}. CV: ${cvLink || 'Không có link'}`,
+      }).catch((err) => {
+        console.warn('[Recruitment Mailer] Lỗi gửi email đến HR:', err.message);
+      })
+    );
+  }
+
+  // Gửi cho ứng viên nếu email hợp lệ
+  if (email && email.includes('@')) {
+    promises.push(
+      sendMail({
+        to: email.trim(),
+        subject: candidateSubject,
+        html: candidateHtml,
+        text: `${candidateSubject}. Cảm ơn bạn ${candidateName} đã ứng tuyển vị trí ${jobTitle} tại PetM&M.`,
+      }).catch((err) => {
+        console.warn('[Recruitment Mailer] Lỗi gửi email xác nhận cho ứng viên:', err.message);
+      })
+    );
+  }
+
+  await Promise.allSettled(promises);
+  return { success: true };
+}
+

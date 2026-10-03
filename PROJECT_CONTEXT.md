@@ -703,3 +703,34 @@ Khi AI Agent hoặc lập trình viên mở phiên làm việc mới, hãy đọ
 ### 3. Tối Ưu Hóa Hiệu Năng & Trải Nghiệm Responsive
 - Kiểm tra toàn diện hiển thị trên các kích thước màn hình phổ biến: iPhone (375px - 430px), iPad / Tablet (768px - 1024px), Laptop (1366px - 1920px).
 - Đảm bảo tất cả các hình ảnh tải lên từ Supabase Storage được nạp nhanh và tối ưu SEO (alt tag đầy đủ).
+
+---
+
+## 26. HỆ THỐNG TỰ ĐỘNG TIẾP NHẬN HỒ SƠ ỨNG TUYỂN & GỬI EMAIL TUYỂN DỤNG TRỰC TIẾP (RECRUITMENT APPLICATION ENGINE & RATE LIMITING)
+- **Tập tin liên quan**:
+  - API Tuyển dụng: [`src/app/api/recruitment/apply/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/recruitment/apply/route.ts)
+  - Hệ thống gửi email tự động: [`src/lib/mailer.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/mailer.ts) (`sendRecruitmentApplicationEmail`)
+  - Giao diện chi tiết tuyển dụng: [`src/components/TuyenDungDetailClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/TuyenDungDetailClient.tsx)
+  - Bảng dữ liệu Supabase: `public.ho_so_tuyen_dung` (kết nối Supabase Storage bucket `cv_files`)
+
+### 1. Bối Cảnh & Nâng Cấp Chức Năng (Direct Email & Instant Application)
+- **Trước đây**: Ứng viên bấm ứng tuyển thì mở liên kết `mailto:` hoặc phải sao chép nội dung email thủ công để tự gửi, trải nghiệm rời rạc và dễ thất lạc hồ sơ.
+- **Sau nâng cấp (Tương tự hệ thống Đặt Lịch Khám)**:
+  - Ứng viên nhập thông tin (Họ tên, SĐT, Email, Tải file CV trực tiếp lên Storage bucket `cv_files` hoặc dán link Google Drive/LinkedIn, lời tự giới thiệu).
+  - Bấm **"Gửi Hồ Sơ Ứng Tuyển Ngay"** $\rightarrow$ Hệ thống tự động ghi nhận vào database `ho_so_tuyen_dung` với trạng thái `moi`.
+  - **Tự động gửi email tức thì về Nhà tuyển dụng (HR)**: Tiêu đề dạng `[Hồ Sơ Ứng Tuyển Mới] <Vị trí> - <Họ tên> (<SĐT>)` kèm link xem CV trực tiếp 1 chạm và nút phản hồi nhanh qua điện thoại/email.
+  - **Tự động gửi email xác nhận cho Ứng viên**: Xác nhận đã tiếp nhận hồ sơ thành công, thời gian xét duyệt 24 - 48 giờ.
+  - **Phiếu tiếp nhận điện tử (Application Receipt Card)**: Hiển thị ngay trên giao diện web với dấu tích xanh tiếp nhận thành công, tóm tắt thông tin nộp và các liên kết điều hướng.
+
+### 2. Tối Ưu Bảo Mật & Quy Tắc Giới Hạn Nghiêm Ngặt (Anti-Spam & Rate Limiting)
+- **Quy tắc 1: 1 IP không quá 3 lần ứng tuyển**:
+  - API [`/api/recruitment/apply`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/recruitment/apply/route.ts) lấy IP thực tế của client qua các header chuẩn (`x-forwarded-for`, `x-real-ip`, `cf-connecting-ip`).
+  - Kiểm tra số lượng hồ sơ đã gửi từ IP này: kết hợp bộ nhớ đệm in-memory cache siêu nhanh và truy vấn đếm trực tiếp trên Supabase `ho_so_tuyen_dung.ip_address`.
+  - Nếu số lượt ứng tuyển $\ge 3$, trả về mã HTTP 429 kèm thông báo: *"Bạn đã gửi tối đa 3 lần ứng tuyển từ thiết bị/mạng này. Vui lòng liên hệ trực tiếp phòng Nhân sự qua Hotline hoặc Zalo nếu cần hỗ trợ thêm!"*.
+- **Quy tắc 2: 1 Email không ứng tuyển nhiều hơn 1 lần ở 1 vị trí**:
+  - **Kiểm tra trực tiếp (Live Check on Blur)**: Khi ứng viên nhập xong email và click ra ngoài (hoặc chuyển ô), component tự động gọi `GET /api/recruitment/apply?email=...&jobId=...`.
+  - Nếu email đã nộp vị trí này: Hiển thị ngay cảnh báo viền đỏ nổi bật dưới ô nhập: *"⚠️ Email này đã ứng tuyển vị trí này rồi. Ban nhân sự đang xét duyệt hồ sơ của bạn!"*, đồng thời khóa nút nộp hồ sơ.
+  - **Bảo vệ tầng Server (Server-side validation)**: Khi submit qua method POST, server thực hiện truy vấn `ilike('email', cleanEmail).eq('tuyen_dung_id', jobId)` để chặn đứng race-condition hoặc các công cụ gửi request tự động.
+- **Quy tắc 3: Bẫy Honeypot ẩn chống Bot Spam**:
+  - Form trang bị trường ẩn `hp_website` vô hình với người dùng. Bất kỳ bot tự động nào cố tình điền vào trường này sẽ bị API âm thầm hấp thụ mà không tốn tài nguyên gửi email hay làm rác database.
+
