@@ -29,8 +29,10 @@ export default function AnnouncementPopup() {
   // Guard chống lỗi "chớp rồi tắt" trên điện thoại do synthetic click từ touch event
   const lastOpenTimeRef = useRef<number>(0);
 
-  // 1. Tải cấu hình thông báo từ API
+  // 1. Tải cấu hình thông báo từ API (chỉ tải và hiển thị ở website chính '/')
   useEffect(() => {
+    if (pathname !== '/') return;
+
     let isMounted = true;
     async function loadAnnouncement() {
       try {
@@ -167,6 +169,9 @@ export default function AnnouncementPopup() {
   if (pathname?.startsWith('/admin')) return null;
 
   // Không hiển thị nếu chưa kích hoạt hoặc chưa có ảnh
+  // Thông báo ưu đãi hoặc lịch nghỉ (poster) CHỈ xuất hiện ở website chính ('/')
+  if (pathname !== '/') return null;
+
   if (!announcement.isActive || !announcement.imageUrl) return null;
 
   // Không hiển thị nếu ngoài khoảng thời gian xuất hiện đã cài đặt

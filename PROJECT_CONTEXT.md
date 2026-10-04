@@ -995,3 +995,39 @@ interface PopupAnnouncementConfig {
    - Gắn tên miền riêng của khách hàng (Custom Domain) trên Vercel.
    - Tạo tài khoản Admin riêng cho chủ phòng khám.
    - Rà soát hình ảnh bác sĩ, địa chỉ cơ sở và bài viết thực tế.
+
+---
+
+## 31. HỆ THỐNG MỞ ĐÁNH GIÁ & KHẢO SÁT CHẤT LƯỢNG DỊCH VỤ (/taodanhgia & /danhgiadichvu/[id])
+- **Ngày thực hiện**: 04/10/2026
+- **Tập tin liên quan**:
+  - Trang tạo link đánh giá (Admin): [`src/app/taodanhgia/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/taodanhgia/page.tsx)
+  - Modal quét camera mã vạch: [`src/components/BarcodeScannerModal.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/BarcodeScannerModal.tsx)
+  - Trang xử lý 404 URL rỗng: [`src/app/danhgiadichvu/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/danhgiadichvu/page.tsx)
+  - Trang khảo sát đánh giá khách hàng: [`src/app/danhgiadichvu/[id]/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/danhgiadichvu/[id]/page.tsx) & [`src/app/danhgiadichvu/[id]/DanhGiaDichVuClient.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/danhgiadichvu/[id]/DanhGiaDichVuClient.tsx)
+  - API quản lý mã: [`src/app/api/review-requests/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/review-requests/route.ts)
+  - API chi tiết & gửi đánh giá: [`src/app/api/review-requests/[id]/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/review-requests/[id]/route.ts)
+  - Cơ sở dữ liệu: Bảng `public.yeu_cau_danh_gia` (Supabase PostgreSQL)
+
+### 1. Phía Quản Trị / Lễ Tân (`/taodanhgia`)
+- Giao diện tối ưu cả Mobile và Laptop chuẩn phong cách sang trọng PetM&M.
+- **Mã đánh giá**: Ẩn đi và tự động sinh ngẫu nhiên 6 chữ số không trùng lặp. Nếu có **Mã Hóa Đơn**, hệ thống tự động lấy Mã Hóa Đơn làm mã đánh giá.
+- **Tên khách hàng**: Bắt buộc.
+- **SĐT, Email, Cơ sở**: Tùy chọn (không bắt buộc).
+- **Mã Hóa Đơn**: Tùy chọn, kiểm tra không trùng lặp, tích hợp **Camera quét mã vạch Barcode (Code 128, Code 39, EAN, UPC, QR Code)** thời gian thực qua thư viện `html5-qrcode`.
+- **Sau khi tạo**:
+  - Sinh link chuẩn: `petsmm.vercel.app/danhgiadichvu/[ma_danh_gia]`.
+  - Nút Sao chép Link nhanh, Nút Mở Link trực tiếp.
+  - **Mã QR Code sắc nét**: Khách có thể quét bằng điện thoại ngay tại quầy thu ngân/lễ tân.
+  - Bảng theo dõi lịch sử các mã đã tạo và trạng thái đánh giá (Chờ đánh giá / Đã đánh giá kèm số sao).
+
+### 2. Xử Lý Điều Hướng & Bảo Vệ 404
+- Truy cập `/danhgiadichvu` hoặc `/danhgiadichvu/` (không có mã): Báo lỗi **404 Not Found** (`notFound()`).
+- Cố tình bịa mã đánh giá sau địa chỉ nhưng không tồn tại trong database: Báo lỗi **404 Not Found** (`notFound()`).
+
+### 3. Phía Khách Hàng (`/danhgiadichvu/[id]`)
+- Lời chào: *"Cảm ơn anh/chị {ten_khach_hang} đã sử dụng dịch vụ, hãy dành 30s đánh giá dịch vụ giúp phòng khám cải thiện hơn"*.
+- **Số sao** (1 - 5 sao): Bắt buộc, hiệu ứng ánh sao vàng kim, nhãn cảm xúc trực quan.
+- **Đánh giá dịch vụ & Ý kiến đóng góp**: Không bắt buộc (tuân thủ quy tắc KHÔNG placeholder).
+- **Sau khi gửi**: Hiển thị màn hình thông báo hoàn tất với **Dấu tick xanh/vàng kim**, dòng chữ: *"PetM&M cảm ơn Anh/chị đã sử dụng và đánh giá dịch vụ của Phòng Khám"*.
+- **Truy cập lại link đã đánh giá**: Nhận diện trạng thái đã đánh giá và hiển thị ngay màn hình thông báo cảm ơn có dấu tick, không cho gửi lại.

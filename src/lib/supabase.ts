@@ -248,6 +248,23 @@ export interface DanhGiaRecord {
   ngay_cap_nhat?: string;
 }
 
+export interface YeuCauDanhGiaRecord {
+  id: string;
+  ma_danh_gia: string;
+  ma_hoa_don?: string | null;
+  ten_khach_hang: string;
+  so_dien_thoai?: string | null;
+  email?: string | null;
+  co_so?: string | null;
+  so_sao?: number | null;
+  noi_dung_danh_gia?: string | null;
+  hinh_anh?: string | null;
+  trang_thai: 'cho_danh_gia' | 'da_danh_gia';
+  ngay_danh_gia?: string | null;
+  ngay_tao?: string;
+  ngay_cap_nhat?: string;
+}
+
 export type DoiNguPhanLoai = 'lanh_dao' | 'chuyen_gia' | 'bac_si' | 'dieu_duong';
 
 export interface DoiNguRecord {

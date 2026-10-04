@@ -7495,6 +7495,16 @@ function formatDisplayReviewDate(val?: string | null): string {
                     />
                   </div>
 
+                  {/* Nút "Mở Form Tạo Đánh Giá Cho Khách" */}
+                  <Link
+                    href="/taodanhgia"
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FFB800] hover:bg-[#E09D00] text-slate-950 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Mở Form Tạo Đánh Giá</span>
+                  </Link>
+
                   {/* Nút "+ Thêm đánh giá" */}
                   <button
                     type="button"

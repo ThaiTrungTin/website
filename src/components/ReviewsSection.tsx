@@ -175,7 +175,7 @@ export default function ReviewsSection() {
           .from('danh_gia')
           .select('*')
           .eq('kich_hoat', true)
-          .order('thu_tu', { ascending: true });
+          .order('ngay_danh_gia', { ascending: false });
 
         if (!error && data && data.length > 0) {
           setReviews(data);
