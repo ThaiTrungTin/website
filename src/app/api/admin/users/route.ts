@@ -150,70 +150,84 @@ export async function POST(req: NextRequest) {
     const origin = req.nextUrl.origin || 'https://petsmm.vercel.app';
     const isUserRole = cleanRole === 'user';
     const loginUrl = isUserRole ? `${origin}/taodanhgia` : `${origin}/admin`;
-    const portalName = isUserRole ? 'Cổng Tạo Đánh Giá Dịch Vụ Khách Hàng' : 'Cổng Quản Trị Hệ Thống Toàn Quyền';
-    const roleDisplayName = isUserRole ? 'Nhân viên (User - Chỉ tạo đánh giá)' : 'Quản trị viên (Admin - Full quyền)';
+    const roleDisplayName = isUserRole ? 'Nhân viên (Chỉ tạo đánh giá)' : 'Quản trị viên (Toàn quyền)';
+    const cleanCreator = (currentUser.ho_ten || currentUser.username || 'Quản trị viên')
+      .replace(/\s*\((Admin|User|Quản trị viên|Nhân viên)\)/gi, '')
+      .trim();
+    const autoFillUrl = `${loginUrl}?email=${encodeURIComponent(cleanEmail)}&pwd=${encodeURIComponent(randomPassword)}`;
 
     // 3. Gửi email chứa thông tin tài khoản và link đăng nhập
     let emailSent = false;
     let emailError = '';
     try {
       const emailHtml = `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <div style="background: linear-gradient(135deg, #2D5A27 0%, #1E3F1B 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">PETM&amp;M PET HOSPITAL</h1>
-            <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">${portalName}</p>
-          </div>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 22px 18px;">
+          <!-- Lời chào & Người tạo -->
+          <p style="font-size: 15px; color: #0f172a; margin: 0 0 8px 0; font-weight: 700;">
+            Xin chào ${cleanName},
+          </p>
+          <p style="font-size: 13.5px; color: #475569; line-height: 1.5; margin: 0 0 16px 0;">
+            Tài khoản làm việc tại <strong>Bệnh Viện Thú Y PetM&amp;M</strong> đã được khởi tạo thành công bởi <strong>${cleanCreator}</strong>. Dưới đây là thông tin đăng nhập của bạn:
+          </p>
 
-          <!-- Body -->
-          <div style="padding: 32px 24px;">
-            <p style="font-size: 16px; color: #1e293b; margin-top: 0;">Xin chào <strong>${cleanName}</strong>,</p>
-            <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-              Tài khoản làm việc của bạn tại <strong>Bệnh Viện Thú Y PetM&amp;M</strong> đã được khởi tạo thành công bởi <strong>${currentUser.ho_ten || currentUser.username}</strong>. Dưới đây là thông tin đăng nhập chính thức của bạn:
-            </p>
+          <!-- Khung thông tin tài khoản: Xếp dọc gọn gàng, không bị chen lấn trên điện thoại -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin: 0 0 16px 0;">
+            <!-- Cổng đăng nhập -->
+            <div style="padding-bottom: 10px; border-bottom: 1px solid #eef2f6;">
+              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 3px;">🌐 Cổng đăng nhập</div>
+              <div>
+                <a href="${autoFillUrl}" style="color: #2D5A27; font-weight: 600; font-size: 13px; text-decoration: underline; word-break: break-all;">${loginUrl}</a>
+              </div>
+            </div>
 
-            <!-- Khung thông tin đăng nhập -->
-            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin: 24px 0;">
-              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <!-- Tên đăng nhập / Email -->
+            <div style="padding: 10px 0; border-bottom: 1px solid #eef2f6;">
+              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 3px;">📧 Tên đăng nhập / Email</div>
+              <div style="font-size: 14px; font-weight: 700; color: #0f172a; word-break: break-all;">${cleanEmail}</div>
+            </div>
+
+            <!-- Mật khẩu khởi tạo & Nút sao chép / tự điền -->
+            <div style="padding: 10px 0; border-bottom: 1px solid #eef2f6;">
+              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px;">🔑 Mật khẩu khởi tạo</div>
+              <table style="width: 100%; border-collapse: collapse; margin: 0; background: #ffffff; border: 1.5px dashed #2D5A27; border-radius: 8px;">
                 <tr>
-                  <td style="padding: 8px 0; color: #64748b; width: 140px;">🌐 <strong>Cổng đăng nhập:</strong></td>
-                  <td style="padding: 8px 0;"><a href="${loginUrl}" style="color: #2D5A27; font-weight: 700; text-decoration: underline;">${loginUrl}</a></td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b;">📧 <strong>Tên đăng nhập / Email:</strong></td>
-                  <td style="padding: 8px 0; color: #0f172a; font-weight: 700;">${cleanEmail}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b;">🔑 <strong>Mật khẩu khởi tạo:</strong></td>
-                  <td style="padding: 8px 0;">
-                    <span style="display: inline-block; background: #e2e8f0; color: #0f172a; font-family: monospace; font-size: 16px; font-weight: 700; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px;">${randomPassword}</span>
+                  <td style="padding: 8px 12px; vertical-align: middle;">
+                    <span style="font-family: Consolas, Monaco, 'Courier New', monospace; font-size: 16px; font-weight: 800; color: #1e3f1b; letter-spacing: 1px; user-select: all; -webkit-user-select: all;">${randomPassword}</span>
+                  </td>
+                  <td style="padding: 8px 10px; text-align: right; vertical-align: middle; width: 90px;">
+                    <a href="${autoFillUrl}" style="background: #2D5A27; color: #ffffff; font-size: 11px; font-weight: 700; text-decoration: none; padding: 6px 10px; border-radius: 6px; display: inline-block; white-space: nowrap;">📋 Tự điền</a>
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b;">🛡️ <strong>Phân quyền:</strong></td>
-                  <td style="padding: 8px 0; color: #2D5A27; font-weight: 600;">${roleDisplayName}</td>
-                </tr>
               </table>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+                👉 Chạm giữ mật khẩu để chép, hoặc bấm <strong>Tự điền</strong> để mở web tự động điền sẵn.
+              </div>
             </div>
 
-            <!-- Nút bấm Đăng nhập -->
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${loginUrl}" style="display: inline-block; background: #2D5A27; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 12px rgba(45,90,39,0.3);">
-                ${isUserRole ? 'Đăng Nhập Cổng Tạo Đánh Giá Ngay →' : 'Đăng Nhập Trang Quản Trị Ngay →'}
-              </a>
-            </div>
-
-            <!-- Lời nhắc an toàn -->
-            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 24px;">
-              <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
-                🔒 <strong>Lưu ý bảo mật:</strong> Để đảm bảo an toàn, vui lòng đổi mật khẩu cá nhân ngay sau lần đăng nhập đầu tiên tại mục hồ sơ tài khoản.
-              </p>
+            <!-- Phân quyền -->
+            <div style="padding-top: 10px;">
+              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 3px;">🛡️ Vai trò</div>
+              <div style="font-size: 13px; font-weight: 600; color: #2D5A27;">${roleDisplayName}</div>
             </div>
           </div>
 
-          <!-- Footer -->
-          <div style="background: #f1f5f9; padding: 16px 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-            <p style="margin: 0;">© 2026 PetM&amp;M Pet Hospital. Email này được gửi tự động từ hệ thống quản trị.</p>
+          <!-- Nút Đăng Nhập Chính (Tự điền tài khoản & mật khẩu khi bấm) -->
+          <div style="text-align: center; margin: 18px 0 16px;">
+            <a href="${autoFillUrl}" style="display: block; background: #2D5A27; color: #ffffff; text-decoration: none; padding: 13px 18px; border-radius: 10px; font-weight: 700; font-size: 14px; text-align: center; box-shadow: 0 3px 10px rgba(45,90,39,0.25);">
+              ${isUserRole ? 'Đăng Nhập Cổng Tạo Đánh Giá Ngay →' : 'Đăng Nhập Vào Hệ Thống Ngay →'}
+            </a>
+          </div>
+
+          <!-- Lời nhắc bảo mật -->
+          <div style="background: #fffbeb; border-left: 3px solid #f59e0b; padding: 9px 12px; border-radius: 0 6px 6px 0; margin-top: 14px;">
+            <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.4;">
+              🔒 <strong>Lưu ý bảo mật:</strong> Vui lòng đổi mật khẩu cá nhân ngay sau lần đăng nhập đầu tiên tại mục hồ sơ tài khoản.
+            </p>
+          </div>
+
+          <!-- Footer nhỏ gọn -->
+          <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 11px; color: #94a3b8;">
+            © 2026 Bệnh Viện Thú Y PetM&amp;M • Email tạo tài khoản tự động
           </div>
         </div>
       `;
@@ -222,7 +236,7 @@ export async function POST(req: NextRequest) {
         to: cleanEmail,
         subject: `[PetM&M] Thông tin tài khoản ${isUserRole ? 'Tạo Đánh Giá' : 'Quản Trị'} - ${cleanName}`,
         html: emailHtml,
-        text: `Xin chào ${cleanName},\n\nTài khoản PetM&M của bạn đã được khởi tạo.\n- Link đăng nhập: ${loginUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${roleDisplayName}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
+        text: `Xin chào ${cleanName},\n\nTài khoản PetM&M của bạn đã được khởi tạo bởi ${cleanCreator}.\n- Link đăng nhập tự động: ${autoFillUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${roleDisplayName}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
       });
       emailSent = true;
     } catch (mailErr: any) {

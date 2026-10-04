@@ -54,11 +54,13 @@ export default function TaoDanhGiaPage() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [copiedLoginPwd, setCopiedLoginPwd] = useState(false);
+  const [autoFillLoginNotice, setAutoFillLoginNotice] = useState('');
 
   // Gửi heartbeat theo dõi trạng thái online / chuyển tab của nhân viên
   usePresenceHeartbeat(Boolean(currentUser));
 
-  // Kiểm tra phiên đăng nhập khi tải trang
+  // Kiểm tra phiên đăng nhập & URL params khi tải trang
   useEffect(() => {
     let isMounted = true;
     const checkAuth = async () => {
@@ -79,6 +81,27 @@ export default function TaoDanhGiaPage() {
       }
     };
     checkAuth();
+
+    // Nhận thông tin tự điền & chép mật khẩu từ email gửi đến
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const emailParam = params.get('email');
+        const pwdParam = params.get('pwd');
+        if (emailParam) {
+          setLoginUsername(decodeURIComponent(emailParam));
+        }
+        if (pwdParam) {
+          const decodedPwd = decodeURIComponent(pwdParam);
+          setLoginPassword(decodedPwd);
+          try {
+            navigator.clipboard.writeText(decodedPwd).catch(() => {});
+          } catch (_) {}
+          setAutoFillLoginNotice('Đã tự động điền tài khoản và sao chép mật khẩu vào bộ nhớ tạm!');
+        }
+      } catch (_) {}
+    }
+
     return () => { isMounted = false; };
   }, []);
 
@@ -397,6 +420,22 @@ export default function TaoDanhGiaPage() {
             </p>
           </div>
 
+          {autoFillLoginNotice && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-800 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{autoFillLoginNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAutoFillLoginNotice('')}
+                className="text-xs text-emerald-700 hover:text-emerald-900 font-bold px-1 rounded cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {loginError && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-700 animate-in fade-in duration-200">
               <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
@@ -432,17 +471,34 @@ export default function TaoDanhGiaPage() {
                   placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                  className="w-full pl-10 pr-16 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
                   required
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <button
-                  type="button"
-                  onClick={() => setShowLoginPassword((p) => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+                  {loginPassword && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(loginPassword);
+                        setCopiedLoginPwd(true);
+                        setTimeout(() => setCopiedLoginPwd(false), 2000);
+                      }}
+                      className="p-1 hover:text-emerald-700 transition rounded cursor-pointer"
+                      title={copiedLoginPwd ? 'Đã sao chép mật khẩu!' : 'Sao chép mật khẩu'}
+                    >
+                      {copiedLoginPwd ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword((p) => !p)}
+                    className="p-1 hover:text-slate-600 cursor-pointer"
+                    title={showLoginPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 

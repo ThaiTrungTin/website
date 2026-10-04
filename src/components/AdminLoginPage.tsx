@@ -17,6 +17,8 @@ import {
   RefreshCw,
   Hash,
   Sparkles,
+  Copy,
+  Check,
 } from 'lucide-react';
 import PetLogo from './PetLogo';
 import { supabase } from '@/lib/supabase';
@@ -48,8 +50,10 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isOtpResetLoading, setIsOtpResetLoading] = useState(false);
   const [otpResetSuccessMessage, setOtpResetSuccessMessage] = useState('');
+  const [copiedPwd, setCopiedPwd] = useState(false);
+  const [autoFillNotice, setAutoFillNotice] = useState('');
 
-  // Tự động phát hiện nếu người dùng nhấp vào link từ email cũ
+  // Tự động phát hiện nếu người dùng nhấp vào link từ email
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash || '';
@@ -57,6 +61,24 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
       if (hash.includes('type=recovery') || search.includes('reset=true')) {
         setViewMode('reset_link');
       }
+
+      // Tự động điền email & mật khẩu từ link khởi tạo gửi qua email
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const emailParam = params.get('email');
+        const pwdParam = params.get('pwd');
+        if (emailParam) {
+          setUsername(decodeURIComponent(emailParam));
+        }
+        if (pwdParam) {
+          const decodedPwd = decodeURIComponent(pwdParam);
+          setPassword(decodedPwd);
+          try {
+            navigator.clipboard.writeText(decodedPwd).catch(() => {});
+          } catch (_) {}
+          setAutoFillNotice('Đã tự động điền tài khoản và sao chép mật khẩu vào bộ nhớ tạm!');
+        }
+      } catch (_) {}
     }
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
@@ -316,6 +338,23 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
           </div>
         )}
 
+        {/* Auto-fill Alert */}
+        {autoFillNotice && (
+          <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2.5 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">{autoFillNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAutoFillNotice('')}
+              className="text-xs text-emerald-700 hover:text-emerald-900 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Success Alert */}
         {forgotSuccessMessage && (
           <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
@@ -377,16 +416,32 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs font-semibold px-3.5 py-3 pr-10 rounded-xl border border-slate-300 text-slate-900 bg-white focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 focus:outline-none transition"
+                  className="w-full text-xs font-semibold px-3.5 py-3 pr-16 rounded-xl border border-slate-300 text-slate-900 bg-white focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 focus:outline-none transition"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
-                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+                  {password && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(password);
+                        setCopiedPwd(true);
+                        setTimeout(() => setCopiedPwd(false), 2000);
+                      }}
+                      className="p-1 hover:text-[#2D5A27] transition rounded cursor-pointer"
+                      title={copiedPwd ? 'Đã sao chép mật khẩu!' : 'Sao chép mật khẩu'}
+                    >
+                      {copiedPwd ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="p-1 hover:text-slate-700 cursor-pointer"
+                    title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
