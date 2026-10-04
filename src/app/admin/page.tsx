@@ -875,7 +875,7 @@ export default function AdminDashboardPage() {
         slides: 'Slide ảnh giới thiệu',
         stats: 'Thông số thống kê',
         slogans: 'Khẩu hiệu & Slogan',
-        announcement: 'Cài Đặt Thông Báo Nổi (Poster)',
+        announcement: 'Poster',
       };
       showNotification('success', `Đã lưu cài đặt ${tabNames[configSubTab] || 'hệ thống'} thành công!`);
     } catch (err: any) {
@@ -1281,7 +1281,7 @@ export default function AdminDashboardPage() {
         showNotification('error', data.message || 'Không thể lưu cấu hình thông báo!');
         return;
       }
-      showNotification('success', 'Đã lưu cấu hình Thông Báo Nổi (Popup & Lịch Tết) thành công!');
+      showNotification('success', 'Đã lưu cấu hình Poster thành công!');
       if (data.data) {
         setAnnouncementForm(data.data);
       }
@@ -3047,7 +3047,7 @@ function formatDisplayReviewDate(val?: string | null): string {
     slides: 'Slide Ảnh Giới Thiệu',
     stats: 'Thông Số Thống Kê',
     slogans: 'Khẩu Hiệu & Slogan',
-    announcement: 'Thông Báo Nổi & Lịch Tết (Popup)',
+    announcement: 'Poster',
   };
 
   // AUTH GATE
@@ -3673,7 +3673,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                       activeTab === 'config' && configSubTab === 'announcement' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
                     }`}
                   />
-                  <span>Thông Báo Nổi (Poster)</span>
+                  <span>Poster</span>
                 </div>
                 {announcementForm.isActive && (
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Đang Bật trên website" />
@@ -4418,194 +4418,134 @@ function formatDisplayReviewDate(val?: string | null): string {
                           </div>
                         </div>
 
-                        {/* CỘT PHẢI: FORM CẤU HÌNH GỒM MAIL NHẬN + KEY + GMAIL GỬI */}
+                        {/* CỘT PHẢI: GOM CÁC Ô ĐIỀN EMAIL VÀO 1 THẺ GỌN GÀNG */}
                         <div className="lg:col-span-7 space-y-4">
-                          {/* 1. KHU VỰC PHÂN CHIA HẠNG MỤC EMAIL TIẾP NHẬN THÔNG BÁO (MAIL NHẬN) */}
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-                              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-                                <Mail className="w-4 h-4 text-[#2D5A27]" />
-                                <span>Phân Chia Hạng Mục Email Tiếp Nhận (Mail Nhận):</span>
-                              </label>
-                              <span className="text-[11px] text-slate-400">Tự động điều hướng theo bộ phận</span>
-                            </div>
-
-                            {/* Hạng mục 1: Đặt Lịch Khám */}
-                            <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5 transition-all hover:bg-emerald-50">
-                              <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                                  <CalendarCheck className="w-4 h-4 text-[#2D5A27]" />
-                                  <span>1. Email Nhận Đặt Lịch Khám (Booking): *</span>
-                                </label>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/60 text-emerald-900 uppercase">
-                                  Lễ Tân & Bác Sĩ
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="email"
-                                  required
-                                  value={smtpForm.smtp_notify_email}
-                                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_email: e.target.value }))}
-                                  placeholder="letan@petmm.vn hoặc thaitrtin@gmail.com"
-                                  className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white shadow-2xs"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_email, 'booking')}
-                                  disabled={isSmtpTesting}
-                                  className="px-3 py-2.5 rounded-xl border border-emerald-300 hover:bg-emerald-100/70 text-emerald-800 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                  title="Gửi thư thử nghiệm tới hòm thư Đặt Lịch này"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>Thử</span>
-                                </button>
-                              </div>
-                              <p className="text-[11px] text-emerald-800 leading-relaxed">
-                                Mỗi khi khách hàng gửi form đặt lịch hẹn khám bệnh hoặc spa trên web, hệ thống sẽ tự động gửi thông tin chi tiết ca khám & mã tiếp nhận về hòm thư này.
-                              </p>
-                            </div>
-
-                            {/* Hạng mục 2: Tuyển Dụng & CV */}
-                            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1.5 transition-all hover:bg-blue-50">
-                              <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-                                  <Briefcase className="w-4 h-4 text-blue-700" />
-                                  <span>2. Email Nhận Hồ Sơ Tuyển Dụng & CV (Recruitment): *</span>
-                                </label>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-200/60 text-blue-900 uppercase">
-                                  Ban Nhân Sự (HR)
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="email"
-                                  required
-                                  value={smtpForm.smtp_notify_recruitment_email}
-                                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_recruitment_email: e.target.value }))}
-                                  placeholder="tuyendung@petmm.vn hoặc hr@petmm.vn"
-                                  className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-blue-600 focus:outline-none bg-white shadow-2xs"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_recruitment_email, 'recruitment')}
-                                  disabled={isSmtpTesting}
-                                  className="px-3 py-2.5 rounded-xl border border-blue-300 hover:bg-blue-100/70 text-blue-800 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                  title="Gửi thư thử nghiệm tới hòm thư Tuyển Dụng này"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>Thử</span>
-                                </button>
-                              </div>
-                              <p className="text-[11px] text-blue-800 leading-relaxed">
-                                Mỗi khi ứng viên nộp hồ sơ xin việc hoặc đính kèm CV (PDF/Word), hệ thống sẽ gửi thẳng hồ sơ ứng viên kèm link tải CV 1 chạm tới hòm thư này.
-                              </p>
-                            </div>
-
-                            {/* Hạng mục 3: Góp Ý & Liên Hệ Chung */}
-                            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 transition-all hover:bg-slate-100/60">
-                              <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                                  <Mail className="w-4 h-4 text-slate-700" />
-                                  <span>3. Email Nhận Góp Ý & Liên Hệ Chung (Contact):</span>
-                                </label>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 uppercase">
-                                  CSKH / Quản Lý
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="email"
-                                  value={smtpForm.smtp_notify_contact_email}
-                                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_contact_email: e.target.value }))}
-                                  placeholder="contact@petmm.vn hoặc thaitrtin@gmail.com"
-                                  className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-slate-600 focus:outline-none bg-white shadow-2xs"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleTestSmtp(smtpForm.smtp_notify_contact_email, 'contact')}
-                                  disabled={isSmtpTesting}
-                                  className="px-3 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-200/70 text-slate-700 text-[11px] font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                  title="Gửi thư thử nghiệm tới hòm thư Liên Hệ này"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>Thử</span>
-                                </button>
-                              </div>
-                              <p className="text-[11px] text-slate-500 leading-relaxed">
-                                Hòm thư tiếp nhận các câu hỏi chung, thắc mắc dịch vụ, hợp tác hoặc đóng góp ý kiến từ khách hàng.
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* 2. Tài khoản Gmail gửi thư */}
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              Tài khoản Gmail gửi thư (Sender Email): *
+                          {/* 1. Email Nhận Đặt Lịch Khám */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <CalendarCheck className="w-3.5 h-3.5 text-[#2D5A27]" />
+                                <span>1. Email Nhận Đặt Lịch Khám (Booking): *</span>
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                Lễ Tân &amp; Bác Sĩ
+                              </span>
                             </label>
-                            <input
-                              type="email"
-                              required
-                              value={smtpForm.smtp_email}
-                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_email: e.target.value }))}
-                              placeholder="thaitrtin@gmail.com"
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                            />
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              Địa chỉ Gmail dùng để đăng nhập máy chủ SMTP và gửi thư đi.
-                            </p>
-                          </div>
-
-                          {/* 3. Mật khẩu ứng dụng 16 chữ cái (Key) */}
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="block text-xs font-semibold text-slate-700">
-                                Khóa Bí Mật / Mật Khẩu Ứng Dụng Google (Key 16 chữ cái): *
-                              </label>
-                              {smtpForm.hasPassword && (
-                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
-                                  <ShieldCheck className="w-3 h-3" />
-                                  <span>Đã cấu hình mã khóa</span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="relative">
+                            <div className="flex items-center gap-2">
                               <input
-                                type={showSmtpPassword ? 'text' : 'password'}
-                                value={smtpForm.smtp_password}
-                                onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_password: e.target.value }))}
-                                placeholder={smtpForm.hasPassword ? '•••• •••• •••• •••• (Đã lưu, nhập mới nếu muốn đổi)' : 'Nhập mã khóa 16 chữ cái (ví dụ: abcd efgh ijkl mnop)'}
-                                className="w-full text-xs px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 text-slate-800 font-mono tracking-wider focus:border-[#2D5A27] focus:outline-none"
+                                type="email"
+                                required
+                                value={smtpForm.smtp_notify_email}
+                                onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_email: e.target.value }))}
+                                placeholder="letan@petmm.vn hoặc thaitrtin@gmail.com"
+                                className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
                               />
                               <button
                                 type="button"
-                                onClick={() => setShowSmtpPassword(!showSmtpPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                                title={showSmtpPassword ? 'Ẩn mã khóa' : 'Hiện mã khóa'}
+                                onClick={() => handleTestSmtp(smtpForm.smtp_notify_email, 'booking')}
+                                disabled={isSmtpTesting}
+                                className="px-3.5 py-2.5 rounded-xl border border-emerald-300 hover:bg-emerald-50 text-emerald-800 text-xs font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                title="Gửi thư thử nghiệm tới hòm thư Đặt Lịch này"
                               >
-                                {showSmtpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Thử</span>
                               </button>
                             </div>
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              Mã 16 chữ cái do Google cấp (xem hướng dẫn 3 bước ở khung bên trái).
-                            </p>
                           </div>
 
-                          {/* 4. Tên người gửi hiển thị */}
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              Tên người gửi hiển thị (Sender Display Name):
+                          {/* 2. Email Nhận Tuyển Dụng & CV */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Briefcase className="w-3.5 h-3.5 text-blue-700" />
+                                <span>2. Email Nhận Hồ Sơ Tuyển Dụng &amp; CV (Recruitment): *</span>
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                Ban Nhân Sự (HR)
+                              </span>
                             </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="email"
+                                required
+                                value={smtpForm.smtp_notify_recruitment_email}
+                                onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_recruitment_email: e.target.value }))}
+                                placeholder="tuyendung@petmm.vn hoặc hr@petmm.vn"
+                                className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-blue-600 focus:outline-none bg-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleTestSmtp(smtpForm.smtp_notify_recruitment_email, 'recruitment')}
+                                disabled={isSmtpTesting}
+                                className="px-3.5 py-2.5 rounded-xl border border-blue-300 hover:bg-blue-50 text-blue-800 text-xs font-semibold transition shrink-0 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                title="Gửi thư thử nghiệm tới hòm thư Tuyển Dụng này"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Thử</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 3. Tài khoản Gmail gửi thư & Tên người gửi hiển thị (2 cột gọn gàng) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-bold text-slate-800">
+                                3. Tài khoản Gmail gửi thư (Sender Email): *
+                              </label>
+                              <input
+                                type="email"
+                                required
+                                value={smtpForm.smtp_email}
+                                onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_email: e.target.value }))}
+                                placeholder="thaitrtin@gmail.com"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-bold text-slate-800">
+                                4. Tên người gửi hiển thị:
+                              </label>
+                              <input
+                                type="text"
+                                value={smtpForm.smtp_sender_name}
+                                onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_sender_name: e.target.value }))}
+                                placeholder="Bệnh Viện Thú Y PetM&amp;M 5★"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          {/* 5. Mật khẩu ứng dụng Google (Key 16 chữ cái) */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-xs font-bold text-slate-800">
+                                5. Khóa Bí Mật / Mật Khẩu Ứng Dụng (Key 16 chữ cái): *
+                              </label>
+                              <div className="flex items-center gap-2.5">
+                                {smtpForm.hasPassword && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                                    <ShieldCheck className="w-3 h-3" />
+                                    <span>Đã cấu hình</span>
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                                  className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                                >
+                                  {showSmtpPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                  <span>{showSmtpPassword ? 'Ẩn khóa' : 'Hiện khóa'}</span>
+                                </button>
+                              </div>
+                            </div>
                             <input
-                              type="text"
-                              value={smtpForm.smtp_sender_name}
-                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_sender_name: e.target.value }))}
-                              placeholder="Bệnh Viện Thú Y PetM&M 5★"
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                              type={showSmtpPassword ? 'text' : 'password'}
+                              value={smtpForm.smtp_password}
+                              onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_password: e.target.value }))}
+                              placeholder={smtpForm.hasPassword ? '•••• •••• •••• •••• (Đã lưu, nhập mới nếu muốn đổi)' : 'Nhập mã khóa 16 chữ cái (ví dụ: abcd efgh ijkl mnop)'}
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-mono tracking-wider focus:border-[#2D5A27] focus:outline-none bg-white"
                             />
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              Tên phòng khám sẽ hiển thị trong hộp thư đến của khách hàng.
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -6193,7 +6133,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                             <Megaphone className="w-5 h-5" />
                           </div>
                           <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                            Cài Đặt Thông Báo Nổi (Poster)
+                            Poster
                           </h2>
                         </div>
 
@@ -6491,7 +6431,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
                         >
                           {isAnnouncementSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                          <span>{isAnnouncementSaving ? 'Đang lưu...' : 'Lưu Cài Đặt Thông Báo Nổi (Poster)'}</span>
+                          <span>{isAnnouncementSaving ? 'Đang lưu...' : 'Lưu Cài Đặt Poster'}</span>
                         </button>
                       </div>
                     </div>
