@@ -29,6 +29,7 @@ import {
   ChevronDown,
   X,
   Download,
+  Search,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import PetLogo from '@/components/PetLogo';
@@ -162,6 +163,22 @@ export default function TaoDanhGiaPage() {
 
   const [historyList, setHistoryList] = useState<YeuCauDanhGiaRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const filteredHistoryList = React.useMemo(() => {
+    if (!searchTerm.trim()) return historyList;
+    const q = searchTerm.trim().toLowerCase();
+    return historyList.filter((item) => {
+      return (
+        item.ten_khach_hang?.toLowerCase().includes(q) ||
+        item.so_dien_thoai?.toLowerCase().includes(q) ||
+        item.ma_danh_gia?.toLowerCase().includes(q) ||
+        item.ma_hoa_don?.toLowerCase().includes(q) ||
+        item.co_so?.toLowerCase().includes(q) ||
+        item.nguoi_tao?.toLowerCase().includes(q)
+      );
+    });
+  }, [historyList, searchTerm]);
 
   // Modal hiển thị mã QR & sao chép link từ bảng lịch sử
   const [qrModalData, setQrModalData] = useState<{
@@ -589,39 +606,6 @@ export default function TaoDanhGiaPage() {
                     </div>
                   </div>
 
-                  {/* Người tạo & Thời gian tạo */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Người tạo phiên
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          readOnly
-                          value={currentUser?.ho_ten || currentUser?.username || 'Nhân viên lễ tân'}
-                          className="w-full rounded-lg bg-white border border-emerald-200 pl-8 pr-3 py-2 text-xs font-bold text-emerald-900 focus:outline-none"
-                        />
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Thời gian tạo
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          readOnly
-                          value={currentTimeStr}
-                          className="w-full rounded-lg bg-white border border-emerald-200 pl-8 pr-3 py-2 text-xs font-mono font-medium text-slate-700 focus:outline-none"
-                        />
-                        <Clock className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Cơ sở khám (Custom Web Dropdown của web, không dùng dropdown trình duyệt) */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -732,22 +716,49 @@ export default function TaoDanhGiaPage() {
           {/* RIGHT: History List */}
           <div className="lg:col-span-7">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-900 text-base">Lịch Sử Tạo Đánh Giá Gần Đây</h3>
+                  <h3 className="font-bold text-slate-900 text-base whitespace-nowrap">Lịch Sử Tạo Đánh Giá Gần Đây</h3>
                   <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
-                    {historyList.length}
+                    {filteredHistoryList.length}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={fetchHistory}
-                  disabled={isLoadingHistory}
-                  className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 transition cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
-                  Làm mới
-                </button>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {/* Ô tìm kiếm đa năng */}
+                  <div className="relative flex-1 sm:w-56">
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none transition shadow-2xs"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                        title="Xóa tìm kiếm"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Nút Làm mới */}
+                  <button
+                    type="button"
+                    onClick={fetchHistory}
+                    disabled={isLoadingHistory}
+                    className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 transition cursor-pointer px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 shrink-0"
+                    title="Làm mới danh sách"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Làm mới</span>
+                  </button>
+                </div>
               </div>
 
               {isLoadingHistory ? (
@@ -757,6 +768,10 @@ export default function TaoDanhGiaPage() {
                 </div>
               ) : historyList.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">Chưa có lượt tạo đánh giá nào</div>
+              ) : filteredHistoryList.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs">
+                  Không tìm thấy kết quả nào khớp với &quot;{searchTerm}&quot;
+                </div>
               ) : (
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
                   {/* Mobile scroll hint */}
@@ -772,12 +787,12 @@ export default function TaoDanhGiaPage() {
                           <th className="py-2.5 px-3.5">Khách hàng</th>
                           <th className="py-2.5 px-3 text-center">TT</th>
                           <th className="py-2.5 px-3 text-center">Thao tác</th>
-                          <th className="py-2.5 px-3">Người tạo &amp; Thời gian</th>
+                          <th className="py-2.5 px-3">User</th>
                           <th className="py-2.5 px-3.5">Cơ sở</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
-                        {historyList.map((item) => {
+                        {filteredHistoryList.map((item) => {
                           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
                           const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
                           const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
@@ -793,10 +808,7 @@ export default function TaoDanhGiaPage() {
                                   <span className="font-bold text-slate-900 text-sm block">
                                     {item.ten_khach_hang}
                                   </span>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
-                                      {item.ma_danh_gia}
-                                    </span>
+                                  <div className="flex items-center gap-2 mt-0.5">
                                     {item.so_dien_thoai ? (
                                       <span className="text-[11px] text-slate-500 font-mono">
                                         {item.so_dien_thoai}
@@ -806,25 +818,32 @@ export default function TaoDanhGiaPage() {
                                     )}
                                     {item.ma_hoa_don && item.ma_hoa_don !== item.ma_danh_gia && (
                                       <span className="text-[10px] text-slate-400 font-mono">
-                                        (HĐ: {item.ma_hoa_don})
+                                        • HĐ: {item.ma_hoa_don}
                                       </span>
                                     )}
                                   </div>
                                 </div>
                               </td>
 
-                              {/* 2. TT (Trạng thái) */}
+                              {/* 2. TT: Chỉ icon chờ (mã ĐG) hoặc icon tick số sao (mã ĐG) */}
                               <td className="py-3 px-3 text-center">
                                 {item.trang_thai === 'da_danh_gia' ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                                    <Check className="w-3 h-3 text-emerald-600" />
-                                    <span>Đã gửi {item.so_sao ? `(${item.so_sao}★)` : ''}</span>
-                                  </span>
+                                  <div
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                                    title={`Đã gửi đánh giá ${item.so_sao ? `(${item.so_sao}★)` : ''}`}
+                                  >
+                                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    {item.so_sao && <span className="text-amber-500 font-bold">{item.so_sao}★</span>}
+                                    <span className="text-slate-700 font-semibold">({item.ma_danh_gia})</span>
+                                  </div>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
-                                    <Clock className="w-3 h-3 text-amber-600" />
-                                    <span>Chờ đánh giá</span>
-                                  </span>
+                                  <div
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs"
+                                    title="Chờ đánh giá"
+                                  >
+                                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <span className="text-slate-700 font-semibold">({item.ma_danh_gia})</span>
+                                  </div>
                                 )}
                               </td>
 
@@ -851,11 +870,11 @@ export default function TaoDanhGiaPage() {
                                 </div>
                               </td>
 
-                              {/* 4. Người tạo & Thời gian: User: Tên + thời gian */}
+                              {/* 4. User: Tên + thời gian */}
                               <td className="py-3 px-3 text-slate-700 text-xs">
                                 <div>
                                   <span className="font-bold text-slate-900 block text-xs">
-                                    User: {creator}
+                                    {creator}
                                   </span>
                                   <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                                     {timeStr}
