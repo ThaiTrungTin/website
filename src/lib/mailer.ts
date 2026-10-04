@@ -297,64 +297,64 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
     <title>Mã Xác Thực PetM&M</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 32px 16px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 16px 8px;">
       <tr>
         <td align="center">
-          <table width="100%" max-width="560px" style="max-width: 560px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+          <table width="100%" max-width="520px" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
             <!-- Header Banner -->
             <tr>
-              <td style="background: linear-gradient(135deg, #0B150A 0%, #173812 100%); padding: 36px 32px; text-align: center;">
-                <div style="display: inline-block; padding: 6px 16px; background-color: rgba(255, 184, 0, 0.15); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 9999px; margin-bottom: 12px;">
-                  <span style="color: #FFB800; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">BẢO MẬT HỆ THỐNG</span>
-                </div>
-                <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</h1>
-                <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">Yêu cầu khôi phục mật khẩu tài khoản quản trị</p>
+              <td style="background: #1e3f1b; padding: 24px 20px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 700;">Bệnh Viện Thú Y PetM&amp;M</h1>
+                <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 13px;">Mã xác thực đổi mật khẩu</p>
               </td>
             </tr>
 
             <!-- Content Body -->
             <tr>
-              <td style="padding: 36px 32px;">
-                <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155; line-height: 1.6;">
+              <td style="padding: 24px 20px;">
+                <p style="margin: 0 0 14px 0; font-size: 14px; color: #334155; line-height: 1.5;">
                   Xin chào <strong>Quản Trị Viên</strong>,
                 </p>
-                <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">
-                  Hệ thống vừa nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>${toEmail}</strong>. Vui lòng sử dụng mã xác thực OTP 6 số dưới đây để hoàn tất:
+                <p style="margin: 0 0 18px 0; font-size: 14px; color: #475569; line-height: 1.5;">
+                  Hệ thống nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>${toEmail}</strong>. Mã xác thực (OTP) của bạn là:
                 </p>
 
                 <!-- OTP Display Box -->
-                <div style="background-color: #f8fafc; border: 2px dashed #2D5A27; border-radius: 16px; padding: 24px; text-align: center; margin: 24px 0;">
-                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">MÃ XÁC THỰC CỦA BẠN</div>
-                  <div style="font-size: 40px; font-weight: 800; letter-spacing: 8px; color: #2D5A27; font-family: monospace;">
+                <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; margin: 18px 0;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px;">MÃ XÁC THỰC</div>
+                  <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #2D5A27; font-family: monospace;">
                     ${otpCode}
                   </div>
-                  <div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
-                    Hiệu lực trong <strong>15 phút</strong> kể từ thời điểm gửi.
+                  <div style="font-size: 12px; color: #64748b; margin-top: 6px;">
+                    Mã có hiệu lực trong 15 phút.
                   </div>
                 </div>
 
-                <div style="padding: 14px 18px; background-color: #fffbeb; border-radius: 12px; border: 1px solid #fef3c7; margin-bottom: 24px;">
-                  <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
-                    ⚠️ <strong>Lưu ý bảo mật:</strong> Tuyệt đối không chia sẻ mã này cho bất kỳ ai. Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này.
+                <div style="padding: 10px 14px; background-color: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 18px;">
+                  <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.4;">
+                    Lưu ý: Không chia sẻ mã này cho bất kỳ ai. Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email.
                   </p>
                 </div>
 
-                <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
+                <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
                   Trân trọng,<br>
-                  <strong>Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</strong>
+                  <strong>Bệnh Viện Thú Y PetM&amp;M</strong>
                 </p>
               </td>
             </tr>
 
             <!-- Footer -->
             <tr>
-              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center;">
-                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">
-                  Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M<br>
-                  Hotline Cấp Cứu 24/7: 0364 605 544 • TP. Thủ Đức, TP. Hồ Chí Minh
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 20px; text-align: center;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                  Bệnh Viện Thú Y PetM&amp;M • Hotline: 0364 605 544
                 </p>
               </td>
             </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
           </table>
         </td>
       </tr>
@@ -590,21 +590,16 @@ export async function sendBookingConfirmationEmail({
   <html>
   <head><meta charset="utf-8"></head>
   <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 32px 16px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 16px 8px;">
       <tr>
         <td align="center">
-          <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+          <table width="100%" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
             <!-- Header Banner -->
             <tr>
-              <td style="background: linear-gradient(135deg, #0B150A 0%, #173812 100%); padding: 36px 32px; text-align: center;">
+              <td style="background: #1e3f1b; padding: 24px 20px; text-align: center;">
                 ${logoHtml}
-                <div style="display: inline-block; padding: 6px 16px; background-color: rgba(255, 184, 0, 0.15); border: 1px solid rgba(255, 184, 0, 0.3); border-radius: 9999px; margin-bottom: 12px;">
-                  <span style="color: #FFB800; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
-                    ${isEn ? 'VETERINARY APPOINTMENT' : 'LỊCH HẸN TRỰC TUYẾN'}
-                  </span>
-                </div>
-                <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">${bannerTitle}</h1>
-                <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 700;">${bannerTitle}</h1>
+                <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 13px;">
                   ${bannerSubtitle}
                 </p>
               </td>
@@ -612,80 +607,80 @@ export async function sendBookingConfirmationEmail({
 
             <!-- Content Body -->
             <tr>
-              <td style="padding: 32px;">
-                <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">
+              <td style="padding: 24px 20px;">
+                <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155; line-height: 1.5;">
                   ${introText}
                 </p>
 
                 <!-- Boarding Pass Box -->
-                <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 16px; padding: 20px 24px; margin-bottom: 24px;">
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="padding-bottom: 14px; border-bottom: 1px dashed #cbd5e1;">
-                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
-                          ${isEn ? 'BOOKING CODE' : 'MÃ TIẾP NHẬN'}
-                        </span>
-                        <div style="font-size: 24px; font-weight: 800; color: #2D5A27; font-family: monospace; margin-top: 4px;">
-                          ${bookingCode}
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding-top: 14px;">
-                        <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px; color: #334155;">
-                          <tr>
-                            <td width="35%" style="color: #64748b;">${isEn ? 'Pet Name:' : 'Bé thú cưng:'}</td>
-                            <td><strong>${petName}</strong> (${petTypeDisplay})</td>
-                          </tr>
-                          <tr>
-                            <td style="color: #64748b;">${isEn ? 'Schedule:' : 'Thời gian hẹn:'}</td>
-                            <td><strong style="color: #2D5A27;">${formattedDate}</strong></td>
-                          </tr>
-                          <tr>
-                            <td style="color: #64748b;">${isEn ? 'Branch:' : 'Cơ sở tiếp đón:'}</td>
-                            <td><strong>${branchName}</strong></td>
-                          </tr>
-                          ${service ? `
-                          <tr>
-                            <td style="color: #64748b;">${isEn ? 'Service:' : 'Dịch vụ yêu cầu:'}</td>
-                            <td>${service}</td>
-                          </tr>` : ''}
-                          ${note ? `
-                          <tr>
-                            <td style="color: #64748b;">${isEn ? 'Notes:' : 'Ghi chú thêm:'}</td>
-                            <td style="font-style: italic; color: #475569;">&ldquo;${note}&rdquo;</td>
-                          </tr>` : ''}
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px;">
+                  <div style="padding-bottom: 10px; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">
+                      ${isEn ? 'Booking Code' : 'Mã lịch hẹn'}
+                    </div>
+                    <div style="font-size: 20px; font-weight: 800; color: #2D5A27; font-family: monospace;">
+                      ${bookingCode}
+                    </div>
+                  </div>
+
+                  <div style="padding: 10px 0; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Pet Name' : 'Thú cưng'}</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #0f172a;">${petName} (${petTypeDisplay})</div>
+                  </div>
+
+                  <div style="padding: 10px 0; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Schedule' : 'Thời gian hẹn'}</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #2D5A27;">${formattedDate}</div>
+                  </div>
+
+                  <div style="padding: 10px 0; ${service || note ? 'border-bottom: 1px solid #eef2f6;' : ''}">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Branch' : 'Cơ sở khám'}</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #0f172a;">${branchName}</div>
+                  </div>
+
+                  ${service ? `
+                  <div style="padding: 10px 0; ${note ? 'border-bottom: 1px solid #eef2f6;' : ''}">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Service' : 'Dịch vụ'}</div>
+                    <div style="font-size: 13px; color: #334155;">${service}</div>
+                  </div>` : ''}
+
+                  ${note ? `
+                  <div style="padding-top: 10px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Notes' : 'Ghi chú'}</div>
+                    <div style="font-size: 13px; color: #475569; font-style: italic;">${note}</div>
+                  </div>` : ''}
                 </div>
 
-                <!-- Helpful Tips (Checklist) -->
+                <!-- Lưu ý chuẩn bị -->
                 ${checklistHtml ? `
-                <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 14px 18px; margin-bottom: 24px;">
-                  <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #065f46;">
-                    📌 ${isEn ? 'Preparation Advice:' : 'Lưu ý chuẩn bị trước khi đến:'}
-                  </p>
-                  <div style="font-size: 12px; color: #065f46;">
+                <div style="background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; padding: 12px 14px; margin-bottom: 18px;">
+                  <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                    ${isEn ? 'Preparation Advice:' : 'Lưu ý trước khi đến:'}
+                  </div>
+                  <div style="font-size: 12px; color: #475569; line-height: 1.5;">
                     ${checklistHtml}
                   </div>
                 </div>` : ''}
 
-                <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
+                <div style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 16px;">
                   ${footerNote}
-                  <br>
-                  <strong style="color: #2D5A27; font-size: 16px;">📞 0364 605 544</strong> (${isEn ? 'Emergency 24/7' : 'Hotline 24/7'})
-                </p>
+                  <div style="margin-top: 4px; font-size: 14px; font-weight: 700; color: #2D5A27;">
+                    Hotline: 0364 605 544
+                  </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b; line-height: 1.5;">
+                  Trân trọng,<br>
+                  <strong>Bệnh Viện Thú Y PetM&amp;M</strong>
+                </div>
               </td>
             </tr>
 
             <!-- Footer -->
             <tr>
-              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center;">
-                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.6;">
-                  Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M<br>
-                  Hotline: 0364 605 544
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 20px; text-align: center;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                  Bệnh Viện Thú Y PetM&amp;M • Hotline: 0364 605 544
                 </p>
               </td>
             </tr>
@@ -760,29 +755,26 @@ export async function sendRecruitmentApplicationEmail(params: {
   }).format(new Date());
 
   // 1. EMAIL GỬI VỀ NHÀ TUYỂN DỤNG (HR)
-  const hrSubject = `[Hồ Sơ Ứng Tuyển Mới] ${jobTitle} - ${candidateName} (${phone})`;
+  const hrSubject = `[Ứng Tuyển] ${jobTitle} - ${candidateName} (${phone})`;
   const hrHtml = `
   <!DOCTYPE html>
   <html>
   <head>
     <meta charset="utf-8">
-    <title>Hồ Sơ Ứng Tuyển Mới PetM&M</title>
+    <title>Hồ Sơ Ứng Tuyển Mới PetM&amp;M</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 30px 10px;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 16px 8px;">
       <tr>
         <td align="center">
-          <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+          <table width="100%" max-width="520" border="0" cellspacing="0" cellpadding="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
             <!-- Header Banner -->
             <tr>
-              <td style="background: linear-gradient(135deg, #183B16 0%, #2D5A27 100%); padding: 32px 30px; text-align: center;">
-                <div style="font-size: 13px; font-weight: 700; color: #FFB800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
-                  HỆ THỐNG Y TẾ THÚ Y PETM&M
-                </div>
-                <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
-                  📩 Có Hồ Sơ Ứng Tuyển Mới
+              <td style="background: #1e3f1b; padding: 24px 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">
+                  Hồ Sơ Ứng Tuyển Mới
                 </h1>
-                <p style="margin: 8px 0 0 0; font-size: 14px; color: #e2e8f0;">
+                <p style="margin: 4px 0 0 0; font-size: 13px; color: #cbd5e1;">
                   Vị trí: <strong style="color: #ffffff;">${jobTitle}</strong>
                 </p>
               </td>
@@ -790,81 +782,78 @@ export async function sendRecruitmentApplicationEmail(params: {
 
             <!-- Body Content -->
             <tr>
-              <td style="padding: 28px 30px;">
-                <div style="margin-bottom: 22px; border-bottom: 2px dashed #e2e8f0; padding-bottom: 18px;">
-                  <h3 style="margin: 0 0 14px 0; font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
-                    👤 Thông Tin Ứng Viên:
-                  </h3>
-                  <table width="100%" style="font-size: 14px; line-height: 1.8; color: #334155;">
-                    <tr>
-                      <td width="140" style="color: #64748b; font-weight: 600;">Họ và tên:</td>
-                      <td><strong style="color: #0f172a; font-size: 15px;">${candidateName}</strong></td>
-                    </tr>
-                    <tr>
-                      <td style="color: #64748b; font-weight: 600;">Số điện thoại:</td>
-                      <td>
-                        <a href="tel:${phone}" style="color: #2D5A27; font-weight: 700; text-decoration: none;">
-                          📞 ${phone}
-                        </a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="color: #64748b; font-weight: 600;">Email liên hệ:</td>
-                      <td>
-                        <a href="mailto:${email}" style="color: #0284c7; text-decoration: none;">
-                          ✉️ ${email}
-                        </a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="color: #64748b; font-weight: 600;">Thời gian nộp:</td>
-                      <td style="color: #475569;">${applyTimeVN}</td>
-                    </tr>
-                    ${ip ? `
-                    <tr>
-                      <td style="color: #64748b; font-weight: 600;">Địa chỉ IP:</td>
-                      <td style="color: #94a3b8; font-family: monospace; font-size: 12px;">${ip}</td>
-                    </tr>` : ''}
-                  </table>
+              <td style="padding: 24px 20px;">
+                <div style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 14px 16px; margin-bottom: 18px;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">
+                    Thông Tin Ứng Viên
+                  </div>
+
+                  <div style="padding-bottom: 8px; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Họ và tên</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${candidateName}</div>
+                  </div>
+
+                  <div style="padding: 8px 0; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Số điện thoại</div>
+                    <div>
+                      <a href="tel:${phone}" style="color: #2D5A27; font-weight: 700; font-size: 14px; text-decoration: none;">
+                        ${phone}
+                      </a>
+                    </div>
+                  </div>
+
+                  <div style="padding: 8px 0; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Email</div>
+                    <div>
+                      <a href="mailto:${email}" style="color: #0284c7; font-size: 13px; text-decoration: none; word-break: break-all;">
+                        ${email}
+                      </a>
+                    </div>
+                  </div>
+
+                  <div style="padding-top: 8px;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Thời gian nộp</div>
+                    <div style="font-size: 13px; color: #475569;">${applyTimeVN}</div>
+                  </div>
                 </div>
 
                 <!-- CV File link -->
-                <div style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #cbd5e1; padding: 18px; margin-bottom: 22px;">
-                  <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #0f172a;">
-                    📎 Hồ Sơ Đính Kèm (CV):
-                  </h4>
+                <div style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 14px 16px; margin-bottom: 18px;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">
+                    Hồ Sơ Đính Kèm (CV)
+                  </div>
                   ${cvLink ? `
-                    <div style="margin-bottom: 12px; font-size: 13px; color: #334155;">
+                    <div style="margin-bottom: 10px; font-size: 13px; color: #334155;">
                       Tên file: <strong>${cvFileName || 'CV_Ung_Tuyen.pdf'}</strong>
                     </div>
-                    <a href="${cvLink}" target="_blank" style="display: inline-block; background-color: #2D5A27; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13px;">
-                      👉 Xem & Tải File CV Ngay
+                    <a href="${cvLink}" target="_blank" style="display: inline-block; background-color: #2D5A27; color: #ffffff; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px;">
+                      Xem và Tải File CV
                     </a>
                   ` : `
-                    <p style="margin: 0; font-size: 13px; color: #64748b; font-style: italic;">
-                      Ứng viên không đính kèm file link trực tiếp. Vui lòng liên hệ qua SĐT/Email.
+                    <p style="margin: 0; font-size: 13px; color: #64748b;">
+                      Ứng viên không đính kèm liên kết trực tiếp. Vui lòng liên hệ qua SĐT hoặc Email.
                     </p>
                   `}
                 </div>
 
                 <!-- Candidate notes -->
                 ${notes ? `
-                <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 16px; margin-bottom: 22px;">
-                  <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #065f46; text-transform: uppercase;">
-                    📝 Lời Giới Thiệu / Ghi Chú Của Ứng Viên:
-                  </h4>
-                  <p style="margin: 0; font-size: 13px; color: #065f46; line-height: 1.6; white-space: pre-wrap;">
+                <div style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 14px 16px; margin-bottom: 18px;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px;">
+                    Ghi Chú Của Ứng Viên
+                  </div>
+                  <p style="margin: 0; font-size: 13px; color: #334155; line-height: 1.5; white-space: pre-wrap;">
                     ${notes}
                   </p>
                 </div>` : ''}
 
                 <!-- Quick actions -->
-                <div style="text-align: center; padding-top: 10px;">
-                  <a href="tel:${phone}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 13px; margin-right: 8px;">
-                    📞 Gọi Cho Ứng Viên
+                <div style="text-align: center; padding-top: 6px;">
+                  <a href="tel:${phone}" style="display: inline-block; background-color: #2D5A27; color: #ffffff; text-decoration: none; padding: 9px 16px; border-radius: 6px; font-weight: 600; font-size: 12px; margin-right: 6px;">
+                    Gọi điện
                   </a>
-                  <a href="mailto:${email}?subject=Phản hồi hồ sơ ứng tuyển vị trí ${encodeURIComponent(jobTitle)} - PetM&M" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 13px;">
-                    ✉️ Phản Hồi Qua Email
+                  <a href="mailto:${email}?subject=Phản hồi hồ sơ ứng tuyển vị trí ${encodeURIComponent(jobTitle)} - PetM&M" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 9px 16px; border-radius: 6px; font-weight: 600; font-size: 12px;">
+                    Gửi email
                   </a>
                 </div>
               </td>
@@ -872,9 +861,9 @@ export async function sendRecruitmentApplicationEmail(params: {
 
             <!-- Footer -->
             <tr>
-              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 30px; text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                  Hệ Thống Y Tế & Resort Thú Y PetM&M • Email Thông Báo Tự Động
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 20px; text-align: center;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                  Bệnh Viện Thú Y PetM&amp;M • Ban Tuyển Dụng
                 </p>
               </td>
             </tr>
@@ -938,20 +927,17 @@ export async function sendRecruitmentApplicationEmail(params: {
     <title>${candidateSubject}</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 30px 10px;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 16px 8px;">
       <tr>
         <td align="center">
-          <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+          <table width="100%" max-width="520" border="0" cellspacing="0" cellpadding="0" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
             <!-- Header Banner -->
             <tr>
-              <td style="background: linear-gradient(135deg, #183B16 0%, #2D5A27 100%); padding: 32px 30px; text-align: center;">
-                <div style="font-size: 13px; font-weight: 700; color: #FFB800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+              <td style="background: #1e3f1b; padding: 24px 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">
                   ${bannerTitle}
-                </div>
-                <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">
-                  ${bannerSubtitle}
                 </h1>
-                <p style="margin: 8px 0 0 0; font-size: 14px; color: #e2e8f0;">
+                <p style="margin: 4px 0 0 0; font-size: 13px; color: #cbd5e1;">
                   ${isEn ? 'Position:' : 'Vị trí:'} <strong style="color: #ffffff;">${jobTitle}</strong>
                 </p>
               </td>
@@ -959,34 +945,48 @@ export async function sendRecruitmentApplicationEmail(params: {
 
             <!-- Body -->
             <tr>
-              <td style="padding: 28px 30px;">
-                <p style="margin: 0 0 16px 0; font-size: 15px; color: #0f172a; line-height: 1.6;">
+              <td style="padding: 24px 20px;">
+                <p style="margin: 0 0 16px 0; font-size: 14px; color: #0f172a; line-height: 1.5;">
                   ${introText}
                 </p>
 
-                <div style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px; margin-bottom: 22px;">
-                  <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #0f172a; text-transform: uppercase;">
-                    📋 ${isEn ? 'Application Details:' : 'Thông Tin Đã Gửi:'}
-                  </h4>
-                  <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.8;">
-                    <li>${isEn ? 'Full name:' : 'Họ và tên:'} <strong>${candidateName}</strong></li>
-                    <li>${isEn ? 'Phone number:' : 'Số điện thoại:'} <strong>${phone}</strong></li>
-                    <li>${isEn ? 'Applied position:' : 'Vị trí ứng tuyển:'} <strong>${jobTitle}</strong></li>
-                    <li>${isEn ? 'Submitted at:' : 'Thời gian nộp:'} <strong>${applyTimeVN}</strong></li>
-                  </ul>
+                <div style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 14px 16px; margin-bottom: 18px;">
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">
+                    ${isEn ? 'Application Details:' : 'Thông Tin Ứng Tuyển:'}
+                  </div>
+
+                  <div style="padding-bottom: 8px; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">${isEn ? 'Full name' : 'Họ và tên'}</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${candidateName}</div>
+                  </div>
+
+                  <div style="padding: 8px 0; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">${isEn ? 'Phone number' : 'Số điện thoại'}</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #0f172a;">${phone}</div>
+                  </div>
+
+                  <div style="padding: 8px 0; border-bottom: 1px solid #eef2f6;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">${isEn ? 'Applied position' : 'Vị trí'}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #2D5A27;">${jobTitle}</div>
+                  </div>
+
+                  <div style="padding-top: 8px;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">${isEn ? 'Submitted at' : 'Thời gian nộp'}</div>
+                    <div style="font-size: 13px; color: #475569;">${applyTimeVN}</div>
+                  </div>
                 </div>
 
                 ${checklistHtml ? `
-                <div style="background-color: #ecfdf5; border-radius: 12px; border: 1px solid #a7f3d0; padding: 16px; margin-bottom: 22px;">
-                  <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #065f46;">
-                    💡 ${isEn ? 'Next Steps & Interview Process:' : 'Quy trình xét duyệt & Phỏng vấn:'}
-                  </p>
-                  <div style="font-size: 13px; color: #065f46; line-height: 1.6;">
+                <div style="background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; padding: 12px 14px; margin-bottom: 18px;">
+                  <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                    ${isEn ? 'Next Steps:' : 'Quy trình xét duyệt:'}
+                  </div>
+                  <div style="font-size: 12px; color: #475569; line-height: 1.5;">
                     ${checklistHtml}
                   </div>
                 </div>` : ''}
 
-                <div style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6; white-space: pre-wrap;">
+                <div style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5; white-space: pre-wrap;">
                   ${footerNote}
                 </div>
               </td>
@@ -994,9 +994,9 @@ export async function sendRecruitmentApplicationEmail(params: {
 
             <!-- Footer -->
             <tr>
-              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 30px; text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                  Bệnh Viện Thú Y PetM&M • Hotline Tuyển Dụng: 0903 599 339
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 20px; text-align: center;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                  Bệnh Viện Thú Y PetM&amp;M • Hotline Tuyển Dụng: 0903 599 339
                 </p>
               </td>
             </tr>
