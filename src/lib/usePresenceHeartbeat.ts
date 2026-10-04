@@ -52,11 +52,11 @@ export function usePresenceHeartbeat(enabled: boolean = true) {
     window.addEventListener('blur', handleBlur);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Chu kỳ gửi đều đặn mỗi 25 giây
+    // Chu kỳ gửi đều đặn mỗi 12 giây để trạng thái luôn tức thời
     const interval = setInterval(() => {
       const isVisible = document.visibilityState === 'visible' && document.hasFocus();
       sendHeartbeat(isVisible ? 'active' : 'away');
-    }, 25000);
+    }, 12000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);

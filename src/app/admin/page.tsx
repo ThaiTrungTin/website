@@ -336,6 +336,60 @@ function getPresenceInfo(user: StaffUser) {
   };
 }
 
+function getActivityStatus(user: StaffUser): { text: string; className: string } {
+  if (user.trang_thai === 'locked') {
+    return { text: 'Tài khoản đã bị khóa', className: 'text-red-500 font-medium' };
+  }
+
+  const now = Date.now();
+  const lastActive = user.last_active_at ? new Date(user.last_active_at).getTime() : 0;
+  const diffSec = lastActive ? Math.floor((now - lastActive) / 1000) : 9999999;
+
+  // 1. Đang hoạt động
+  if (user.tab_status === 'active' && diffSec <= 60) {
+    return { text: 'Đang hoạt động', className: 'text-emerald-600 font-bold flex items-center gap-1.5' };
+  }
+
+  // 2. Vắng mặt (khi chuyển tab hoặc ẩn cửa sổ)
+  if (user.tab_status === 'away' && diffSec <= 300) {
+    return { text: 'Vắng mặt', className: 'text-amber-600 font-semibold flex items-center gap-1.5' };
+  }
+
+  // 3. Hoạt động X phút trước / X giờ trước / quá 1 ngày thì hiển thị ngày giờ đầy đủ
+  const validTimes = [user.last_active_at, user.last_logout_at, user.last_login_at, user.last_sign_in_at]
+    .filter(Boolean)
+    .map((t) => new Date(t as string).getTime())
+    .filter((t) => !isNaN(t));
+
+  if (validTimes.length === 0) {
+    return { text: '—', className: 'text-slate-400' };
+  }
+
+  const newestTimestamp = Math.max(...validTimes);
+  const diffFromNewest = Math.max(0, Math.floor((now - newestTimestamp) / 1000));
+
+  // Quá 1 ngày (>= 86400 giây): hiển thị đầy đủ ngày giờ dạng 21:25:49 - 04/10/2026
+  if (diffFromNewest >= 86400) {
+    return {
+      text: formatDateTimeFull(new Date(newestTimestamp).toISOString()),
+      className: 'text-slate-600 font-mono text-[11px]',
+    };
+  }
+
+  // Dưới 1 ngày:
+  if (diffFromNewest < 60) {
+    return { text: 'Hoạt động 1 phút trước', className: 'text-slate-500' };
+  }
+
+  const minutes = Math.floor(diffFromNewest / 60);
+  if (minutes < 60) {
+    return { text: `Hoạt động ${minutes} phút trước`, className: 'text-slate-500' };
+  }
+
+  const hours = Math.floor(minutes / 60);
+  return { text: `Hoạt động ${hours} giờ trước`, className: 'text-slate-500' };
+}
+
 function StaffManagementTab({
   currentUser,
   showNotification,
@@ -385,10 +439,10 @@ function StaffManagementTab({
 
   React.useEffect(() => {
     loadUsers();
-    // Tự động làm mới danh sách mỗi 15 giây để cập nhật trạng thái chấm xanh/vàng/xám liên tục
+    // Cập nhật liên tục trạng thái mỗi 3 giây
     const interval = setInterval(() => {
       loadUsers();
-    }, 15000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [loadUsers]);
 
@@ -558,9 +612,12 @@ function StaffManagementTab({
       {/* BẢNG DANH SÁCH NHÂN SỰ CHÍNH */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-xs font-bold text-slate-700">Tổng cộng {users.length} tài khoản</span>
-            <span className="text-[11px] text-slate-400">• Tự động làm mới mỗi 15s</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Cập nhật liên tục
+            </span>
           </div>
           <button
             type="button"
@@ -595,11 +652,6 @@ function StaffManagementTab({
                 {users.map((u) => {
                   const presence = getPresenceInfo(u);
                   const isUserLocked = u.trang_thai === 'locked';
-                  const validTimes = [u.last_active_at, u.last_logout_at, u.last_login_at, u.last_sign_in_at]
-                    .filter(Boolean)
-                    .map((t) => new Date(t as string).getTime())
-                    .filter((t) => !isNaN(t));
-                  const lastActiveTime = validTimes.length > 0 ? new Date(Math.max(...validTimes)).toISOString() : null;
 
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/70 transition">
@@ -694,9 +746,16 @@ function StaffManagementTab({
                         )}
                       </td>
 
-                      {/* Cột 4: Trạng thái hoạt động (thời gian hoạt động gần nhất) */}
-                      <td className="px-4 py-3.5 text-slate-700 font-mono text-[11px]">
-                        {formatDateTimeFull(lastActiveTime)}
+                      {/* Cột 4: Trạng thái hoạt động (Đang hoạt động / Vắng mặt / Hoạt động X phút trước / Quá 1 ngày hiển thị ngày giờ) */}
+                      <td className="px-4 py-3.5">
+                        {(() => {
+                          const act = getActivityStatus(u);
+                          return (
+                            <span className={act.className}>
+                              {act.text}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Cột 5: Nút xóa */}
