@@ -16,6 +16,7 @@ import {
 import { supabase, DanhGiaRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import ScrollRevealTitle from './ScrollRevealTitle';
+import CustomFilterDropdown from './CustomFilterDropdown';
 import { getAssetUrl } from '@/lib/assets';
 
 // Danh sách đánh giá chuẩn dự phòng
@@ -409,52 +410,82 @@ export default function ReviewsSection() {
             </div>
           </ScrollRevealTitle>
 
-          {/* 2 trường lọc: Lọc số sao & Lọc hình ảnh nhỏ gọn */}
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            {/* Trường 1: Lọc số sao (Có ngôi sao ★, không dùng chữ Sao) */}
-            <div className="relative inline-flex items-center">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 absolute left-2.5 pointer-events-none" />
-              <select
-                id="review-star-filter"
-                aria-label="Lọc theo số sao"
-                value={starFilter}
-                onChange={(e) => setStarFilter(e.target.value)}
-                className="text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-7 py-1.5 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer appearance-none transition-all"
-              >
-                <option value="all">
-                  {isEn ? 'All stars' : 'Tất cả số sao'} ({stats.total})
-                </option>
-                <option value="5">5 ★★★★★ ({stats.c5})</option>
-                <option value="4">4 ★★★★ ({stats.c4})</option>
-                <option value="3">3 ★★★ ({stats.c3})</option>
-                <option value="2">2 ★★ ({stats.c2})</option>
-                <option value="1">1 ★ ({stats.c1})</option>
-              </select>
-              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 pointer-events-none" />
-            </div>
+          {/* 2 trường lọc: Lọc số sao & Lọc hình ảnh gói gọn hoàn toàn trong giao diện website */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+            {/* Trường 1: Lọc số sao */}
+            <CustomFilterDropdown
+              id="review-star-filter"
+              ariaLabel={isEn ? 'Filter by star rating' : 'Lọc theo số sao'}
+              value={starFilter}
+              onChange={setStarFilter}
+              icon={<Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+              options={[
+                {
+                  value: 'all',
+                  label: isEn ? 'All stars' : 'Tất cả số sao',
+                  count: stats.total,
+                },
+                {
+                  value: '5',
+                  label: '5 ★★★★★',
+                  stars: 5,
+                  count: stats.c5,
+                },
+                {
+                  value: '4',
+                  label: '4 ★★★★',
+                  stars: 4,
+                  count: stats.c4,
+                },
+                {
+                  value: '3',
+                  label: '3 ★★★',
+                  stars: 3,
+                  count: stats.c3,
+                },
+                {
+                  value: '2',
+                  label: '2 ★★',
+                  stars: 2,
+                  count: stats.c2,
+                },
+                {
+                  value: '1',
+                  label: '1 ★',
+                  stars: 1,
+                  count: stats.c1,
+                },
+              ]}
+              align="left"
+              size="sm"
+            />
 
             {/* Trường 2: Lọc hình ảnh */}
-            <div className="relative inline-flex items-center">
-              <ImageIcon className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 pointer-events-none" />
-              <select
-                id="review-image-filter"
-                aria-label="Lọc theo hình ảnh"
-                value={imageFilter}
-                onChange={(e) => setImageFilter(e.target.value)}
-                className="text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-7 py-1.5 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer appearance-none transition-all"
-              >
-                <option value="all">
-                  {isEn ? 'All photos' : 'Tất cả hình ảnh'}
-                </option>
-                <option value="has_image">
-                  {isEn ? 'With photos' : 'Có hình ảnh'} ({stats.hasImg})
-                </option>
-                <option value="no_image">
-                  {isEn ? 'No photos' : 'Không có hình ảnh'} ({stats.noImg})
-                </option>
-              </select>
-              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 pointer-events-none" />
-            </div>
+            <CustomFilterDropdown
+              id="review-image-filter"
+              ariaLabel={isEn ? 'Filter by photos' : 'Lọc theo hình ảnh'}
+              value={imageFilter}
+              onChange={setImageFilter}
+              icon={<ImageIcon className="w-3.5 h-3.5 text-slate-500" />}
+              options={[
+                {
+                  value: 'all',
+                  label: isEn ? 'All photos' : 'Tất cả hình ảnh',
+                },
+                {
+                  value: 'has_image',
+                  label: isEn ? 'With photos' : 'Có hình ảnh',
+                  count: stats.hasImg,
+                },
+                {
+                  value: 'no_image',
+                  label: isEn ? 'No photos' : 'Không có hình ảnh',
+                  count: stats.noImg,
+                },
+              ]}
+              align="right"
+              size="sm"
+            />
           </div>
         </div>
 

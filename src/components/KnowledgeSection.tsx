@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, Calendar, ChevronLeft, ChevronRight, ChevronDown, Filter, BookOpen } from 'lucide-react';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
+import CustomFilterDropdown from '@/components/CustomFilterDropdown';
 import { supabase, BaiVietRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { getAssetUrl } from '@/lib/assets';
@@ -192,39 +193,37 @@ export default function KnowledgeSection() {
 
         {/* Thanh công cụ: Bộ lọc chuyên mục dạng Droplist đổ xuống */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <label htmlFor="article-category-filter" className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <span className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
               <Filter className="w-4 h-4 text-[#2D5A27]" />
               <span>{isEn ? 'Category:' : 'Chuyên mục:'}</span>
-            </label>
+            </span>
 
-            {/* Droplist đổ xuống */}
-            <div className="relative inline-block">
-              <select
-                id="article-category-filter"
-                value={selectedCategory}
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  if (scrollRef.current) {
-                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                  }
-                }}
-                className="appearance-none bg-white hover:bg-emerald-50/40 border border-slate-300 hover:border-[#2D5A27] text-slate-800 text-xs sm:text-sm font-semibold rounded-2xl pl-4 pr-10 py-2 sm:py-2.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-[#2D5A27] transition-all cursor-pointer min-w-[220px]"
-              >
-                {categories.map((cat) => {
-                  const count =
-                    cat.key === 'all'
-                      ? articles.length
-                      : articles.filter((a) => (a.chuyen_muc || '').trim() === cat.key).length;
-                  return (
-                    <option key={cat.key} value={cat.key}>
-                      {isEn ? cat.labelEn : cat.labelVi} ({count})
-                    </option>
-                  );
-                })}
-              </select>
-              <ChevronDown className="w-4 h-4 text-[#2D5A27] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            {/* Droplist đổ xuống gói gọn 100% trong website */}
+            <CustomFilterDropdown
+              id="article-category-filter"
+              ariaLabel={isEn ? 'Filter by category' : 'Lọc theo chuyên mục'}
+              value={selectedCategory}
+              onChange={(val) => {
+                setSelectedCategory(val);
+                if (scrollRef.current) {
+                  scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                }
+              }}
+              options={categories.map((cat) => {
+                const count =
+                  cat.key === 'all'
+                    ? articles.length
+                    : articles.filter((a) => (a.chuyen_muc || '').trim() === cat.key).length;
+                return {
+                  value: cat.key,
+                  label: isEn ? cat.labelEn : cat.labelVi,
+                  count,
+                };
+              })}
+              align="left"
+              className="max-w-full"
+            />
           </div>
 
           <div className="text-xs text-slate-500 font-medium">
