@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateToken, AdminUser } from '@/lib/adminAuth';
 
 // In-memory rate limiting chống dò mật khẩu brute-force
@@ -38,8 +39,11 @@ export async function POST(req: NextRequest) {
 
     let authenticatedUser: AdminUser | null = null;
     let authErrorMessage = '';
+    let isLocked = false;
+    let rawUserId = '';
+    let userMeta: any = {};
 
-    // 1. Xác thực độc quyền qua Supabase Auth (Không dùng bất kỳ tài khoản mặc định hardcode nào)
+    // 1. Xác thực độc quyền qua Supabase Auth
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -47,18 +51,34 @@ export async function POST(req: NextRequest) {
       });
 
       if (!authError && authData.user) {
-        const metadata = authData.user.user_metadata || {};
-        authenticatedUser = {
-          username: authData.user.email?.split('@')[0] || cleanInput,
-          ho_ten: metadata.ho_ten || 'Thái Trung Tín (Admin)',
-          vai_tro: metadata.vai_tro || 'super_admin',
-          email: authData.user.email || email,
-        };
+        rawUserId = authData.user.id;
+        userMeta = authData.user.user_metadata || {};
+
+        if (userMeta.trang_thai === 'locked') {
+          isLocked = true;
+        } else {
+          authenticatedUser = {
+            username: authData.user.email?.split('@')[0] || cleanInput,
+            ho_ten: userMeta.ho_ten || 'Thái Trung Tín (Admin)',
+            vai_tro: userMeta.vai_tro === 'user' ? 'user' : (userMeta.vai_tro || 'admin'),
+            email: authData.user.email || email,
+          };
+        }
       } else if (authError) {
         authErrorMessage = authError.message;
       }
     } catch (err: any) {
       console.warn('Lỗi Supabase Auth:', err);
+    }
+
+    if (isLocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Tài khoản của bạn đã bị khóa bởi Quản trị viên. Vui lòng liên hệ Admin để được hỗ trợ!',
+        },
+        { status: 403 }
+      );
     }
 
     // Nếu đăng nhập thất bại, tăng bộ đếm và khóa nếu quá 5 lần
@@ -90,13 +110,32 @@ export async function POST(req: NextRequest) {
     // Đăng nhập thành công -> xóa bỏ lịch sử thử sai
     loginAttemptsMap.delete(rateKey);
 
+    // Cập nhật lần cuối đăng nhập & trạng thái presence
+    if (rawUserId) {
+      try {
+        const nowIso = new Date().toISOString();
+        await supabaseAdmin.auth.admin.updateUserById(rawUserId, {
+          user_metadata: {
+            ...userMeta,
+            last_login_at: nowIso,
+            last_active_at: nowIso,
+            tab_status: 'active',
+          },
+        });
+      } catch (updErr) {
+        console.error('Lỗi cập nhật thời gian đăng nhập:', updErr);
+      }
+    }
+
     // 3. Tạo token phiên đăng nhập an toàn
     const token = generateToken(authenticatedUser);
+    const redirectUrl = authenticatedUser.vai_tro === 'user' ? '/taodanhgia' : '/admin';
 
     const res = NextResponse.json({
       success: true,
       message: 'Đăng nhập thành công!',
       user: authenticatedUser,
+      redirectUrl,
       token,
     });
 

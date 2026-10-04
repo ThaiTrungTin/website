@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
@@ -68,7 +68,11 @@ import {
   UserPlus,
   ShieldAlert,
   Lock,
+  Unlock,
+  Shield,
+  Activity,
 } from 'lucide-react';
+import { usePresenceHeartbeat } from '@/lib/usePresenceHeartbeat';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
@@ -272,10 +276,103 @@ interface StaffUser {
   id: string;
   email: string;
   ho_ten: string;
-  vai_tro: string;
+  vai_tro: 'admin' | 'user';
+  trang_thai: 'active' | 'locked';
   created_at: string;
   last_sign_in_at?: string;
+  last_login_at?: string | null;
+  last_logout_at?: string | null;
+  last_active_at?: string | null;
+  tab_status?: 'active' | 'away' | 'offline';
   is_current_user?: boolean;
+}
+
+function formatDateTimeFull(isoStr?: string | null) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return '—';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  const seconds = pad(d.getSeconds());
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  return `${hours}:${minutes}:${seconds} - ${day}/${month}/${year}`;
+}
+
+function getPresenceInfo(user: StaffUser) {
+  if (user.trang_thai === 'locked') {
+    return {
+      dotColor: 'bg-red-500',
+      badgeClass: 'bg-red-50 text-red-700 border-red-200',
+      statusText: 'Đã bị khóa',
+      isLive: false,
+    };
+  }
+
+  const now = Date.now();
+  const lastActive = user.last_active_at ? new Date(user.last_active_at).getTime() : 0;
+  const diffSec = lastActive ? Math.floor((now - lastActive) / 1000) : 9999999;
+
+  // 1. Chấm xanh: Đang đăng nhập và tab đang active
+  if (user.tab_status === 'active' && diffSec <= 60) {
+    return {
+      dotColor: 'bg-emerald-500 ring-4 ring-emerald-100 animate-pulse',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      statusText: 'Đang hoạt động',
+      isLive: true,
+    };
+  }
+
+  // 2. Chấm vàng: Đang đăng nhập mà chuyển tab làm việc khác (vắng mặt)
+  if (user.tab_status === 'away' && diffSec <= 300) {
+    return {
+      dotColor: 'bg-amber-400 ring-4 ring-amber-100',
+      badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      statusText: 'Vắng mặt (Chuyển tab)',
+      isLive: true,
+    };
+  }
+
+  // 3. Chấm xám: Đăng xuất hoặc out hẳn ra ngoài
+  if (diffSec < 60) {
+    return {
+      dotColor: 'bg-slate-300',
+      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
+      statusText: 'Vừa mới hoạt động',
+      isLive: false,
+    };
+  }
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) {
+    return {
+      dotColor: 'bg-slate-300',
+      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
+      statusText: `Hoạt động ${diffMin} phút trước`,
+      isLive: false,
+    };
+  }
+
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) {
+    return {
+      dotColor: 'bg-slate-300',
+      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
+      statusText: `Hoạt động ${diffHour} giờ trước`,
+      isLive: false,
+    };
+  }
+
+  // Quá 1 ngày: hiển thị số thời gian đã đăng nhập cuối cùng
+  const loginTimeStr = formatDateTimeFull(user.last_login_at);
+  return {
+    dotColor: 'bg-slate-300',
+    badgeClass: 'bg-slate-50 text-slate-500 border-slate-200',
+    statusText: `Đăng nhập lần cuối: ${loginTimeStr}`,
+    isLive: false,
+  };
 }
 
 function StaffManagementTab({
@@ -287,35 +384,53 @@ function StaffManagementTab({
 }) {
   const [users, setUsers] = React.useState<StaffUser[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [activeSubTab, setActiveSubTab] = React.useState<'list' | 'add' | 'password'>('list');
 
-  // Add staff form
-  const [addForm, setAddForm] = React.useState({ ho_ten: '', email: '', vai_tro: 'staff' });
+  // Modals nổi thay vì chuyển tab
+  const [showAddModal, setShowAddModal] = React.useState(false);
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false);
+  const [toggleStatusTarget, setToggleStatusTarget] = React.useState<StaffUser | null>(null);
+  const [statusUpdating, setStatusUpdating] = React.useState(false);
+  const [roleUpdatingId, setRoleUpdatingId] = React.useState<string | null>(null);
+
+  // Form thêm nhân sự
+  const [addForm, setAddForm] = React.useState<{ ho_ten: string; email: string; vai_tro: 'admin' | 'user' }>({
+    ho_ten: '',
+    email: '',
+    vai_tro: 'user',
+  });
   const [adding, setAdding] = React.useState(false);
 
-  // Change password form
+  // Form đổi mật khẩu cá nhân
   const [pwForm, setPwForm] = React.useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPw, setShowPw] = React.useState({ current: false, new: false, confirm: false });
   const [changingPw, setChangingPw] = React.useState(false);
 
-  // Delete confirm
+  // Xóa tài khoản
   const [deleteTarget, setDeleteTarget] = React.useState<StaffUser | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
   const loadUsers = React.useCallback(async () => {
-    setLoading(true);
     try {
       const res = await fetch('/api/admin/users');
       const data = await res.json();
-      if (data.success) setUsers(data.users || []);
+      if (data.success) {
+        setUsers(data.users || []);
+      }
     } catch {
       showNotification('error', 'Không thể tải danh sách nhân sự!');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showNotification]);
 
-  React.useEffect(() => { loadUsers(); }, [loadUsers]);
+  React.useEffect(() => {
+    loadUsers();
+    // Tự động làm mới danh sách mỗi 15 giây để cập nhật trạng thái chấm xanh/vàng/xám liên tục
+    const interval = setInterval(() => {
+      loadUsers();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [loadUsers]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,16 +446,72 @@ function StaffManagementTab({
       const data = await res.json();
       if (data.success) {
         showNotification('success', data.message);
-        setAddForm({ ho_ten: '', email: '', vai_tro: 'staff' });
-        setActiveSubTab('list');
+        setAddForm({ ho_ten: '', email: '', vai_tro: 'user' });
+        setShowAddModal(false);
         loadUsers();
       } else {
         showNotification('error', data.message || 'Thêm nhân sự thất bại!');
       }
     } catch {
-      showNotification('error', 'Lỗi kết nối server!');
+      showNotification('error', 'Lỗi kết nối máy chủ!');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleRoleChange = async (targetUser: StaffUser, newRole: 'admin' | 'user') => {
+    if (targetUser.vai_tro === newRole) return;
+    setRoleUpdatingId(targetUser.id);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: targetUser.id, vai_tro: newRole }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(
+          'success',
+          `Đã chuyển vai trò của ${targetUser.ho_ten} thành: ${newRole === 'admin' ? 'Quản trị viên (Admin - Full quyền)' : 'Nhân viên (User - Chỉ tạo đánh giá)'}`
+        );
+        loadUsers();
+      } else {
+        showNotification('error', data.message || 'Cập nhật phân quyền thất bại!');
+      }
+    } catch {
+      showNotification('error', 'Lỗi kết nối máy chủ!');
+    } finally {
+      setRoleUpdatingId(null);
+    }
+  };
+
+  const handleToggleLock = async () => {
+    if (!toggleStatusTarget) return;
+    setStatusUpdating(true);
+    const newStatus = toggleStatusTarget.trang_thai === 'locked' ? 'active' : 'locked';
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: toggleStatusTarget.id, trang_thai: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(
+          'success',
+          newStatus === 'locked'
+            ? `Đã khóa tài khoản ${toggleStatusTarget.ho_ten} thành công!`
+            : `Đã mở khóa tài khoản ${toggleStatusTarget.ho_ten} thành công!`
+        );
+        setToggleStatusTarget(null);
+        loadUsers();
+      } else {
+        showNotification('error', data.message || 'Thao tác thất bại!');
+      }
+    } catch {
+      showNotification('error', 'Lỗi kết nối máy chủ!');
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
@@ -380,34 +551,34 @@ function StaffManagementTab({
       if (data.success) {
         showNotification('success', 'Đổi mật khẩu thành công!');
         setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordModal(false);
       } else {
         showNotification('error', data.message || 'Đổi mật khẩu thất bại!');
       }
     } catch {
-      showNotification('error', 'Lỗi kết nối server!');
+      showNotification('error', 'Lỗi kết nối máy chủ!');
     } finally {
       setChangingPw(false);
     }
   };
 
-  const roleLabel = (r: string) => r === 'super_admin' ? 'Super Admin' : r === 'admin' ? 'Admin' : 'Staff';
-  const roleColor = (r: string) => r === 'super_admin' ? 'bg-amber-100 text-amber-800' : r === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600';
-
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header Quản Lý Nhân Sự */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Users className="w-5 h-5 text-[#2D5A27]" />
-            <span>Quản Lý Nhân Sự &amp; Tài Khoản Hệ Thống</span>
+            <span>Quản Lý Nhân Sự &amp; Phân Quyền Hệ Thống</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-1">Thêm, xóa tài khoản nhân viên. Email đăng nhập sẽ được gửi tự động.</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Theo dõi trạng thái hoạt động trực tuyến (Online, Chuyển tab, Offline), phân quyền Admin/User và quản lý tài khoản nhân viên.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setActiveSubTab('add')}
+            onClick={() => setShowAddModal(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-sm transition cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
@@ -415,7 +586,7 @@ function StaffManagementTab({
           </button>
           <button
             type="button"
-            onClick={() => setActiveSubTab('password')}
+            onClick={() => setShowPasswordModal(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition cursor-pointer"
           >
             <Lock className="w-4 h-4 text-slate-500" />
@@ -424,225 +595,483 @@ function StaffManagementTab({
         </div>
       </div>
 
-      {/* Sub-tab navigation */}
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        {[
-          { id: 'list', label: 'Danh Sách', icon: Users },
-          { id: 'add', label: 'Thêm Nhân Sự', icon: UserPlus },
-          { id: 'password', label: 'Đổi Mật Khẩu', icon: Lock },
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveSubTab(id as any)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-              activeSubTab === id ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* LIST TAB */}
-      {activeSubTab === 'list' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-            <span className="text-xs font-bold text-slate-700">Tổng {users.length} tài khoản</span>
-            <button type="button" onClick={loadUsers} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 transition cursor-pointer">
-              <RefreshCw className="w-3.5 h-3.5" />
-              Làm mới
-            </button>
+      {/* BẢNG DANH SÁCH NHÂN SỰ CHÍNH */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">Tổng cộng {users.length} tài khoản</span>
+            <span className="text-[11px] text-slate-400">• Tự động làm mới mỗi 15s</span>
           </div>
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-400">
-              <div className="w-5 h-5 border-2 border-[#2D5A27] border-t-transparent rounded-full animate-spin mr-2" />
-              <span className="text-xs">Đang tải...</span>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-16 text-slate-400 text-xs">Chưa có tài khoản nào</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="text-left px-5 py-3 font-semibold text-slate-500">Họ và tên</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Email</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Vai trò</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Ngày tạo</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Đăng nhập lần cuối</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50 transition">
+          <button
+            type="button"
+            onClick={loadUsers}
+            className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-[#2D5A27] transition font-medium cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </button>
+        </div>
+
+        {loading && users.length === 0 ? (
+          <div className="flex items-center justify-center py-16 text-slate-400">
+            <div className="w-5 h-5 border-2 border-[#2D5A27] border-t-transparent rounded-full animate-spin mr-2" />
+            <span className="text-xs">Đang tải danh sách nhân sự...</span>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-16 text-slate-400 text-xs">Chưa có tài khoản nào trong hệ thống</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
+                  <th className="text-left px-5 py-3 font-semibold">Tài khoản &amp; Hoạt động</th>
+                  <th className="text-left px-4 py-3 font-semibold">Phân quyền</th>
+                  <th className="text-left px-4 py-3 font-semibold">Trạng thái Account</th>
+                  <th className="text-left px-4 py-3 font-semibold">Lần cuối đăng nhập</th>
+                  <th className="text-left px-4 py-3 font-semibold">Lần cuối đăng xuất</th>
+                  <th className="px-4 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map((u) => {
+                  const presence = getPresenceInfo(u);
+                  const isUserLocked = u.trang_thai === 'locked';
+
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50/70 transition">
+                      {/* Cột 1: Tài khoản + Trạng thái Online phong cách Facebook */}
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs shrink-0">
-                            {(u.ho_ten || u.email).substring(0, 2).toUpperCase()}
+                        <div className="flex items-center gap-3">
+                          <div className="relative shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-bold text-xs">
+                              {(u.ho_ten || u.email).substring(0, 2).toUpperCase()}
+                            </div>
+                            {/* Chấm tròn trạng thái Online/Away/Offline */}
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${presence.dotColor}`}
+                              title={presence.statusText}
+                            />
                           </div>
+
                           <div>
-                            <div className="font-semibold text-slate-800">{u.ho_ten}</div>
-                            {u.is_current_user && <span className="text-[10px] text-emerald-600 font-medium">• Đang đăng nhập</span>}
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-800 text-[13px]">{u.ho_ten}</span>
+                              {u.is_current_user && (
+                                <span className="px-1.5 py-0.5 text-[10px] rounded bg-emerald-100 text-emerald-700 font-bold">
+                                  Bạn
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500">{u.email}</div>
+                            {/* Dòng chữ báo trạng thái như Facebook */}
+                            <div className="text-[11px] text-slate-600 font-medium mt-0.5 flex items-center gap-1">
+                              <span className={`w-1.5 h-1.5 rounded-full ${presence.dotColor}`} />
+                              <span>{presence.statusText}</span>
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-slate-600">{u.email}</td>
+
+                      {/* Cột 2: Phân quyền (Admin / User) có thể thay đổi trực tiếp */}
                       <td className="px-4 py-3.5">
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${roleColor(u.vai_tro)}`}>
-                          {roleLabel(u.vai_tro)}
-                        </span>
+                        {u.is_current_user ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            <Shield className="w-3 h-3 text-blue-600" />
+                            Admin (Full quyền)
+                          </span>
+                        ) : (
+                          <div className="relative inline-block">
+                            <select
+                              value={u.vai_tro}
+                              disabled={roleUpdatingId === u.id}
+                              onChange={(e) => handleRoleChange(u, e.target.value as 'admin' | 'user')}
+                              className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border cursor-pointer focus:outline-none transition ${
+                                u.vai_tro === 'admin'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                            >
+                              <option value="admin">Admin (Full quyền)</option>
+                              <option value="user">User (Chỉ tạo đánh giá)</option>
+                            </select>
+                            {roleUpdatingId === u.id && (
+                              <div className="absolute inset-0 bg-white/70 rounded-lg flex items-center justify-center">
+                                <div className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-3.5 text-slate-500">
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '—'}
+
+                      {/* Cột 3: Trạng thái tài khoản (Hoạt động / Khóa) */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                              isUserLocked
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isUserLocked ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                            {isUserLocked ? 'Đã khóa' : 'Hoạt động'}
+                          </span>
+
+                          {!u.is_current_user && (
+                            <button
+                              type="button"
+                              onClick={() => setToggleStatusTarget(u)}
+                              className={`p-1.5 rounded-lg border transition cursor-pointer text-[11px] font-medium inline-flex items-center gap-1 ${
+                                isUserLocked
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                  : 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200'
+                              }`}
+                              title={isUserLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                            >
+                              {isUserLocked ? (
+                                <>
+                                  <Unlock className="w-3 h-3" />
+                                  <span>Mở</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="w-3 h-3" />
+                                  <span>Khóa</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3.5 text-slate-500">
-                        {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
+
+                      {/* Cột 4: Lần cuối đăng nhập */}
+                      <td className="px-4 py-3.5 text-slate-700 font-mono text-[11px]">
+                        {formatDateTimeFull(u.last_login_at)}
                       </td>
+
+                      {/* Cột 5: Lần cuối đăng xuất */}
+                      <td className="px-4 py-3.5 text-slate-700 font-mono text-[11px]">
+                        {u.tab_status === 'active' || u.tab_status === 'away'
+                          ? <span className="text-emerald-600 font-semibold">• Đang trong phiên</span>
+                          : formatDateTimeFull(u.last_logout_at)}
+                      </td>
+
+                      {/* Cột 6: Nút xóa */}
                       <td className="px-4 py-3.5 text-right">
                         {!u.is_current_user && (
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(u)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
-                            title="Xóa tài khoản"
+                            className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                            title="Xóa tài khoản này"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {/* ADD TAB */}
-      {activeSubTab === 'add' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-lg">
-          <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-[#2D5A27]" />
-            Thêm Nhân Sự Mới
-          </h3>
-          <p className="text-xs text-slate-500 mb-5">
-            Hệ thống sẽ tự tạo mật khẩu ngẫu nhiên và <strong>gửi email thông tin đăng nhập</strong> đến địa chỉ email nhân sự.
-          </p>
-          <form onSubmit={handleAdd} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Họ và tên <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                placeholder="Nguyễn Văn A"
-                value={addForm.ho_ten}
-                onChange={(e) => setAddForm((p) => ({ ...p, ho_ten: e.target.value }))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Email thật <span className="text-red-500">*</span>
-                <span className="ml-1.5 text-[10px] font-normal text-slate-400">(dùng để gửi thông tin đăng nhập)</span>
-              </label>
-              <input
-                type="email"
-                placeholder="nhansu@gmail.com"
-                value={addForm.email}
-                onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Vai trò</label>
-              <select
-                value={addForm.vai_tro}
-                onChange={(e) => setAddForm((p) => ({ ...p, vai_tro: e.target.value }))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none bg-white transition"
-              >
-                <option value="staff">Nhân viên (Staff)</option>
-                <option value="admin">Quản trị viên (Admin)</option>
-                <option value="super_admin">Quản trị viên cấp cao (Super Admin)</option>
-              </select>
-            </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
-              <Mail className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-[11px] text-amber-700 leading-relaxed">
-                Hệ thống sẽ tự sinh mật khẩu và <strong>gửi email</strong> chứa link đăng nhập + mật khẩu đến nhân sự. Nhân sự nên đổi mật khẩu ngay sau khi đăng nhập lần đầu.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setActiveSubTab('list')} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
-                Hủy
-              </button>
-              <button type="submit" disabled={adding} className="flex-1 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
-                {adding ? (
-                  <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang gửi...</>
-                ) : (
-                  <><Send className="w-3.5 h-3.5" /> Thêm &amp; Gửi Email</>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* CHANGE PASSWORD TAB */}
-      {activeSubTab === 'password' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-lg">
-          <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-[#2D5A27]" />
-            Đổi Mật Khẩu Cá Nhân
-          </h3>
-          <p className="text-xs text-slate-500 mb-5">Đổi mật khẩu cho tài khoản <strong className="text-slate-700">{currentUser?.ho_ten || currentUser?.username}</strong> đang đăng nhập.</p>
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            {[
-              { key: 'currentPassword', label: 'Mật khẩu hiện tại', show: showPw.current, toggle: () => setShowPw(p => ({ ...p, current: !p.current })) },
-              { key: 'newPassword', label: 'Mật khẩu mới', show: showPw.new, toggle: () => setShowPw(p => ({ ...p, new: !p.new })) },
-              { key: 'confirmPassword', label: 'Xác nhận mật khẩu mới', show: showPw.confirm, toggle: () => setShowPw(p => ({ ...p, confirm: !p.confirm })) },
-            ].map(({ key, label, show, toggle }) => (
-              <div key={key}>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">{label} <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <input
-                    type={show ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={(pwForm as any)[key]}
-                    onChange={(e) => setPwForm(p => ({ ...p, [key]: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
-                    required
-                  />
-                  <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
-                    {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+      {/* ── CỬA SỔ NỔI 1: THÊM NHÂN SỰ MỚI ── */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-emerald-800 to-[#2D5A27] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <UserPlus className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Thêm Nhân Sự Mới</h3>
+                  <p className="text-[11px] text-emerald-100">Tạo tài khoản và gửi email thông tin đăng nhập tự động</p>
                 </div>
               </div>
-            ))}
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setActiveSubTab('list')} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
-                Hủy
-              </button>
-              <button type="submit" disabled={changingPw} className="flex-1 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
-                {changingPw ? (
-                  <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</>
-                ) : (
-                  <><KeyRound className="w-3.5 h-3.5" /> Đổi Mật Khẩu</>
-                )}
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-          </form>
+
+            {/* Modal Body */}
+            <form onSubmit={handleAdd} className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Họ và tên <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Nguyễn Văn A"
+                  value={addForm.ho_ten}
+                  onChange={(e) => setAddForm((p) => ({ ...p, ho_ten: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Email thật <span className="text-red-500">*</span>
+                  <span className="ml-1.5 text-[10px] font-normal text-slate-400">
+                    (dùng để gửi link và mật khẩu đăng nhập)
+                  </span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="nhansu@gmail.com"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phân quyền tài khoản</label>
+                <select
+                  value={addForm.vai_tro}
+                  onChange={(e) => setAddForm((p) => ({ ...p, vai_tro: e.target.value as 'admin' | 'user' }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none bg-white font-medium transition cursor-pointer"
+                >
+                  <option value="user">User — Chỉ đăng nhập được vào link Tạo Đánh Giá (/taodanhgia)</option>
+                  <option value="admin">Admin — Toàn quyền quản trị hệ thống (/admin)</option>
+                </select>
+              </div>
+
+              {/* Thông báo chi tiết loại email sẽ gửi */}
+              <div
+                className={`p-3.5 rounded-xl border flex items-start gap-2.5 ${
+                  addForm.vai_tro === 'user'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}
+              >
+                <Mail className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  {addForm.vai_tro === 'user' ? (
+                    <span>
+                      Hệ thống sẽ gửi email chứa mật khẩu và link đến <strong>Cổng Tạo Đánh Giá</strong> (
+                      <code>/taodanhgia</code>). Tài khoản này sẽ không có quyền vào trang Quản Trị Admin.
+                    </span>
+                  ) : (
+                    <span>
+                      Hệ thống sẽ gửi email chứa mật khẩu và link đến <strong>Trang Quản Trị Hệ Thống</strong> (
+                      <code>/admin</code>) với toàn quyền truy cập.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  disabled={adding}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 shadow-sm"
+                >
+                  {adding ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang gửi mail...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Tạo &amp; Gửi Email</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* DELETE CONFIRM MODAL */}
+      {/* ── CỬA SỔ NỔI 2: ĐỔI MẬT KHẨU CÁ NHÂN ── */}
+      {showPasswordModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 bg-gradient-to-r from-emerald-800 to-[#2D5A27] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Đổi Mật Khẩu Cá Nhân</h3>
+                  <p className="text-[11px] text-emerald-100">
+                    Đổi mật khẩu cho: {currentUser?.ho_ten || currentUser?.username}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4 overflow-y-auto">
+              {[
+                {
+                  key: 'currentPassword',
+                  label: 'Mật khẩu hiện tại',
+                  show: showPw.current,
+                  toggle: () => setShowPw((p) => ({ ...p, current: !p.current })),
+                },
+                {
+                  key: 'newPassword',
+                  label: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+                  show: showPw.new,
+                  toggle: () => setShowPw((p) => ({ ...p, new: !p.new })),
+                },
+                {
+                  key: 'confirmPassword',
+                  label: 'Xác nhận lại mật khẩu mới',
+                  show: showPw.confirm,
+                  toggle: () => setShowPw((p) => ({ ...p, confirm: !p.confirm })),
+                },
+              ].map(({ key, label, show, toggle }) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    {label} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={show ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={(pwForm as any)[key]}
+                      onChange={(e) => setPwForm((p) => ({ ...p, [key]: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={changingPw}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 shadow-sm"
+                >
+                  {changingPw ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Lưu Mật Khẩu</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── CỬA SỔ NỔI 3: XÁC NHẬN KHÓA / MỞ KHÓA TÀI KHOẢN ── */}
+      {toggleStatusTarget && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
+            <div className={`p-6 text-center border-b ${toggleStatusTarget.trang_thai === 'locked' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+              <div
+                className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                  toggleStatusTarget.trang_thai === 'locked' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                }`}
+              >
+                {toggleStatusTarget.trang_thai === 'locked' ? <Unlock className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                {toggleStatusTarget.trang_thai === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản nhân viên'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Bạn có chắc muốn {toggleStatusTarget.trang_thai === 'locked' ? 'mở khóa cho' : 'khóa tài khoản của'}:<br />
+                <strong className="text-slate-800">{toggleStatusTarget.ho_ten}</strong>
+                <span className="text-slate-400"> ({toggleStatusTarget.email})</span>?<br />
+                {toggleStatusTarget.trang_thai !== 'locked' && (
+                  <span className="text-amber-700 font-medium">Khi bị khóa, nhân viên này sẽ không thể đăng nhập vào hệ thống.</span>
+                )}
+              </p>
+            </div>
+            <div className="p-4 flex gap-3 bg-white">
+              <button
+                type="button"
+                onClick={() => setToggleStatusTarget(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleLock}
+                disabled={statusUpdating}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                  toggleStatusTarget.trang_thai === 'locked'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-amber-600 hover:bg-amber-700'
+                }`}
+              >
+                {statusUpdating ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : toggleStatusTarget.trang_thai === 'locked' ? (
+                  <Unlock className="w-3.5 h-3.5" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5" />
+                )}
+                <span>{toggleStatusTarget.trang_thai === 'locked' ? 'Mở Khóa' : 'Xác Nhận Khóa'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CỬA SỔ NỔI 4: XÁC NHẬN XÓA TÀI KHOẢN ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
             <div className="bg-red-50 p-6 text-center border-b border-red-100">
               <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
                 <ShieldAlert className="w-7 h-7 text-red-500" />
@@ -655,13 +1084,26 @@ function StaffManagementTab({
                 <span className="text-red-500 font-medium">Hành động này không thể hoàn tác!</span>
               </p>
             </div>
-            <div className="p-4 flex gap-3">
-              <button type="button" onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
+            <div className="p-4 flex gap-3 bg-white">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+              >
                 Hủy bỏ
               </button>
-              <button type="button" onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
-                {deleting ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                {deleting ? 'Đang xóa...' : 'Xóa tài khoản'}
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {deleting ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>{deleting ? 'Đang xóa...' : 'Xóa tài khoản'}</span>
               </button>
             </div>
           </div>
@@ -678,6 +1120,9 @@ export default function AdminDashboardPage() {
   const [currentUser, setCurrentUser] = useState<{ username: string; ho_ten: string; vai_tro: string } | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // Gửi heartbeat presence khi Admin đang ở tab
+  usePresenceHeartbeat(isAuthenticated === true);
+
   useEffect(() => {
     let isMounted = true;
     const checkAuth = async () => {
@@ -686,6 +1131,13 @@ export default function AdminDashboardPage() {
         const data = await res.json();
         if (isMounted) {
           if (data.authenticated && data.user) {
+            // Nếu là tài khoản User (chỉ tạo đánh giá), tự động chuyển sang trang /taodanhgia
+            if (data.user.vai_tro === 'user') {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/taodanhgia';
+              }
+              return;
+            }
             setIsAuthenticated(true);
             setCurrentUser(data.user);
           } else {

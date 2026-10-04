@@ -27,16 +27,23 @@ export async function GET(req: NextRequest) {
 
     const users = (data.users || []).map((u) => {
       const meta = u.user_metadata || {};
+      const isCurrent =
+        u.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+        u.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@');
+
       return {
         id: u.id,
         email: u.email || '',
         ho_ten: meta.ho_ten || u.email?.split('@')[0] || 'Chưa đặt tên',
-        vai_tro: meta.vai_tro || 'staff',
+        vai_tro: meta.vai_tro === 'user' ? 'user' : 'admin',
+        trang_thai: meta.trang_thai || 'active', // 'active' | 'locked'
         created_at: u.created_at,
         last_sign_in_at: u.last_sign_in_at,
-        is_current_user:
-          u.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
-          u.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@'),
+        last_login_at: meta.last_login_at || u.last_sign_in_at || null,
+        last_logout_at: meta.last_logout_at || null,
+        last_active_at: meta.last_active_at || null,
+        tab_status: meta.tab_status || 'offline',
+        is_current_user: isCurrent,
       };
     });
 
@@ -100,7 +107,7 @@ export async function POST(req: NextRequest) {
         : `PetMM@${Math.floor(100000 + Math.random() * 900000)}`;
 
     const cleanName = ho_ten.trim();
-    const cleanRole = vai_tro || 'staff';
+    const cleanRole = vai_tro === 'user' ? 'user' : 'admin';
 
     // 1. Tạo user trong Supabase Auth
     const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -110,6 +117,7 @@ export async function POST(req: NextRequest) {
       user_metadata: {
         ho_ten: cleanName,
         vai_tro: cleanRole,
+        trang_thai: 'active',
       },
     });
 
@@ -122,9 +130,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: errorMsg }, { status: 400 });
     }
 
-    // 2. Xác định link đăng nhập của hệ thống
+    // 2. Xác định link đăng nhập dựa theo vai trò
     const origin = req.nextUrl.origin || 'https://petsmm.vercel.app';
-    const loginUrl = `${origin}/admin`;
+    const isUserRole = cleanRole === 'user';
+    const loginUrl = isUserRole ? `${origin}/taodanhgia` : `${origin}/admin`;
+    const portalName = isUserRole ? 'Cổng Tạo Đánh Giá Dịch Vụ Khách Hàng' : 'Cổng Quản Trị Hệ Thống Toàn Quyền';
+    const roleDisplayName = isUserRole ? 'Nhân viên (User - Chỉ tạo đánh giá)' : 'Quản trị viên (Admin - Full quyền)';
 
     // 3. Gửi email chứa thông tin tài khoản và link đăng nhập
     let emailSent = false;
@@ -135,14 +146,14 @@ export async function POST(req: NextRequest) {
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #2D5A27 0%, #1E3F1B 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
             <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">PETM&amp;M PET HOSPITAL</h1>
-            <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">Cổng Quản Trị Hệ Thống Bệnh Viện Thú Cưng</p>
+            <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">${portalName}</p>
           </div>
 
           <!-- Body -->
           <div style="padding: 32px 24px;">
             <p style="font-size: 16px; color: #1e293b; margin-top: 0;">Xin chào <strong>${cleanName}</strong>,</p>
             <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-              Tài khoản quản trị của bạn tại <strong>Bệnh Viện Thú Y PetM&amp;M</strong> đã được khởi tạo thành công bởi <strong>${currentUser.ho_ten || currentUser.username}</strong>. Dưới đây là thông tin đăng nhập chính thức của bạn:
+              Tài khoản làm việc của bạn tại <strong>Bệnh Viện Thú Y PetM&amp;M</strong> đã được khởi tạo thành công bởi <strong>${currentUser.ho_ten || currentUser.username}</strong>. Dưới đây là thông tin đăng nhập chính thức của bạn:
             </p>
 
             <!-- Khung thông tin đăng nhập -->
@@ -163,8 +174,8 @@ export async function POST(req: NextRequest) {
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 8px 0; color: #64748b;">🛡️ <strong>Vai trò:</strong></td>
-                  <td style="padding: 8px 0; color: #2D5A27; font-weight: 600;">${cleanRole === 'super_admin' ? 'Quản trị viên cấp cao (Super Admin)' : cleanRole === 'admin' ? 'Quản trị viên (Admin)' : 'Nhân viên (Staff)'}</td>
+                  <td style="padding: 8px 0; color: #64748b;">🛡️ <strong>Phân quyền:</strong></td>
+                  <td style="padding: 8px 0; color: #2D5A27; font-weight: 600;">${roleDisplayName}</td>
                 </tr>
               </table>
             </div>
@@ -172,14 +183,14 @@ export async function POST(req: NextRequest) {
             <!-- Nút bấm Đăng nhập -->
             <div style="text-align: center; margin: 32px 0;">
               <a href="${loginUrl}" style="display: inline-block; background: #2D5A27; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 12px rgba(45,90,39,0.3);">
-                Đăng Nhập Vào Hệ Thống Ngay →
+                ${isUserRole ? 'Đăng Nhập Cổng Tạo Đánh Giá Ngay →' : 'Đăng Nhập Trang Quản Trị Ngay →'}
               </a>
             </div>
 
             <!-- Lời nhắc an toàn -->
             <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 24px;">
               <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
-                🔒 <strong>Lưu ý bảo mật:</strong> Để đảm bảo an toàn tuyệt đối, vui lòng đổi mật khẩu cá nhân ngay sau lần đăng nhập đầu tiên tại mục hồ sơ cá nhân trên trang quản trị.
+                🔒 <strong>Lưu ý bảo mật:</strong> Để đảm bảo an toàn, vui lòng đổi mật khẩu cá nhân ngay sau lần đăng nhập đầu tiên tại mục hồ sơ tài khoản.
               </p>
             </div>
           </div>
@@ -193,9 +204,9 @@ export async function POST(req: NextRequest) {
 
       await sendMail({
         to: cleanEmail,
-        subject: `[PetM&M] Thông tin tài khoản quản trị hệ thống PetM&M - ${cleanName}`,
+        subject: `[PetM&M] Thông tin tài khoản ${isUserRole ? 'Tạo Đánh Giá' : 'Quản Trị'} - ${cleanName}`,
         html: emailHtml,
-        text: `Xin chào ${cleanName},\n\nTài khoản quản trị PetM&M của bạn đã được khởi tạo.\n- Link đăng nhập: ${loginUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${cleanRole}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
+        text: `Xin chào ${cleanName},\n\nTài khoản PetM&M của bạn đã được khởi tạo.\n- Link đăng nhập: ${loginUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${roleDisplayName}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
       });
       emailSent = true;
     } catch (mailErr: any) {
@@ -208,20 +219,99 @@ export async function POST(req: NextRequest) {
       message: emailSent
         ? `Đã tạo tài khoản và gửi email thông tin đăng nhập đến ${cleanEmail} thành công!`
         : `Đã tạo tài khoản thành công! (Lưu ý gửi mail: ${emailError}. Mật khẩu khởi tạo: ${randomPassword})`,
-      user: {
-        id: createData.user?.id,
-        email: cleanEmail,
-        ho_ten: cleanName,
-        vai_tro: cleanRole,
-        created_at: createData.user?.created_at,
-      },
-      passwordGenerated: randomPassword,
-      emailSent,
     });
   } catch (err: any) {
     console.error('Lỗi API POST /api/admin/users:', err);
     return NextResponse.json(
-      { success: false, message: 'Đã xảy ra lỗi máy chủ khi thêm nhân sự: ' + (err?.message || err) },
+      { success: false, message: 'Đã xảy ra lỗi máy chủ khi thêm nhân sự: ' + (err.message || '') },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: Cập nhật phân quyền (vai_tro: 'admin' | 'user') hoặc trạng thái tài khoản (trang_thai: 'active' | 'locked')
+export async function PATCH(req: NextRequest) {
+  try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+    const { id, vai_tro, trang_thai } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, message: 'Thiếu ID người dùng!' }, { status: 400 });
+    }
+
+    const { data: usersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    if (listErr || !usersData) {
+      return NextResponse.json({ success: false, message: 'Không thể tìm người dùng' }, { status: 500 });
+    }
+
+    const targetUser = usersData.users.find((u) => u.id === id);
+    if (!targetUser) {
+      return NextResponse.json({ success: false, message: 'Không tìm thấy tài khoản!' }, { status: 404 });
+    }
+
+    const isCurrent =
+      targetUser.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+      targetUser.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@');
+
+    // Không cho phép tự khóa tài khoản của chính mình
+    if (isCurrent && trang_thai === 'locked') {
+      return NextResponse.json(
+        { success: false, message: 'Bạn không thể tự khóa tài khoản đang đăng nhập của chính mình!' },
+        { status: 400 }
+      );
+    }
+
+    // Không cho phép tự hạ quyền của chính mình thành User
+    if (isCurrent && vai_tro === 'user') {
+      return NextResponse.json(
+        { success: false, message: 'Bạn không thể tự hạ quyền Admin của chính mình!' },
+        { status: 400 }
+      );
+    }
+
+    const meta = { ...targetUser.user_metadata };
+    if (vai_tro !== undefined) {
+      meta.vai_tro = vai_tro === 'user' ? 'user' : 'admin';
+    }
+    if (trang_thai !== undefined) {
+      meta.trang_thai = trang_thai === 'locked' ? 'locked' : 'active';
+    }
+
+    const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(id, {
+      user_metadata: meta,
+    });
+
+    if (updErr) {
+      return NextResponse.json(
+        { success: false, message: 'Lỗi cập nhật: ' + updErr.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Cập nhật tài khoản thành công!',
+      user: {
+        id: targetUser.id,
+        email: targetUser.email,
+        vai_tro: meta.vai_tro,
+        trang_thai: meta.trang_thai,
+      },
+    });
+  } catch (err: any) {
+    console.error('Lỗi API PATCH /api/admin/users:', err);
+    return NextResponse.json(
+      { success: false, message: 'Lỗi máy chủ khi cập nhật tài khoản: ' + err.message },
       { status: 500 }
     );
   }
@@ -245,23 +335,18 @@ export async function DELETE(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json(
-        { success: false, message: 'Thiếu ID nhân sự cần xóa!' },
+        { success: false, message: 'Thiếu ID người dùng cần xóa!' },
         { status: 400 }
       );
     }
 
-    // 1. Kiểm tra không cho phép tự xóa chính mình
-    const { data: userData, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (getUserErr) {
-      return NextResponse.json(
-        { success: false, message: 'Không tìm thấy tài khoản nhân sự này!' },
-        { status: 404 }
-      );
-    }
-
+    // Không cho phép tự xóa tài khoản của chính mình
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+    const targetUser = usersData?.users?.find((u) => u.id === userId);
     if (
-      userData.user.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
-      userData.user.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@')
+      targetUser &&
+      (targetUser.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+        targetUser.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@'))
     ) {
       return NextResponse.json(
         { success: false, message: 'Bạn không thể tự xóa tài khoản đang đăng nhập của chính mình!' },
@@ -269,11 +354,11 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // 2. Xóa user trong Supabase Auth
-    const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (deleteErr) {
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (error) {
+      console.error('Lỗi xóa user Supabase:', error);
       return NextResponse.json(
-        { success: false, message: 'Lỗi khi xóa nhân sự: ' + deleteErr.message },
+        { success: false, message: 'Không thể xóa tài khoản: ' + error.message },
         { status: 500 }
       );
     }
@@ -285,7 +370,7 @@ export async function DELETE(req: NextRequest) {
   } catch (err: any) {
     console.error('Lỗi API DELETE /api/admin/users:', err);
     return NextResponse.json(
-      { success: false, message: 'Đã xảy ra lỗi khi xóa nhân sự!' },
+      { success: false, message: 'Lỗi máy chủ khi xóa nhân sự!' },
       { status: 500 }
     );
   }
