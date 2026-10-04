@@ -11,8 +11,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Unauthenticated' }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const status = body?.status === 'away' ? 'away' : body?.status === 'offline' ? 'offline' : 'active';
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      try {
+        const text = await req.text();
+        if (text) body = JSON.parse(text);
+      } catch {}
+    }
+
+    const status = body?.status === 'offline' ? 'offline' : body?.status === 'away' ? 'away' : 'active';
     const nowIso = new Date().toISOString();
 
     const email = currentUser.email?.toLowerCase();
@@ -29,11 +38,13 @@ export async function POST(req: NextRequest) {
     const authUser = usersData.users.find((u) => u.email?.toLowerCase() === email);
     if (authUser) {
       const currentMeta = authUser.user_metadata || {};
+      const isOffline = status === 'offline';
       await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
         user_metadata: {
           ...currentMeta,
           tab_status: status,
           last_active_at: nowIso,
+          ...(isOffline ? { last_logout_at: nowIso } : {}),
         },
       });
     }

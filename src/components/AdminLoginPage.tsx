@@ -102,6 +102,14 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
         localStorage.setItem('petmm_admin_user', JSON.stringify(data.user));
       }
 
+      // Tài khoản User (chỉ tạo đánh giá) tuyệt đối không được vào trang Admin -> chuyển ngay sang /taodanhgia
+      if (data.user?.vai_tro === 'user' || data.redirectUrl === '/taodanhgia') {
+        if (typeof window !== 'undefined') {
+          window.location.replace('/taodanhgia');
+        }
+        return;
+      }
+
       onLoginSuccess(data.user);
     } catch {
       setErrorMessage('Không thể kết nối máy chủ xác thực. Vui lòng thử lại!');

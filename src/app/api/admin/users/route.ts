@@ -9,10 +9,10 @@ export async function GET(req: NextRequest) {
     const sessionToken = req.cookies.get('petmm_admin_session')?.value;
     const currentUser = verifyToken(sessionToken);
 
-    if (!currentUser) {
+    if (!currentUser || currentUser.vai_tro === 'user') {
       return NextResponse.json(
-        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
-        { status: 401 }
+        { success: false, message: 'Bạn không có quyền truy cập trang quản trị nhân sự này!' },
+        { status: 403 }
       );
     }
 
@@ -67,10 +67,10 @@ export async function POST(req: NextRequest) {
     const sessionToken = req.cookies.get('petmm_admin_session')?.value;
     const currentUser = verifyToken(sessionToken);
 
-    if (!currentUser) {
+    if (!currentUser || currentUser.vai_tro === 'user') {
       return NextResponse.json(
-        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
-        { status: 401 }
+        { success: false, message: 'Chỉ Quản trị viên (Admin) mới có quyền thêm nhân sự!' },
+        { status: 403 }
       );
     }
 
@@ -108,6 +108,22 @@ export async function POST(req: NextRequest) {
 
     const cleanName = ho_ten.trim();
     const cleanRole = vai_tro === 'user' ? 'user' : 'admin';
+    // Kiểm tra trùng lặp email trong hệ thống
+    const { data: existingUsersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    if (!listErr && existingUsersData?.users) {
+      const isDuplicate = existingUsersData.users.some(
+        (u) => u.email?.toLowerCase().trim() === cleanEmail
+      );
+      if (isDuplicate) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Email "${cleanEmail}" đã được sử dụng cho một tài khoản khác trong hệ thống! Vui lòng dùng email khác.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 1. Tạo user trong Supabase Auth
     const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -235,10 +251,10 @@ export async function PATCH(req: NextRequest) {
     const sessionToken = req.cookies.get('petmm_admin_session')?.value;
     const currentUser = verifyToken(sessionToken);
 
-    if (!currentUser) {
+    if (!currentUser || currentUser.vai_tro === 'user') {
       return NextResponse.json(
-        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
-        { status: 401 }
+        { success: false, message: 'Chỉ Quản trị viên (Admin) mới có quyền thay đổi thông tin nhân sự!' },
+        { status: 403 }
       );
     }
 
@@ -323,10 +339,10 @@ export async function DELETE(req: NextRequest) {
     const sessionToken = req.cookies.get('petmm_admin_session')?.value;
     const currentUser = verifyToken(sessionToken);
 
-    if (!currentUser) {
+    if (!currentUser || currentUser.vai_tro === 'user') {
       return NextResponse.json(
-        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
-        { status: 401 }
+        { success: false, message: 'Chỉ Quản trị viên (Admin) mới có quyền xóa tài khoản nhân sự!' },
+        { status: 403 }
       );
     }
 

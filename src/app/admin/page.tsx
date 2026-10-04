@@ -309,27 +309,35 @@ function getPresenceInfo(user: StaffUser) {
     };
   }
 
+  // Nếu người dùng đã đăng xuất hoặc đóng tab/trình duyệt
+  if (user.tab_status === 'offline') {
+    return {
+      dotColor: 'bg-slate-300 ring-2 ring-white',
+      title: 'Ngoại tuyến (Offline)',
+    };
+  }
+
   const now = Date.now();
   const lastActive = user.last_active_at ? new Date(user.last_active_at).getTime() : 0;
   const diffSec = lastActive ? Math.floor((now - lastActive) / 1000) : 9999999;
 
-  // 1. Chấm xanh: Đang đăng nhập và tab đang active
-  if (user.tab_status === 'active' && diffSec <= 60) {
+  // 1. Chấm xanh: Đang trực tuyến và tab đang active (nhận tín hiệu trong vòng 30s)
+  if (user.tab_status === 'active' && diffSec <= 30) {
     return {
       dotColor: 'bg-emerald-500 ring-2 ring-white animate-pulse',
       title: 'Đang hoạt động (Trực tuyến)',
     };
   }
 
-  // 2. Chấm vàng: Đang đăng nhập mà chuyển tab làm việc khác (vắng mặt)
-  if (user.tab_status === 'away' && diffSec <= 300) {
+  // 2. Chấm vàng: Đang mở nhưng chuyển sang tab khác (vắng mặt trong vòng tối đa 35s)
+  if (user.tab_status === 'away' && diffSec <= 35) {
     return {
       dotColor: 'bg-amber-400 ring-2 ring-white',
       title: 'Đang vắng mặt (Chuyển tab khác)',
     };
   }
 
-  // 3. Chấm xám: Đăng xuất hoặc ngoại tuyến
+  // 3. Chấm xám: Quá 35s không nhận được tín hiệu (đã tắt tab/trình duyệt)
   return {
     dotColor: 'bg-slate-300 ring-2 ring-white',
     title: 'Ngoại tuyến (Offline)',
@@ -345,17 +353,17 @@ function getActivityStatus(user: StaffUser): { text: string; className: string }
   const lastActive = user.last_active_at ? new Date(user.last_active_at).getTime() : 0;
   const diffSec = lastActive ? Math.floor((now - lastActive) / 1000) : 9999999;
 
-  // 1. Đang hoạt động
-  if (user.tab_status === 'active' && diffSec <= 60) {
+  // 1. Đang hoạt động (chỉ khi tab đang active và vừa gửi heartbeat trong 30s)
+  if (user.tab_status === 'active' && diffSec <= 30) {
     return { text: 'Đang hoạt động', className: 'text-emerald-600 font-bold flex items-center gap-1.5' };
   }
 
-  // 2. Vắng mặt (khi chuyển tab hoặc ẩn cửa sổ)
-  if (user.tab_status === 'away' && diffSec <= 300) {
+  // 2. Vắng mặt (khi chuyển tab khác, chỉ giữ tối đa 35s nếu tab vẫn mở ở chế độ nền)
+  if (user.tab_status === 'away' && diffSec <= 35) {
     return { text: 'Vắng mặt', className: 'text-amber-600 font-semibold flex items-center gap-1.5' };
   }
 
-  // 3. Hoạt động X phút trước / X giờ trước / quá 1 ngày thì hiển thị ngày giờ đầy đủ
+  // 3. Ngoại tuyến / Tắt tab / Quá 35s: Hoạt động X phút trước / X giờ trước / quá 1 ngày thì hiển thị ngày giờ đầy đủ
   const validTimes = [user.last_active_at, user.last_logout_at, user.last_login_at, user.last_sign_in_at]
     .filter(Boolean)
     .map((t) => new Date(t as string).getTime())
@@ -450,6 +458,11 @@ function StaffManagementTab({
     e.preventDefault();
     if (!addForm.ho_ten.trim()) { showNotification('error', 'Vui lòng nhập họ và tên!'); return; }
     if (!addForm.email.trim()) { showNotification('error', 'Vui lòng nhập email thật!'); return; }
+    const targetEmail = addForm.email.trim().toLowerCase();
+    if (users.some((u) => u.email.toLowerCase().trim() === targetEmail)) {
+      showNotification('error', `Email "${targetEmail}" đã tồn tại trong hệ thống! Vui lòng dùng email khác.`);
+      return;
+    }
     setAdding(true);
     try {
       const res = await fetch('/api/admin/users', {
@@ -4209,11 +4222,24 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     return (
       <AdminLoginPage
         onLoginSuccess={(user) => {
+          if (user.vai_tro === 'user') {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/taodanhgia';
+            }
+            return;
+          }
           setCurrentUser(user);
           setIsAuthenticated(true);
         }}
       />
     );
+  }
+
+  if (currentUser?.vai_tro === 'user') {
+    if (typeof window !== 'undefined') {
+      window.location.replace('/taodanhgia');
+    }
+    return null;
   }
 
   return (

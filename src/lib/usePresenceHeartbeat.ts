@@ -40,7 +40,15 @@ export function usePresenceHeartbeat(enabled: boolean = true) {
       sendHeartbeat('away');
     };
 
-    const handleBeforeUnload = () => {
+    const handleClose = () => {
+      try {
+        fetch('/api/admin/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'offline' }),
+          keepalive: true,
+        });
+      } catch {}
       try {
         const blob = new Blob([JSON.stringify({ status: 'offline' })], { type: 'application/json' });
         navigator.sendBeacon('/api/admin/heartbeat', blob);
@@ -50,19 +58,21 @@ export function usePresenceHeartbeat(enabled: boolean = true) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleClose);
+    window.addEventListener('pagehide', handleClose);
 
-    // Chu kỳ gửi đều đặn mỗi 12 giây để trạng thái luôn tức thời
+    // Chu kỳ gửi đều đặn mỗi 10 giây để trạng thái luôn tức thời
     const interval = setInterval(() => {
       const isVisible = document.visibilityState === 'visible' && document.hasFocus();
       sendHeartbeat(isVisible ? 'active' : 'away');
-    }, 12000);
+    }, 10000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('beforeunload', handleClose);
+      window.removeEventListener('pagehide', handleClose);
       clearInterval(interval);
     };
   }, [enabled]);
