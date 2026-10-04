@@ -279,6 +279,24 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
+    // 4. Gửi tin nhắn Zalo OA (ZNS) cho khách hàng (chạy ngầm không chặn phản hồi)
+    try {
+      const { sendZaloZnsBookingNotification } = await import('@/lib/zalo');
+      sendZaloZnsBookingNotification({
+        phone: cleanPhone,
+        bookingCode: finalBookingCode,
+        ownerName: ownerName.trim(),
+        petName: petName.trim(),
+        service: displayService,
+        dateTime: formattedDateTime,
+        branchName: defaultBranchName,
+      }).catch((zErr) => {
+        console.warn('Lỗi gửi Zalo ZNS:', zErr?.message || zErr);
+      });
+    } catch (zaloInitErr: any) {
+      console.warn('Không thể khởi tạo Zalo ZNS:', zaloInitErr?.message || zaloInitErr);
+    }
+
     return NextResponse.json({
       success: true,
       booking: {

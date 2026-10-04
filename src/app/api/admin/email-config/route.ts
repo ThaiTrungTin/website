@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('cau_hinh')
-      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
+      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email, zalo_oa_id, zalo_app_id, zalo_secret_key, zalo_template_id, zalo_enabled')
       .eq('id', 'system')
       .maybeSingle();
 
@@ -37,6 +37,13 @@ export async function GET(req: NextRequest) {
         smtp_notify_recruitment_email: data?.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
         smtp_notify_contact_email: data?.smtp_notify_contact_email || data?.smtp_notify_email || 'thaitrtin@gmail.com',
         hasPassword: Boolean(data?.smtp_password && data.smtp_password.trim().length > 0),
+      },
+      zalo: {
+        zalo_oa_id: data?.zalo_oa_id || '',
+        zalo_app_id: data?.zalo_app_id || '',
+        zalo_secret_key: data?.zalo_secret_key || '',
+        zalo_template_id: data?.zalo_template_id || '',
+        zalo_enabled: Boolean(data?.zalo_enabled),
       },
       template: templateConfig,
       recruitmentTemplate: recruitmentTemplateConfig,
@@ -102,6 +109,25 @@ export async function POST(req: NextRequest) {
         .eq('id', 'system');
 
       if (smtpErr) throw smtpErr;
+    }
+
+    // 1.5. Cập nhật cấu hình Zalo OA (ZNS) nếu có
+    if (body.zalo !== undefined || body.zalo_oa_id !== undefined) {
+      const zaloData = body.zalo || body;
+      const zaloPayload: Record<string, any> = {};
+      if (zaloData.zalo_oa_id !== undefined) zaloPayload.zalo_oa_id = String(zaloData.zalo_oa_id || '').trim();
+      if (zaloData.zalo_app_id !== undefined) zaloPayload.zalo_app_id = String(zaloData.zalo_app_id || '').trim();
+      if (zaloData.zalo_secret_key !== undefined) zaloPayload.zalo_secret_key = String(zaloData.zalo_secret_key || '').trim();
+      if (zaloData.zalo_template_id !== undefined) zaloPayload.zalo_template_id = String(zaloData.zalo_template_id || '').trim();
+      if (zaloData.zalo_enabled !== undefined) zaloPayload.zalo_enabled = Boolean(zaloData.zalo_enabled);
+
+      if (Object.keys(zaloPayload).length > 0) {
+        const { error: zaloErr } = await supabaseAdmin
+          .from('cau_hinh')
+          .update(zaloPayload)
+          .eq('id', 'system');
+        if (zaloErr) throw zaloErr;
+      }
     }
 
     // 2. Cập nhật Template song ngữ nếu có

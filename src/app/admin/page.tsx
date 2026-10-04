@@ -75,7 +75,7 @@ import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announc
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
 type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config';
-export type ConfigSubTab = 'contact' | 'email' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
+export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
 
 export default function AdminDashboardPage() {
   // XÁC THỰC QUẢN TRỊ VIÊN (ADMIN AUTHENTICATION)
@@ -869,7 +869,8 @@ export default function AdminDashboardPage() {
       await refreshConfig();
       const tabNames: Record<ConfigSubTab, string> = {
         contact: 'Hotline & Mạng xã hội',
-        email: 'Email & Máy Chủ Gửi Thư (SMTP)',
+        email: 'Email',
+        zalo: 'Zalo OA (ZNS)',
         about: 'Giới thiệu & Triết lý',
         slides: 'Slide ảnh giới thiệu',
         stats: 'Thông số thống kê',
@@ -901,6 +902,17 @@ export default function AdminDashboardPage() {
   const [isSmtpSaving, setIsSmtpSaving] = useState(false);
   const [isSmtpTesting, setIsSmtpTesting] = useState(false);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+
+  // Cấu hình Zalo Official Account (ZNS)
+  const [zaloForm, setZaloForm] = useState({
+    zalo_oa_id: '',
+    zalo_app_id: '',
+    zalo_secret_key: '',
+    zalo_template_id: '',
+    zalo_enabled: false,
+  });
+  const [isZaloSaving, setIsZaloSaving] = useState(false);
+  const [showZaloSecret, setShowZaloSecret] = useState(false);
 
   // Cấu hình Template Email song ngữ gửi cho khách hàng
   const [emailTemplateForm, setEmailTemplateForm] = useState<{
@@ -986,6 +998,15 @@ export default function AdminDashboardPage() {
           hasPassword: Boolean(data.config.hasPassword),
         }));
       }
+      if (data.success && data.zalo) {
+        setZaloForm({
+          zalo_oa_id: data.zalo.zalo_oa_id || '',
+          zalo_app_id: data.zalo.zalo_app_id || '',
+          zalo_secret_key: data.zalo.zalo_secret_key || '',
+          zalo_template_id: data.zalo.zalo_template_id || '',
+          zalo_enabled: Boolean(data.zalo.zalo_enabled),
+        });
+      }
       if (data.success && data.template) {
         setEmailTemplateForm((prev) => ({
           ...prev,
@@ -1006,7 +1027,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (configSubTab === 'email') {
+    if (configSubTab === 'email' || configSubTab === 'zalo') {
       loadSmtpConfig();
     }
   }, [configSubTab, loadSmtpConfig]);
@@ -1029,12 +1050,35 @@ export default function AdminDashboardPage() {
         showNotification('error', data.message || 'Không thể lưu cấu hình email!');
         return;
       }
-      showNotification('success', 'Đã lưu cấu hình máy chủ gửi thư Gmail thành công!');
+      showNotification('success', 'Đã lưu cấu hình Email thành công!');
       loadSmtpConfig();
     } catch (err: any) {
       showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
     } finally {
       setIsSmtpSaving(false);
+    }
+  };
+
+  const handleSaveZalo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsZaloSaving(true);
+    try {
+      const res = await fetch('/api/admin/email-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zalo: zaloForm }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Không thể lưu cấu hình Zalo OA!');
+        return;
+      }
+      showNotification('success', 'Đã lưu cấu hình Zalo OA (ZNS) thành công!');
+      loadSmtpConfig();
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
+    } finally {
+      setIsZaloSaving(false);
     }
   };
 
@@ -2997,7 +3041,8 @@ function formatDisplayReviewDate(val?: string | null): string {
 
   const subTabTitles: Record<ConfigSubTab, string> = {
     contact: 'Hotline & Mạng Xã Hội',
-    email: 'Email & Máy Chủ Gửi Thư (SMTP)',
+    email: 'Email',
+    zalo: 'Cấu Hình Zalo Official Account (ZNS)',
     about: 'Giới Thiệu & Triết Lý',
     slides: 'Slide Ảnh Giới Thiệu',
     stats: 'Thông Số Thống Kê',
@@ -3435,29 +3480,75 @@ function formatDisplayReviewDate(val?: string | null): string {
                 </div>
               </button>
 
-              {/* Cấu hình Email & SMTP */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('config');
-                  setConfigSubTab('email');
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group ' + (
-                  activeTab === 'config' && configSubTab === 'email'
-                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                )}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Mail
-                    className={'w-3.5 h-3.5 transition ' + (
-                      activeTab === 'config' && configSubTab === 'email' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+              {/* Nhóm: Thông Báo Tự Động (Email & Zalo) - Tách nhánh cây giống Đội Ngũ Y Tế */}
+              <div className="pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('config');
+                    setConfigSubTab('email');
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group cursor-pointer ${
+                    activeTab === 'config' && (configSubTab === 'email' || configSubTab === 'zalo')
+                      ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Send
+                      className={`w-3.5 h-3.5 transition ${
+                        activeTab === 'config' && (configSubTab === 'email' || configSubTab === 'zalo')
+                          ? 'text-amber-300'
+                          : 'text-slate-400 group-hover:text-white'
+                      }`}
+                    />
+                    <span>Gửi Thông Báo</span>
+                  </div>
+                </button>
+
+                {/* 2 nhánh con đổ xuống: Email và Zalo */}
+                <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('config');
+                      setConfigSubTab('email');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'config' && configSubTab === 'email'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span>Email</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('config');
+                      setConfigSubTab('zalo');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'config' && configSubTab === 'zalo'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="w-3.5 h-3.5 rounded-xs bg-[#0068FF] text-white text-[9px] font-black flex items-center justify-center shrink-0">
+                      Z
+                    </span>
+                    <span>Zalo OA (ZNS)</span>
+                    {zaloForm.zalo_enabled && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse ml-auto" title="Đang Bật gửi ZNS" />
                     )}
-                  />
-                  <span>Email &amp; Máy Chủ Gửi Thư</span>
+                  </button>
                 </div>
-              </button>
+              </div>
 
               {/* 2. Giới thiệu & Triết lý */}
               <button
@@ -4086,104 +4177,6 @@ function formatDisplayReviewDate(val?: string | null): string {
           {/* ===================================================== */}
           {activeTab === 'config' && (
             <div className="max-w-6xl mx-auto space-y-6">
-              {/* THANH ĐIỀU HƯỚNG NHÁNH CON (SUB-TABS) */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('contact')}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    configSubTab === 'contact'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <PhoneCall className="w-3.5 h-3.5" />
-                  <span>Hotline &amp; Mạng Xã Hội</span>
-                </button>
-
-                
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('email')}
-                  className={'inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ' + (
-                    configSubTab === 'email'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  )}
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Email &amp; Máy Chủ Gửi Thư</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('about')}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    configSubTab === 'about'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <Heart className="w-3.5 h-3.5" />
-                  <span>Giới Thiệu &amp; Triết Lý</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('slides')}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    configSubTab === 'slides'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>Slide Ảnh Giới Thiệu ({aboutSlides.length})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('stats')}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    configSubTab === 'stats'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" />
-                  <span>Thông Số Thống Kê</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('slogans')}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    configSubTab === 'slogans'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Khẩu Hiệu &amp; Slogan</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setConfigSubTab('announcement')}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    configSubTab === 'announcement'
-                      ? 'bg-[#2D5A27] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <Megaphone className="w-3.5 h-3.5" />
-                  <span>Thông Báo Nổi (Poster)</span>
-                  {announcementForm.isActive && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Đang Bật trên website" />
-                  )}
-                </button>
-              </div>
-
               {/* NHÁNH 1: HOTLINE & MẠNG XÃ HỘI */}
               {configSubTab === 'contact' && (
                 <form onSubmit={handleSaveConfig} className="space-y-6">
@@ -4347,10 +4340,10 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
                         <div>
                           <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span>Máy Chủ Gửi Thư &amp; Email Tiếp Nhận (Gmail SMTP)</span>
+                            <span>Email (Gmail SMTP)</span>
                           </h2>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            Cấu hình máy chủ gửi thư tự động và hộp thư tiếp nhận thông báo đặt lịch khám bệnh.
+                            Cấu hình tài khoản gửi thư và các hộp thư tiếp nhận thông báo (Đặt lịch, Tuyển dụng CV &amp; Liên hệ).
                           </p>
                         </div>
                       </div>
@@ -5022,6 +5015,179 @@ function formatDisplayReviewDate(val?: string | null): string {
                   </div>
                 </form>
                 </>
+              )}
+
+              {/* NHÁNH: CẤU HÌNH ZALO OFFICIAL ACCOUNT (ZNS) */}
+              {configSubTab === 'zalo' && (
+                <form onSubmit={handleSaveZalo} className="space-y-6">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+                    {/* Header Thẻ */}
+                    <div className="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0068FF] flex items-center justify-center border border-blue-200 shrink-0 font-black text-sm">
+                          Z
+                        </div>
+                        <div>
+                          <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span>Cấu Hình Zalo Official Account (Zalo OA / ZNS)</span>
+                          </h2>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Tự động gửi tin nhắn xác nhận lịch hẹn vào số điện thoại Zalo của khách hàng khi đặt trên website.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Công tắc Bật/Tắt Zalo */}
+                      <label className="inline-flex items-center gap-2.5 cursor-pointer select-none self-start sm:self-auto bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full transition">
+                        <input
+                          type="checkbox"
+                          checked={zaloForm.zalo_enabled}
+                          onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_enabled: e.target.checked }))}
+                          className="sr-only peer"
+                        />
+                        <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#0068FF] relative"></div>
+                        <span className="text-xs font-bold text-slate-700">
+                          {zaloForm.zalo_enabled ? (
+                            <span className="text-blue-700 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                              Đang Bật Gửi Zalo ZNS
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">Đang Tắt</span>
+                          )}
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                      {/* Cột trái: Hướng dẫn 4 bước */}
+                      <div className="lg:col-span-5 bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-blue-50/80 border border-blue-200/90 rounded-2xl p-5 space-y-3.5">
+                        <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                          <KeyRound className="w-4 h-4 text-blue-600" />
+                          <span>4 THÔNG SỐ KỸ THUẬT TỪ ZALO OA</span>
+                        </div>
+                        <div className="space-y-3 text-xs text-slate-700">
+                          <div className="flex items-start gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">1</span>
+                            <div>
+                              <strong className="text-slate-900">ZALO_OA_ID:</strong> ID định danh Zalo OA (xem trên góc trang{' '}
+                              <a href="https://oa.zalo.me" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">oa.zalo.me</a>).
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">2</span>
+                            <div>
+                              <strong className="text-slate-900">ZALO_APP_ID:</strong> ID ứng dụng Zalo trên{' '}
+                              <a href="https://developers.zalo.me" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">developers.zalo.me</a> liên kết với OA.
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">3</span>
+                            <div>
+                              <strong className="text-slate-900">ZALO_SECRET_KEY:</strong> Khóa bí mật (Secret Key) của ứng dụng Zalo.
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">4</span>
+                            <div>
+                              <strong className="text-slate-900">ZALO_TEMPLATE_ID:</strong> Mã ID mẫu tin nhắn ZNS đã được Zalo phê duyệt.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cột phải: 4 Ô nhập liệu */}
+                      <div className="lg:col-span-7 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Trường 1: ZALO_OA_ID */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>1. ZALO_OA_ID:</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={zaloForm.zalo_oa_id}
+                              onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_oa_id: e.target.value }))}
+                              placeholder="Ví dụ: 123456789012345678"
+                              className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                            />
+                            <p className="text-[11px] text-slate-400">ID định danh Zalo Official Account</p>
+                          </div>
+
+                          {/* Trường 2: ZALO_APP_ID */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>2. ZALO_APP_ID:</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={zaloForm.zalo_app_id}
+                              onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_app_id: e.target.value }))}
+                              placeholder="Ví dụ: 987654321098765"
+                              className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                            />
+                            <p className="text-[11px] text-slate-400">ID ứng dụng trên developers.zalo.me</p>
+                          </div>
+                        </div>
+
+                        {/* Trường 3: ZALO_SECRET_KEY */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-800">
+                              <span>3. ZALO_SECRET_KEY:</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setShowZaloSecret((prev) => !prev)}
+                              className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                            >
+                              {showZaloSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              <span>{showZaloSecret ? 'Ẩn khóa' : 'Hiện khóa'}</span>
+                            </button>
+                          </div>
+                          <input
+                            type={showZaloSecret ? 'text' : 'password'}
+                            value={zaloForm.zalo_secret_key}
+                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_secret_key: e.target.value }))}
+                            placeholder="Nhập Secret Key ứng dụng Zalo"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                          />
+                          <p className="text-[11px] text-slate-400">Khóa bảo mật ứng dụng Zalo</p>
+                        </div>
+
+                        {/* Trường 4: ZALO_TEMPLATE_ID */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>4. ZALO_TEMPLATE_ID:</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={zaloForm.zalo_template_id}
+                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_template_id: e.target.value }))}
+                            placeholder="Ví dụ: 384729"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                          />
+                          <p className="text-[11px] text-slate-400">Mã mẫu tin nhắn ZNS đã được Zalo phê duyệt</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nút lưu Zalo */}
+                    <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <p className="text-xs text-slate-500">
+                        Hệ thống sẽ tự động gửi tin nhắn Zalo ZNS khi khách hàng xác nhận đặt lịch khám.
+                      </p>
+                      <button
+                        type="submit"
+                        disabled={isZaloSaving}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#0068FF] hover:bg-[#0057d9] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                      >
+                        {isZaloSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <span>{isZaloSaving ? 'Đang lưu...' : 'Lưu Cấu Hình Zalo OA'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
               )}
 
               {/* NHÁNH 2: GIỚI THIỆU & TRIẾT LÝ */}
