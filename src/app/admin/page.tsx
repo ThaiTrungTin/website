@@ -304,10 +304,8 @@ function formatDateTimeFull(isoStr?: string | null) {
 function getPresenceInfo(user: StaffUser) {
   if (user.trang_thai === 'locked') {
     return {
-      dotColor: 'bg-red-500',
-      badgeClass: 'bg-red-50 text-red-700 border-red-200',
-      statusText: 'Đã bị khóa',
-      isLive: false,
+      dotColor: 'bg-red-500 ring-2 ring-white',
+      title: 'Tài khoản đã bị khóa',
     };
   }
 
@@ -318,60 +316,23 @@ function getPresenceInfo(user: StaffUser) {
   // 1. Chấm xanh: Đang đăng nhập và tab đang active
   if (user.tab_status === 'active' && diffSec <= 60) {
     return {
-      dotColor: 'bg-emerald-500 ring-4 ring-emerald-100 animate-pulse',
-      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      statusText: 'Đang hoạt động',
-      isLive: true,
+      dotColor: 'bg-emerald-500 ring-2 ring-white animate-pulse',
+      title: 'Đang hoạt động (Trực tuyến)',
     };
   }
 
   // 2. Chấm vàng: Đang đăng nhập mà chuyển tab làm việc khác (vắng mặt)
   if (user.tab_status === 'away' && diffSec <= 300) {
     return {
-      dotColor: 'bg-amber-400 ring-4 ring-amber-100',
-      badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
-      statusText: 'Vắng mặt (Chuyển tab)',
-      isLive: true,
+      dotColor: 'bg-amber-400 ring-2 ring-white',
+      title: 'Đang vắng mặt (Chuyển tab khác)',
     };
   }
 
-  // 3. Chấm xám: Đăng xuất hoặc out hẳn ra ngoài
-  if (diffSec < 60) {
-    return {
-      dotColor: 'bg-slate-300',
-      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
-      statusText: 'Vừa mới hoạt động',
-      isLive: false,
-    };
-  }
-
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) {
-    return {
-      dotColor: 'bg-slate-300',
-      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
-      statusText: `Hoạt động ${diffMin} phút trước`,
-      isLive: false,
-    };
-  }
-
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) {
-    return {
-      dotColor: 'bg-slate-300',
-      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
-      statusText: `Hoạt động ${diffHour} giờ trước`,
-      isLive: false,
-    };
-  }
-
-  // Quá 1 ngày: hiển thị số thời gian đã đăng nhập cuối cùng
-  const loginTimeStr = formatDateTimeFull(user.last_login_at);
+  // 3. Chấm xám: Đăng xuất hoặc ngoại tuyến
   return {
-    dotColor: 'bg-slate-300',
-    badgeClass: 'bg-slate-50 text-slate-500 border-slate-200',
-    statusText: `Đăng nhập lần cuối: ${loginTimeStr}`,
-    isLive: false,
+    dotColor: 'bg-slate-300 ring-2 ring-white',
+    title: 'Ngoại tuyến (Offline)',
   };
 }
 
@@ -385,11 +346,10 @@ function StaffManagementTab({
   const [users, setUsers] = React.useState<StaffUser[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  // Modals nổi thay vì chuyển tab
+  // Modals nổi
   const [showAddModal, setShowAddModal] = React.useState(false);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
-  const [toggleStatusTarget, setToggleStatusTarget] = React.useState<StaffUser | null>(null);
-  const [statusUpdating, setStatusUpdating] = React.useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = React.useState<string | null>(null);
   const [roleUpdatingId, setRoleUpdatingId] = React.useState<string | null>(null);
 
   // Form thêm nhân sự
@@ -485,25 +445,25 @@ function StaffManagementTab({
     }
   };
 
-  const handleToggleLock = async () => {
-    if (!toggleStatusTarget) return;
-    setStatusUpdating(true);
-    const newStatus = toggleStatusTarget.trang_thai === 'locked' ? 'active' : 'locked';
+  // Ấn 1 icon: nếu đang hoạt động -> ấn cái thành khóa; nếu đang khóa -> ấn cái thành hoạt động
+  const handleDirectToggleLock = async (targetUser: StaffUser) => {
+    if (targetUser.is_current_user) return;
+    const newStatus = targetUser.trang_thai === 'locked' ? 'active' : 'locked';
+    setStatusUpdatingId(targetUser.id);
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: toggleStatusTarget.id, trang_thai: newStatus }),
+        body: JSON.stringify({ id: targetUser.id, trang_thai: newStatus }),
       });
       const data = await res.json();
       if (data.success) {
         showNotification(
           'success',
           newStatus === 'locked'
-            ? `Đã khóa tài khoản ${toggleStatusTarget.ho_ten} thành công!`
-            : `Đã mở khóa tài khoản ${toggleStatusTarget.ho_ten} thành công!`
+            ? `Đã khóa tài khoản ${targetUser.ho_ten}!`
+            : `Đã kích hoạt hoạt động tài khoản ${targetUser.ho_ten}!`
         );
-        setToggleStatusTarget(null);
         loadUsers();
       } else {
         showNotification('error', data.message || 'Thao tác thất bại!');
@@ -511,7 +471,7 @@ function StaffManagementTab({
     } catch {
       showNotification('error', 'Lỗi kết nối máy chủ!');
     } finally {
-      setStatusUpdating(false);
+      setStatusUpdatingId(null);
     }
   };
 
@@ -572,7 +532,7 @@ function StaffManagementTab({
             <span>Quản Lý Nhân Sự &amp; Phân Quyền Hệ Thống</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Theo dõi trạng thái hoạt động trực tuyến (Online, Chuyển tab, Offline), phân quyền Admin/User và quản lý tài khoản nhân viên.
+            Theo dõi trạng thái hoạt động trực tuyến, phân quyền Admin/User và quản lý tài khoản nhân viên.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -624,11 +584,10 @@ function StaffManagementTab({
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
-                  <th className="text-left px-5 py-3 font-semibold">Tài khoản &amp; Hoạt động</th>
+                  <th className="text-left px-5 py-3 font-semibold">Tài khoản</th>
                   <th className="text-left px-4 py-3 font-semibold">Phân quyền</th>
                   <th className="text-left px-4 py-3 font-semibold">Trạng thái Account</th>
-                  <th className="text-left px-4 py-3 font-semibold">Lần cuối đăng nhập</th>
-                  <th className="text-left px-4 py-3 font-semibold">Lần cuối đăng xuất</th>
+                  <th className="text-left px-4 py-3 font-semibold">Trạng thái hoạt động</th>
                   <th className="px-4 py-3 text-right">Thao tác</th>
                 </tr>
               </thead>
@@ -636,20 +595,25 @@ function StaffManagementTab({
                 {users.map((u) => {
                   const presence = getPresenceInfo(u);
                   const isUserLocked = u.trang_thai === 'locked';
+                  const validTimes = [u.last_active_at, u.last_logout_at, u.last_login_at, u.last_sign_in_at]
+                    .filter(Boolean)
+                    .map((t) => new Date(t as string).getTime())
+                    .filter((t) => !isNaN(t));
+                  const lastActiveTime = validTimes.length > 0 ? new Date(Math.max(...validTimes)).toISOString() : null;
 
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/70 transition">
-                      {/* Cột 1: Tài khoản + Trạng thái Online phong cách Facebook */}
+                      {/* Cột 1: Avatar đại diện + chỉ lấy chấm xanh/vàng/xám cạnh avatar */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="relative shrink-0">
                             <div className="w-9 h-9 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-bold text-xs">
                               {(u.ho_ten || u.email).substring(0, 2).toUpperCase()}
                             </div>
-                            {/* Chấm tròn trạng thái Online/Away/Offline */}
+                            {/* Chấm tròn trạng thái Online (Xanh) / Chuyển tab (Vàng) / Offline (Xám) / Khóa (Đỏ) */}
                             <span
                               className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${presence.dotColor}`}
-                              title={presence.statusText}
+                              title={presence.title}
                             />
                           </div>
 
@@ -663,11 +627,6 @@ function StaffManagementTab({
                               )}
                             </div>
                             <div className="text-[11px] text-slate-500">{u.email}</div>
-                            {/* Dòng chữ báo trạng thái như Facebook */}
-                            <div className="text-[11px] text-slate-600 font-medium mt-0.5 flex items-center gap-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${presence.dotColor}`} />
-                              <span>{presence.statusText}</span>
-                            </div>
                           </div>
                         </div>
                       </td>
@@ -703,60 +662,44 @@ function StaffManagementTab({
                         )}
                       </td>
 
-                      {/* Cột 3: Trạng thái tài khoản (Hoạt động / Khóa) */}
+                      {/* Cột 3: Trạng thái Account (1 icon: ấn là hoạt động, ấn cái nữa là khóa) */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                              isUserLocked
-                                ? 'bg-red-50 text-red-700 border-red-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            }`}
+                        {u.is_current_user ? (
+                          <div
+                            className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200"
+                            title="Tài khoản của bạn (Đang hoạt động)"
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${isUserLocked ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                            {isUserLocked ? 'Đã khóa' : 'Hoạt động'}
-                          </span>
-
-                          {!u.is_current_user && (
-                            <button
-                              type="button"
-                              onClick={() => setToggleStatusTarget(u)}
-                              className={`p-1.5 rounded-lg border transition cursor-pointer text-[11px] font-medium inline-flex items-center gap-1 ${
-                                isUserLocked
-                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                                  : 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200'
-                              }`}
-                              title={isUserLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                            >
-                              {isUserLocked ? (
-                                <>
-                                  <Unlock className="w-3 h-3" />
-                                  <span>Mở</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Lock className="w-3 h-3" />
-                                  <span>Khóa</span>
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={statusUpdatingId === u.id}
+                            onClick={() => handleDirectToggleLock(u)}
+                            className={`w-8 h-8 rounded-xl transition cursor-pointer flex items-center justify-center border shadow-2xs ${
+                              isUserLocked
+                                ? 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200'
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
+                            }`}
+                            title={isUserLocked ? 'Đang Khóa — Ấn để chuyển sang Hoạt Động' : 'Đang Hoạt Động — Ấn để Khóa'}
+                          >
+                            {statusUpdatingId === u.id ? (
+                              <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            ) : isUserLocked ? (
+                              <Lock className="w-4 h-4 text-red-600" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            )}
+                          </button>
+                        )}
                       </td>
 
-                      {/* Cột 4: Lần cuối đăng nhập */}
+                      {/* Cột 4: Trạng thái hoạt động (thời gian hoạt động gần nhất) */}
                       <td className="px-4 py-3.5 text-slate-700 font-mono text-[11px]">
-                        {formatDateTimeFull(u.last_login_at)}
+                        {formatDateTimeFull(lastActiveTime)}
                       </td>
 
-                      {/* Cột 5: Lần cuối đăng xuất */}
-                      <td className="px-4 py-3.5 text-slate-700 font-mono text-[11px]">
-                        {u.tab_status === 'active' || u.tab_status === 'away'
-                          ? <span className="text-emerald-600 font-semibold">• Đang trong phiên</span>
-                          : formatDateTimeFull(u.last_logout_at)}
-                      </td>
-
-                      {/* Cột 6: Nút xóa */}
+                      {/* Cột 5: Nút xóa */}
                       <td className="px-4 py-3.5 text-right">
                         {!u.is_current_user && (
                           <button
@@ -1008,65 +951,7 @@ function StaffManagementTab({
         </div>
       )}
 
-      {/* ── CỬA SỔ NỔI 3: XÁC NHẬN KHÓA / MỞ KHÓA TÀI KHOẢN ── */}
-      {toggleStatusTarget && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
-        >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
-            <div className={`p-6 text-center border-b ${toggleStatusTarget.trang_thai === 'locked' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
-              <div
-                className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ${
-                  toggleStatusTarget.trang_thai === 'locked' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                }`}
-              >
-                {toggleStatusTarget.trang_thai === 'locked' ? <Unlock className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-              </div>
-              <h3 className="text-base font-bold text-slate-900">
-                {toggleStatusTarget.trang_thai === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản nhân viên'}
-              </h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Bạn có chắc muốn {toggleStatusTarget.trang_thai === 'locked' ? 'mở khóa cho' : 'khóa tài khoản của'}:<br />
-                <strong className="text-slate-800">{toggleStatusTarget.ho_ten}</strong>
-                <span className="text-slate-400"> ({toggleStatusTarget.email})</span>?<br />
-                {toggleStatusTarget.trang_thai !== 'locked' && (
-                  <span className="text-amber-700 font-medium">Khi bị khóa, nhân viên này sẽ không thể đăng nhập vào hệ thống.</span>
-                )}
-              </p>
-            </div>
-            <div className="p-4 flex gap-3 bg-white">
-              <button
-                type="button"
-                onClick={() => setToggleStatusTarget(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleLock}
-                disabled={statusUpdating}
-                className={`flex-1 px-4 py-2.5 rounded-xl text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
-                  toggleStatusTarget.trang_thai === 'locked'
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-amber-600 hover:bg-amber-700'
-                }`}
-              >
-                {statusUpdating ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : toggleStatusTarget.trang_thai === 'locked' ? (
-                  <Unlock className="w-3.5 h-3.5" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5" />
-                )}
-                <span>{toggleStatusTarget.trang_thai === 'locked' ? 'Mở Khóa' : 'Xác Nhận Khóa'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── CỬA SỔ NỔI 4: XÁC NHẬN XÓA TÀI KHOẢN ── */}
+      {/* ── CỬA SỔ NỔI 3: XÁC NHẬN XÓA TÀI KHOẢN ── */}
       {deleteTarget && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
