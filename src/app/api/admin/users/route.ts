@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
 import { sendMail } from '@/lib/mailer';
@@ -232,23 +232,33 @@ export async function POST(req: NextRequest) {
         </div>
       `;
 
-      await sendMail({
-        to: cleanEmail,
-        subject: `[PetM&M] Thông tin tài khoản ${isUserRole ? 'Tạo Đánh Giá' : 'Quản Trị'} - ${cleanName}`,
-        html: emailHtml,
-        text: `Xin chào ${cleanName},\n\nTài khoản PetM&M của bạn đã được khởi tạo bởi ${cleanCreator}.\n- Link đăng nhập tự động: ${autoFillUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${roleDisplayName}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
-      });
-      emailSent = true;
-    } catch (mailErr: any) {
-      console.error('Lỗi gửi email cho nhân sự mới:', mailErr);
-      emailError = mailErr?.message || 'Không thể kết nối máy chủ gửi mail SMTP';
+      // 3. Gửi email ngầm (background) không chặn phản hồi API để giao diện phản hồi tức thì
+      const sendEmailTask = async () => {
+        try {
+          await sendMail({
+            to: cleanEmail,
+            subject: `[PetM&M] Thông tin tài khoản ${isUserRole ? 'Tạo Đánh Giá' : 'Quản Trị'} - ${cleanName}`,
+            html: emailHtml,
+            text: `Xin chào ${cleanName},\n\nTài khoản PetM&M của bạn đã được khởi tạo bởi ${cleanCreator}.\n- Link đăng nhập tự động: ${autoFillUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${roleDisplayName}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
+          });
+          console.log(`[Users Background] Đã gửi email thông tin đăng nhập thành công đến: ${cleanEmail}`);
+        } catch (mailErr: any) {
+          console.error('[Users Background] Lỗi gửi email cho nhân sự mới:', mailErr?.message || mailErr);
+        }
+      };
+
+      if (typeof after === 'function') {
+        after(sendEmailTask);
+      } else {
+        sendEmailTask().catch((err) => console.error('[Users Background] Lỗi:', err));
+      }
+    } catch (err: any) {
+      console.warn('Lỗi chuẩn bị email khởi tạo tài khoản:', err?.message || err);
     }
 
     return NextResponse.json({
       success: true,
-      message: emailSent
-        ? `Đã tạo tài khoản và gửi email thông tin đăng nhập đến ${cleanEmail} thành công!`
-        : `Đã tạo tài khoản thành công! (Lưu ý gửi mail: ${emailError}. Mật khẩu khởi tạo: ${randomPassword})`,
+      message: `Đã tạo tài khoản thành công! Thông tin đăng nhập đang được gửi ngầm đến ${cleanEmail}.`,
     });
   } catch (err: any) {
     console.error('Lỗi API POST /api/admin/users:', err);

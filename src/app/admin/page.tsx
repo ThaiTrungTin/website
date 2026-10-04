@@ -905,7 +905,7 @@ function StaffManagementTab({
                   {adding ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Đang gửi mail...</span>
+                      <span>Đang tạo...</span>
                     </>
                   ) : (
                     <>
