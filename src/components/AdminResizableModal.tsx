@@ -104,17 +104,15 @@ export default function AdminResizableModal({
   const style: React.CSSProperties = isMaximized
     ? { width: '98vw', height: '96vh', maxWidth: '98vw', maxHeight: '96vh' }
     : {
-        width: size.width ? `${size.width}px` : undefined,
-        height: size.height ? `${size.height}px` : undefined,
-        maxWidth: '98vw',
-        maxHeight: '96vh',
+        ...(size.width !== null ? { width: `${size.width}px`, maxWidth: '98vw' } : {}),
+        ...(size.height !== null ? { height: `${size.height}px`, maxHeight: '96vh' } : {}),
       };
 
   return (
     <div
       ref={containerRef}
       style={style}
-      className={`relative ${className} select-text transition-[width,height] duration-75`}
+      className={`relative ${className} select-text`}
     >
       {/* Nút Phóng to / Thu nhỏ & Khôi phục kích thước ban đầu */}
       <div className="absolute top-3.5 right-12 z-40 hidden sm:flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
