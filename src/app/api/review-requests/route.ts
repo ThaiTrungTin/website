@@ -35,7 +35,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data: data || [] });
+    const mapped = (data || []).map((item) => {
+      let nguoi_tao = 'Nhân viên';
+      let cleanHinhAnh = item.hinh_anh;
+      if (item.hinh_anh && item.hinh_anh.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(item.hinh_anh);
+          if (parsed?.nguoi_tao) nguoi_tao = parsed.nguoi_tao;
+          cleanHinhAnh = parsed?.img || null;
+        } catch {}
+      }
+      return {
+        ...item,
+        nguoi_tao,
+        hinh_anh: cleanHinhAnh,
+      };
+    });
+
+    return NextResponse.json({ success: true, data: mapped });
   } catch (err: any) {
     console.error('[API Review Requests GET] Exception:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -51,6 +68,7 @@ export async function POST(req: NextRequest) {
       email,
       co_so,
       ma_hoa_don,
+      nguoi_tao,
     } = body;
 
     const cleanTenKH = typeof ten_khach_hang === 'string' ? ten_khach_hang.trim() : '';
@@ -62,6 +80,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanMaHD = typeof ma_hoa_don === 'string' ? ma_hoa_don.trim() : '';
+    const cleanNguoiTao = typeof nguoi_tao === 'string' && nguoi_tao.trim() ? nguoi_tao.trim() : 'Nhân viên lễ tân';
     let finalReviewCode = '';
 
     // Nếu có Mã Hóa Đơn -> Lấy Mã Hóa Đơn làm mã đánh giá và kiểm tra không trùng lặp
@@ -101,6 +120,7 @@ export async function POST(req: NextRequest) {
       email: typeof email === 'string' ? email.trim() || null : null,
       co_so: typeof co_so === 'string' ? co_so.trim() || null : null,
       trang_thai: 'cho_danh_gia',
+      hinh_anh: JSON.stringify({ nguoi_tao: cleanNguoiTao }),
       ngay_tao: new Date().toISOString(),
       ngay_cap_nhat: new Date().toISOString(),
     };

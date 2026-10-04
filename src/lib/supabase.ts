@@ -265,6 +265,7 @@ export interface YeuCauDanhGiaRecord {
   hinh_anh?: string | null;
   trang_thai: 'cho_danh_gia' | 'da_danh_gia';
   ngay_danh_gia?: string | null;
+  nguoi_tao?: string | null;
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }

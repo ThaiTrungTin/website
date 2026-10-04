@@ -26,6 +26,7 @@ import {
   Shield,
   AlertTriangle,
   Lock,
+  ChevronDown,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import PetLogo from '@/components/PetLogo';
@@ -122,6 +123,32 @@ export default function TaoDanhGiaPage() {
   const [email, setEmail] = useState<string>('');
   const [coSo, setCoSo] = useState<string>('');
   const [maHoaDon, setMaHoaDon] = useState<string>('');
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState<boolean>(false);
+  const branchDropdownRef = React.useRef<HTMLDivElement>(null);
+  const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setCurrentTimeStr(
+        `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+      );
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target as Node)) {
+        setIsBranchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -180,6 +207,7 @@ export default function TaoDanhGiaPage() {
           email: email.trim(),
           co_so: coSo.trim(),
           ma_hoa_don: maHoaDon.trim(),
+          nguoi_tao: currentUser?.ho_ten || currentUser?.username || 'Nhân viên lễ tân',
         }),
       });
       const json = await res.json();
@@ -519,24 +547,97 @@ export default function TaoDanhGiaPage() {
                     </div>
                   </div>
 
+                  {/* Người tạo & Thời gian tạo */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Người tạo phiên
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          readOnly
+                          value={currentUser?.ho_ten || currentUser?.username || 'Nhân viên lễ tân'}
+                          className="w-full rounded-lg bg-white border border-emerald-200 pl-8 pr-3 py-2 text-xs font-bold text-emerald-900 focus:outline-none"
+                        />
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Thời gian tạo
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          readOnly
+                          value={currentTimeStr}
+                          className="w-full rounded-lg bg-white border border-emerald-200 pl-8 pr-3 py-2 text-xs font-mono font-medium text-slate-700 focus:outline-none"
+                        />
+                        <Clock className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cơ sở khám (Custom Web Dropdown của web, không dùng dropdown trình duyệt) */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                       Cơ sở khám
                     </label>
-                    <div className="relative">
-                      <select
-                        value={coSo}
-                        onChange={(e) => setCoSo(e.target.value)}
-                        className="w-full rounded-xl bg-white border border-slate-200 pl-10 pr-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm cursor-pointer"
+                    <div className="relative" ref={branchDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                        className="w-full rounded-xl bg-white border border-slate-200 pl-10 pr-10 py-3 text-sm text-left focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm flex items-center justify-between cursor-pointer"
                       >
-                        <option value="">-- Chọn cơ sở / chi nhánh --</option>
-                        {branches.map((b) => (
-                          <option key={b.id} value={b.ten_chi_nhanh}>
-                            {b.ten_chi_nhanh}
-                          </option>
-                        ))}
-                      </select>
-                      <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <span className={coSo ? 'text-slate-800 font-medium truncate' : 'text-slate-400'}>
+                          {coSo || '-- Chọn cơ sở / chi nhánh --'}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 transition-transform duration-200 ${isBranchDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                      </button>
+
+                      {isBranchDropdownOpen && (
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150 max-h-60 overflow-y-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCoSo('');
+                              setIsBranchDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-2.5 text-left text-xs font-medium flex items-center justify-between hover:bg-slate-50 transition cursor-pointer ${
+                              !coSo ? 'text-emerald-700 bg-emerald-50/60 font-bold' : 'text-slate-500'
+                            }`}
+                          >
+                            <span>-- Chọn cơ sở / chi nhánh --</span>
+                            {!coSo && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                          </button>
+
+                          {branches.map((b) => {
+                            const isSelected = coSo === b.ten_chi_nhanh;
+                            return (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => {
+                                  setCoSo(b.ten_chi_nhanh);
+                                  setIsBranchDropdownOpen(false);
+                                }}
+                                className={`w-full px-4 py-2.5 text-left text-xs flex items-center justify-between hover:bg-emerald-50 transition cursor-pointer ${
+                                  isSelected ? 'text-[#2D5A27] bg-emerald-50 font-bold' : 'text-slate-700 font-medium'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate pr-2">
+                                  <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                                  <span className="truncate">{b.ten_chi_nhanh}</span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -615,57 +716,121 @@ export default function TaoDanhGiaPage() {
               ) : historyList.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">Chưa có lượt tạo đánh giá nào</div>
               ) : (
-                <div className="divide-y divide-slate-100 max-h-[560px] overflow-y-auto pr-1">
-                  {historyList.map((item) => {
-                    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
-                    const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
-                    return (
-                      <div key={item.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/60 transition rounded-lg px-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-800 text-sm truncate">
-                              {item.ten_khach_hang}
-                            </span>
-                            <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                              {item.ma_danh_gia}
-                            </span>
-                            {item.trang_thai === 'da_danh_gia' && (
-                              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                <Check className="w-3 h-3" /> Đã gửi đánh giá
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                            {item.so_dien_thoai && <span>📞 {item.so_dien_thoai}</span>}
-                            {item.co_so && <span>🏥 {item.co_so}</span>}
-                            {item.ngay_tao && (
-                              <span>🕒 {new Date(item.ngay_tao).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyLink(link)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-600 transition-colors cursor-pointer"
-                          >
-                            <Copy className="w-3 h-3" />
-                            Chép
-                          </button>
-                          <a
-                            href={link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                {/* Mobile scroll hint */}
+                <div className="sm:hidden px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
+                  <span>← Vuốt ngang xem đầy đủ cột →</span>
+                  <span className="font-semibold text-emerald-600">Cuộn dọc &amp; ngang</span>
                 </div>
+
+                <div className="max-h-[520px] overflow-y-auto overflow-x-auto">
+                  <table className="w-full text-xs text-left whitespace-nowrap min-w-[700px]">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold sticky top-0 z-10 shadow-2xs">
+                      <tr>
+                        <th className="py-2.5 px-3.5">Khách hàng</th>
+                        <th className="py-2.5 px-3">Mã ĐG / Mã HĐ</th>
+                        <th className="py-2.5 px-3">Cơ sở khám</th>
+                        <th className="py-2.5 px-3">Trạng thái</th>
+                        <th className="py-2.5 px-3">Người tạo &amp; Thời gian</th>
+                        <th className="py-2.5 px-3.5 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {historyList.map((item) => {
+                        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
+                        const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
+                        const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
+                        const pad = (n: number) => String(n).padStart(2, '0');
+                        const timeStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                        const creator = item.nguoi_tao || 'Nhân viên';
+
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-3 px-3.5">
+                              <div>
+                                <span className="font-bold text-slate-900 text-sm block">
+                                  {item.ten_khach_hang}
+                                </span>
+                                {item.so_dien_thoai ? (
+                                  <span className="text-[11px] text-slate-500 font-mono">
+                                    {item.so_dien_thoai}
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-slate-400 italic">Không có SĐT</span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-100 text-slate-700 border border-slate-200">
+                                {item.ma_danh_gia}
+                              </span>
+                              {item.ma_hoa_don && item.ma_hoa_don !== item.ma_danh_gia && (
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  HĐ: {item.ma_hoa_don}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-3 text-slate-700">
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="font-medium text-[11px]">{item.co_so || 'Chưa chọn'}</span>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3">
+                              {item.trang_thai === 'da_danh_gia' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Đã gửi {item.so_sao ? `(${item.so_sao}★)` : ''}</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Clock className="w-3 h-3 text-amber-600" />
+                                  <span>Chờ đánh giá</span>
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-3 text-slate-600 text-[11px]">
+                              <div>
+                                <span className="font-semibold text-slate-800">Được tạo bởi: {creator}</span>
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  {timeStr}
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyLink(link)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200 transition cursor-pointer"
+                                  title="Sao chép link gửi cho khách"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  <span>Chép link</span>
+                                </button>
+                                <a
+                                  href={link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+                                  title="Mở link đánh giá"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               )}
             </div>
           </div>

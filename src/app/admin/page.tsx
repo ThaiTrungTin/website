@@ -3340,8 +3340,20 @@ function formatDisplayReviewDate(val?: string | null): string {
   if (val.includes('5 ngày') || val.includes('5 days')) return '27/09/2026';
   if (val.includes('1 tuần') || val.includes('1 week')) return '25/09/2026';
   if (val.includes('2 tuần') || val.includes('2 weeks')) return '18/09/2026';
-  if (val.includes('3 tuần') || val.includes('3 weeks')) return '11/09/2026';
   return val;
+}
+
+function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
+  if (rev.noi_dung_en && rev.noi_dung_en.includes('Được tạo bởi:')) {
+    return rev.noi_dung_en;
+  }
+  const d = rev.ngay_tao ? new Date(rev.ngay_tao) : new Date(rev.ngay_danh_gia || Date.now());
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateFormatted = isNaN(d.getTime())
+    ? '04/10/2026 12:30:22'
+    : `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const creator = rev.ten_khach_hang_en?.trim() || 'Trần Văn A';
+  return `Được tạo bởi: ${creator} ; ${dateFormatted}`;
 }
 
   const handleAddNewReview = () => {
@@ -8965,18 +8977,10 @@ function formatDisplayReviewDate(val?: string | null): string {
                                     &ldquo;{rev.noi_dung}&rdquo;
                                   </p>
                                 </div>
-                                {rev.noi_dung_en ? (
-                                  <div className="flex items-start gap-1.5 pt-1 border-t border-slate-100">
-                                    <UKFlag className="w-3.5 h-2.5 rounded-[1px] mt-0.5 shrink-0" />
-                                    <p className="text-emerald-800 line-clamp-2 leading-relaxed text-[11px] italic">
-                                      &ldquo;{rev.noi_dung_en}&rdquo;
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">
-                                    Chưa có bản EN
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1.5 pt-1 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
+                                  <span className="text-slate-400">👤</span>
+                                  <span>{formatReviewCreatorInfo(rev)}</span>
+                                </div>
                               </div>
                             </td>
 

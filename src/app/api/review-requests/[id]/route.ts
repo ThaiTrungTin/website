@@ -98,10 +98,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const cleanNoiDung = typeof body.noi_dung_danh_gia === 'string' ? body.noi_dung_danh_gia.trim() : '';
     const cleanHinhAnh = typeof body.hinh_anh === 'string' ? body.hinh_anh.trim() : null;
 
+    let creatorName = 'Ban Quản Trị';
+    if (existing.hinh_anh && existing.hinh_anh.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(existing.hinh_anh);
+        if (parsed?.nguoi_tao) creatorName = parsed.nguoi_tao;
+      } catch {}
+    }
+
     const updatePayload = {
       so_sao,
       noi_dung_danh_gia: cleanNoiDung || null,
-      hinh_anh: cleanHinhAnh || null,
+      hinh_anh: JSON.stringify({ nguoi_tao: creatorName, img: cleanHinhAnh }),
       trang_thai: 'da_danh_gia',
       ngay_danh_gia: new Date().toISOString(),
       ngay_cap_nhat: new Date().toISOString(),
@@ -121,11 +129,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // 4. Đồng bộ đánh giá vào bảng public.danh_gia
     try {
+      const createdDate = existing.ngay_tao ? new Date(existing.ngay_tao) : new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const timeStr = `${pad(createdDate.getDate())}/${pad(createdDate.getMonth() + 1)}/${createdDate.getFullYear()} ${pad(createdDate.getHours())}:${pad(createdDate.getMinutes())}:${pad(createdDate.getSeconds())}`;
+
       const publicReview = {
         ten_khach_hang: existing.ten_khach_hang || 'Khách hàng PetM&M',
         so_dien_thoai: existing.so_dien_thoai || '0903 *** ***',
         so_sao: so_sao,
         noi_dung: cleanNoiDung || `Khách hàng đánh giá dịch vụ ${so_sao} sao tại PetM&M.`,
+        noi_dung_en: `Được tạo bởi: ${creatorName} ; ${timeStr}`,
         chi_nhanh: existing.co_so || 'Hệ Thống Thú Y PetM&M',
         hinh_anh_thu_cung: cleanHinhAnh || null,
         ngay_danh_gia: new Date().toISOString().split('T')[0],
