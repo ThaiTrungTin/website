@@ -1,0 +1,292 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verifyToken } from '@/lib/adminAuth';
+import { sendMail } from '@/lib/mailer';
+
+// GET: Lấy danh sách tất cả nhân sự / tài khoản quản trị
+export async function GET(req: NextRequest) {
+  try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
+        { status: 401 }
+      );
+    }
+
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) {
+      console.error('Lỗi lấy danh sách user từ Supabase Auth:', error);
+      return NextResponse.json(
+        { success: false, message: 'Không thể lấy danh sách nhân sự từ Supabase: ' + error.message },
+        { status: 500 }
+      );
+    }
+
+    const users = (data.users || []).map((u) => {
+      const meta = u.user_metadata || {};
+      return {
+        id: u.id,
+        email: u.email || '',
+        ho_ten: meta.ho_ten || u.email?.split('@')[0] || 'Chưa đặt tên',
+        vai_tro: meta.vai_tro || 'staff',
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at,
+        is_current_user:
+          u.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+          u.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@'),
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      users,
+      total: users.length,
+    });
+  } catch (err: any) {
+    console.error('Lỗi API GET /api/admin/users:', err);
+    return NextResponse.json(
+      { success: false, message: 'Lỗi máy chủ khi lấy danh sách nhân sự!' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST: Thêm nhân sự mới (yêu cầu email thật) + tạo tài khoản + gửi email thông tin đăng nhập
+export async function POST(req: NextRequest) {
+  try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+    const { ho_ten, email, vai_tro, password: inputPassword } = body;
+
+    if (!ho_ten || !ho_ten.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'Vui lòng nhập Họ và tên nhân sự!' },
+        { status: 400 }
+      );
+    }
+
+    if (!email || !email.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'Vui lòng nhập địa chỉ Email thật của nhân sự!' },
+        { status: 400 }
+      );
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return NextResponse.json(
+        { success: false, message: 'Email không đúng định dạng! Vui lòng nhập email thật (ví dụ: nhansu@gmail.com).' },
+        { status: 400 }
+      );
+    }
+
+    // Tự sinh mật khẩu ngẫu nhiên nếu không nhập
+    const randomPassword =
+      inputPassword && inputPassword.trim().length >= 6
+        ? inputPassword.trim()
+        : `PetMM@${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const cleanName = ho_ten.trim();
+    const cleanRole = vai_tro || 'staff';
+
+    // 1. Tạo user trong Supabase Auth
+    const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password: randomPassword,
+      email_confirm: true,
+      user_metadata: {
+        ho_ten: cleanName,
+        vai_tro: cleanRole,
+      },
+    });
+
+    if (createError) {
+      console.error('Lỗi tạo user Supabase Auth:', createError);
+      let errorMsg = createError.message;
+      if (createError.message.includes('already been registered') || createError.message.includes('already exists')) {
+        errorMsg = `Email "${cleanEmail}" đã được đăng ký tài khoản trước đó!`;
+      }
+      return NextResponse.json({ success: false, message: errorMsg }, { status: 400 });
+    }
+
+    // 2. Xác định link đăng nhập của hệ thống
+    const origin = req.nextUrl.origin || 'https://petsmm.vercel.app';
+    const loginUrl = `${origin}/admin`;
+
+    // 3. Gửi email chứa thông tin tài khoản và link đăng nhập
+    let emailSent = false;
+    let emailError = '';
+    try {
+      const emailHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #2D5A27 0%, #1E3F1B 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">PETM&amp;M PET HOSPITAL</h1>
+            <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">Cổng Quản Trị Hệ Thống Bệnh Viện Thú Cưng</p>
+          </div>
+
+          <!-- Body -->
+          <div style="padding: 32px 24px;">
+            <p style="font-size: 16px; color: #1e293b; margin-top: 0;">Xin chào <strong>${cleanName}</strong>,</p>
+            <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+              Tài khoản quản trị của bạn tại <strong>Bệnh Viện Thú Y PetM&amp;M</strong> đã được khởi tạo thành công bởi <strong>${currentUser.ho_ten || currentUser.username}</strong>. Dưới đây là thông tin đăng nhập chính thức của bạn:
+            </p>
+
+            <!-- Khung thông tin đăng nhập -->
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin: 24px 0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; width: 140px;">🌐 <strong>Cổng đăng nhập:</strong></td>
+                  <td style="padding: 8px 0;"><a href="${loginUrl}" style="color: #2D5A27; font-weight: 700; text-decoration: underline;">${loginUrl}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">📧 <strong>Tên đăng nhập / Email:</strong></td>
+                  <td style="padding: 8px 0; color: #0f172a; font-weight: 700;">${cleanEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">🔑 <strong>Mật khẩu khởi tạo:</strong></td>
+                  <td style="padding: 8px 0;">
+                    <span style="display: inline-block; background: #e2e8f0; color: #0f172a; font-family: monospace; font-size: 16px; font-weight: 700; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px;">${randomPassword}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">🛡️ <strong>Vai trò:</strong></td>
+                  <td style="padding: 8px 0; color: #2D5A27; font-weight: 600;">${cleanRole === 'super_admin' ? 'Quản trị viên cấp cao (Super Admin)' : cleanRole === 'admin' ? 'Quản trị viên (Admin)' : 'Nhân viên (Staff)'}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Nút bấm Đăng nhập -->
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${loginUrl}" style="display: inline-block; background: #2D5A27; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 12px rgba(45,90,39,0.3);">
+                Đăng Nhập Vào Hệ Thống Ngay →
+              </a>
+            </div>
+
+            <!-- Lời nhắc an toàn -->
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 24px;">
+              <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
+                🔒 <strong>Lưu ý bảo mật:</strong> Để đảm bảo an toàn tuyệt đối, vui lòng đổi mật khẩu cá nhân ngay sau lần đăng nhập đầu tiên tại mục hồ sơ cá nhân trên trang quản trị.
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f1f5f9; padding: 16px 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0;">© 2026 PetM&amp;M Pet Hospital. Email này được gửi tự động từ hệ thống quản trị.</p>
+          </div>
+        </div>
+      `;
+
+      await sendMail({
+        to: cleanEmail,
+        subject: `[PetM&M] Thông tin tài khoản quản trị hệ thống PetM&M - ${cleanName}`,
+        html: emailHtml,
+        text: `Xin chào ${cleanName},\n\nTài khoản quản trị PetM&M của bạn đã được khởi tạo.\n- Link đăng nhập: ${loginUrl}\n- Email: ${cleanEmail}\n- Mật khẩu: ${randomPassword}\n- Vai trò: ${cleanRole}\n\nVui lòng đăng nhập và đổi mật khẩu sớm nhất!`,
+      });
+      emailSent = true;
+    } catch (mailErr: any) {
+      console.error('Lỗi gửi email cho nhân sự mới:', mailErr);
+      emailError = mailErr?.message || 'Không thể kết nối máy chủ gửi mail SMTP';
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: emailSent
+        ? `Đã tạo tài khoản và gửi email thông tin đăng nhập đến ${cleanEmail} thành công!`
+        : `Đã tạo tài khoản thành công! (Lưu ý gửi mail: ${emailError}. Mật khẩu khởi tạo: ${randomPassword})`,
+      user: {
+        id: createData.user?.id,
+        email: cleanEmail,
+        ho_ten: cleanName,
+        vai_tro: cleanRole,
+        created_at: createData.user?.created_at,
+      },
+      passwordGenerated: randomPassword,
+      emailSent,
+    });
+  } catch (err: any) {
+    console.error('Lỗi API POST /api/admin/users:', err);
+    return NextResponse.json(
+      { success: false, message: 'Đã xảy ra lỗi máy chủ khi thêm nhân sự: ' + (err?.message || err) },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Xóa tài khoản nhân sự
+export async function DELETE(req: NextRequest) {
+  try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: 'Bạn chưa đăng nhập hoặc phiên đã hết hạn!' },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('id');
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: 'Thiếu ID nhân sự cần xóa!' },
+        { status: 400 }
+      );
+    }
+
+    // 1. Kiểm tra không cho phép tự xóa chính mình
+    const { data: userData, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (getUserErr) {
+      return NextResponse.json(
+        { success: false, message: 'Không tìm thấy tài khoản nhân sự này!' },
+        { status: 404 }
+      );
+    }
+
+    if (
+      userData.user.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+      userData.user.email?.toLowerCase().startsWith(currentUser.username.toLowerCase() + '@')
+    ) {
+      return NextResponse.json(
+        { success: false, message: 'Bạn không thể tự xóa tài khoản đang đăng nhập của chính mình!' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Xóa user trong Supabase Auth
+    const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (deleteErr) {
+      return NextResponse.json(
+        { success: false, message: 'Lỗi khi xóa nhân sự: ' + deleteErr.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Đã xóa tài khoản nhân sự thành công!',
+    });
+  } catch (err: any) {
+    console.error('Lỗi API DELETE /api/admin/users:', err);
+    return NextResponse.json(
+      { success: false, message: 'Đã xảy ra lỗi khi xóa nhân sự!' },
+      { status: 500 }
+    );
+  }
+}

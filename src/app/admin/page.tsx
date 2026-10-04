@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
@@ -64,6 +64,10 @@ import {
   Calendar,
   Bell,
   Smile,
+  Users,
+  UserPlus,
+  ShieldAlert,
+  Lock,
 } from 'lucide-react';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
@@ -222,10 +226,453 @@ function SloganInlineEditor({
   );
 }
 
-type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config';
+type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff';
 export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
 
+// ── LOGOUT CONFIRMATION MODAL ──────────────────────────────────────────────
+function LogoutConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[fadeInScale_0.2s_ease]"
+        style={{ animation: 'fadeInScale 0.18s cubic-bezier(.4,0,.2,1)' }}>
+        <div className="bg-gradient-to-br from-red-50 to-orange-50 p-6 text-center border-b border-red-100">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+            <LogOut className="w-7 h-7 text-red-500" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">Xác nhận đăng xuất</h3>
+          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            Bạn có chắc chắn muốn đăng xuất khỏi<br />
+            <strong className="text-slate-700">Cổng Quản Trị PetM&amp;M</strong>?
+          </p>
+        </div>
+        <div className="p-4 flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── STAFF MANAGEMENT TAB ───────────────────────────────────────────────────
+interface StaffUser {
+  id: string;
+  email: string;
+  ho_ten: string;
+  vai_tro: string;
+  created_at: string;
+  last_sign_in_at?: string;
+  is_current_user?: boolean;
+}
+
+function StaffManagementTab({
+  currentUser,
+  showNotification,
+}: {
+  currentUser: { username: string; ho_ten: string; vai_tro: string } | null;
+  showNotification: (type: 'success' | 'error', message: string) => void;
+}) {
+  const [users, setUsers] = React.useState<StaffUser[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [activeSubTab, setActiveSubTab] = React.useState<'list' | 'add' | 'password'>('list');
+
+  // Add staff form
+  const [addForm, setAddForm] = React.useState({ ho_ten: '', email: '', vai_tro: 'staff' });
+  const [adding, setAdding] = React.useState(false);
+
+  // Change password form
+  const [pwForm, setPwForm] = React.useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [showPw, setShowPw] = React.useState({ current: false, new: false, confirm: false });
+  const [changingPw, setChangingPw] = React.useState(false);
+
+  // Delete confirm
+  const [deleteTarget, setDeleteTarget] = React.useState<StaffUser | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+
+  const loadUsers = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      if (data.success) setUsers(data.users || []);
+    } catch {
+      showNotification('error', 'Không thể tải danh sách nhân sự!');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addForm.ho_ten.trim()) { showNotification('error', 'Vui lòng nhập họ và tên!'); return; }
+    if (!addForm.email.trim()) { showNotification('error', 'Vui lòng nhập email thật!'); return; }
+    setAdding(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('success', data.message);
+        setAddForm({ ho_ten: '', email: '', vai_tro: 'staff' });
+        setActiveSubTab('list');
+        loadUsers();
+      } else {
+        showNotification('error', data.message || 'Thêm nhân sự thất bại!');
+      }
+    } catch {
+      showNotification('error', 'Lỗi kết nối server!');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users?id=${deleteTarget.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('success', data.message);
+        setDeleteTarget(null);
+        loadUsers();
+      } else {
+        showNotification('error', data.message || 'Xóa thất bại!');
+      }
+    } catch {
+      showNotification('error', 'Lỗi kết nối server!');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pwForm.currentPassword) { showNotification('error', 'Vui lòng nhập mật khẩu hiện tại!'); return; }
+    if (pwForm.newPassword.length < 6) { showNotification('error', 'Mật khẩu mới phải có ít nhất 6 ký tự!'); return; }
+    if (pwForm.newPassword !== pwForm.confirmPassword) { showNotification('error', 'Xác nhận mật khẩu không khớp!'); return; }
+    setChangingPw(true);
+    try {
+      const res = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('success', 'Đổi mật khẩu thành công!');
+        setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        showNotification('error', data.message || 'Đổi mật khẩu thất bại!');
+      }
+    } catch {
+      showNotification('error', 'Lỗi kết nối server!');
+    } finally {
+      setChangingPw(false);
+    }
+  };
+
+  const roleLabel = (r: string) => r === 'super_admin' ? 'Super Admin' : r === 'admin' ? 'Admin' : 'Staff';
+  const roleColor = (r: string) => r === 'super_admin' ? 'bg-amber-100 text-amber-800' : r === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600';
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-[#2D5A27]" />
+            <span>Quản Lý Nhân Sự &amp; Tài Khoản Hệ Thống</span>
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">Thêm, xóa tài khoản nhân viên. Email đăng nhập sẽ được gửi tự động.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('add')}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-sm transition cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Thêm Nhân Sự</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('password')}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition cursor-pointer"
+          >
+            <Lock className="w-4 h-4 text-slate-500" />
+            <span>Đổi Mật Khẩu</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sub-tab navigation */}
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        {[
+          { id: 'list', label: 'Danh Sách', icon: Users },
+          { id: 'add', label: 'Thêm Nhân Sự', icon: UserPlus },
+          { id: 'password', label: 'Đổi Mật Khẩu', icon: Lock },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveSubTab(id as any)}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              activeSubTab === id ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* LIST TAB */}
+      {activeSubTab === 'list' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+            <span className="text-xs font-bold text-slate-700">Tổng {users.length} tài khoản</span>
+            <button type="button" onClick={loadUsers} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 transition cursor-pointer">
+              <RefreshCw className="w-3.5 h-3.5" />
+              Làm mới
+            </button>
+          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <div className="w-5 h-5 border-2 border-[#2D5A27] border-t-transparent rounded-full animate-spin mr-2" />
+              <span className="text-xs">Đang tải...</span>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-xs">Chưa có tài khoản nào</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-5 py-3 font-semibold text-slate-500">Họ và tên</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Email</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Vai trò</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Ngày tạo</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-500">Đăng nhập lần cuối</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {users.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50 transition">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs shrink-0">
+                            {(u.ho_ten || u.email).substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-800">{u.ho_ten}</div>
+                            {u.is_current_user && <span className="text-[10px] text-emerald-600 font-medium">• Đang đăng nhập</span>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-600">{u.email}</td>
+                      <td className="px-4 py-3.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${roleColor(u.vai_tro)}`}>
+                          {roleLabel(u.vai_tro)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-500">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '—'}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-500">
+                        {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {!u.is_current_user && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(u)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                            title="Xóa tài khoản"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ADD TAB */}
+      {activeSubTab === 'add' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-lg">
+          <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-[#2D5A27]" />
+            Thêm Nhân Sự Mới
+          </h3>
+          <p className="text-xs text-slate-500 mb-5">
+            Hệ thống sẽ tự tạo mật khẩu ngẫu nhiên và <strong>gửi email thông tin đăng nhập</strong> đến địa chỉ email nhân sự.
+          </p>
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Họ và tên <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                placeholder="Nguyễn Văn A"
+                value={addForm.ho_ten}
+                onChange={(e) => setAddForm((p) => ({ ...p, ho_ten: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Email thật <span className="text-red-500">*</span>
+                <span className="ml-1.5 text-[10px] font-normal text-slate-400">(dùng để gửi thông tin đăng nhập)</span>
+              </label>
+              <input
+                type="email"
+                placeholder="nhansu@gmail.com"
+                value={addForm.email}
+                onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Vai trò</label>
+              <select
+                value={addForm.vai_tro}
+                onChange={(e) => setAddForm((p) => ({ ...p, vai_tro: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none bg-white transition"
+              >
+                <option value="staff">Nhân viên (Staff)</option>
+                <option value="admin">Quản trị viên (Admin)</option>
+                <option value="super_admin">Quản trị viên cấp cao (Super Admin)</option>
+              </select>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+              <Mail className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                Hệ thống sẽ tự sinh mật khẩu và <strong>gửi email</strong> chứa link đăng nhập + mật khẩu đến nhân sự. Nhân sự nên đổi mật khẩu ngay sau khi đăng nhập lần đầu.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setActiveSubTab('list')} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
+                Hủy
+              </button>
+              <button type="submit" disabled={adding} className="flex-1 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
+                {adding ? (
+                  <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang gửi...</>
+                ) : (
+                  <><Send className="w-3.5 h-3.5" /> Thêm &amp; Gửi Email</>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* CHANGE PASSWORD TAB */}
+      {activeSubTab === 'password' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-lg">
+          <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <Lock className="w-4 h-4 text-[#2D5A27]" />
+            Đổi Mật Khẩu Cá Nhân
+          </h3>
+          <p className="text-xs text-slate-500 mb-5">Đổi mật khẩu cho tài khoản <strong className="text-slate-700">{currentUser?.ho_ten || currentUser?.username}</strong> đang đăng nhập.</p>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {[
+              { key: 'currentPassword', label: 'Mật khẩu hiện tại', show: showPw.current, toggle: () => setShowPw(p => ({ ...p, current: !p.current })) },
+              { key: 'newPassword', label: 'Mật khẩu mới', show: showPw.new, toggle: () => setShowPw(p => ({ ...p, new: !p.new })) },
+              { key: 'confirmPassword', label: 'Xác nhận mật khẩu mới', show: showPw.confirm, toggle: () => setShowPw(p => ({ ...p, confirm: !p.confirm })) },
+            ].map(({ key, label, show, toggle }) => (
+              <div key={key}>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">{label} <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input
+                    type={show ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={(pwForm as any)[key]}
+                    onChange={(e) => setPwForm(p => ({ ...p, [key]: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-xs focus:border-[#2D5A27] focus:outline-none transition"
+                    required
+                  />
+                  <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                    {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setActiveSubTab('list')} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
+                Hủy
+              </button>
+              <button type="submit" disabled={changingPw} className="flex-1 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
+                {changingPw ? (
+                  <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</>
+                ) : (
+                  <><KeyRound className="w-3.5 h-3.5" /> Đổi Mật Khẩu</>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM MODAL */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="bg-red-50 p-6 text-center border-b border-red-100">
+              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+                <ShieldAlert className="w-7 h-7 text-red-500" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Xác nhận xóa tài khoản</h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Bạn có chắc muốn xóa tài khoản của<br />
+                <strong className="text-slate-800">{deleteTarget.ho_ten}</strong>
+                <span className="text-slate-400"> ({deleteTarget.email})</span>?<br />
+                <span className="text-red-500 font-medium">Hành động này không thể hoàn tác!</span>
+              </p>
+            </div>
+            <div className="p-4 flex gap-3">
+              <button type="button" onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
+                Hủy bỏ
+              </button>
+              <button type="button" onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
+                {deleting ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                {deleting ? 'Đang xóa...' : 'Xóa tài khoản'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
+
   // XÁC THỰC QUẢN TRỊ VIÊN (ADMIN AUTHENTICATION)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentUser, setCurrentUser] = useState<{ username: string; ho_ten: string; vai_tro: string } | null>(null);
@@ -260,8 +707,14 @@ export default function AdminDashboardPage() {
     return () => { isMounted = false; };
   }, []);
 
-  const handleLogout = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn đăng xuất khỏi cổng quản trị PetM&M?')) return;
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const doLogout = async () => {
+    setShowLogoutConfirm(false);
     setIsLoggingOut(true);
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
@@ -3317,6 +3770,7 @@ function formatDisplayReviewDate(val?: string | null): string {
     team: { title: 'Quản Lý Đội Ngũ Y Tế', category: 'Chuyên Môn & Nhân Sự', icon: UserCheck },
     articles: { title: 'Quản Lý Cẩm Nang & Bài Viết', category: 'Tin Tức & Kiến Thức', icon: BookOpen },
     config: { title: 'Cài Đặt Hệ Thống', category: 'Cài Đặt', icon: Settings },
+    staff: { title: 'Quản Lý Nhân Sự & Tài Khoản', category: 'Quản Trị Hệ Thống', icon: Users },
   };
 
   const subTabTitles: Record<ConfigSubTab, string> = {
@@ -3727,6 +4181,29 @@ function formatDisplayReviewDate(val?: string | null): string {
                 >
                   {articles.length}
                 </span>
+              </button>
+
+              {/* Menu 9: Staff / Account Management */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('staff');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group cursor-pointer ${
+                  activeTab === 'staff'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Users
+                    className={`w-4 h-4 transition ${
+                      activeTab === 'staff' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span>Nhân Sự &amp; Tài Khoản</span>
+                </div>
               </button>
             </nav>
           </div>
@@ -8422,6 +8899,11 @@ function formatDisplayReviewDate(val?: string | null): string {
       )}
 
           {/* ========================================================= */}
+          {/* TAB NHÂN SỰ: QUẢN LÝ TÀI KHOẢN & NHÂN SỰ HỆ THỐNG        */}
+          {/* ========================================================= */}
+          {activeTab === 'staff' && <StaffManagementTab currentUser={currentUser} showNotification={showNotification} />}
+
+          {/* ========================================================= */}
           {/* TAB 8: QUẢN LÝ BÀI VIẾT & CẨM NANG KIẾN THỨC             */}
           {/* ========================================================= */}
           {activeTab === 'articles' && (
@@ -12213,6 +12695,14 @@ function formatDisplayReviewDate(val?: string | null): string {
             </form>
           </AdminResizableModal>
         </div>
+      )}
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onConfirm={doLogout}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
       )}
     </div>
   );
