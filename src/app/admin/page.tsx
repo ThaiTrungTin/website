@@ -62,6 +62,7 @@ import {
   ChevronDown,
   Calendar,
   Bell,
+  Smile,
 } from 'lucide-react';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
@@ -74,6 +75,148 @@ import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announc
 import { SloganTickerItem, parseSloganList, isSloganActive, renderWithShakingIcons } from '@/lib/slogans';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
+
+// ── BẢNG ICON RUNG PHONG CÁCH ZALO ──
+export interface VibratingEmojiItem {
+  icon: string;
+  label: string;
+  category: 'promo' | 'medical' | 'schedule' | 'pets';
+}
+
+export const ZALO_VIBRATING_EMOJIS: VibratingEmojiItem[] = [
+  // Khuyến mãi & Quà tặng
+  { icon: '🎁', label: 'Quà tặng', category: 'promo' },
+  { icon: '🧧', label: 'Lì xì', category: 'promo' },
+  { icon: '🏷️', label: 'Khuyến mãi', category: 'promo' },
+  { icon: '🛍️', label: 'Mua sắm', category: 'promo' },
+  { icon: '⭐', label: 'Ngôi sao', category: 'promo' },
+  { icon: '🔥', label: 'Hot', category: 'promo' },
+  { icon: '⚡', label: 'Chớp nhoáng', category: 'promo' },
+  { icon: '💯', label: '100 điểm', category: 'promo' },
+  { icon: '🎉', label: 'Pháo hoa', category: 'promo' },
+  { icon: '✨', label: 'Lấp lánh', category: 'promo' },
+  { icon: '🎯', label: 'Mục tiêu', category: 'promo' },
+  { icon: '🏆', label: 'Cúp vàng', category: 'promo' },
+  { icon: '👑', label: 'Vương miện', category: 'promo' },
+  { icon: '💥', label: 'Bùng nổ', category: 'promo' },
+
+  // Y tế & Phòng khám
+  { icon: '🏥', label: 'Bệnh viện', category: 'medical' },
+  { icon: '💉', label: 'Tiêm vaccine', category: 'medical' },
+  { icon: '🩺', label: 'Ống nghe', category: 'medical' },
+  { icon: '💊', label: 'Thuốc', category: 'medical' },
+  { icon: '🚑', label: 'Cấp cứu', category: 'medical' },
+  { icon: '🩹', label: 'Băng dán', category: 'medical' },
+  { icon: '🔬', label: 'Kính hiển vi', category: 'medical' },
+  { icon: '🧬', label: 'ADN', category: 'medical' },
+  { icon: '🩻', label: 'X-Quang', category: 'medical' },
+  { icon: '🩸', label: 'Xét nghiệm', category: 'medical' },
+
+  // Lịch hẹn & Thông báo
+  { icon: '📅', label: 'Lịch hẹn', category: 'schedule' },
+  { icon: '🔔', label: 'Chuông báo', category: 'schedule' },
+  { icon: '⏰', label: 'Đồng hồ', category: 'schedule' },
+  { icon: '📢', label: 'Loa thông báo', category: 'schedule' },
+  { icon: '🚨', label: 'Báo động', category: 'schedule' },
+  { icon: '📌', label: 'Ghim', category: 'schedule' },
+  { icon: '💡', label: 'Ý tưởng', category: 'schedule' },
+  { icon: '💬', label: 'Tư vấn', category: 'schedule' },
+  { icon: '📣', label: 'Cổ vũ', category: 'schedule' },
+  { icon: '🛎️', label: 'Lễ tân', category: 'schedule' },
+
+  // Thú cưng & Tình cảm
+  { icon: '🐶', label: 'Cún cưng', category: 'pets' },
+  { icon: '🐱', label: 'Mèo cưng', category: 'pets' },
+  { icon: '🐾', label: 'Dấu chân', category: 'pets' },
+  { icon: '🐰', label: 'Thỏ', category: 'pets' },
+  { icon: '🐹', label: 'Hamster', category: 'pets' },
+  { icon: '🦜', label: 'Vẹt', category: 'pets' },
+  { icon: '🐟', label: 'Cá cảnh', category: 'pets' },
+  { icon: '❤️', label: 'Trái tim', category: 'pets' },
+  { icon: '💖', label: 'Yêu thương', category: 'pets' },
+  { icon: '🌟', label: 'Sao sáng', category: 'pets' },
+];
+
+export function formatTextToShakingHtml(text: string): string {
+  if (!text) return '';
+  const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u2600-\u27BF])/gu;
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(
+    emojiRegex,
+    (m) => `<span class="petmm-icon-shake inline-block select-none" contenteditable="false">${m}</span>`
+  );
+}
+
+// Component ô nhập thông điệp có icon tự rung trực tiếp trong văn bản
+function SloganInlineEditor({
+  itemId,
+  value,
+  onChange,
+  placeholder,
+  onRegisterRef,
+}: {
+  itemId: string;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  onRegisterRef: (id: string, el: HTMLDivElement | null) => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      const currentText = ref.current.innerText.replace(/\r?\n$/, '');
+      if (currentText !== (value || '')) {
+        ref.current.innerHTML = formatTextToShakingHtml(value || '');
+      }
+    }
+  }, [value]);
+
+  return (
+    <div
+      ref={(el) => {
+        ref.current = el;
+        onRegisterRef(itemId, el);
+      }}
+      contentEditable
+      suppressContentEditableWarning
+      data-placeholder={placeholder || 'Nhập thông điệp...'}
+      onInput={(e) => {
+        const text = e.currentTarget.innerText.replace(/\r?\n$/, '');
+        if (!text) {
+          e.currentTarget.innerHTML = '';
+        }
+        onChange(text);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        const pasteText = e.clipboardData.getData('text/plain');
+        const formatted = formatTextToShakingHtml(pasteText);
+        if (document.queryCommandSupported('insertHTML')) {
+          document.execCommand('insertHTML', false, formatted);
+        } else {
+          document.execCommand('insertText', false, pasteText);
+        }
+        if (ref.current) {
+          onChange(ref.current.innerText.replace(/\r?\n$/, ''));
+        }
+      }}
+      onBlur={(e) => {
+        const text = e.currentTarget.innerText.replace(/\r?\n$/, '');
+        e.currentTarget.innerHTML = formatTextToShakingHtml(text);
+      }}
+      className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-[#2D5A27] focus:outline-none bg-white min-h-[38px] leading-relaxed empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 empty:before:pointer-events-none transition cursor-text"
+    />
+  );
+}
 
 type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config';
 export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
@@ -716,31 +859,50 @@ export default function AdminDashboardPage() {
     updateSloganItems(updated);
   };
 
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const editorRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [activeEmojiPickerItemId, setActiveEmojiPickerItemId] = useState<string | null>(null);
+  const [emojiCategoryFilter, setEmojiCategoryFilter] = useState<'all' | 'promo' | 'medical' | 'schedule' | 'pets'>('all');
 
-  const insertEmojiAtCursor = (id: string, emoji: string) => {
-    const input = inputRefs.current[id];
-    const fieldKey = sloganSubLang === 'vi' ? 'textVi' : 'textEn';
-    const currentItem = sloganItems.find((item) => item.id === id);
-    if (!currentItem) return;
+  const handleInsertEmoji = (itemId: string, emoji: string) => {
+    const editor = editorRefs.current[itemId];
+    if (!editor) return;
 
-    const currentVal = (sloganSubLang === 'vi' ? currentItem.textVi : currentItem.textEn) || '';
+    editor.focus();
+    const htmlToInsert = `<span class="petmm-icon-shake inline-block select-none" contenteditable="false">${emoji}</span>&nbsp;`;
 
-    if (input) {
-      const start = input.selectionStart ?? currentVal.length;
-      const end = input.selectionEnd ?? currentVal.length;
-      const newVal = currentVal.slice(0, start) + emoji + currentVal.slice(end);
-
-      handleUpdateSloganField(id, fieldKey, newVal);
-
-      setTimeout(() => {
-        input.focus();
-        const newPos = start + emoji.length;
-        input.setSelectionRange(newPos, newPos);
-      }, 0);
-    } else {
-      handleUpdateSloganField(id, fieldKey, currentVal ? `${currentVal} ${emoji}` : emoji);
+    let inserted = false;
+    if (document.queryCommandSupported('insertHTML')) {
+      try {
+        inserted = document.execCommand('insertHTML', false, htmlToInsert);
+      } catch {
+        inserted = false;
+      }
     }
+
+    if (!inserted) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const span = document.createElement('span');
+        span.className = 'petmm-icon-shake inline-block select-none';
+        span.contentEditable = 'false';
+        span.textContent = emoji;
+        range.deleteContents();
+        range.insertNode(span);
+        const space = document.createTextNode('\u00A0');
+        range.setStartAfter(span);
+        range.insertNode(space);
+        range.setStartAfter(space);
+        range.setEndAfter(space);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        editor.innerHTML += htmlToInsert;
+      }
+    }
+
+    const newText = editor.innerText.replace(/\r?\n$/, '');
+    handleUpdateSloganField(itemId, sloganSubLang === 'vi' ? 'textVi' : 'textEn', newText);
   };
   const [aboutSlideLang, setAboutSlideLang] = useState<'vi' | 'en'>('vi');
   const [isTranslatingAbout, setIsTranslatingAbout] = useState(false);
@@ -3115,9 +3277,9 @@ function formatDisplayReviewDate(val?: string | null): string {
     contact: 'Hotline & Mạng Xã Hội',
     email: 'Email',
     zalo: 'Cấu Hình Zalo Official Account (ZNS)',
-    about: 'Giới Thiệu & Triết Lý',
-    slides: 'Slide Ảnh Giới Thiệu',
-    stats: 'Thông Số Thống Kê',
+    about: 'Giới Thiệu',
+    slides: 'Giới Thiệu',
+    stats: 'Giới Thiệu',
     slogans: 'Khẩu Hiệu & Slogan',
     announcement: 'Poster',
   };
@@ -3642,66 +3804,11 @@ function formatDisplayReviewDate(val?: string | null): string {
                       activeTab === 'config' && configSubTab === 'about' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
                     }`}
                   />
-                  <span>Giới Thiệu &amp; Triết Lý</span>
+                  <span>Giới Thiệu</span>
                 </div>
               </button>
 
-              {/* 3. Slide ảnh giới thiệu */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('config');
-                  setConfigSubTab('slides');
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group ${
-                  activeTab === 'config' && configSubTab === 'slides'
-                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <ImageIcon
-                    className={`w-3.5 h-3.5 transition ${
-                      activeTab === 'config' && configSubTab === 'slides' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
-                    }`}
-                  />
-                  <span>Slide Ảnh Giới Thiệu</span>
-                </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    activeTab === 'config' && configSubTab === 'slides' ? 'bg-black/30 text-amber-300' : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {aboutSlides.length}
-                </span>
-              </button>
-
-              {/* 4. Thông số thống kê */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('config');
-                  setConfigSubTab('stats');
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group ${
-                  activeTab === 'config' && configSubTab === 'stats'
-                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <BarChart3
-                    className={`w-3.5 h-3.5 transition ${
-                      activeTab === 'config' && configSubTab === 'stats' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
-                    }`}
-                  />
-                  <span>Thông Số Thống Kê</span>
-                </div>
-              </button>
-
-              {/* 5. Khẩu hiệu & Slogan */}
+              {/* 3. Khẩu hiệu & Slogan */}
               <button
                 type="button"
                 onClick={() => {
@@ -5563,12 +5670,151 @@ function formatDisplayReviewDate(val?: string | null): string {
                         </div>
                       </div>
                     )}
+
+                    {/* KHỐI THỐNG KÊ (NĂM THÀNH LẬP & KHÁCH HÀNG) */}
+                    <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-[#2D5A27]" />
+                        <span>Thông Số Thống Kê Giới Thiệu</span>
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Năm thành lập:
+                          </label>
+                          <input
+                            type="text"
+                            value={configForm.thong_ke_nam_thanh_lap || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, thong_ke_nam_thanh_lap: e.target.value }))
+                            }
+                            placeholder="2018"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Khách hàng:
+                          </label>
+                          <input
+                            type="text"
+                            value={configForm.thong_ke_khach_hang || ''}
+                            onChange={(e) =>
+                              setConfigForm((prev) => ({ ...prev, thong_ke_khach_hang: e.target.value }))
+                            }
+                            placeholder="30k+"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* KHỐI SLIDE ẢNH GIỚI THIỆU */}
+                    <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
+                            <span>Slide Ảnh Giới Thiệu ({aboutSlides.length} ảnh)</span>
+                          </h3>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Hình ảnh trình chiếu trong khung trượt tại trang chủ và trang Đội ngũ y tế.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleAddNewAboutSlide}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-2xs transition cursor-pointer shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Thêm Ảnh Slide</span>
+                        </button>
+                      </div>
+
+                      {aboutSlidesLoading ? (
+                        <div className="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" />
+                          <span>Đang tải danh sách slide ảnh...</span>
+                        </div>
+                      ) : aboutSlides.length === 0 ? (
+                        <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl space-y-2">
+                          <p>Chưa có ảnh slide nào trong danh sách.</p>
+                          <button
+                            type="button"
+                            onClick={handleAddNewAboutSlide}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2D5A27] text-white text-xs font-semibold cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Thêm ảnh slide đầu tiên</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                          {aboutSlides.map((slide, idx) => (
+                            <div
+                              key={slide.id || idx}
+                              className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:shadow-sm transition flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-slate-200 mb-2.5">
+                                  <img
+                                    src={slide.duong_dan_anh}
+                                    alt={slide.tieu_de || 'Ảnh slide'}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-xs">
+                                    {slide.alt_text || 'Đội ngũ'}
+                                  </span>
+                                </div>
+                                <p className="text-xs font-bold text-slate-800 truncate" title={slide.tieu_de}>
+                                  {slide.tieu_de}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleAboutSlideActive(slide)}
+                                  className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer transition ${
+                                    slide.kich_hoat !== false
+                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                      : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                  }`}
+                                >
+                                  {slide.kich_hoat !== false ? 'Hiển thị' : 'Đang ẩn'}
+                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditAboutSlide(slide)}
+                                    className="p-1.5 rounded-lg text-slate-600 hover:text-[#2D5A27] hover:bg-slate-100 cursor-pointer transition"
+                                    title="Chỉnh sửa ảnh"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteAboutSlide(slide)}
+                                    className="p-1.5 rounded-lg text-slate-600 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition"
+                                    title="Xóa ảnh slide"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Nút Submit lưu nhánh Giới thiệu */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
                     <p className="text-xs text-slate-500">
-                      Nội dung song ngữ Việt &amp; Anh sẽ được lưu trực tiếp vào bảng <code className="text-emerald-700 font-semibold">cau_hinh</code> trên Supabase.
+                      Nội dung giới thiệu và thông số thống kê sẽ được cập nhật đồng bộ lên trang web.
                     </p>
                     <button
                       type="submit"
@@ -5576,213 +5822,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
                     >
                       {isConfigSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      <span>{isConfigSaving ? 'Đang lưu...' : 'Lưu Giới Thiệu & Triết Lý (Cả Việt & Anh)'}</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {configSubTab === 'slides' && (
-                <div className="space-y-6">
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
-                    <div className="pb-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                          <ImageIcon className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Slide Ảnh Khung Giới Thiệu &amp; Đội Ngũ</span>
-                        </h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Hình ảnh trình chiếu trong khung trượt đa phương tiện tại trang chủ và trang Đội ngũ y tế ({aboutSlides.length} ảnh).
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleAddNewAboutSlide}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-2xs transition cursor-pointer shrink-0"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Thêm Ảnh Slide</span>
-                      </button>
-                    </div>
-
-                    {aboutSlidesLoading ? (
-                      <div className="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" />
-                        <span>Đang tải danh sách slide ảnh...</span>
-                      </div>
-                    ) : aboutSlides.length === 0 ? (
-                      <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl space-y-2">
-                        <p>Chưa có ảnh slide nào trong danh sách.</p>
-                        <button
-                          type="button"
-                          onClick={handleAddNewAboutSlide}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2D5A27] text-white text-xs font-semibold cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Thêm ảnh slide đầu tiên</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {aboutSlides.map((slide, idx) => (
-                          <div
-                            key={slide.id || idx}
-                            className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:shadow-sm transition flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-slate-200 mb-2.5">
-                                <img
-                                  src={slide.duong_dan_anh}
-                                  alt={slide.tieu_de || 'Ảnh slide'}
-                                  className="w-full h-full object-cover"
-                                />
-                                <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-xs">
-                                  {slide.alt_text || 'Đội ngũ'}
-                                </span>
-                              </div>
-                              <p className="text-xs font-bold text-slate-800 truncate" title={slide.tieu_de}>
-                                {slide.tieu_de}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleAboutSlideActive(slide)}
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer transition ${
-                                  slide.kich_hoat !== false
-                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                                }`}
-                              >
-                                {slide.kich_hoat !== false ? 'Hiển thị' : 'Đang ẩn'}
-                              </button>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditAboutSlide(slide)}
-                                  className="p-1.5 rounded-lg text-slate-600 hover:text-[#2D5A27] hover:bg-slate-100 cursor-pointer transition"
-                                  title="Chỉnh sửa ảnh"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteAboutSlide(slide)}
-                                  className="p-1.5 rounded-lg text-slate-600 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition"
-                                  title="Xóa ảnh slide"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* NHÁNH 4: THÔNG SỐ THỐNG KÊ */}
-              {configSubTab === 'stats' && (
-                <form onSubmit={handleSaveConfig} className="space-y-6">
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
-                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-                      <div>
-                        <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                          <BarChart3 className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Thông Số Thống Kê Giới Thiệu (Thành Lập &amp; Khách Hàng)</span>
-                        </h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Tùy chỉnh 2 chỉ số cố định dưới chân thẻ Sứ Mệnh &amp; Triết Lý trên trang chủ.
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                        Chỉ Số Hoạt Động
-                      </span>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs">
-                      ℹ️ <strong>Cơ chế hiển thị:</strong> Khối chân thẻ giới thiệu gồm 4 thông số:
-                      <ul className="list-disc ml-5 mt-1.5 space-y-1 text-[11px] text-slate-500">
-                        <li><strong>Năm thành lập:</strong> Cấu hình thủ công tại đây (ví dụ: 2018).</li>
-                        <li><strong>Cơ sở đa khoa:</strong> Tự động đếm số lượng chi nhánh kích hoạt trong hệ thống.</li>
-                        <li><strong>Khách hàng:</strong> Cấu hình thủ công tại đây (ví dụ: 30k+).</li>
-                        <li><strong>Đội ngũ y tế:</strong> Tự động đếm số lượng bác sĩ và nhân sự trong danh sách nhân sự.</li>
-                      </ul>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                        <label className="block text-xs font-semibold text-slate-700">
-                          Năm thành lập (Con số):
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.thong_ke_nam_thanh_lap || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, thong_ke_nam_thanh_lap: e.target.value }))
-                          }
-                          placeholder="2018"
-                          className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
-                        />
-                        <label className="block text-[11px] font-semibold text-slate-600 mt-2">
-                          Nhãn hiển thị bên dưới:
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.thong_ke_nam_thanh_lap_nhan || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, thong_ke_nam_thanh_lap_nhan: e.target.value }))
-                          }
-                          placeholder="Năm thành lập"
-                          className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
-                        />
-                      </div>
-
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                        <label className="block text-xs font-semibold text-slate-700">
-                          Khách hàng (Con số):
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.thong_ke_khach_hang || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, thong_ke_khach_hang: e.target.value }))
-                          }
-                          placeholder="30k+"
-                          className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
-                        />
-                        <label className="block text-[11px] font-semibold text-slate-600 mt-2">
-                          Nhãn hiển thị bên dưới:
-                        </label>
-                        <input
-                          type="text"
-                          value={configForm.thong_ke_khach_hang_nhan || ''}
-                          onChange={(e) =>
-                            setConfigForm((prev) => ({ ...prev, thong_ke_khach_hang_nhan: e.target.value }))
-                          }
-                          placeholder="Khách hàng"
-                          className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nút Submit lưu nhánh Thống kê */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <p className="text-xs text-slate-500">
-                      Thông số sẽ được cập nhật đồng bộ ngay trên thẻ Sứ Mệnh trang chủ.
-                    </p>
-                    <button
-                      type="submit"
-                      disabled={isConfigSaving}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-                    >
-                      {isConfigSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      <span>{isConfigSaving ? 'Đang lưu...' : 'Lưu Thông Số Thống Kê'}</span>
+                      <span>{isConfigSaving ? 'Đang lưu...' : 'Lưu Cài Đặt Giới Thiệu'}</span>
                     </button>
                   </div>
                 </form>
@@ -6204,62 +6244,118 @@ function formatDisplayReviewDate(val?: string | null): string {
                                 </div>
                               </div>
 
-                              {/* HÀNG 2: 8 ICON NẰM NGAY TRÊN Ô NHẬP (BẤM LÀ CHÈN ĐÚNG VỊ TRÍ CON TRỎ) */}
-                              <div className="space-y-1.5">
+                              {/* HÀNG 2: BẢNG ICON RUNG PHONG CÁCH ZALO & Ô NHẬP TỰ RUNG TRỰC TIẾP */}
+                              <div className="space-y-1.5 relative">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
                                     {sloganSubLang === 'vi' ? <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" /> : <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />}
                                     <span>{sloganSubLang === 'vi' ? 'Tiếng Việt' : 'English'}:</span>
                                   </span>
 
-                                  {/* 8 icon rung rung nằm ngay trên ô nhập */}
-                                  <div className="flex items-center gap-1">
-                                    {['🎁', '📅', '🔔', '🧧', '⭐', '🏥', '💉', '🩺'].map((emoji) => (
-                                      <button
-                                        key={emoji}
-                                        type="button"
-                                        onMouseDown={(e) => {
-                                          e.preventDefault();
-                                          insertEmojiAtCursor(item.id, emoji);
-                                        }}
-                                        className="w-6 h-6 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200/80 flex items-center justify-center text-xs shadow-2xs transition active:scale-90 cursor-pointer"
-                                        title={`Chèn ${emoji} vào vị trí con trỏ`}
-                                      >
-                                        <span className="petmm-icon-shake">{emoji}</span>
-                                      </button>
-                                    ))}
-                                  </div>
+                                  {/* Nút bấm bật/tắt Bảng icon rung kiểu Zalo */}
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => setActiveEmojiPickerItemId(activeEmojiPickerItemId === item.id ? null : item.id)}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition border cursor-pointer ${
+                                      activeEmojiPickerItemId === item.id
+                                        ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                                        : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                                    }`}
+                                  >
+                                    <span className="petmm-icon-shake text-sm inline-block">🎁</span>
+                                    <span>Bảng icon rung {activeEmojiPickerItemId === item.id ? '(Đóng)' : ''}</span>
+                                  </button>
                                 </div>
 
-                                {/* Ô nhập liệu: có icon rung ngay trong ô nhập ở góc phải */}
-                                <div className="relative">
-                                  <input
-                                    ref={(el) => { inputRefs.current[item.id] = el; }}
-                                    type="text"
-                                    value={currentText}
-                                    onChange={(e) =>
-                                      handleUpdateSloganField(
-                                        item.id,
-                                        sloganSubLang === 'vi' ? 'textVi' : 'textEn',
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder={sloganSubLang === 'vi' ? 'Nhập thông điệp...' : 'Enter message...'}
-                                    className={`w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white ${
-                                      uniqueEmojis.length > 0 ? 'pr-20' : ''
-                                    }`}
-                                  />
-                                  {/* Tự rung trong chỗ ô nhập luôn */}
-                                  {uniqueEmojis.length > 0 && (
-                                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none">
-                                      {uniqueEmojis.slice(0, 4).map((emo, eIdx) => (
-                                        <span key={eIdx} className="petmm-icon-shake text-sm inline-block">
-                                          {emo}
-                                        </span>
-                                      ))}
+                                {/* BẢNG CHỌN ICON PHONG CÁCH ZALO (POPUP MODAL TIỆN LỢI) */}
+                                {activeEmojiPickerItemId === item.id && (
+                                  <>
+                                    {/* Backdrop click outside to close */}
+                                    <div
+                                      className="fixed inset-0 z-40"
+                                      onClick={() => setActiveEmojiPickerItemId(null)}
+                                    />
+
+                                    <div className="absolute right-0 top-7 z-50 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                          <Smile className="w-4 h-4 text-amber-500" />
+                                          <span>Icon rung phong cách Zalo</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveEmojiPickerItemId(null)}
+                                          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+
+                                      {/* Bộ lọc danh mục icon */}
+                                      <div className="flex flex-wrap gap-1">
+                                        {[
+                                          { id: 'all', label: 'Tất cả' },
+                                          { id: 'promo', label: '🎁 Quà' },
+                                          { id: 'medical', label: '🏥 Y tế' },
+                                          { id: 'schedule', label: '📅 Lịch' },
+                                          { id: 'pets', label: '🐾 Thú cưng' },
+                                        ].map((cat) => (
+                                          <button
+                                            key={cat.id}
+                                            type="button"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => setEmojiCategoryFilter(cat.id as any)}
+                                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition cursor-pointer ${
+                                              emojiCategoryFilter === cat.id
+                                                ? 'bg-[#2D5A27] text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            }`}
+                                          >
+                                            {cat.label}
+                                          </button>
+                                        ))}
+                                      </div>
+
+                                      {/* Lưới các icon tự rung */}
+                                      <div className="grid grid-cols-7 gap-1.5 p-1 max-h-48 overflow-y-auto">
+                                        {ZALO_VIBRATING_EMOJIS.filter(
+                                          (emo) => emojiCategoryFilter === 'all' || emo.category === emojiCategoryFilter
+                                        ).map((emo) => (
+                                          <button
+                                            key={emo.icon + emo.label}
+                                            type="button"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleInsertEmoji(item.id, emo.icon);
+                                            }}
+                                            className="h-8 rounded-lg bg-amber-50/60 hover:bg-amber-100 hover:border-amber-300 border border-amber-200/50 flex items-center justify-center text-sm shadow-2xs transition-transform active:scale-90 cursor-pointer"
+                                            title={emo.label}
+                                          >
+                                            <span className="petmm-icon-shake inline-block">{emo.icon}</span>
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
+                                  </>
+                                )}
+
+                                {/* Ô nhập thông điệp: icon rung trực tiếp tại vị trí vừa thêm */}
+                                <SloganInlineEditor
+                                  itemId={item.id}
+                                  value={currentText}
+                                  onChange={(val) =>
+                                    handleUpdateSloganField(
+                                      item.id,
+                                      sloganSubLang === 'vi' ? 'textVi' : 'textEn',
+                                      val
+                                    )
+                                  }
+                                  onRegisterRef={(id, el) => {
+                                    editorRefs.current[id] = el;
+                                  }}
+                                  placeholder={sloganSubLang === 'vi' ? 'Nhập thông điệp...' : 'Enter message...'}
+                                />
                               </div>
                             </div>
                           );
