@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useEditor, EditorContent, Editor, Mark, mergeAttributes } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -9,6 +9,8 @@ import { TextStyle, Color, FontFamily, FontSize } from '@tiptap/extension-text-s
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
+import { Smile } from 'lucide-react';
+import AdminEmojiPicker from './AdminEmojiPicker';
 
 /* ─── Toolbar button helper ─── */
 interface ToolbarBtnProps {
@@ -64,6 +66,7 @@ const FONT_FAMILIES = [
 ];
 
 function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-top-6' }: ToolbarProps) {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const addImage = useCallback(async (file?: File) => {
     if (!editor) return;
     if (file && onUploadImage) {
@@ -348,6 +351,28 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </ToolbarBtn>
       )}
+
+      <Divider />
+
+      {/* Biểu tượng cảm xúc, icon & lá cờ (phong cách FB / Zalo) */}
+      <div className="relative">
+        <ToolbarBtn
+          onClick={() => setShowEmojiPicker((prev) => !prev)}
+          active={showEmojiPicker}
+          title="Chèn biểu tượng cảm xúc / Lá cờ / Icon"
+        >
+          <Smile className={`w-4 h-4 ${showEmojiPicker ? 'text-white' : 'text-amber-500'}`} />
+        </ToolbarBtn>
+        <AdminEmojiPicker
+          isOpen={showEmojiPicker}
+          onClose={() => setShowEmojiPicker(false)}
+          onSelectEmoji={(emoji) => {
+            editor.chain().focus().insertContent(emoji).run();
+          }}
+          align="right"
+          title="Biểu tượng cảm xúc bài viết"
+        />
+      </div>
 
       <Divider />
 

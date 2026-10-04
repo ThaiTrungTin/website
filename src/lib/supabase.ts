@@ -10,6 +10,7 @@ export interface HeroBannerItem {
   tieu_de: string;
   tieu_de_en?: string | null;
   duong_dan_anh: string;
+  anh_goc?: string | null;
   alt_text?: string | null;
   alt_text_en?: string | null;
   chuyen_muc?: string;
@@ -30,6 +31,7 @@ export interface HinhAnhRecord {
   mo_ta: string | null;
   mo_ta_en?: string | null;
   duong_dan_anh: string;
+  anh_goc?: string | null;
   dinh_dang: string | null;
   kich_thuoc: number | null;
   chuyen_muc: string | null;
@@ -73,6 +75,7 @@ export interface ChiNhanhRecord {
   bai_viet_chi_tiet?: string | null;
   bai_viet_chi_tiet_en?: string | null;
   anh_dai_dien?: string | null;
+  anh_goc?: string | null;
   can_chinh_anh?: string | null;
   thu_tu?: number;
   kich_hoat?: boolean;
@@ -141,6 +144,7 @@ export interface DichVuRecord {
   mo_ta?: string | null;
   mo_ta_en?: string | null;
   hinh_anh: string;
+  anh_goc?: string | null;
   can_chinh_anh?: string | null;
   gia_tham_khao?: string | null;
   gia_tham_khao_en?: string | null;
@@ -277,6 +281,7 @@ export interface DoiNguRecord {
   hoc_vi_chuc_vu_en?: string | null;
   phan_loai: DoiNguPhanLoai;
   hinh_anh?: string | null;
+  anh_goc?: string | null;
   mo_ta?: string | null;
   mo_ta_en?: string | null;
   thu_tu?: number | null;
@@ -297,6 +302,7 @@ export interface BaiVietRecord {
   noi_dung?: string | null;
   noi_dung_en?: string | null;
   hinh_anh?: string | null;
+  anh_goc?: string | null;
   thoi_gian_doc?: string | null;
   thoi_gian_doc_en?: string | null;
   tac_gia?: string | null;

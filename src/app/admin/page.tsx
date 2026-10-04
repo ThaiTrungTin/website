@@ -7,6 +7,7 @@ import {
   Upload,
   Plus,
   Trash2,
+  Crop,
   Edit3,
   CheckCircle2,
   ArrowLeft,
@@ -67,6 +68,8 @@ import {
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
+import AdminInteractiveCropper from '@/components/AdminInteractiveCropper';
+import AdminEmojiPicker from '@/components/AdminEmojiPicker';
 import { VietnamFlag, UKFlag } from '@/components/FlagIcons';
 import AdminLoginPage from '@/components/AdminLoginPage';
 import PetLogo from '@/components/PetLogo';
@@ -75,6 +78,7 @@ import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announc
 import { SloganTickerItem, parseSloganList, isSloganActive, renderWithShakingIcons } from '@/lib/slogans';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
+import AdminResizableModal from '@/components/AdminResizableModal';
 
 // ── BẢNG ICON RUNG PHONG CÁCH ZALO ──
 export interface VibratingEmojiItem {
@@ -751,6 +755,7 @@ export default function AdminDashboardPage() {
         tien_ich: parsedFeatures,
         bai_viet_chi_tiet: editingBranch.bai_viet_chi_tiet || '',
         anh_dai_dien: editingBranch.anh_dai_dien || '',
+        anh_goc: editingBranch.anh_goc || editingBranch.anh_dai_dien || null,
         can_chinh_anh: editingBranch.can_chinh_anh || '50% 50%',
         thu_tu: Number(editingBranch.thu_tu) || 1,
         kich_hoat: editingBranch.kich_hoat !== false,
@@ -862,6 +867,38 @@ export default function AdminDashboardPage() {
   const editorRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [activeEmojiPickerItemId, setActiveEmojiPickerItemId] = useState<string | null>(null);
   const [emojiCategoryFilter, setEmojiCategoryFilter] = useState<'all' | 'promo' | 'medical' | 'schedule' | 'pets'>('all');
+  const [posterEmojiPickerOpen, setPosterEmojiPickerOpen] = useState(false);
+  const [posterEmojiTargetField, setPosterEmojiTargetField] = useState<'vi' | 'en'>('vi');
+  const posterViInputRef = useRef<HTMLInputElement>(null);
+  const posterEnInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInsertPosterEmoji = (emoji: string) => {
+    const isEn = posterEmojiTargetField === 'en';
+    const field = isEn ? 'badgeTextEn' : 'badgeTextVi';
+    const titleField = isEn ? 'titleEn' : 'titleVi';
+    const input = isEn ? posterEnInputRef.current : posterViInputRef.current;
+    const currentVal = announcementForm[field] || '';
+
+    let newVal = '';
+    if (input && typeof input.selectionStart === 'number') {
+      const start = input.selectionStart;
+      const end = input.selectionEnd || start;
+      newVal = currentVal.substring(0, start) + `${emoji} ` + currentVal.substring(end);
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + emoji.length + 1, start + emoji.length + 1);
+      }, 10);
+    } else {
+      newVal = currentVal ? `${emoji} ${currentVal}` : `${emoji} `;
+    }
+
+    setAnnouncementForm((prev) => ({
+      ...prev,
+      category: 'custom',
+      [field]: newVal,
+      [titleField]: newVal,
+    }));
+  };
 
   const handleInsertEmoji = (itemId: string, emoji: string) => {
     const editor = editorRefs.current[itemId];
@@ -905,6 +942,11 @@ export default function AdminDashboardPage() {
     handleUpdateSloganField(itemId, sloganSubLang === 'vi' ? 'textVi' : 'textEn', newText);
   };
   const [aboutSlideLang, setAboutSlideLang] = useState<'vi' | 'en'>('vi');
+  const [aboutSlidePreview, setAboutSlidePreview] = useState<string>('');
+  const [branchPreview, setBranchPreview] = useState<string>('');
+  const [servicePreview, setServicePreview] = useState<string>('');
+  const [articlePreview, setArticlePreview] = useState<string>('');
+  const [memberPreview, setMemberPreview] = useState<string>('');
   const [isTranslatingAbout, setIsTranslatingAbout] = useState(false);
   const [isTranslatingSlogans, setIsTranslatingSlogans] = useState(false);
   const [isTranslatingAboutSlide, setIsTranslatingAboutSlide] = useState(false);
@@ -1802,6 +1844,7 @@ export default function AdminDashboardPage() {
         mo_ta: editingService.mo_ta || null,
         mo_ta_en: (editingService as any).mo_ta_en || null,
         hinh_anh: editingService.hinh_anh || '/services_bg.jpg',
+        anh_goc: editingService.anh_goc || editingService.hinh_anh || null,
         can_chinh_anh: editingService.can_chinh_anh || '50% 50%',
         gia_tham_khao: editingService.gia_tham_khao || null,
         gia_tham_khao_en: (editingService as any).gia_tham_khao_en || null,
@@ -2756,6 +2799,7 @@ function formatDisplayReviewDate(val?: string | null): string {
         hoc_vi_chuc_vu_en: editingMember.hoc_vi_chuc_vu_en?.trim() || null,
         phan_loai: editingMember.phan_loai || 'bac_si',
         hinh_anh: editingMember.hinh_anh?.trim() || '',
+        anh_goc: editingMember.anh_goc?.trim() || editingMember.hinh_anh?.trim() || null,
         mo_ta: editingMember.mo_ta?.trim() || '',
         mo_ta_en: editingMember.mo_ta_en?.trim() || null,
         thu_tu: Number(editingMember.thu_tu) || 0,
@@ -2946,6 +2990,7 @@ function formatDisplayReviewDate(val?: string | null): string {
         mo_ta_ngan: editingArticle.mo_ta_ngan?.trim() || '',
         noi_dung: editingArticle.noi_dung?.trim() || '',
         hinh_anh: editingArticle.hinh_anh?.trim() || '',
+        anh_goc: editingArticle.anh_goc?.trim() || editingArticle.hinh_anh?.trim() || null,
         thoi_gian_doc: editingArticle.thoi_gian_doc?.trim() || '4 phút đọc',
         tac_gia: editingArticle.tac_gia?.trim() || 'Hội Đồng Y Khoa PetM&M',
         ngay_dang: editingArticle.ngay_dang?.trim() || '',
@@ -3096,6 +3141,7 @@ function formatDisplayReviewDate(val?: string | null): string {
     try {
       const payload = {
         duong_dan_anh: editingAboutSlide.duong_dan_anh.trim(),
+        anh_goc: editingAboutSlide.anh_goc?.trim() || editingAboutSlide.duong_dan_anh.trim() || null,
         tieu_de: editingAboutSlide.tieu_de?.trim() || 'Hình ảnh Bệnh viện PetM&M',
         alt_text: editingAboutSlide.alt_text?.trim() || 'Đội ngũ chuyên môn',
         tieu_de_en: (editingAboutSlide as any).tieu_de_en?.trim() || '',
@@ -6252,93 +6298,30 @@ function formatDisplayReviewDate(val?: string | null): string {
                                     <span>{sloganSubLang === 'vi' ? 'Tiếng Việt' : 'English'}:</span>
                                   </span>
 
-                                  {/* Nút bấm bật/tắt Bảng icon rung kiểu Zalo */}
+                                  {/* Nút biểu tượng mặt cười mở bảng icon phong cách FB / Zalo */}
                                   <button
                                     type="button"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => setActiveEmojiPickerItemId(activeEmojiPickerItemId === item.id ? null : item.id)}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition border cursor-pointer ${
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition border cursor-pointer ${
                                       activeEmojiPickerItemId === item.id
                                         ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                                        : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                                        : 'bg-white text-slate-700 border-slate-300 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 shadow-2xs'
                                     }`}
+                                    title="Mở bảng icon cảm xúc phong cách FB/Zalo"
                                   >
-                                    <span className="petmm-icon-shake text-sm inline-block">🎁</span>
-                                    <span>Bảng icon rung {activeEmojiPickerItemId === item.id ? '(Đóng)' : ''}</span>
+                                    <Smile className="w-4 h-4 text-amber-500" />
+                                    <span>Icon</span>
                                   </button>
                                 </div>
 
-                                {/* BẢNG CHỌN ICON PHONG CÁCH ZALO (POPUP MODAL TIỆN LỢI) */}
-                                {activeEmojiPickerItemId === item.id && (
-                                  <>
-                                    {/* Backdrop click outside to close */}
-                                    <div
-                                      className="fixed inset-0 z-40"
-                                      onClick={() => setActiveEmojiPickerItemId(null)}
-                                    />
-
-                                    <div className="absolute right-0 top-7 z-50 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-                                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                                          <Smile className="w-4 h-4 text-amber-500" />
-                                          <span>Icon rung phong cách Zalo</span>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => setActiveEmojiPickerItemId(null)}
-                                          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-
-                                      {/* Bộ lọc danh mục icon */}
-                                      <div className="flex flex-wrap gap-1">
-                                        {[
-                                          { id: 'all', label: 'Tất cả' },
-                                          { id: 'promo', label: '🎁 Quà' },
-                                          { id: 'medical', label: '🏥 Y tế' },
-                                          { id: 'schedule', label: '📅 Lịch' },
-                                          { id: 'pets', label: '🐾 Thú cưng' },
-                                        ].map((cat) => (
-                                          <button
-                                            key={cat.id}
-                                            type="button"
-                                            onMouseDown={(e) => e.preventDefault()}
-                                            onClick={() => setEmojiCategoryFilter(cat.id as any)}
-                                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition cursor-pointer ${
-                                              emojiCategoryFilter === cat.id
-                                                ? 'bg-[#2D5A27] text-white'
-                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                            }`}
-                                          >
-                                            {cat.label}
-                                          </button>
-                                        ))}
-                                      </div>
-
-                                      {/* Lưới các icon tự rung */}
-                                      <div className="grid grid-cols-7 gap-1.5 p-1 max-h-48 overflow-y-auto">
-                                        {ZALO_VIBRATING_EMOJIS.filter(
-                                          (emo) => emojiCategoryFilter === 'all' || emo.category === emojiCategoryFilter
-                                        ).map((emo) => (
-                                          <button
-                                            key={emo.icon + emo.label}
-                                            type="button"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              handleInsertEmoji(item.id, emo.icon);
-                                            }}
-                                            className="h-8 rounded-lg bg-amber-50/60 hover:bg-amber-100 hover:border-amber-300 border border-amber-200/50 flex items-center justify-center text-sm shadow-2xs transition-transform active:scale-90 cursor-pointer"
-                                            title={emo.label}
-                                          >
-                                            <span className="petmm-icon-shake inline-block">{emo.icon}</span>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
+                                {/* BẢNG CHỌN ICON PHONG CÁCH FB / ZALO ĐA DẠNG */}
+                                <AdminEmojiPicker
+                                  isOpen={activeEmojiPickerItemId === item.id}
+                                  onClose={() => setActiveEmojiPickerItemId(null)}
+                                  onSelectEmoji={(emoji) => handleInsertEmoji(item.id, emoji)}
+                                  title="Biểu tượng cảm xúc & Icon"
+                                />
 
                                 {/* Ô nhập thông điệp: icon rung trực tiếp tại vị trí vừa thêm */}
                                 <SloganInlineEditor
@@ -6509,94 +6492,152 @@ function formatDisplayReviewDate(val?: string | null): string {
                             <span>Chủ Đề &amp; Tiêu Đề:</span>
                           </label>
 
-                          <select
-                            value={announcementForm.category || 'holiday'}
-                            onChange={(e) => {
-                              const cat = e.target.value as 'holiday' | 'promotion' | 'custom';
-                              setAnnouncementForm((prev) => {
-                                if (cat === 'holiday') {
-                                  return {
-                                    ...prev,
-                                    category: 'holiday',
-                                    badgeTextVi: '🧧 Lịch Nghỉ Lễ',
-                                    badgeTextEn: '🧧 Holiday Schedule',
-                                    titleVi: '🧧 Lịch Nghỉ Lễ',
-                                    titleEn: '🧧 Holiday Schedule',
-                                  };
-                                } else if (cat === 'promotion') {
-                                  return {
-                                    ...prev,
-                                    category: 'promotion',
-                                    badgeTextVi: '🎁 Ưu Đãi',
-                                    badgeTextEn: '🎁 Special Offers',
-                                    titleVi: '🎁 Ưu Đãi',
-                                    titleEn: '🎁 Special Offers',
-                                  };
-                                } else {
-                                  return {
-                                    ...prev,
-                                    category: 'custom',
-                                    badgeTextVi: prev.badgeTextVi || '📢 Thông Báo',
-                                    badgeTextEn: prev.badgeTextEn || '📢 Notice',
-                                    titleVi: prev.titleVi || '📢 Thông Báo',
-                                    titleEn: prev.titleEn || '📢 Notice',
-                                  };
-                                }
-                              });
-                            }}
-                            className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[200px]"
-                          >
-                            <option value="holiday">🧧 Lịch Nghỉ Lễ</option>
-                            <option value="promotion">🎁 Ưu Đãi</option>
-                            <option value="custom">✍️ Tùy Chỉnh Khác</option>
-                          </select>
+                          <div className="flex items-center gap-2 relative">
+                            <select
+                              value={announcementForm.category || 'holiday'}
+                              onChange={(e) => {
+                                const cat = e.target.value as 'holiday' | 'promotion' | 'custom';
+                                setAnnouncementForm((prev) => {
+                                  if (cat === 'holiday') {
+                                    return {
+                                      ...prev,
+                                      category: 'holiday',
+                                      badgeTextVi: '🧧 Lịch Nghỉ Lễ',
+                                      badgeTextEn: '🧧 Holiday Schedule',
+                                      titleVi: '🧧 Lịch Nghỉ Lễ',
+                                      titleEn: '🧧 Holiday Schedule',
+                                    };
+                                  } else if (cat === 'promotion') {
+                                    return {
+                                      ...prev,
+                                      category: 'promotion',
+                                      badgeTextVi: '🎁 Ưu Đãi',
+                                      badgeTextEn: '🎁 Special Offers',
+                                      titleVi: '🎁 Ưu Đãi',
+                                      titleEn: '🎁 Special Offers',
+                                    };
+                                  } else {
+                                    return {
+                                      ...prev,
+                                      category: 'custom',
+                                      badgeTextVi: prev.badgeTextVi || '📢 Thông Báo',
+                                      badgeTextEn: prev.badgeTextEn || '📢 Notice',
+                                      titleVi: prev.titleVi || '📢 Thông Báo',
+                                      titleEn: prev.titleEn || '📢 Notice',
+                                    };
+                                  }
+                                });
+                              }}
+                              className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-2xs focus:border-[#2D5A27] focus:outline-none cursor-pointer min-w-[180px]"
+                            >
+                              <option value="holiday">🧧 Lịch Nghỉ Lễ</option>
+                              <option value="promotion">🎁 Ưu Đãi</option>
+                              <option value="custom">✍️ Tùy Chỉnh Khác</option>
+                            </select>
+
+                            {/* Nút mặt cười mở bảng icon phong cách FB / Zalo */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPosterEmojiTargetField('vi');
+                                setPosterEmojiPickerOpen(!posterEmojiPickerOpen);
+                              }}
+                              className={`p-2 rounded-full border transition cursor-pointer flex items-center justify-center shadow-2xs ${
+                                posterEmojiPickerOpen
+                                  ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-300 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300'
+                              }`}
+                              title="Chèn biểu tượng cảm xúc & icon cho tiêu đề Poster"
+                            >
+                              <Smile className="w-4 h-4 text-amber-500" />
+                            </button>
+
+                            {/* Popup Bảng Icon Đa Dạng */}
+                            <AdminEmojiPicker
+                              isOpen={posterEmojiPickerOpen}
+                              onClose={() => setPosterEmojiPickerOpen(false)}
+                              onSelectEmoji={handleInsertPosterEmoji}
+                              title="Biểu tượng cảm xúc & Icon cho Poster"
+                            />
+                          </div>
                         </div>
 
-                        {/* Nếu chọn Tùy chỉnh khác: Cho phép nhập chữ tùy biến */}
-                        {announcementForm.category === 'custom' && (
-                          <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
-                            <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        {/* Ô Nhập Tiêu Đề Tiếng Việt & Tiếng Anh Kèm Nút Mặt Cười Tại Mỗi Ô */}
+                        <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
                                 <span>Chữ Hiển Thị Tiếng Việt:</span>
                               </label>
-                              <input
-                                type="text"
-                                value={announcementForm.badgeTextVi || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setAnnouncementForm((prev) => ({
-                                    ...prev,
-                                    badgeTextVi: val,
-                                    titleVi: val,
-                                  }));
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPosterEmojiTargetField('vi');
+                                  setPosterEmojiPickerOpen(true);
                                 }}
-                                placeholder="VD: 📢 Thông Báo Tuyển Dụng"
-                                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                              />
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition cursor-pointer"
+                                title="Chèn icon vào tiêu đề Tiếng Việt"
+                              >
+                                <Smile className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Icon</span>
+                              </button>
                             </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                            <input
+                              ref={posterViInputRef}
+                              type="text"
+                              value={announcementForm.badgeTextVi || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  category: 'custom',
+                                  badgeTextVi: val,
+                                  titleVi: val,
+                                }));
+                              }}
+                              placeholder="VD: 🧧 Lịch Nghỉ Lễ hoặc 📢 Thông Báo"
+                              className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
                                 <span>Chữ Hiển Thị Tiếng Anh:</span>
                               </label>
-                              <input
-                                type="text"
-                                value={announcementForm.badgeTextEn || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setAnnouncementForm((prev) => ({
-                                    ...prev,
-                                    badgeTextEn: val,
-                                    titleEn: val,
-                                  }));
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPosterEmojiTargetField('en');
+                                  setPosterEmojiPickerOpen(true);
                                 }}
-                                placeholder="VD: 📢 Special Notice"
-                                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                              />
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition cursor-pointer"
+                                title="Chèn icon vào tiêu đề Tiếng Anh"
+                              >
+                                <Smile className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Icon</span>
+                              </button>
                             </div>
+                            <input
+                              ref={posterEnInputRef}
+                              type="text"
+                              value={announcementForm.badgeTextEn || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAnnouncementForm((prev) => ({
+                                  ...prev,
+                                  category: 'custom',
+                                  badgeTextEn: val,
+                                  titleEn: val,
+                                }));
+                              }}
+                              placeholder="VD: 🧧 Holiday Schedule hoặc 📢 Notice"
+                              className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                            />
                           </div>
-                        )}
+                        </div>
                       </div>
 
                       {/* 2. Khoảng Thời Gian Xuất Hiện Poster */}
@@ -8637,7 +8678,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
       {editingBanner && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -8944,7 +8985,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 <span>{isBannerSaving ? 'Đang lưu vào Supabase...' : 'Lưu Ảnh Nền'}</span>
               </button>
             </div>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -8954,7 +8995,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
             {editingBranch && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -9428,33 +9469,52 @@ function formatDisplayReviewDate(val?: string | null): string {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Ảnh đại diện chi nhánh:
-                  </label>
-                  <AdminImageInput
-                    value={editingBranch.anh_dai_dien || ''}
-                    onChange={(url) => setEditingBranch((prev) => ({ ...prev, anh_dai_dien: url }))}
-                    folder="branches"
-                    label=""
-                    uploadButtonLabel="Tải Ảnh Cơ Sở"
-                    pasteButtonLabel="Dán Link Ảnh"
-                    onNotification={showNotification}
-                  />
-                  {editingBranch.anh_dai_dien && (
-                    <div className="mt-2 flex items-center gap-3">
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Vị trí ảnh:</label>
-                      <select
-                        value={editingBranch.can_chinh_anh || '50% 50%'}
-                        onChange={(e) => setEditingBranch((prev) => ({ ...prev, can_chinh_anh: e.target.value }))}
-                        className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 bg-white"
-                      >
-                        <option value="50% 50%">Giữa (Mặc định)</option>
-                        <option value="50% 20%">Phía Trên</option>
-                        <option value="50% 80%">Phía Dưới</option>
-                      </select>
+                {/* KHỐI ẢNH ĐẠI DIỆN & CẮT CHỈNH INTERACTIVE (ẢNH BÊN TRÁI, Ô VUÔNG KÉO CẮT) */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                    <div className="lg:col-span-7">
+                      <AdminInteractiveCropper
+                        value={editingBranch.anh_dai_dien || ''}
+                        originalUrl={editingBranch.anh_goc || editingBranch.anh_dai_dien || ''}
+                        onChange={(url) => setEditingBranch((prev) => ({ ...prev, anh_dai_dien: url }))}
+                        onOriginalChange={(url) => setEditingBranch((prev) => ({ ...prev, anh_goc: url }))}
+                        onPreviewChange={(url) => setBranchPreview(url)}
+                        folder="branches"
+                        aspectRatio={16 / 10}
+                        onNotification={showNotification}
+                        label="Ảnh Đại Diện Chi Nhánh (Tỉ lệ 16:10)"
+                      />
                     </div>
-                  )}
+                    <div className="lg:col-span-5 space-y-3 pt-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-[#2D5A27]" />
+                          <span>Mô phỏng hiển thị trên Thẻ Chi Nhánh</span>
+                        </h4>
+                        {(branchPreview || editingBranch.anh_dai_dien) && (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            <span>Ảnh áp dụng</span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Cột bên trái là khung cắt trên ảnh gốc. Kéo các ô vuông để chọn góc hiển thị đẹp nhất, ảnh sau khi cắt sẽ tự động cập nhật vào thẻ hiển thị bên dưới.
+                      </p>
+                      {(branchPreview || editingBranch.anh_dai_dien) && (
+                        <div className="pt-2">
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Mô phỏng hiển thị trên thẻ chi nhánh:</label>
+                          <div className="w-full aspect-[16/10] rounded-xl overflow-hidden border border-slate-300 shadow-2xs bg-slate-100">
+                            <img
+                              src={branchPreview || editingBranch.anh_dai_dien || ''}
+                              alt="Branch card preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
@@ -9509,13 +9569,13 @@ function formatDisplayReviewDate(val?: string | null): string {
                 <span>{isBranchSaving ? 'Đang lưu...' : 'Lưu Chi Nhánh'}</span>
               </button>
             </div>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
 {editingService && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -9838,43 +9898,69 @@ function formatDisplayReviewDate(val?: string | null): string {
                   </div>
                 </div>
 
-                {/* Hình ảnh dịch vụ (Dùng chung cho cả list và khung chi tiết) */}
-                <div className="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <AdminImageInput
-                    value={editingService.hinh_anh || ''}
-                    onChange={(url) => setEditingService((prev) => (prev ? { ...prev, hinh_anh: url } : null))}
-                    folder="services"
-                    label="Hình ảnh dịch vụ (Dùng chung cho ảnh nhỏ ở danh sách và ảnh lớn ở khung chi tiết):"
-                    uploadButtonLabel="Tải File"
-                    pasteButtonLabel="Dán Ảnh"
-                    onNotification={showNotification}
-                  />
-
-                  {editingService.hinh_anh && (
-                    <div className="pt-2 flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs">
-                          <img
-                            src={editingService.hinh_anh}
-                            alt="Thumbnail preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span className="text-[10px] text-slate-500 mt-1 block">Ảnh ở danh sách</span>
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs relative">
-                          <img
-                            src={editingService.hinh_anh}
-                            alt="Hero preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span className="text-[10px] text-slate-500 mt-1 block">Ảnh ở khung chi tiết lớn</span>
-                      </div>
+                {/* Hình ảnh dịch vụ (Dùng chung cho cả list và khung chi tiết) - BỘ CẮT ẢNH INTERACTIVE */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                    {/* CỘT TRÁI: CẮT ẢNH VỚI CÁC Ô VUÔNG (7 CỘT) */}
+                    <div className="lg:col-span-7">
+                      <AdminInteractiveCropper
+                        value={editingService.hinh_anh || ''}
+                        originalUrl={editingService.anh_goc || editingService.hinh_anh || ''}
+                        onChange={(url) => setEditingService((prev) => (prev ? { ...prev, hinh_anh: url } : null))}
+                        onOriginalChange={(url) => setEditingService((prev) => (prev ? { ...prev, anh_goc: url } : null))}
+                        onPreviewChange={(url) => setServicePreview(url)}
+                        folder="services"
+                        aspectRatio={16 / 10}
+                        onNotification={showNotification}
+                        label="Hình Ảnh Gói Dịch Vụ (Tỉ lệ 16:10)"
+                      />
                     </div>
-                  )}
+
+                    {/* CỘT PHẢI: XEM TRƯỚC DANH SÁCH & BANNER CHI TIẾT (5 CỘT) */}
+                    <div className="lg:col-span-5 space-y-3 pt-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                          <Stethoscope className="w-3.5 h-3.5 text-[#2D5A27]" />
+                          <span>Mô phỏng hiển thị trên Website</span>
+                        </h4>
+                        {(servicePreview || editingService.hinh_anh) && (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            <span>Ảnh áp dụng</span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Cột bên trái thao tác trên ảnh gốc. Kéo ô vuông để chọn góc hiển thị chuẩn xác nhất cho ảnh dịch vụ ngoài website.
+                      </p>
+
+                      {(servicePreview || editingService.hinh_anh) && (
+                        <div className="space-y-3 pt-1">
+                          <div>
+                            <span className="text-[10px] font-semibold text-slate-600 block mb-1">1. Hiển thị ở danh sách dịch vụ:</span>
+                            <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs">
+                              <img
+                                src={servicePreview || editingService.hinh_anh || ''}
+                                alt="Thumbnail preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] font-semibold text-slate-600 block mb-1">2. Hiển thị ở banner khung chi tiết lớn:</span>
+                            <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-2xs relative">
+                              <img
+                                src={servicePreview || editingService.hinh_anh || ''}
+                                alt="Hero preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Checkboxes trạng thái */}
@@ -9928,7 +10014,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 <span>{isServiceSaving ? 'Đang lưu vào Supabase...' : 'Lưu Dịch Vụ'}</span>
               </button>
             </div>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -9937,7 +10023,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
       {editingFaq && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -10166,7 +10252,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 <span>{isFaqSaving ? 'Đang lưu vào Supabase...' : 'Lưu Câu Hỏi'}</span>
               </button>
             </div>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -10175,7 +10261,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
       {isBookingDesignModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 via-white to-white">
               <div className="flex items-center gap-3">
@@ -10566,7 +10652,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 </button>
               </div>
             </div>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -10575,7 +10661,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
       {selectedAppointment && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-3">
@@ -10789,7 +10875,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 Đóng
               </button>
             </div>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -10798,7 +10884,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
       {editingReview && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -11136,7 +11222,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 </button>
               </div>
             </form>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -11145,16 +11231,21 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
       {editingMember && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-[#2D5A27]">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-[#2D5A27]">
                   <UserCheck className="w-4 h-4" />
                 </div>
-                <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide uppercase">
-                  {isCreatingNewMember ? 'Thêm Nhân Sự Đội Ngũ Mới' : 'Chỉnh Sửa Hồ Sơ Nhân Sự'}
-                </h3>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide uppercase">
+                    {isCreatingNewMember ? 'Thêm Nhân Sự Đội Ngũ Mới' : 'Chỉnh Sửa Hồ Sơ Nhân Sự'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Tải/dán ảnh bên trái, kéo các ô vuông để cắt chỉnh chân dung chuẩn tỉ lệ 3:4
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -11165,270 +11256,310 @@ function formatDisplayReviewDate(val?: string | null): string {
               </button>
             </div>
 
-            {/* Modal Body */}
-            <form onSubmit={handleSaveMember} className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Phân loại hạn mục */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Hạn mục phân loại: *
-                </label>
-                <select
-                  value={editingMember.phan_loai || 'bac_si'}
-                  onChange={(e) => {
-                    const val = e.target.value as any;
-                    setEditingMember((prev) => ({
-                      ...prev,
-                      phan_loai: val,
-                      chuc_danh:
-                        prev?.chuc_danh && prev.chuc_danh !== 'BÁC SĨ THÚ Y' && prev.chuc_danh !== 'ĐIỀU DƯỠNG' && prev.chuc_danh !== 'CHUYÊN GIA TƯ VẤN'
-                          ? prev.chuc_danh
-                          : val === 'lanh_dao'
-                          ? 'NHÀ SÁNG LẬP · PETM&M'
-                          : val === 'chuyen_gia'
-                          ? 'CHUYÊN GIA TƯ VẤN'
-                          : val === 'dieu_duong'
-                          ? 'ĐIỀU DƯỠNG'
-                          : 'BÁC SĨ THÚ Y',
-                    }));
-                  }}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
-                >
-                  <option value="lanh_dao">1. Đội ngũ Lãnh đạo chuyên môn</option>
-                  <option value="chuyen_gia">2. Đội ngũ Chuyên gia Tư vấn</option>
-                  <option value="bac_si">3. Đội ngũ Bác sĩ Thú y</option>
-                  <option value="dieu_duong">4. Đội ngũ Điều dưỡng &amp; Chăm sóc</option>
-                </select>
-              </div>
-
-              {/* Hình ảnh chân dung bác sĩ / nhân sự */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Ảnh chân dung:
-                </label>
-                <AdminImageInput
-                  value={editingMember.hinh_anh || ''}
-                  onChange={(url) => setEditingMember((prev) => ({ ...prev, hinh_anh: url }))}
-                  folder="general"
-                  label=""
-                  uploadButtonLabel="Tải Ảnh"
-                  pasteButtonLabel="Dán Ảnh"
-                  onNotification={showNotification}
-                />
-              </div>
-
-              {/* Language Switch Tabs & AI Translate Button */}
-              <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-100/80 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-1">
-                  <div className="flex bg-white rounded-lg p-0.5 shadow-2xs border border-slate-200/80">
-                    <button
-                      type="button"
-                      onClick={() => setMemberModalTab('vi')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        memberModalTab === 'vi'
-                          ? 'bg-[#2D5A27] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                      <span>Bản Tiếng Việt</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMemberModalTab('en')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        memberModalTab === 'en'
-                          ? 'bg-[#2D5A27] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <UKFlag className="w-4 h-3 rounded-[2px]" />
-                      <span>Bản English</span>
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleTranslateMember}
-                  disabled={isTranslatingMember}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
-                  title="Dịch tự động toàn bộ thông tin nhân sự sang Tiếng Anh y khoa bằng AI"
-                >
-                  {isTranslatingMember ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isTranslatingMember ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
-                </button>
-              </div>
-
-              {memberModalTab === 'vi' ? (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Họ và tên (Tiếng Việt): <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editingMember.ho_ten || ''}
-                        onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten: e.target.value }))}
-                        placeholder="Nhập họ và tên"
-                        required
-                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Thẻ chức danh (Tiếng Việt):
-                      </label>
-                      <input
-                        type="text"
-                        value={editingMember.chuc_danh || ''}
-                        onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh: e.target.value }))}
-                        placeholder="BÁC SĨ THÚ Y"
-                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none uppercase"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Học vị / Chức vụ (Tiếng Việt):
-                    </label>
-                    <input
-                      type="text"
-                      value={editingMember.hoc_vi_chuc_vu || ''}
-                      onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu: e.target.value }))}
-                      placeholder="Học vị, chức danh công tác"
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Giới thiệu tóm tắt (Tiếng Việt):
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={editingMember.mo_ta || ''}
-                      onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta: e.target.value }))}
-                      placeholder="Nội dung giới thiệu năng lực chuyên môn"
-                      className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Full Name (English):
-                      </label>
-                      <input
-                        type="text"
-                        value={editingMember.ho_ten_en || ''}
-                        onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten_en: e.target.value }))}
-                        placeholder="e.g. Dr. Nguyen Minh Tuan, DVM"
-                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Title Badge (English):
-                      </label>
-                      <input
-                        type="text"
-                        value={editingMember.chuc_danh_en || ''}
-                        onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh_en: e.target.value }))}
-                        placeholder="e.g. VETERINARY DOCTOR"
-                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none uppercase"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Degree / Position (English):
-                    </label>
-                    <input
-                      type="text"
-                      value={editingMember.hoc_vi_chuc_vu_en || ''}
-                      onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu_en: e.target.value }))}
-                      placeholder="e.g. Specialist Level I · Surgery & Orthopedics"
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Summary Bio (English):
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={editingMember.mo_ta_en || ''}
-                      onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta_en: e.target.value }))}
-                      placeholder="Professional experience and clinical competence summary in English..."
-                      className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thứ tự sắp xếp:
-                  </label>
-                  <input
-                    type="number"
-                    value={editingMember.thu_tu ?? 0}
-                    onChange={(e) =>
-                      setEditingMember((prev) => ({
-                        ...prev,
-                        thu_tu: parseInt(e.target.value, 10) || 0,
-                      }))
-                    }
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+            {/* Modal Body Form 2 Cột */}
+            <form onSubmit={handleSaveMember} className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* CỘT TRÁI (6 CỘT): BỘ CẮT ẢNH CHÂN DUNG TƯƠNG TÁC */}
+                <div className="lg:col-span-6 space-y-4">
+                  <AdminInteractiveCropper
+                    value={editingMember.hinh_anh || ''}
+                    originalUrl={editingMember.anh_goc || editingMember.hinh_anh || ''}
+                    onChange={(url) => setEditingMember((prev) => ({ ...prev, hinh_anh: url }))}
+                    onOriginalChange={(url) => setEditingMember((prev) => ({ ...prev, anh_goc: url }))}
+                    onPreviewChange={(url) => setMemberPreview(url)}
+                    folder="general"
+                    aspectRatio={3 / 4}
+                    onNotification={showNotification}
+                    label="Ảnh Chân Dung Nhân Sự (Tỉ lệ 3:4)"
                   />
                 </div>
 
-                <div className="pt-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingMember.kich_hoat !== false}
-                      onChange={(e) => setEditingMember((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
-                      className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
-                    />
-                    <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị</span>
-                  </label>
+                {/* CỘT PHẢI (6 CỘT): XEM TRƯỚC THẺ BÁC SĨ & THÔNG TIN HỒ SƠ */}
+                <div className="lg:col-span-6 space-y-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-200/80">
+                  {/* MÔ PHỎNG HIỂN THỊ THẺ NHÂN SỰ THỜI GIAN THỰC */}
+                  {(memberPreview || editingMember.hinh_anh) && (
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                          <UserCheck className="w-3.5 h-3.5 text-[#2D5A27]" />
+                          <span>Mô phỏng hiển thị trên Thẻ Đội Ngũ (Ảnh sau cắt)</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>Ảnh áp dụng</span>
+                        </span>
+                      </div>
+                      <div className="flex gap-3 items-center">
+                        <div className="w-20 aspect-[3/4] rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                          <img
+                            src={memberPreview || editingMember.hinh_anh || ''}
+                            alt="Doctor preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="space-y-1 min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D5A27] bg-[#2D5A27]/10 px-2 py-0.5 rounded-full inline-block">
+                            {editingMember.chuc_danh || 'BÁC SĨ THÚ Y'}
+                          </span>
+                          <h4 className="text-xs font-bold text-slate-800 truncate">
+                            {editingMember.ho_ten || 'Họ và tên Bác sĩ / Nhân sự'}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">
+                            {editingMember.hoc_vi_chuc_vu || 'Học vị, chức danh chuyên môn'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phân loại hạn mục */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Hạn mục phân loại: *
+                    </label>
+                    <select
+                      value={editingMember.phan_loai || 'bac_si'}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        setEditingMember((prev) => ({
+                          ...prev,
+                          phan_loai: val,
+                          chuc_danh:
+                            prev?.chuc_danh && prev.chuc_danh !== 'BÁC SĨ THÚ Y' && prev.chuc_danh !== 'ĐIỀU DƯỠNG' && prev.chuc_danh !== 'CHUYÊN GIA TƯ VẤN'
+                              ? prev.chuc_danh
+                              : val === 'lanh_dao'
+                              ? 'NHÀ SÁNG LẬP · PETM&M'
+                              : val === 'chuyen_gia'
+                              ? 'CHUYÊN GIA TƯ VẤN'
+                              : val === 'dieu_duong'
+                              ? 'ĐIỀU DƯỠNG'
+                              : 'BÁC SĨ THÚ Y',
+                        }));
+                      }}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                    >
+                      <option value="lanh_dao">1. Đội ngũ Lãnh đạo chuyên môn</option>
+                      <option value="chuyen_gia">2. Đội ngũ Chuyên gia Tư vấn</option>
+                      <option value="bac_si">3. Đội ngũ Bác sĩ Thú y</option>
+                      <option value="dieu_duong">4. Đội ngũ Điều dưỡng &amp; Chăm sóc</option>
+                    </select>
+                  </div>
+
+                  {/* Language Switch Tabs & AI Translate Button */}
+                  <div className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1">
+                      <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200/80">
+                        <button
+                          type="button"
+                          onClick={() => setMemberModalTab('vi')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            memberModalTab === 'vi'
+                              ? 'bg-[#2D5A27] text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                          <span>Tiếng Việt</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMemberModalTab('en')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            memberModalTab === 'en'
+                              ? 'bg-[#2D5A27] text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <UKFlag className="w-4 h-3 rounded-[2px]" />
+                          <span>English</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleTranslateMember}
+                      disabled={isTranslatingMember}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-2xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                      title="Dịch tự động toàn bộ thông tin nhân sự sang Tiếng Anh y khoa bằng AI"
+                    >
+                      {isTranslatingMember ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" />
+                      )}
+                      <span>{isTranslatingMember ? 'Đang dịch...' : 'Dịch ENG AI'}</span>
+                    </button>
+                  </div>
+
+                  {memberModalTab === 'vi' ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Họ và tên (Tiếng Việt): <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editingMember.ho_ten || ''}
+                            onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten: e.target.value }))}
+                            placeholder="Nhập họ và tên"
+                            required
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Thẻ chức danh (Tiếng Việt):
+                          </label>
+                          <input
+                            type="text"
+                            value={editingMember.chuc_danh || ''}
+                            onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh: e.target.value }))}
+                            placeholder="BÁC SĨ THÚ Y"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none uppercase"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Học vị / Chức vụ (Tiếng Việt):
+                        </label>
+                        <input
+                          type="text"
+                          value={editingMember.hoc_vi_chuc_vu || ''}
+                          onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu: e.target.value }))}
+                          placeholder="Học vị, chức danh công tác"
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Giới thiệu tóm tắt (Tiếng Việt):
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={editingMember.mo_ta || ''}
+                          onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta: e.target.value }))}
+                          placeholder="Nội dung giới thiệu năng lực chuyên môn"
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Full Name (English):
+                          </label>
+                          <input
+                            type="text"
+                            value={editingMember.ho_ten_en || ''}
+                            onChange={(e) => setEditingMember((prev) => ({ ...prev, ho_ten_en: e.target.value }))}
+                            placeholder="e.g. Dr. John Doe, DVM"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Title Badge (English):
+                          </label>
+                          <input
+                            type="text"
+                            value={editingMember.chuc_danh_en || ''}
+                            onChange={(e) => setEditingMember((prev) => ({ ...prev, chuc_danh_en: e.target.value }))}
+                            placeholder="e.g. VETERINARY DOCTOR"
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none uppercase"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Degree / Position (English):
+                        </label>
+                        <input
+                          type="text"
+                          value={editingMember.hoc_vi_chuc_vu_en || ''}
+                          onChange={(e) => setEditingMember((prev) => ({ ...prev, hoc_vi_chuc_vu_en: e.target.value }))}
+                          placeholder="e.g. Specialist Level I · Surgery & Orthopedics"
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Summary Bio (English):
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={editingMember.mo_ta_en || ''}
+                          onChange={(e) => setEditingMember((prev) => ({ ...prev, mo_ta_en: e.target.value }))}
+                          placeholder="Professional experience and clinical competence summary in English..."
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center pt-1 border-t border-slate-200">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Thứ tự sắp xếp:
+                      </label>
+                      <input
+                        type="number"
+                        value={editingMember.thu_tu ?? 0}
+                        onChange={(e) =>
+                          setEditingMember((prev) => ({
+                            ...prev,
+                            thu_tu: parseInt(e.target.value, 10) || 0,
+                          }))
+                        }
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="pt-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editingMember.kich_hoat !== false}
+                          onChange={(e) => setEditingMember((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                          className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
+                        />
+                        <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingMember(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      Hủy Bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isMemberSaving}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{isMemberSaving ? 'Đang lưu...' : 'Lưu Nhân Sự'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* Modal Footer */}
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setEditingMember(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                >
-                  Hủy Bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isMemberSaving}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{isMemberSaving ? 'Đang lưu...' : 'Lưu Nhân Sự'}</span>
-                </button>
-              </div>
             </form>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -11437,11 +11568,17 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
             {editingAboutSlide && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide uppercase">
-                {isCreatingNewAboutSlide ? 'Thêm Ảnh Khung Giới Thiệu' : 'Chỉnh Sửa Ảnh Khung Giới Thiệu'}
-              </h3>
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* TIÊU ĐỀ MODAL */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide uppercase">
+                  {isCreatingNewAboutSlide ? 'Thêm Ảnh Khung Giới Thiệu' : 'Chỉnh Sửa Ảnh Khung Giới Thiệu'}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Tải/dán ảnh bên trái, kéo các ô vuông để cắt chỉnh khung hình hiển thị chuẩn tỉ lệ 16:10
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditingAboutSlide(null)}
@@ -11451,177 +11588,222 @@ function formatDisplayReviewDate(val?: string | null): string {
               </button>
             </div>
 
-            {/* THANH CHUYỂN ĐỔI NGÔN NGỮ (TIẾNG VIỆT & ENGLISH) */}
-            <div className="px-6 pt-4 pb-0">
-              <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                {/* Tab Ngôn ngữ */}
-                <div className="inline-flex p-1 bg-slate-200/80 rounded-xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setAboutSlideLang('vi')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      aboutSlideLang === 'vi'
-                        ? 'bg-[#2D5A27] text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                    <span>Tiếng Việt</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAboutSlideLang('en')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      aboutSlideLang === 'en'
-                        ? 'bg-[#2D5A27] text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <UKFlag className="w-4 h-3 rounded-[2px]" />
-                    <span>English</span>
-                  </button>
-                </div>
-
-                {/* Nút Chuyển đổi ENG */}
-                <button
-                  type="button"
-                  onClick={handleAutoTranslateAboutSlide}
-                  disabled={isTranslatingAboutSlide}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
-                  title="Tự động dịch Tiêu đề chú thích & Huy hiệu sang Tiếng Anh chuyên ngành Thú y bằng AI"
-                >
-                  {isTranslatingAboutSlide ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isTranslatingAboutSlide ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveAboutSlide} className="p-6 overflow-y-auto space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Đường dẫn ảnh: *
-                </label>
-                <AdminImageInput
-                  value={editingAboutSlide.duong_dan_anh || ''}
-                  onChange={(url) => setEditingAboutSlide((prev) => ({ ...prev, duong_dan_anh: url }))}
-                  folder="banners"
-                  label=""
-                  uploadButtonLabel="Tải Ảnh"
-                  pasteButtonLabel="Dán Ảnh"
-                  onNotification={showNotification}
-                />
-              </div>
-
-              {/* NỘI DUNG TIẾNG VIỆT */}
-              {aboutSlideLang === 'vi' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Tiêu đề chú thích ảnh: *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAboutSlide.tieu_de || ''}
-                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de: e.target.value }))}
-                      required
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Huy hiệu góc ảnh:
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAboutSlide.alt_text || ''}
-                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text: e.target.value }))}
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* NỘI DUNG ENGLISH */}
-              {aboutSlideLang === 'en' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Tiêu đề chú thích ảnh (English):
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAboutSlide.tieu_de_en || ''}
-                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de_en: e.target.value }))}
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Huy hiệu góc ảnh (English):
-                    </label>
-                    <input
-                      type="text"
-                      value={editingAboutSlide.alt_text_en || ''}
-                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text_en: e.target.value }))}
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 items-center">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Thứ tự hiển thị:
-                  </label>
-                  <input
-                    type="number"
-                    value={editingAboutSlide.thu_tu ?? 0}
-                    onChange={(e) =>
-                      setEditingAboutSlide((prev) => ({ ...prev, thu_tu: parseInt(e.target.value, 10) || 0 }))
-                    }
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+            {/* FORM 2 CỘT: BÊN TRÁI LÀ CẮT ẢNH, BÊN PHẢI LÀ NỘI DUNG & THÔNG SỐ */}
+            <form onSubmit={handleSaveAboutSlide} className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* CỘT TRÁI: BỘ CẮT & CĂN CHỈNH ẢNH INTERACTIVE (7 CỘT) */}
+                <div className="lg:col-span-7">
+                  <AdminInteractiveCropper
+                    value={editingAboutSlide.duong_dan_anh || ''}
+                    originalUrl={editingAboutSlide.anh_goc || editingAboutSlide.duong_dan_anh || ''}
+                    onChange={(url) => setEditingAboutSlide((prev) => ({ ...prev, duong_dan_anh: url }))}
+                    onOriginalChange={(url) => setEditingAboutSlide((prev) => ({ ...prev, anh_goc: url }))}
+                    onPreviewChange={(url) => setAboutSlidePreview(url)}
+                    folder="banners"
+                    aspectRatio={16 / 10}
+                    onNotification={showNotification}
+                    label="Ảnh Khung Giới Thiệu (Tỉ lệ 16:10)"
                   />
                 </div>
 
-                <div className="pt-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingAboutSlide.kich_hoat !== false}
-                      onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
-                      className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
-                    />
-                    <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị</span>
-                  </label>
+                {/* CỘT PHẢI: NGÔN NGỮ, TIÊU ĐỀ & CÀI ĐẶT (5 CỘT) */}
+                <div className="lg:col-span-5 space-y-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-200/80">
+                  {/* MÔ PHỎNG HIỂN THỊ THỜI GIAN THỰC KHI CẮT */}
+                  {(aboutSlidePreview || editingAboutSlide.duong_dan_anh) && (
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                          <Crop className="w-3 h-3 text-[#2D5A27]" />
+                          <span>Ảnh sau cắt (Mô phỏng hiển thị)</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>Ảnh áp dụng</span>
+                        </span>
+                      </div>
+                      <div className="relative w-full aspect-[16/10] rounded-lg overflow-hidden border border-slate-200 bg-slate-950">
+                        <img
+                          src={aboutSlidePreview || editingAboutSlide.duong_dan_anh}
+                          alt="Live slide crop preview"
+                          className="w-full h-full object-cover"
+                        />
+                        {(editingAboutSlide.alt_text || editingAboutSlide.alt_text_en) && (
+                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#2D5A27]/90 text-white text-[10px] font-bold shadow">
+                            {aboutSlideLang === 'vi' ? editingAboutSlide.alt_text : (editingAboutSlide.alt_text_en || editingAboutSlide.alt_text)}
+                          </div>
+                        )}
+                        {(editingAboutSlide.tieu_de || editingAboutSlide.tieu_de_en) && (
+                          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 text-white">
+                            <p className="text-[11px] font-semibold line-clamp-1">
+                              {aboutSlideLang === 'vi' ? editingAboutSlide.tieu_de : (editingAboutSlide.tieu_de_en || editingAboutSlide.tieu_de)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* THANH CHUYỂN ĐỔI NGÔN NGỮ (TIẾNG VIỆT & ENGLISH) */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                    {/* Tab Ngôn ngữ */}
+                    <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setAboutSlideLang('vi')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          aboutSlideLang === 'vi'
+                            ? 'bg-[#2D5A27] text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                        <span>Tiếng Việt</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAboutSlideLang('en')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          aboutSlideLang === 'en'
+                            ? 'bg-[#2D5A27] text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                        <span>English</span>
+                      </button>
+                    </div>
+
+                    {/* Nút Chuyển đổi ENG */}
+                    <button
+                      type="button"
+                      onClick={handleAutoTranslateAboutSlide}
+                      disabled={isTranslatingAboutSlide}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                      title="Tự động dịch Tiêu đề chú thích & Huy hiệu sang Tiếng Anh chuyên ngành Thú y bằng AI"
+                    >
+                      {isTranslatingAboutSlide ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      <span>{isTranslatingAboutSlide ? 'Đang dịch...' : 'Dịch ENG AI'}</span>
+                    </button>
+                  </div>
+
+                  {/* NỘI DUNG TIẾNG VIỆT */}
+                  {aboutSlideLang === 'vi' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Tiêu đề chú thích ảnh: *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingAboutSlide.tieu_de || ''}
+                          onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de: e.target.value }))}
+                          placeholder="Ví dụ: Đội ngũ y bác sĩ tận tâm..."
+                          required
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Huy hiệu góc ảnh:
+                        </label>
+                        <input
+                          type="text"
+                          value={editingAboutSlide.alt_text || ''}
+                          onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text: e.target.value }))}
+                          placeholder="Ví dụ: 100% Chuyên Môn Cao..."
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* NỘI DUNG ENGLISH */}
+                  {aboutSlideLang === 'en' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Tiêu đề chú thích ảnh (English):
+                        </label>
+                        <input
+                          type="text"
+                          value={editingAboutSlide.tieu_de_en || ''}
+                          onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, tieu_de_en: e.target.value }))}
+                          placeholder="e.g. Dedicated Medical Team..."
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Huy hiệu góc ảnh (English):
+                        </label>
+                        <input
+                          type="text"
+                          value={editingAboutSlide.alt_text_en || ''}
+                          onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, alt_text_en: e.target.value }))}
+                          placeholder="e.g. 100% Highly Qualified..."
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* THỨ TỰ & KÍCH HOẠT */}
+                  <div className="grid grid-cols-2 gap-3 items-center pt-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Thứ tự hiển thị:
+                      </label>
+                      <input
+                        type="number"
+                        value={editingAboutSlide.thu_tu ?? 0}
+                        onChange={(e) =>
+                          setEditingAboutSlide((prev) => ({ ...prev, thu_tu: parseInt(e.target.value, 10) || 0 }))
+                        }
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="pt-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editingAboutSlide.kich_hoat !== false}
+                          onChange={(e) => setEditingAboutSlide((prev) => ({ ...prev, kich_hoat: e.target.checked }))}
+                          className="w-4 h-4 rounded text-[#2D5A27] focus:ring-[#2D5A27]"
+                        />
+                        <span className="text-xs font-semibold text-slate-700">Kích hoạt hiển thị</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* NÚT THAO TÁC */}
+                  <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingAboutSlide(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      Hủy Bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isAboutSlideSaving}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{isAboutSlideSaving ? 'Đang lưu...' : 'Lưu Slide'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setEditingAboutSlide(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                >
-                  Hủy Bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAboutSlideSaving}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{isAboutSlideSaving ? 'Đang lưu...' : 'Lưu Slide'}</span>
-                </button>
-              </div>
             </form>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
 
@@ -11630,7 +11812,7 @@ function formatDisplayReviewDate(val?: string | null): string {
       {/* ========================================================= */}
             {editingArticle && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -11887,19 +12069,69 @@ function formatDisplayReviewDate(val?: string | null): string {
 
               {/* COMMON FIELDS */}
               <div className="pt-4 border-t border-slate-200 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Ảnh bìa bài viết:
-                  </label>
-                  <AdminImageInput
-                    value={editingArticle.hinh_anh || ''}
-                    onChange={(url) => setEditingArticle((prev) => ({ ...prev, hinh_anh: url }))}
-                    folder="articles"
-                    label=""
-                    uploadButtonLabel="Tải Ảnh Bìa"
-                    pasteButtonLabel="Dán Link Ảnh"
-                    onNotification={showNotification}
-                  />
+                {/* KHỐI ẢNH BÌA BÀI VIẾT & CẮT CHỈNH INTERACTIVE (ẢNH BÊN TRÁI, Ô VUÔNG KÉO CẮT) */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                    {/* CỘT TRÁI: BỘ CẮT ẢNH VỚI CÁC Ô VUÔNG (7 CỘT) */}
+                    <div className="lg:col-span-7">
+                      <AdminInteractiveCropper
+                        value={editingArticle.hinh_anh || ''}
+                        originalUrl={editingArticle.anh_goc || editingArticle.hinh_anh || ''}
+                        onChange={(url) => setEditingArticle((prev) => ({ ...prev, hinh_anh: url }))}
+                        onOriginalChange={(url) => setEditingArticle((prev) => ({ ...prev, anh_goc: url }))}
+                        onPreviewChange={(url) => setArticlePreview(url)}
+                        folder="articles"
+                        aspectRatio={16 / 9}
+                        onNotification={showNotification}
+                        label="Ảnh Bìa Bài Viết Cẩm Nang (Tỉ lệ 16:9)"
+                      />
+                    </div>
+
+                    {/* CỘT PHẢI: MÔ PHỎNG THẺ BÀI VIẾT (5 CỘT) */}
+                    <div className="lg:col-span-5 space-y-3 pt-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#2D5A27]" />
+                          <span>Mô phỏng hiển thị trên Blog / Cẩm nang</span>
+                        </h4>
+                        {(articlePreview || editingArticle.hinh_anh) && (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            <span>Ảnh áp dụng</span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Cột bên trái thao tác trên ảnh gốc. Kéo các ô vuông để cắt góc tiêu điểm chuẩn tỉ lệ 16:9 cho thẻ bài viết, ảnh gốc vẫn luôn được giữ nguyên.
+                      </p>
+
+                      {(articlePreview || editingArticle.hinh_anh) && (
+                        <div className="pt-2">
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Mô phỏng thẻ bài viết:</label>
+                          <div className="w-full rounded-xl overflow-hidden border border-slate-200 bg-white shadow-2xs">
+                            <div className="w-full aspect-[16/9] overflow-hidden bg-slate-100">
+                              <img
+                                src={articlePreview || editingArticle.hinh_anh || ''}
+                                alt="Article thumbnail"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="p-2.5">
+                              <span className="text-[10px] font-bold text-[#2D5A27] bg-[#2D5A27]/10 px-2 py-0.5 rounded-full inline-block mb-1">
+                                {editingArticle.chuyen_muc || 'Y Khoa Dự Phòng'}
+                              </span>
+                              <h5 className="text-xs font-bold text-slate-800 line-clamp-1">
+                                {editingArticle.tieu_de || 'Tiêu đề bài viết cẩm nang'}
+                              </h5>
+                              <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
+                                {editingArticle.mo_ta_ngan || 'Mô tả ngắn gọn về bài viết y khoa chia sẻ tới khách hàng...'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -11979,7 +12211,7 @@ function formatDisplayReviewDate(val?: string | null): string {
                 </button>
               </div>
             </form>
-          </div>
+          </AdminResizableModal>
         </div>
       )}
     </div>
