@@ -479,27 +479,22 @@ export default function TaoDanhGiaPage() {
       <header className="sticky top-0 z-20 w-full bg-white border-b border-slate-200 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-2 cursor-default select-none pointer-events-none">
               <PetLogo size="sm" showSubline={false} />
-            </Link>
+            </div>
             <div className="hidden sm:block h-5 w-px bg-slate-200" />
-            <span className="hidden sm:inline text-sm font-semibold text-emerald-700">
+            <span className="hidden sm:inline text-sm font-semibold text-emerald-700 select-none cursor-default">
               Hệ Thống Đánh Giá Dịch Vụ
             </span>
           </div>
 
           {/* User info & Navigation */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Đang trực tuyến" />
-              <div className="text-left">
-                <span className="text-xs font-bold text-slate-800 block leading-tight">
-                  {currentUser.ho_ten}
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  {currentUser.vai_tro === 'admin' ? 'Quản trị viên' : 'Nhân viên (User)'}
-                </span>
-              </div>
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-50 border border-slate-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Đang trực tuyến" />
+              <span className="text-xs font-bold text-slate-800">
+                {(currentUser.ho_ten || currentUser.username).replace(/\s*\((Admin|User|Quản trị viên|Nhân viên)\)/gi, '').trim()}
+              </span>
             </div>
 
             {currentUser.vai_tro === 'admin' && (
@@ -856,7 +851,8 @@ export default function TaoDanhGiaPage() {
                           const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
                           const pad = (n: number) => String(n).padStart(2, '0');
                           const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} - ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-                          const creator = item.nguoi_tao || 'Nhân viên';
+                          const rawCreator = item.nguoi_tao || 'Nhân viên';
+                          const creator = rawCreator.replace(/\s*\((Admin|User|Quản trị viên|Nhân viên)\)/gi, '').trim();
 
                           return (
                             <tr key={item.id} className="hover:bg-slate-50/70 transition">
