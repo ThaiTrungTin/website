@@ -3357,8 +3357,8 @@ function formatDisplayReviewDate(val?: string | null): string {
 }
 
 function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
-  if (rev.noi_dung_en && rev.noi_dung_en.includes('Được tạo bởi:')) {
-    return rev.noi_dung_en;
+  if (rev.noi_dung_en && (rev.noi_dung_en.includes('User:') || rev.noi_dung_en.includes('Được tạo bởi:'))) {
+    return rev.noi_dung_en.replace('Được tạo bởi:', 'User:');
   }
   const d = rev.ngay_tao ? new Date(rev.ngay_tao) : new Date(rev.ngay_danh_gia || Date.now());
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -3366,7 +3366,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     ? '04/10/2026 12:30:22'
     : `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   const creator = rev.ten_khach_hang_en?.trim() || 'Trần Văn A';
-  return `Được tạo bởi: ${creator} ; ${dateFormatted}`;
+  return `User: ${creator} ; ${dateFormatted}`;
 }
 
   const handleAddNewReview = () => {

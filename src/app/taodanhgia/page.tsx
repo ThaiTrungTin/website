@@ -27,6 +27,8 @@ import {
   AlertTriangle,
   Lock,
   ChevronDown,
+  X,
+  Download,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import PetLogo from '@/components/PetLogo';
@@ -160,6 +162,46 @@ export default function TaoDanhGiaPage() {
 
   const [historyList, setHistoryList] = useState<YeuCauDanhGiaRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
+
+  // Modal hiển thị mã QR & sao chép link từ bảng lịch sử
+  const [qrModalData, setQrModalData] = useState<{
+    item: YeuCauDanhGiaRecord;
+    link: string;
+    qrDataUrl: string;
+  } | null>(null);
+  const [qrModalCopied, setQrModalCopied] = useState<boolean>(false);
+
+  const handleOpenQrModal = async (item: YeuCauDanhGiaRecord) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
+    const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
+    let qrDataUrl = '';
+    try {
+      qrDataUrl = await QRCode.toDataURL(link, {
+        width: 320,
+        margin: 2,
+        color: { dark: '#111827', light: '#ffffff' },
+      });
+    } catch {}
+    setQrModalData({ item, link, qrDataUrl });
+    setQrModalCopied(false);
+  };
+
+  const handleCopyQrModalLink = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setQrModalCopied(true);
+      setTimeout(() => setQrModalCopied(false), 2500);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setQrModalCopied(true);
+      setTimeout(() => setQrModalCopied(false), 2500);
+    }
+  };
 
   useEffect(() => {
     async function loadBranches() {
@@ -716,121 +758,125 @@ export default function TaoDanhGiaPage() {
               ) : historyList.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">Chưa có lượt tạo đánh giá nào</div>
               ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                {/* Mobile scroll hint */}
-                <div className="sm:hidden px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
-                  <span>← Vuốt ngang xem đầy đủ cột →</span>
-                  <span className="font-semibold text-emerald-600">Cuộn dọc &amp; ngang</span>
-                </div>
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  {/* Mobile scroll hint */}
+                  <div className="sm:hidden px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
+                    <span>← Vuốt ngang xem đầy đủ cột →</span>
+                    <span className="font-semibold text-emerald-600">Cuộn dọc &amp; ngang</span>
+                  </div>
 
-                <div className="max-h-[520px] overflow-y-auto overflow-x-auto">
-                  <table className="w-full text-xs text-left whitespace-nowrap min-w-[700px]">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold sticky top-0 z-10 shadow-2xs">
-                      <tr>
-                        <th className="py-2.5 px-3.5">Khách hàng</th>
-                        <th className="py-2.5 px-3">Mã ĐG / Mã HĐ</th>
-                        <th className="py-2.5 px-3">Cơ sở khám</th>
-                        <th className="py-2.5 px-3">Trạng thái</th>
-                        <th className="py-2.5 px-3">Người tạo &amp; Thời gian</th>
-                        <th className="py-2.5 px-3.5 text-right">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {historyList.map((item) => {
-                        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
-                        const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
-                        const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
-                        const pad = (n: number) => String(n).padStart(2, '0');
-                        const timeStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                        const creator = item.nguoi_tao || 'Nhân viên';
+                  <div className="max-h-[520px] overflow-y-auto overflow-x-auto">
+                    <table className="w-full text-xs text-left whitespace-nowrap min-w-[650px]">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold sticky top-0 z-10 shadow-2xs">
+                        <tr>
+                          <th className="py-2.5 px-3.5">Khách hàng</th>
+                          <th className="py-2.5 px-3 text-center">TT</th>
+                          <th className="py-2.5 px-3 text-center">Thao tác</th>
+                          <th className="py-2.5 px-3">Người tạo &amp; Thời gian</th>
+                          <th className="py-2.5 px-3.5">Cơ sở</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {historyList.map((item) => {
+                          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
+                          const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
+                          const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} - ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+                          const creator = item.nguoi_tao || 'Nhân viên';
 
-                        return (
-                          <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                            <td className="py-3 px-3.5">
-                              <div>
-                                <span className="font-bold text-slate-900 text-sm block">
-                                  {item.ten_khach_hang}
-                                </span>
-                                {item.so_dien_thoai ? (
-                                  <span className="text-[11px] text-slate-500 font-mono">
-                                    {item.so_dien_thoai}
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                              {/* 1. Khách hàng */}
+                              <td className="py-3 px-3.5">
+                                <div>
+                                  <span className="font-bold text-slate-900 text-sm block">
+                                    {item.ten_khach_hang}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                      {item.ma_danh_gia}
+                                    </span>
+                                    {item.so_dien_thoai ? (
+                                      <span className="text-[11px] text-slate-500 font-mono">
+                                        {item.so_dien_thoai}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 italic">Không có SĐT</span>
+                                    )}
+                                    {item.ma_hoa_don && item.ma_hoa_don !== item.ma_danh_gia && (
+                                      <span className="text-[10px] text-slate-400 font-mono">
+                                        (HĐ: {item.ma_hoa_don})
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* 2. TT (Trạng thái) */}
+                              <td className="py-3 px-3 text-center">
+                                {item.trang_thai === 'da_danh_gia' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span>Đã gửi {item.so_sao ? `(${item.so_sao}★)` : ''}</span>
                                   </span>
                                 ) : (
-                                  <span className="text-[11px] text-slate-400 italic">Không có SĐT</span>
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                                    <Clock className="w-3 h-3 text-amber-600" />
+                                    <span>Chờ đánh giá</span>
+                                  </span>
                                 )}
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="py-3 px-3">
-                              <span className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-100 text-slate-700 border border-slate-200">
-                                {item.ma_danh_gia}
-                              </span>
-                              {item.ma_hoa_don && item.ma_hoa_don !== item.ma_danh_gia && (
-                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                  HĐ: {item.ma_hoa_don}
+                              {/* 3. Thao tác: 2 icon (Nút QR và Nút đi tới) */}
+                              <td className="py-3 px-3 text-center">
+                                <div className="inline-flex items-center justify-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenQrModal(item)}
+                                    className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
+                                    title="Xem mã QR &amp; Sao chép link"
+                                  >
+                                    <QrCode className="w-4 h-4" />
+                                  </button>
+                                  <a
+                                    href={link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95"
+                                    title="Đi tới link đánh giá"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
                                 </div>
-                              )}
-                            </td>
+                              </td>
 
-                            <td className="py-3 px-3 text-slate-700">
-                              <div className="flex items-center gap-1.5">
-                                <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span className="font-medium text-[11px]">{item.co_so || 'Chưa chọn'}</span>
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-3">
-                              {item.trang_thai === 'da_danh_gia' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                  <span>Đã gửi {item.so_sao ? `(${item.so_sao}★)` : ''}</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                  <Clock className="w-3 h-3 text-amber-600" />
-                                  <span>Chờ đánh giá</span>
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="py-3 px-3 text-slate-600 text-[11px]">
-                              <div>
-                                <span className="font-semibold text-slate-800">Được tạo bởi: {creator}</span>
-                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                  {timeStr}
+                              {/* 4. Người tạo & Thời gian: User: Tên + thời gian */}
+                              <td className="py-3 px-3 text-slate-700 text-xs">
+                                <div>
+                                  <span className="font-bold text-slate-900 block text-xs">
+                                    User: {creator}
+                                  </span>
+                                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                    {timeStr}
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="py-3 px-3.5 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyLink(link)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200 transition cursor-pointer"
-                                  title="Sao chép link gửi cho khách"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                  <span>Chép link</span>
-                                </button>
-                                <a
-                                  href={link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                                  title="Mở link đánh giá"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              {/* 5. Cơ sở */}
+                              <td className="py-3 px-3.5 text-slate-700">
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span className="font-medium text-xs text-slate-800">{item.co_so || 'Chưa chọn'}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           </div>
@@ -842,6 +888,115 @@ export default function TaoDanhGiaPage() {
         onClose={() => setIsScannerOpen(false)}
         onScanSuccess={(code) => setMaHoaDon(code)}
       />
+
+      {/* MODAL HIỂN THỊ MÃ QR & SAO CHÉP LINK */}
+      {qrModalData && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setQrModalData(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Nút đóng */}
+            <button
+              type="button"
+              onClick={() => setQrModalData(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer"
+              title="Đóng"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header Modal */}
+            <div className="text-center mb-4 pr-6">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
+                <QrCode className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-slate-900">Mã QR Đánh Giá</h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Khách hàng: <span className="font-bold text-slate-800">{qrModalData.item.ten_khach_hang}</span>
+              </p>
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <span className="font-mono text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold border border-slate-200">
+                  {qrModalData.item.ma_danh_gia}
+                </span>
+                {qrModalData.item.co_so && (
+                  <span className="text-[11px] text-emerald-700 font-semibold truncate max-w-[160px]">
+                    • {qrModalData.item.co_so}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Khung ảnh QR Code */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col items-center justify-center mb-4">
+              {qrModalData.qrDataUrl ? (
+                <img
+                  src={qrModalData.qrDataUrl}
+                  alt="Mã QR đánh giá"
+                  className="w-56 h-56 rounded-xl shadow-xs bg-white p-2.5"
+                />
+              ) : (
+                <div className="w-56 h-56 flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              <p className="text-[11px] text-slate-500 text-center mt-2.5 font-medium">
+                Dùng camera điện thoại hoặc Zalo quét mã để mở đánh giá
+              </p>
+            </div>
+
+            {/* Link & Nút sao chép */}
+            <div className="space-y-2 mb-4">
+              <label className="text-[11px] font-bold text-slate-700 block">Link đánh giá trực tiếp:</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  readOnly
+                  value={qrModalData.link}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 font-mono select-all focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCopyQrModalLink(qrModalData.link)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+                    qrModalCopied
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                  }`}
+                  title="Sao chép link"
+                >
+                  {qrModalCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{qrModalCopied ? 'Đã chép' : 'Sao chép link'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Các nút hành động */}
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={qrModalData.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition text-center"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                <span>Đi tới link</span>
+              </a>
+              <a
+                href={qrModalData.qrDataUrl}
+                download={`QR_${qrModalData.item.ma_danh_gia}.png`}
+                className="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition text-center"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Tải ảnh QR</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CỬA SỔ XÁC NHẬN ĐĂNG XUẤT */}
       {showLogoutConfirm && (
