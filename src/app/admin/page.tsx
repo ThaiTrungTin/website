@@ -71,6 +71,7 @@ import AdminLoginPage from '@/components/AdminLoginPage';
 import PetLogo from '@/components/PetLogo';
 import AdminCareersManager from '@/components/AdminCareersManager';
 import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announcement/route';
+import { SloganTickerItem, parseSloganList, isSloganActive, renderWithShakingIcons } from '@/lib/slogans';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
@@ -670,6 +671,70 @@ export default function AdminDashboardPage() {
   const [isConfigSaving, setIsConfigSaving] = useState(false);
   const [aboutSubLang, setAboutSubLang] = useState<'vi' | 'en'>('vi');
   const [sloganSubLang, setSloganSubLang] = useState<'vi' | 'en'>('vi');
+  const [sloganItems, setSloganItems] = useState<SloganTickerItem[]>(() =>
+    parseSloganList(globalConfig.slogan_dau_trang_noi_dung, globalConfig.slogan_dau_trang_noi_dung_en)
+  );
+
+  useEffect(() => {
+    if (globalConfig.slogan_dau_trang_noi_dung) {
+      setSloganItems(parseSloganList(globalConfig.slogan_dau_trang_noi_dung, globalConfig.slogan_dau_trang_noi_dung_en));
+    }
+  }, [globalConfig.slogan_dau_trang_noi_dung, globalConfig.slogan_dau_trang_noi_dung_en]);
+
+  const updateSloganItems = (newItems: SloganTickerItem[]) => {
+    setSloganItems(newItems);
+    setConfigForm((prev) => ({
+      ...prev,
+      slogan_dau_trang_noi_dung: JSON.stringify(newItems),
+      slogan_dau_trang_noi_dung_en: JSON.stringify(newItems),
+    }));
+  };
+
+  const handleAddSloganItem = () => {
+    const newItem: SloganTickerItem = {
+      id: `slogan-${Date.now()}`,
+      textVi: '',
+      textEn: '',
+      startDate: '',
+      endDate: '',
+      isActive: true,
+    };
+    updateSloganItems([...sloganItems, newItem]);
+  };
+
+  const handleUpdateSloganField = (id: string, field: keyof SloganTickerItem, value: any) => {
+    const updated = sloganItems.map((item) => (item.id === id ? { ...item, [field]: value } : item));
+    updateSloganItems(updated);
+  };
+
+  const handleDeleteSloganItem = (id: string) => {
+    if (sloganItems.length <= 1) {
+      showNotification('error', 'Cần giữ lại ít nhất 1 thông điệp chạy chân banner!');
+      return;
+    }
+    const updated = sloganItems.filter((item) => item.id !== id);
+    updateSloganItems(updated);
+  };
+
+  const handleQuickAddFromText = (rawText: string) => {
+    if (!rawText.trim()) return;
+    const parts = rawText
+      .split(/[,;\n]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (parts.length === 0) return;
+
+    const newItems: SloganTickerItem[] = parts.map((part, idx) => ({
+      id: `slogan-${Date.now()}-${idx}`,
+      textVi: part,
+      textEn: '',
+      startDate: '',
+      endDate: '',
+      isActive: true,
+    }));
+    updateSloganItems([...sloganItems, ...newItems]);
+    showNotification('success', `Đã thêm ${newItems.length} thông điệp mới từ văn bản!`);
+  };
   const [aboutSlideLang, setAboutSlideLang] = useState<'vi' | 'en'>('vi');
   const [isTranslatingAbout, setIsTranslatingAbout] = useState(false);
   const [isTranslatingSlogans, setIsTranslatingSlogans] = useState(false);
@@ -5966,21 +6031,6 @@ function formatDisplayReviewDate(val?: string | null): string {
                             Mẹo: Có thể dùng dấu phẩy &ldquo;,&rdquo; để ngắt câu xuống dòng và làm nổi bật nửa sau in nghiêng màu xanh rêu.
                           </p>
                         </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                            <span>Nội dung chạy slide chân banner (Tiếng Việt):</span>
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={configForm.slogan_dau_trang_noi_dung || ''}
-                            onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_noi_dung: e.target.value }))
-                            }
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
-                          />
-                        </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -6002,24 +6052,297 @@ function formatDisplayReviewDate(val?: string | null): string {
                             Tip: Use a comma &ldquo;,&rdquo; to split into two animated lines.
                           </p>
                         </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
-                            <UKFlag className="w-4 h-3 rounded-[2px]" />
-                            <span>Nội dung chạy slide chân banner (English):</span>
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={configForm.slogan_dau_trang_noi_dung_en || ''}
-                            onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_noi_dung_en: e.target.value }))
-                            }
-                            placeholder="Standardized veterinary medicine combined with natural recovery therapies..."
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-y"
-                          />
-                        </div>
                       </div>
                     )}
+
+                    {/* ── BỘ QUẢN LÝ THÔNG ĐIỆP CHẠY SLIDE CHÂN BANNER ── */}
+                    <div className="pt-4 border-t border-slate-100 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                            <Sparkles className="w-3.5 h-3.5 text-[#2D5A27]" />
+                            <span>Nội dung chạy slide chân banner ({sloganSubLang === 'vi' ? 'Tiếng Việt' : 'English'}):</span>
+                          </label>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Mỗi thông điệp có thể thiết lập thời gian xuất hiện riêng (Từ ngày - Đến ngày) và icon rung rung sinh động.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleAddSloganItem}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-2xs transition cursor-pointer self-start sm:self-auto shrink-0"
+                        >
+                          <Plus className="w-4 h-4 stroke-[2.5]" />
+                          <span>Thêm Thông Điệp (+)</span>
+                        </button>
+                      </div>
+
+                      {/* Thanh icon gợi ý chèn nhanh */}
+                      <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs">
+                        <span className="text-[11px] font-bold text-amber-900 shrink-0 mr-1 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          <span>Gợi ý icon rung:</span>
+                        </span>
+                        {[
+                          { icon: '🎁', label: 'Quà tặng' },
+                          { icon: '📅', label: 'Lịch khám' },
+                          { icon: '🔔', label: 'Thông báo' },
+                          { icon: '🧧', label: 'Ưu đãi' },
+                          { icon: '⭐', label: '5 sao' },
+                          { icon: '🏥', label: 'Bệnh viện' },
+                          { icon: '💉', label: 'Tiêm phòng' },
+                          { icon: '🩺', label: 'Bác sĩ' },
+                        ].map((item) => (
+                          <span
+                            key={item.icon}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-amber-200/90 text-slate-700 text-[11px] font-medium shadow-2xs select-none"
+                            title={`Chứa ${item.icon} để tự động rung rung`}
+                          >
+                            <span className="petmm-icon-shake">{item.icon}</span>
+                            <span>{item.label}</span>
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Danh sách các thẻ thông điệp */}
+                      <div className="space-y-3">
+                        {sloganItems.map((item, idx) => {
+                          const now = new Date();
+                          const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(now);
+                          const isPast = Boolean(item.endDate && today > item.endDate);
+                          const isFuture = Boolean(item.startDate && today < item.startDate);
+                          const isActiveNow = item.isActive !== false && !isPast && !isFuture;
+
+                          return (
+                            <div
+                              key={item.id || idx}
+                              className={`p-4 rounded-xl border transition-all space-y-3 ${
+                                !item.isActive
+                                  ? 'bg-slate-50 border-slate-200 opacity-60'
+                                  : isActiveNow
+                                  ? 'bg-white border-emerald-300 shadow-2xs ring-1 ring-emerald-500/10'
+                                  : 'bg-white border-slate-200'
+                              }`}
+                            >
+                              {/* Header của thẻ thông điệp: Số thứ tự + Badge trạng thái + Bật/Tắt + Xóa */}
+                              <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded-full bg-[#2D5A27] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-800">
+                                    Thông điệp #{idx + 1}
+                                  </span>
+                                  {/* Badge trạng thái */}
+                                  {!item.isActive ? (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                      Đang Tắt
+                                    </span>
+                                  ) : isFuture ? (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                      Chưa tới ngày ({item.startDate})
+                                    </span>
+                                  ) : isPast ? (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                      Đã hết hạn ({item.endDate})
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      Đang hiển thị
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  {/* Công tắc Bật/Tắt */}
+                                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-slate-600">
+                                    <input
+                                      type="checkbox"
+                                      checked={item.isActive !== false}
+                                      onChange={(e) => handleUpdateSloganField(item.id, 'isActive', e.target.checked)}
+                                      className="w-3.5 h-3.5 rounded text-[#2D5A27] focus:ring-[#2D5A27] cursor-pointer"
+                                    />
+                                    <span>{item.isActive !== false ? 'Bật' : 'Tắt'}</span>
+                                  </label>
+
+                                  {/* Nút xóa */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSloganItem(item.id)}
+                                    className="p-1 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                                    title="Xóa thông điệp này"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Ô nhập nội dung thông điệp */}
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                                    {sloganSubLang === 'vi' ? (
+                                      <>
+                                        <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                                        <span>Nội dung Tiếng Việt (gõ icon 🎁, 📅, 🔔... để tự động rung):</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                                        <span>Nội dung English:</span>
+                                      </>
+                                    )}
+                                  </label>
+
+                                  {/* Nút chèn nhanh emoji vào ô input */}
+                                  <div className="flex items-center gap-1 text-xs">
+                                    {['🎁', '📅', '🔔', '🧧', '⭐'].map((emoji) => (
+                                      <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => {
+                                          const cur = sloganSubLang === 'vi' ? (item.textVi || '') : (item.textEn || '');
+                                          const updated = `${emoji} ${cur}`.trim();
+                                          handleUpdateSloganField(item.id, sloganSubLang === 'vi' ? 'textVi' : 'textEn', updated);
+                                        }}
+                                        className="p-1 rounded hover:bg-slate-100 text-xs transition cursor-pointer"
+                                        title={`Chèn nhanh ${emoji} vào đầu`}
+                                      >
+                                        {emoji}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <input
+                                  type="text"
+                                  value={sloganSubLang === 'vi' ? (item.textVi || '') : (item.textEn || '')}
+                                  onChange={(e) =>
+                                    handleUpdateSloganField(
+                                      item.id,
+                                      sloganSubLang === 'vi' ? 'textVi' : 'textEn',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder={
+                                    sloganSubLang === 'vi'
+                                      ? 'Ví dụ: 🎁 Ưu đãi tiêm phòng vaccine giảm 20% trong tháng này...'
+                                      : 'e.g. 🎁 20% off pet vaccination packages this month...'
+                                  }
+                                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                                />
+                              </div>
+
+                              {/* Thiết lập thời gian xuất hiện (Từ ngày - Đến ngày) */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
+                                    <span>Từ ngày (Bắt đầu):</span>
+                                  </label>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="date"
+                                      value={item.startDate || ''}
+                                      onChange={(e) => handleUpdateSloganField(item.id, 'startDate', e.target.value)}
+                                      className="flex-1 text-xs px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 bg-white focus:border-[#2D5A27] focus:outline-none"
+                                    />
+                                    {item.startDate && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateSloganField(item.id, 'startDate', '')}
+                                        className="p-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        title="Xóa ngày bắt đầu"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
+                                    <span>Đến ngày (Kết thúc):</span>
+                                  </label>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="date"
+                                      value={item.endDate || ''}
+                                      onChange={(e) => handleUpdateSloganField(item.id, 'endDate', e.target.value)}
+                                      className="flex-1 text-xs px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 bg-white focus:border-[#2D5A27] focus:outline-none"
+                                    />
+                                    {item.endDate && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateSloganField(item.id, 'endDate', '')}
+                                        className="p-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        title="Xóa ngày kết thúc"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Xem trước trực quan (Mini Preview với icon rung) */}
+                              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center gap-2 text-xs">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                                  Xem trước:
+                                </span>
+                                <span className="text-slate-800 font-medium truncate">
+                                  {renderWithShakingIcons((sloganSubLang === 'vi' ? item.textVi : item.textEn) || 'Chưa nhập nội dung...')}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Khu vực thêm nhanh từ dấu phẩy */}
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                            <span>Tách nhanh thông điệp bằng dấu phẩy (,):</span>
+                          </span>
+                          <span className="text-[11px] text-slate-400">Dán danh sách câu dài và tách tự động</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            id="quick-split-input"
+                            placeholder="Ví dụ: 🎁 Giảm 20% vaccine, 📅 Đặt lịch khám tặng Spa, 🔔 Cấp cứu 24/7..."
+                            className="flex-1 text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const input = e.currentTarget;
+                                handleQuickAddFromText(input.value);
+                                input.value = '';
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const input = document.getElementById('quick-split-input') as HTMLInputElement | null;
+                              if (input && input.value) {
+                                handleQuickAddFromText(input.value);
+                                input.value = '';
+                              }
+                            }}
+                            className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition cursor-pointer shrink-0"
+                          >
+                            Tách &amp; Thêm
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Slogan Cuối Trang & Giấy Phép */}

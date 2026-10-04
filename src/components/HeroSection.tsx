@@ -10,7 +10,7 @@ import {
   PawPrint,
 } from 'lucide-react';
 
-import { Cute3DDogIcon, Cute3DCatIcon, Cute3DPawIcon } from './Cute3DPetIcons';
+import { parseSloganList, isSloganActive, renderWithShakingIcons, DEFAULT_SLOGAN_ITEMS } from '@/lib/slogans';
 
 import InteractiveWaterShader from './InteractiveWaterShader';
 import SloganAura3D from './SloganAura3D';
@@ -717,60 +717,31 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
             }}
           >
             {(() => {
-              const rawSlogan = isEn
-                ? (config.slogan_dau_trang_noi_dung_en ||
-                   'Standardized veterinary medicine combined with natural recovery therapies. Where pure love blends with state-of-the-art medical technology to restore physical vitality and soothe peace of mind.')
-                : (config.slogan_dau_trang_noi_dung ||
-                   'Không gian y khoa chuẩn mực hòa cùng liệu pháp phục hồi thiên nhiên. Nơi tình thương thuần khiết hòa quyện cùng công nghệ điều trị tiên tiến nhất thế giới, cho bé cưng hồi phục thể chất và an yên tâm trí.');
-              const dotIndex = rawSlogan.indexOf('.');
-              const part1 = dotIndex > -1 ? rawSlogan.slice(0, dotIndex + 1).trim() : rawSlogan;
-              const part2 = dotIndex > -1 ? rawSlogan.slice(dotIndex + 1).trim() : '';
+              const allItems = parseSloganList(
+                config.slogan_dau_trang_noi_dung,
+                config.slogan_dau_trang_noi_dung_en
+              );
+              // Lọc các thông điệp đang trong thời hạn hiển thị
+              const activeItems = allItems.filter((item) => isSloganActive(item));
+              const displayItems = activeItems.length > 0 ? activeItems : DEFAULT_SLOGAN_ITEMS;
 
-              return [1, 2].map((loopIdx) => (
-                <div key={loopIdx} className="flex shrink-0 items-center gap-6 sm:gap-10 pr-6 sm:pr-10">
-                  {/* Cụm 1: Icon Chó Hoạt Hình 3D Dễ Thương + Câu 1 */}
-                  <div className="flex items-center gap-2 sm:gap-2.5">
-                    <Cute3DDogIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
-                    <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
-                      {part1}
-                    </span>
-                  </div>
-
-                  {/* Cụm 2: Icon Mèo Hoạt Hình 3D Dễ Thương + Câu 2 (nếu có) */}
-                  {part2 ? (
-                    <div className="flex items-center gap-2 sm:gap-2.5">
-                      <Cute3DCatIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
-                      <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
-                        {part2}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  {/* Dấu chân thú cưng 3D siêu dễ thương */}
-                  <Cute3DPawIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 hover:scale-125 transition-transform duration-200" />
-
-                  <span className="text-amber-500/70 text-xs sm:text-sm font-light select-none">✦</span>
-
-                  {/* Lặp lại để chuỗi chạy dày dặn không bị trống trên màn hình lớn */}
-                  <div className="flex items-center gap-2 sm:gap-2.5">
-                    <Cute3DDogIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
-                    <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
-                      {part1}
-                    </span>
-                  </div>
-
-                  {part2 ? (
-                    <div className="flex items-center gap-2 sm:gap-2.5">
-                      <Cute3DCatIcon className="w-7 h-7 sm:w-8 sm:h-8 hover:scale-125 transition-transform duration-200" />
-                      <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap">
-                        {part2}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <Cute3DPawIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5 hover:scale-125 transition-transform duration-200" />
-
-                  <span className="text-amber-500/70 text-xs sm:text-sm font-light select-none">✦</span>
+              // Lặp lại chuỗi 3 lần để chạy liên tục không bị gián đoạn
+              return [1, 2, 3].map((loopIdx) => (
+                <div key={loopIdx} className="flex shrink-0 items-center gap-6 sm:gap-8 pr-6 sm:pr-8">
+                  {displayItems.map((item, itemIdx) => {
+                    const text = isEn ? (item.textEn || item.textVi) : item.textVi;
+                    return (
+                      <React.Fragment key={`${loopIdx}-${item.id || itemIdx}`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm text-slate-800 font-medium tracking-normal whitespace-nowrap inline-flex items-center">
+                            {renderWithShakingIcons(text)}
+                          </span>
+                        </div>
+                        {/* Biểu tượng phân cách thanh lịch giữa các thông điệp */}
+                        <span className="text-amber-500/70 text-xs sm:text-sm font-light select-none px-1">✦</span>
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               ));
             })()}

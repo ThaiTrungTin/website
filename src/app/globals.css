@@ -874,3 +874,32 @@ body {
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Icon gentle shake/wiggle animation (used in Banner ticker, Poster badge, etc.) */
+@keyframes petmm-icon-shake {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  10%, 30% {
+    transform: rotate(-14deg) scale(1.18);
+  }
+  20%, 40% {
+    transform: rotate(14deg) scale(1.18);
+  }
+  50% {
+    transform: rotate(-8deg) scale(1.08);
+  }
+  60% {
+    transform: rotate(8deg) scale(1.08);
+  }
+  70% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.petmm-icon-shake {
+  display: inline-block;
+  transform-origin: center center;
+  animation: petmm-icon-shake 1.8s ease-in-out infinite;
+  will-change: transform;
+}
+
