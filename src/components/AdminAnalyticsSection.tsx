@@ -16,6 +16,8 @@ import {
   Calendar,
   Zap,
   CalendarCheck,
+  Globe,
+  Languages,
 } from 'lucide-react';
 import { DayAnalytics, WebAnalyticsSummary, RecentVisitorSession } from '@/lib/analytics';
 
@@ -450,8 +452,8 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
         </div>
       ) : (
         <div className="p-4 sm:p-5 space-y-4">
-          {/* ── 3 THẺ CHỈ SỐ LỚN (BỎ THẺ TỐC ĐỘ ĐÃ CHUYỂN LÊN HEADER) ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* ── 5 THẺ CHỈ SỐ LỚN (ĐẦY ĐỦ 5 THẺ: KHÁCH, CHỐT LỊCH, THỜI LƯỢNG, NGUỒN, NGÔN NGỮ) ── */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* THẺ 1: NGƯỜI TRUY CẬP & LƯỢT XEM */}
             <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
               <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
@@ -469,7 +471,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 </span>
                 <span className="text-xs font-bold text-slate-700">khách</span>
               </div>
-              <div className="mt-1 text-xs text-slate-700 font-medium">
+              <div className="mt-1 text-xs text-slate-700 font-medium truncate">
                 {aggregateMetrics.totalSessions.toLocaleString('vi-VN')} phiên ghé thăm
               </div>
             </div>
@@ -481,7 +483,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                   <CalendarCheck className="w-3.5 h-3.5 text-blue-700" />
                   Tỉ lệ đặt lịch
                 </span>
-                <span className="text-[10px] font-bold text-blue-900 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-300">
+                <span className="text-[11px] font-bold text-slate-700 font-mono">
                   {aggregateMetrics.uniqueBookedCustomers} đặt
                 </span>
               </div>
@@ -491,7 +493,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 </span>
                 <span className="text-xs font-bold text-slate-700">chốt lịch</span>
               </div>
-              <div className="mt-1 text-xs text-slate-800 font-semibold">
+              <div className="mt-1 text-xs text-slate-800 font-semibold truncate">
                 {aggregateMetrics.uniqueBookedCustomers} đặt / {aggregateMetrics.totalVisitors} khách xem
               </div>
             </div>
@@ -510,8 +512,72 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 </span>
                 <span className="text-xs font-bold text-slate-700">/ khách</span>
               </div>
-              <div className="mt-1 text-xs text-slate-700 font-medium">
+              <div className="mt-1 text-xs text-slate-700 font-medium truncate">
                 Tổng: <strong className="text-slate-900">{formatDuration(aggregateMetrics.totalDurationSeconds)}</strong>
+              </div>
+            </div>
+
+            {/* THẺ 4: NGUỒN TRUY CẬP */}
+            <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-700" />
+                  Nguồn truy cập
+                </span>
+                {aggregateMetrics.topReferrers.length > 0 && (
+                  <span className="text-[11px] font-bold text-slate-700 font-mono">
+                    {aggregateMetrics.topReferrers.length} nguồn
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1.5 truncate">
+                <span className="text-2xl font-black text-slate-950 truncate">
+                  {aggregateMetrics.topReferrers.length > 0 ? aggregateMetrics.topReferrers[0].name : 'Trực tiếp'}
+                </span>
+                {aggregateMetrics.topReferrers.length > 0 && (
+                  <span className="text-xs font-bold text-slate-700 shrink-0">
+                    ({Math.round((aggregateMetrics.topReferrers[0].count / (aggregateMetrics.totalViews || 1)) * 100)}%)
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-xs text-slate-700 font-medium truncate">
+                {aggregateMetrics.topReferrers.length > 1
+                  ? aggregateMetrics.topReferrers.slice(1, 3).map((r) => `${r.name} (${r.count})`).join(', ')
+                  : aggregateMetrics.topReferrers.length === 1
+                  ? `${aggregateMetrics.topReferrers[0].count} lượt truy cập`
+                  : 'Chưa có dữ liệu'}
+              </div>
+            </div>
+
+            {/* THẺ 5: NGÔN NGỮ */}
+            <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <Languages className="w-3.5 h-3.5 text-teal-700" />
+                  Ngôn ngữ
+                </span>
+                {aggregateMetrics.topLanguages.length > 0 && (
+                  <span className="text-[11px] font-bold text-slate-700 font-mono">
+                    {aggregateMetrics.topLanguages.length} ngôn ngữ
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1.5 truncate">
+                <span className="text-2xl font-black text-slate-950 truncate">
+                  {aggregateMetrics.topLanguages.length > 0 ? aggregateMetrics.topLanguages[0].name : 'Tiếng Việt'}
+                </span>
+                {aggregateMetrics.topLanguages.length > 0 && (
+                  <span className="text-xs font-bold text-slate-700 shrink-0">
+                    ({Math.round((aggregateMetrics.topLanguages[0].count / (aggregateMetrics.totalViews || 1)) * 100)}%)
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-xs text-slate-700 font-medium truncate">
+                {aggregateMetrics.topLanguages.length > 1
+                  ? aggregateMetrics.topLanguages.slice(1, 3).map((l) => `${l.name} (${l.count})`).join(', ')
+                  : aggregateMetrics.topLanguages.length === 1
+                  ? `${aggregateMetrics.topLanguages[0].count} lượt truy cập`
+                  : 'Chưa có dữ liệu'}
               </div>
             </div>
           </div>
@@ -697,12 +763,12 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 </div>
               </div>
 
-              {/* 2-5: BẢNG 5 CỘT TRONG LƯỚI 2x2+1 */}
+              {/* 2-3: BẢNG TRÌNH DUYỆT & HỆ ĐIỀU HÀNH */}
               <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-200">
                 {/* 2. TRÌNH DUYỆT */}
                 <div className="flex flex-col">
                   <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">2. Trình duyệt</div>
-                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
+                  <div className="overflow-y-auto max-h-[140px] space-y-1 text-xs">
                     {aggregateMetrics.topBrowsers.map((b) => {
                       const pct = aggregateMetrics.totalViews > 0 ? Math.round((b.count / aggregateMetrics.totalViews) * 100) : 0;
                       return (
@@ -718,49 +784,13 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 {/* 3. HỆ ĐIỀU HÀNH */}
                 <div className="flex flex-col">
                   <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">3. Hệ điều hành</div>
-                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
+                  <div className="overflow-y-auto max-h-[140px] space-y-1 text-xs">
                     {aggregateMetrics.topOS.map((o) => {
                       const pct = aggregateMetrics.totalViews > 0 ? Math.round((o.count / aggregateMetrics.totalViews) * 100) : 0;
                       return (
                         <div key={o.name} className="flex items-center justify-between">
                           <span className="text-slate-800 font-semibold truncate max-w-[55%]">{o.name}</span>
                           <span className="font-bold text-slate-950 font-mono shrink-0">{o.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 4. NGUỒN TRUY CẬP */}
-                <div className="flex flex-col">
-                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">4. Nguồn truy cập</div>
-                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
-                    {aggregateMetrics.topReferrers.length === 0 ? (
-                      <div className="text-slate-500 text-xs italic">Chưa có dữ liệu</div>
-                    ) : aggregateMetrics.topReferrers.map((r) => {
-                      const pct = aggregateMetrics.totalViews > 0 ? Math.round((r.count / aggregateMetrics.totalViews) * 100) : 0;
-                      return (
-                        <div key={r.name} className="flex items-center justify-between">
-                          <span className="text-slate-800 font-semibold truncate max-w-[55%]">{r.name}</span>
-                          <span className="font-bold text-slate-950 font-mono shrink-0">{r.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 5. NGÔN NGỮ */}
-                <div className="flex flex-col">
-                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">5. Ngôn ngữ</div>
-                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
-                    {aggregateMetrics.topLanguages.length === 0 ? (
-                      <div className="text-slate-500 text-xs italic">Chưa có dữ liệu</div>
-                    ) : aggregateMetrics.topLanguages.map((l) => {
-                      const pct = aggregateMetrics.totalViews > 0 ? Math.round((l.count / aggregateMetrics.totalViews) * 100) : 0;
-                      return (
-                        <div key={l.name} className="flex items-center justify-between">
-                          <span className="text-slate-800 font-semibold truncate max-w-[55%]">{l.name}</span>
-                          <span className="font-bold text-slate-950 font-mono shrink-0">{l.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
                         </div>
                       );
                     })}
