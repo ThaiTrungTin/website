@@ -206,31 +206,31 @@ export default function AdminDashboardTab({
     switch (status) {
       case 'cho_xac_nhan':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+          <span className="inline-flex items-center text-xs font-bold text-amber-700">
             Chờ tiếp nhận
           </span>
         );
       case 'da_xac_nhan':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+          <span className="inline-flex items-center text-xs font-bold text-emerald-700">
             Đã tiếp nhận
           </span>
         );
       case 'da_kham':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-slate-200 text-slate-900 border border-slate-300">
+          <span className="inline-flex items-center text-xs font-bold text-slate-700">
             Đã hoàn thành
           </span>
         );
       case 'da_huy':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300">
+          <span className="inline-flex items-center text-xs font-bold text-rose-700">
             Đã hủy
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-slate-200 text-slate-800">
+          <span className="inline-flex items-center text-xs font-bold text-slate-600">
             {status}
           </span>
         );
@@ -241,26 +241,26 @@ export default function AdminDashboardTab({
     switch (status) {
       case 'da_lien_he':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300">
+          <span className="inline-flex items-center text-xs font-bold text-blue-700">
             Đã liên hệ
           </span>
         );
       case 'hen_phong_van':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+          <span className="inline-flex items-center text-xs font-bold text-emerald-700">
             Lịch hẹn PV
           </span>
         );
       case 'bo_qua':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-slate-200 text-slate-600 border border-slate-300 line-through">
+          <span className="inline-flex items-center text-xs font-bold text-slate-400 line-through">
             Đã bỏ qua
           </span>
         );
       case 'moi':
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+          <span className="inline-flex items-center text-xs font-bold text-amber-700">
             Hồ sơ mới
           </span>
         );
@@ -654,13 +654,7 @@ export default function AdminDashboardTab({
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-full border transition ${
-                          jobApps.length > 0
-                            ? 'bg-blue-100 text-blue-900 border-blue-300'
-                            : 'bg-slate-100 text-slate-500 border-slate-200'
-                        }`}
-                      >
+                      <span className="text-xs font-bold text-slate-700">
                         {jobApps.length} hồ sơ nộp
                       </span>
                       <div className="p-1 rounded-md text-slate-400 hover:text-slate-700 transition">
