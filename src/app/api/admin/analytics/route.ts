@@ -6,18 +6,25 @@ export async function GET(_req: NextRequest) {
   try {
     const [analyticsData, bookingsRes] = await Promise.all([
       getWebAnalyticsData(),
-      supabaseAdmin.from('lich_hen').select('id, ngay_tao, trang_thai'),
+      supabaseAdmin.from('lich_hen').select('id, so_dien_thoai, ngay_tao, trang_thai'),
     ]);
 
     const bookings = bookingsRes.data || [];
-    const bookingsByDate: Record<string, number> = {};
-    let totalBookings = 0;
+    const dateToPhones: Record<string, string[]> = {};
+    const allPhonesSet = new Set<string>();
 
     bookings.forEach((b: any) => {
-      totalBookings += 1;
+      // Chuẩn hóa số điện thoại để loại bỏ khoảng trắng hoặc ký tự đặc biệt
+      const rawPhone = String(b.so_dien_thoai || '').trim().replace(/\D/g, '');
+      const phoneKey = rawPhone.length >= 8 ? rawPhone : (b.id || Math.random().toString());
+      allPhonesSet.add(phoneKey);
+
       if (b.ngay_tao) {
         const vnDate = new Date(new Date(b.ngay_tao).getTime() + 7 * 3600 * 1000).toISOString().slice(0, 10);
-        bookingsByDate[vnDate] = (bookingsByDate[vnDate] || 0) + 1;
+        if (!dateToPhones[vnDate]) dateToPhones[vnDate] = [];
+        if (!dateToPhones[vnDate].includes(phoneKey)) {
+          dateToPhones[vnDate].push(phoneKey);
+        }
       }
     });
 
@@ -25,8 +32,8 @@ export async function GET(_req: NextRequest) {
       success: true,
       data: analyticsData,
       bookingsSummary: {
-        totalBookings,
-        bookingsByDate,
+        totalUniqueCustomers: allPhonesSet.size,
+        bookingsByDatePhones: dateToPhones,
       },
     });
   } catch (error: any) {

@@ -74,11 +74,11 @@ function formatRelativeTime(isoStr: string): string {
 export default function AdminAnalyticsSection({ className = '' }: AdminAnalyticsSectionProps) {
   const [data, setData] = useState<WebAnalyticsSummary | null>(null);
   const [bookingsSummary, setBookingsSummary] = useState<{
-    totalBookings: number;
-    bookingsByDate: Record<string, number>;
+    totalUniqueCustomers: number;
+    bookingsByDatePhones: Record<string, string[]>;
   }>({
-    totalBookings: 0,
-    bookingsByDate: {},
+    totalUniqueCustomers: 0,
+    bookingsByDatePhones: {},
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -153,7 +153,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     let totalVisitors = 0;
     let totalDurationSeconds = 0;
     let totalSessions = 0;
-    let rangeBookings = 0;
 
     let totalSpeedMs = 0;
     let speedCount = 0;
@@ -169,14 +168,18 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     const browserMap: Record<string, number> = {};
     const osMap: Record<string, number> = {};
 
+    // Tập hợp số điện thoại đặt lịch riêng biệt trong khoảng thời gian này (tránh tính trùng)
+    const uniquePhonesSet = new Set<string>();
+
     filteredDays.forEach((day) => {
       totalViews += day.pageviews || 0;
       totalVisitors += day.visitors || 0;
       totalDurationSeconds += day.totalDurationSeconds || 0;
       totalSessions += day.sessions || 0;
 
-      // Cộng dồn lịch hẹn của ngày này
-      rangeBookings += bookingsSummary.bookingsByDate[day.date] || 0;
+      // Cộng dồn các số điện thoại đặt lịch duy nhất của ngày này
+      const phones = bookingsSummary.bookingsByDatePhones?.[day.date] || [];
+      phones.forEach((p) => uniquePhonesSet.add(p));
 
       // Devices
       deviceMap.mobile += day.devices?.mobile || 0;
@@ -227,9 +230,12 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     const desktopPercent = Math.round((deviceMap.desktop / totalDeviceCount) * 100);
     const tabletPercent = 100 - mobilePercent - desktopPercent;
 
-    // Tỉ lệ đặt lịch (Conversion Rate)
+    // Số khách đặt lịch thực tế đã loại trừ trùng lặp số điện thoại
+    const uniqueBookedCustomers = uniquePhonesSet.size;
+
+    // Tỉ lệ khách đặt lịch: Số khách đặt thực tế / Tổng số khách ghé xem web
     const conversionRate =
-      totalVisitors > 0 ? ((rangeBookings / totalVisitors) * 100).toFixed(1) : '0.0';
+      totalVisitors > 0 ? Math.min(100, (uniqueBookedCustomers / totalVisitors) * 100).toFixed(1) : '0.0';
 
     // Tốc độ tải trang theo từng thiết bị (giây)
     const avgOverallSpeedSec =
@@ -266,7 +272,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       totalDurationSeconds,
       avgDurationPerVisitor,
       totalSessions,
-      rangeBookings,
+      uniqueBookedCustomers,
       conversionRate,
       avgOverallSpeedSec,
       mobileSpeedSec,
@@ -322,24 +328,24 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
 
   return (
     <div className={`bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden ${className}`}>
-      {/* ── HEADER CÔNG CỤ: GỌN GÀNG, CHỈ ĐỂ CHẤM XANH NHÁY ── */}
-      <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* ── HEADER CÔNG CỤ: ĐẬM NÉT, RÕ RÀNG ── */}
+      <div className="px-5 py-3.5 border-b border-slate-300 bg-slate-100/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#2D5A27] flex items-center justify-center text-white shadow-xs">
             <TrendingUp className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+            <h3 className="text-sm font-black text-slate-950 tracking-tight">
               Lưu Lượng &amp; Khách Truy Cập Website
             </h3>
             {/* CHỈ ĐỂ DẤU CHẤM XANH NHÁY */}
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
           </div>
         </div>
 
         {/* BỘ LỌC THỜI GIAN */}
         <div className="flex items-center gap-2">
-          <div className="inline-flex bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold">
+          <div className="inline-flex bg-slate-200 p-0.5 rounded-lg text-xs font-bold">
             {(
               [
                 { key: 'today', label: 'Hôm nay' },
@@ -352,10 +358,10 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 key={filter.key}
                 type="button"
                 onClick={() => setTimeRange(filter.key)}
-                className={`px-2.5 py-1 rounded-md transition text-xs font-bold ${
+                className={`px-3 py-1 rounded-md transition text-xs font-bold ${
                   timeRange === filter.key
                     ? 'bg-white text-[#2D5A27] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-800 hover:text-black'
                 }`}
               >
                 {filter.label}
@@ -368,7 +374,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
             onClick={() => fetchAnalytics(true)}
             disabled={isRefreshing || loading}
             title="Làm mới"
-            className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition disabled:opacity-50 cursor-pointer"
+            className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 transition disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#2D5A27]' : ''}`} />
           </button>
@@ -376,98 +382,99 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       </div>
 
       {loading ? (
-        <div className="py-14 text-center text-xs font-medium text-slate-500">
+        <div className="py-14 text-center text-xs font-bold text-slate-700">
           <div className="w-6 h-6 mx-auto mb-2 border-2 border-[#2D5A27] border-t-transparent rounded-full animate-spin" />
           Đang tải số liệu...
         </div>
       ) : (
         <div className="p-4 sm:p-5 space-y-4">
-          {/* ── 4 THẺ CHỈ SỐ GỒM CẢ TỈ LỆ ĐẶT LỊCH & TỐC ĐỘ TẢI TRANG 3 THIẾT BỊ ── */}
+          {/* ── 4 THẺ CHỈ SỐ LỚN ĐẬM NÉT, TƯƠNG PHẢN CAO ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {/* THẺ 1: NGƯỜI TRUY CẬP & LƯỢT XEM */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+            <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
                 <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-[#2D5A27]" />
                   Khách truy cập
                 </span>
-                <span className="text-[10px] text-slate-500 font-mono">
+                <span className="text-[11px] font-bold text-slate-700 font-mono">
                   {aggregateMetrics.totalViews.toLocaleString('vi-VN')} xem
                 </span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">
+                <span className="text-2xl font-black text-slate-950">
                   {aggregateMetrics.totalVisitors.toLocaleString('vi-VN')}
                 </span>
-                <span className="text-[11px] font-semibold text-slate-500">khách</span>
+                <span className="text-xs font-bold text-slate-700">khách</span>
               </div>
-              <div className="mt-1 text-[11px] text-slate-500">
+              <div className="mt-1 text-xs text-slate-700 font-medium">
                 {aggregateMetrics.totalSessions.toLocaleString('vi-VN')} phiên ghé thăm
               </div>
             </div>
 
-            {/* THẺ 2: TỈ LỆ KHÁCH ĐẶT LỊCH (CONVERSION RATE) */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+            {/* THẺ 2: TỈ LỆ KHÁCH ĐẶT LỊCH (ĐÃ LỌC TRÙNG SĐT / TRÙNG THIẾT BỊ) */}
+            <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
                 <span className="flex items-center gap-1.5">
-                  <CalendarCheck className="w-3.5 h-3.5 text-blue-600" />
+                  <CalendarCheck className="w-3.5 h-3.5 text-blue-700" />
                   Tỉ lệ đặt lịch
                 </span>
-                <span className="text-[10px] font-bold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                  {aggregateMetrics.rangeBookings} lịch hẹn
+                <span className="text-[10px] font-bold text-blue-900 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-300">
+                  {aggregateMetrics.uniqueBookedCustomers} khách đặt
                 </span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">
+                <span className="text-2xl font-black text-slate-950">
                   {aggregateMetrics.conversionRate}%
                 </span>
-                <span className="text-[11px] font-semibold text-slate-500">chốt lịch</span>
+                <span className="text-xs font-bold text-slate-700">chốt lịch</span>
               </div>
-              <div className="mt-1 text-[11px] text-slate-500">
-                {aggregateMetrics.rangeBookings} đặt / {aggregateMetrics.totalVisitors} khách
+              <div className="mt-1 text-xs text-slate-800 font-semibold">
+                {aggregateMetrics.uniqueBookedCustomers} khách đặt / {aggregateMetrics.totalVisitors} khách xem
               </div>
             </div>
 
             {/* THẺ 3: THỜI LƯỢNG XEM WEB */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+            <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
                 <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <Clock className="w-3.5 h-3.5 text-amber-700" />
                   Thời lượng xem web
                 </span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">
+                <span className="text-2xl font-black text-slate-950">
                   {formatDuration(aggregateMetrics.avgDurationPerVisitor)}
                 </span>
-                <span className="text-[11px] font-semibold text-slate-500">/ khách</span>
+                <span className="text-xs font-bold text-slate-700">/ khách</span>
               </div>
-              <div className="mt-1 text-[11px] text-slate-500">
-                Tổng: {formatDuration(aggregateMetrics.totalDurationSeconds)}
+              <div className="mt-1 text-xs text-slate-700 font-medium">
+                Tổng: <strong className="text-slate-900">{formatDuration(aggregateMetrics.totalDurationSeconds)}</strong>
               </div>
             </div>
 
-            {/* THẺ 4: TỐC ĐỘ TẢI TRANG (ĐO Ở CẢ 3 THIẾT BỊ) */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+            {/* THẺ 4: TỐC ĐỘ TẢI TRANG (HIỂN THỊ CHỮ THAY VÌ ICON) */}
+            <div className="p-3.5 rounded-xl border border-slate-300 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-800 font-bold uppercase tracking-wider text-[11px]">
                 <span className="flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                  <Zap className="w-3.5 h-3.5 text-emerald-700" />
                   Tốc độ tải trang
                 </span>
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                <span className="text-[10px] font-bold text-emerald-900 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
                   ⚡ Nhanh
                 </span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">
+                <span className="text-2xl font-black text-slate-950">
                   {aggregateMetrics.avgOverallSpeedSec}s
                 </span>
-                <span className="text-[11px] font-semibold text-slate-500">trung bình</span>
+                <span className="text-xs font-bold text-slate-700">trung bình</span>
               </div>
-              <div className="mt-1 text-[10px] text-slate-500 flex items-center justify-between font-mono">
-                <span>📱 {aggregateMetrics.mobileSpeedSec}s</span>
-                <span>💻 {aggregateMetrics.desktopSpeedSec}s</span>
-                <span>📟 {aggregateMetrics.tabletSpeedSec}s</span>
+              {/* 3 THIẾT BỊ HIỂN THỊ CHỮ RÕ RÀNG THAY VÌ ICON */}
+              <div className="mt-1 text-xs text-slate-800 flex items-center justify-between font-semibold">
+                <span>ĐTDĐ: <strong className="font-bold text-slate-950 font-mono">{aggregateMetrics.mobileSpeedSec}s</strong></span>
+                <span>Laptop: <strong className="font-bold text-slate-950 font-mono">{aggregateMetrics.desktopSpeedSec}s</strong></span>
+                <span>Tablet: <strong className="font-bold text-slate-950 font-mono">{aggregateMetrics.tabletSpeedSec}s</strong></span>
               </div>
             </div>
           </div>
@@ -475,23 +482,23 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
           {/* ── HÀNG 1: LƯU LƯỢNG & THỜI LƯỢNG + PHÂN BỔ THIẾT BỊ & MÔI TRƯỜNG NẰM TRÊN 1 HÀNG ── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
             {/* CỘT TRÁI (7/12): BIỂU ĐỒ ĐƯỜNG LƯU LƯỢNG & THỜI LƯỢNG */}
-            <div className="lg:col-span-7 p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div className="lg:col-span-7 p-4 rounded-xl border border-slate-300 bg-slate-50 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <div className="text-xs font-bold text-slate-950 uppercase tracking-wider flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
                     Lưu lượng &amp; Thời lượng xem web theo từng ngày
                   </div>
 
                   {/* Chú giải đường */}
-                  <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-800">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-0.5 bg-[#2D5A27] rounded-full" />
-                      <span className="text-[11px]">Lượt xem trang</span>
+                      <span className="w-3.5 h-1 bg-[#2D5A27] rounded-full" />
+                      <span className="text-xs">Lượt xem trang</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-0.5 bg-amber-500 rounded-full border-t border-dashed border-amber-500" />
-                      <span className="text-[11px]">Thời lượng xem TB</span>
+                      <span className="w-3.5 h-1 bg-amber-600 rounded-full border-t border-dashed border-amber-600" />
+                      <span className="text-xs">Thời lượng xem TB</span>
                     </div>
                   </div>
                 </div>
@@ -515,26 +522,26 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                       <path d={linePoints.areaPath} fill="url(#viewsAreaGrad)" />
                     )}
 
-                    {/* Đường Lượt xem trang (Xanh lá) */}
+                    {/* Đường Lượt xem trang (Xanh lá đậm) */}
                     {linePoints.viewsPath && (
                       <path
                         d={linePoints.viewsPath}
                         fill="none"
-                        stroke="#2D5A27"
-                        strokeWidth="2.5"
+                        stroke="#1e3d1a"
+                        strokeWidth="3"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
                     )}
 
-                    {/* Đường Thời lượng xem (Cam hổ phách) */}
+                    {/* Đường Thời lượng xem (Cam hổ phách đậm) */}
                     {linePoints.durationPath && (
                       <path
                         d={linePoints.durationPath}
                         fill="none"
-                        stroke="#F59E0B"
-                        strokeWidth="2"
-                        strokeDasharray="4 3"
+                        stroke="#d97706"
+                        strokeWidth="2.5"
+                        strokeDasharray="5 3"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
@@ -546,16 +553,16 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                         <circle
                           cx={p.x}
                           cy={p.yViews}
-                          r="4"
-                          className="fill-white stroke-[#2D5A27] stroke-2 hover:r-5 transition-all"
+                          r="4.5"
+                          className="fill-white stroke-[#1e3d1a] stroke-[2.5] hover:r-6 transition-all"
                           onMouseEnter={() => setHoveredPoint(p.day)}
                           onMouseLeave={() => setHoveredPoint(null)}
                         />
                         <circle
                           cx={p.x}
                           cy={p.yDuration}
-                          r="3"
-                          className="fill-white stroke-amber-500 stroke-2 hover:r-4 transition-all"
+                          r="3.5"
+                          className="fill-white stroke-amber-600 stroke-2 hover:r-5 transition-all"
                           onMouseEnter={() => setHoveredPoint(p.day)}
                           onMouseLeave={() => setHoveredPoint(null)}
                         />
@@ -565,15 +572,15 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
 
                   {/* Tooltip khi hover điểm */}
                   {hoveredPoint && (
-                    <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-3 py-1 rounded-lg shadow-md pointer-events-none flex items-center gap-3 z-10">
+                    <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-slate-950 text-white text-xs px-3.5 py-1.5 rounded-lg shadow-xl pointer-events-none flex items-center gap-3 z-10 border border-slate-700">
                       <span className="font-bold text-emerald-400">
                         {formatDateShort(hoveredPoint.date)}:
                       </span>
-                      <span>{hoveredPoint.pageviews} xem</span>
+                      <span className="font-semibold">{hoveredPoint.pageviews} xem</span>
                       <span>•</span>
-                      <span>{hoveredPoint.visitors} khách</span>
+                      <span className="font-semibold">{hoveredPoint.visitors} khách</span>
                       <span>•</span>
-                      <span className="text-amber-300">
+                      <span className="text-amber-400 font-bold">
                         TB:{' '}
                         {formatDuration(
                           hoveredPoint.visitors > 0
@@ -586,12 +593,12 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 </div>
               </div>
 
-              {/* Nhãn ngày bên dưới biểu đồ */}
-              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 px-2 mt-2 border-t border-slate-200/80 pt-1.5">
+              {/* Nhãn ngày bên dưới biểu đồ: ĐẬM NÉT, RÕ RÀNG */}
+              <div className="flex justify-between items-center text-xs font-bold text-slate-800 px-2 mt-2 border-t border-slate-300 pt-1.5">
                 {filteredDays.map((d) => (
                   <div key={d.date} className="text-center">
-                    <div>{formatDateShort(d.date)}</div>
-                    <div className="text-[9px] font-mono text-slate-400">
+                    <div className="text-slate-950 font-bold">{formatDateShort(d.date)}</div>
+                    <div className="text-[10px] font-bold font-mono text-slate-700 mt-0.5">
                       {formatDuration(
                         d.visitors > 0 ? Math.round(d.totalDurationSeconds / d.visitors) : 0
                       )}
@@ -601,64 +608,64 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
               </div>
             </div>
 
-            {/* CỘT PHẢI (5/12): PHÂN BỔ THIẾT BỊ & MÔI TRƯỜNG TRUY CẬP (KÈM TỐC ĐỘ TẢI 3 THIẾT BỊ) */}
-            <div className="lg:col-span-5 p-4 rounded-xl border border-slate-200 bg-white flex flex-col justify-between space-y-3">
+            {/* CỘT PHẢI (5/12): PHÂN BỔ THIẾT BỊ & MÔI TRƯỜNG TRUY CẬP (ĐẬM NÉT, RÕ RÀNG) */}
+            <div className="lg:col-span-5 p-4 rounded-xl border border-slate-300 bg-white flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 uppercase tracking-wider text-xs flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-purple-600" />
+                <span className="font-bold text-slate-950 uppercase tracking-wider text-xs flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-purple-700" />
                   Phân bổ thiết bị &amp; Môi trường truy cập
                 </span>
               </div>
 
-              {/* 1. BẢNG THIẾT BỊ (HIỂN THỊ CẢ TỐC ĐỘ TẢI 3 THIẾT BỊ ĐTDĐ, LAPTOP, TABLET) */}
+              {/* 1. BẢNG THIẾT BỊ (ĐẬM NÉT, KÈM TỐC ĐỘ TẢI TỪNG THIẾT BỊ) */}
               <div className="space-y-1.5">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                  <span>Thiết bị</span>
-                  <span className="text-emerald-700 font-semibold lowercase">⚡ tốc độ tải trang</span>
+                <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                  <span>1. Thiết bị</span>
+                  <span className="text-emerald-800 font-bold lowercase">⚡ tốc độ tải</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5 text-center">
                   {/* ĐTDĐ */}
-                  <div className="p-1.5 rounded-lg border border-purple-100 bg-purple-50/40">
-                    <Smartphone className="w-3.5 h-3.5 mx-auto text-purple-600 mb-0.5" />
-                    <div className="text-xs font-black text-slate-900">{aggregateMetrics.mobilePercent}%</div>
-                    <div className="text-[9px] text-slate-500 font-semibold">ĐTDĐ ({aggregateMetrics.deviceMap.mobile})</div>
-                    <div className="text-[9px] font-bold text-emerald-700 font-mono mt-0.5">
+                  <div className="p-2 rounded-lg border border-purple-200 bg-purple-50">
+                    <Smartphone className="w-4 h-4 mx-auto text-purple-800 mb-0.5" />
+                    <div className="text-sm font-black text-slate-950">{aggregateMetrics.mobilePercent}%</div>
+                    <div className="text-[10px] text-slate-800 font-bold">ĐTDĐ ({aggregateMetrics.deviceMap.mobile})</div>
+                    <div className="text-[10px] font-bold text-emerald-800 font-mono mt-0.5">
                       ⚡ {aggregateMetrics.mobileSpeedSec}s
                     </div>
                   </div>
                   {/* Laptop */}
-                  <div className="p-1.5 rounded-lg border border-blue-100 bg-blue-50/40">
-                    <Monitor className="w-3.5 h-3.5 mx-auto text-blue-600 mb-0.5" />
-                    <div className="text-xs font-black text-slate-900">{aggregateMetrics.desktopPercent}%</div>
-                    <div className="text-[9px] text-slate-500 font-semibold">Laptop ({aggregateMetrics.deviceMap.desktop})</div>
-                    <div className="text-[9px] font-bold text-emerald-700 font-mono mt-0.5">
+                  <div className="p-2 rounded-lg border border-blue-200 bg-blue-50">
+                    <Monitor className="w-4 h-4 mx-auto text-blue-800 mb-0.5" />
+                    <div className="text-sm font-black text-slate-950">{aggregateMetrics.desktopPercent}%</div>
+                    <div className="text-[10px] text-slate-800 font-bold">Laptop ({aggregateMetrics.deviceMap.desktop})</div>
+                    <div className="text-[10px] font-bold text-emerald-800 font-mono mt-0.5">
                       ⚡ {aggregateMetrics.desktopSpeedSec}s
                     </div>
                   </div>
                   {/* Tablet */}
-                  <div className="p-1.5 rounded-lg border border-amber-100 bg-amber-50/40">
-                    <Tablet className="w-3.5 h-3.5 mx-auto text-amber-600 mb-0.5" />
-                    <div className="text-xs font-black text-slate-900">{aggregateMetrics.tabletPercent}%</div>
-                    <div className="text-[9px] text-slate-500 font-semibold">Tablet ({aggregateMetrics.deviceMap.tablet})</div>
-                    <div className="text-[9px] font-bold text-emerald-700 font-mono mt-0.5">
+                  <div className="p-2 rounded-lg border border-amber-200 bg-amber-50">
+                    <Tablet className="w-4 h-4 mx-auto text-amber-800 mb-0.5" />
+                    <div className="text-sm font-black text-slate-950">{aggregateMetrics.tabletPercent}%</div>
+                    <div className="text-[10px] text-slate-800 font-bold">Tablet ({aggregateMetrics.deviceMap.tablet})</div>
+                    <div className="text-[10px] font-bold text-emerald-800 font-mono mt-0.5">
                       ⚡ {aggregateMetrics.tabletSpeedSec}s
                     </div>
                   </div>
                 </div>
 
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex mt-1">
-                  <div style={{ width: `${aggregateMetrics.mobilePercent}%` }} className="bg-purple-600 h-full" />
-                  <div style={{ width: `${aggregateMetrics.desktopPercent}%` }} className="bg-blue-600 h-full" />
-                  <div style={{ width: `${aggregateMetrics.tabletPercent}%` }} className="bg-amber-500 h-full" />
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex mt-1">
+                  <div style={{ width: `${aggregateMetrics.mobilePercent}%` }} className="bg-purple-700 h-full" />
+                  <div style={{ width: `${aggregateMetrics.desktopPercent}%` }} className="bg-blue-700 h-full" />
+                  <div style={{ width: `${aggregateMetrics.tabletPercent}%` }} className="bg-amber-600 h-full" />
                 </div>
               </div>
 
               {/* 2 & 3. BẢNG TRÌNH DUYỆT & BẢNG HỆ ĐIỀU HÀNH */}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-200">
                 {/* 2. BẢNG TRÌNH DUYỆT */}
                 <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    Trình duyệt
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5">
+                    2. Trình duyệt
                   </div>
                   <div className="space-y-1 text-xs">
                     {aggregateMetrics.topBrowsers.slice(0, 4).map((b) => {
@@ -666,10 +673,10 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                         ? Math.round((b.count / aggregateMetrics.totalViews) * 100)
                         : 0;
                       return (
-                        <div key={b.name} className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-700 font-medium truncate">{b.name}</span>
-                          <span className="font-bold text-slate-900 font-mono text-[10px]">
-                            {b.count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                        <div key={b.name} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-900 font-semibold truncate">{b.name}</span>
+                          <span className="font-bold text-slate-950 font-mono text-xs">
+                            {b.count} <span className="text-slate-700 font-medium">({pct}%)</span>
                           </span>
                         </div>
                       );
@@ -679,8 +686,8 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
 
                 {/* 3. BẢNG HỆ ĐIỀU HÀNH */}
                 <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                    Hệ điều hành
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5">
+                    3. Hệ điều hành
                   </div>
                   <div className="space-y-1 text-xs">
                     {aggregateMetrics.topOS.slice(0, 4).map((o) => {
@@ -688,10 +695,10 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                         ? Math.round((o.count / aggregateMetrics.totalViews) * 100)
                         : 0;
                       return (
-                        <div key={o.name} className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-700 font-medium truncate">{o.name}</span>
-                          <span className="font-bold text-slate-900 font-mono text-[10px]">
-                            {o.count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                        <div key={o.name} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-900 font-semibold truncate">{o.name}</span>
+                          <span className="font-bold text-slate-950 font-mono text-xs">
+                            {o.count} <span className="text-slate-700 font-medium">({pct}%)</span>
                           </span>
                         </div>
                       );
@@ -705,13 +712,13 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
           {/* ── HÀNG 2: TOP TRANG & NHẬT KÝ PHIÊN GẦN ĐÂY ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* CỘT TRÁI: TRANG ĐƯỢC XEM NHIỀU NHẤT */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-white">
+            <div className="p-4 rounded-xl border border-slate-300 bg-white">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="text-xs font-bold text-slate-950 uppercase tracking-wider flex items-center gap-1.5">
                   <Compass className="w-3.5 h-3.5 text-[#2D5A27]" />
                   Trang được xem nhiều nhất
                 </div>
-                <span className="text-xs font-semibold text-slate-500">
+                <span className="text-xs font-bold text-slate-700">
                   {aggregateMetrics.topPages.length} trang
                 </span>
               </div>
@@ -727,33 +734,33 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                     <div key={item.name} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 truncate pr-2">
-                          <span className="w-3.5 text-[11px] font-bold text-slate-400 font-mono">
+                          <span className="w-4 text-xs font-bold text-slate-600 font-mono">
                             #{idx + 1}
                           </span>
-                          <span className="font-bold text-slate-800 truncate">
+                          <span className="font-bold text-slate-950 truncate">
                             {item.name}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-bold text-slate-900 font-mono text-[11px]">
+                          <span className="font-bold text-slate-950 font-mono text-xs">
                             {item.count.toLocaleString('vi-VN')}
                           </span>
-                          <span className="text-[10px] font-semibold text-slate-500 w-7 text-right font-mono">
+                          <span className="text-xs font-bold text-slate-700 w-8 text-right font-mono">
                             {percentage}%
                           </span>
                         </div>
                       </div>
 
-                      {/* Đường thanh tiến trình thanh thoát */}
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      {/* Đường thanh tiến trình */}
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                         <div
                           style={{ width: `${percentage}%` }}
                           className={`h-full rounded-full transition-all duration-500 ${
                             idx === 0
                               ? 'bg-[#2D5A27]'
                               : idx === 1
-                              ? 'bg-emerald-600'
-                              : 'bg-emerald-400'
+                              ? 'bg-emerald-700'
+                              : 'bg-emerald-600'
                           }`}
                         />
                       </div>
@@ -764,31 +771,31 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
             </div>
 
             {/* CỘT PHẢI: NHẬT KÝ PHIÊN TRUY CẬP GẦN ĐÂY */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col justify-between">
+            <div className="p-4 rounded-xl border border-slate-300 bg-white flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="text-xs font-bold text-slate-950 uppercase tracking-wider flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-emerald-700" />
                     Nhật ký phiên gần đây
                   </div>
                   {/* CHỈ ĐỂ DẤU CHẤM XANH NHÁY */}
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                      <tr className="border-b border-slate-300 text-slate-800 font-bold uppercase text-[11px]">
                         <th className="pb-1.5 px-2">Thời gian</th>
                         <th className="pb-1.5 px-2">Trang đang xem</th>
                         <th className="pb-1.5 px-2">Thiết bị</th>
                         <th className="pb-1.5 px-2 text-right">Thời lượng &amp; Tốc độ</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
+                    <tbody className="divide-y divide-slate-200 font-medium">
                       {(!data?.recentSessions || data.recentSessions.length === 0) ? (
                         <tr>
-                          <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
+                          <td colSpan={4} className="py-6 text-center text-slate-700 text-xs font-semibold">
                             Chưa có phiên truy cập nào gần đây.
                           </td>
                         </tr>
@@ -796,12 +803,12 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                         data.recentSessions.slice(0, 6).map((sess, idx) => {
                           const friendly = getPageFriendlyName(sess.path);
                           return (
-                            <tr key={sess.id || idx} className="hover:bg-slate-50/80 transition">
-                              <td className="py-2 px-2 text-slate-500 text-[10px] whitespace-nowrap">
+                            <tr key={sess.id || idx} className="hover:bg-slate-100/60 transition">
+                              <td className="py-2 px-2 text-slate-700 text-xs font-semibold whitespace-nowrap">
                                 {formatRelativeTime(sess.time)}
                               </td>
                               <td className="py-2 px-2">
-                                <div className="font-bold text-slate-800 text-xs">
+                                <div className="font-bold text-slate-950 text-xs">
                                   {friendly}
                                 </div>
                               </td>
@@ -809,18 +816,18 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                                 <span
                                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                     sess.device === 'mobile'
-                                      ? 'bg-purple-50 text-purple-700'
+                                      ? 'bg-purple-100 text-purple-900 border border-purple-200'
                                       : sess.device === 'tablet'
-                                      ? 'bg-amber-50 text-amber-700'
-                                      : 'bg-blue-50 text-blue-700'
+                                      ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                      : 'bg-blue-100 text-blue-900 border border-blue-200'
                                   }`}
                                 >
                                   {sess.device === 'mobile' ? (
-                                    <Smartphone className="w-2.5 h-2.5" />
+                                    <Smartphone className="w-3 h-3" />
                                   ) : sess.device === 'tablet' ? (
-                                    <Tablet className="w-2.5 h-2.5" />
+                                    <Tablet className="w-3 h-3" />
                                   ) : (
-                                    <Monitor className="w-2.5 h-2.5" />
+                                    <Monitor className="w-3 h-3" />
                                   )}
                                   {sess.device === 'mobile'
                                     ? 'ĐTDĐ'
@@ -831,11 +838,11 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                               </td>
                               <td className="py-2 px-2 text-right whitespace-nowrap space-x-1.5">
                                 {sess.loadSpeedMs && (
-                                  <span className="font-bold text-emerald-700 font-mono text-[10px] bg-emerald-50 px-1 py-0.5 rounded">
+                                  <span className="font-bold text-emerald-900 font-mono text-[11px] bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
                                     ⚡ {(sess.loadSpeedMs / 1000).toFixed(1)}s
                                   </span>
                                 )}
-                                <span className="font-bold text-slate-700 font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">
+                                <span className="font-bold text-slate-900 font-mono text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                                   {formatDuration(sess.durationSeconds || 15)}
                                 </span>
                               </td>
