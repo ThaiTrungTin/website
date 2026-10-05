@@ -102,21 +102,34 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     return () => clearInterval(interval);
   }, [fetchAnalytics]);
 
-  // Lọc danh sách ngày theo filter timeRange
+  // Lọc danh sách ngày theo filter timeRange (luôn tạo dải ngày thực tế liên tục kết thúc ở hôm nay)
   const filteredDays = useMemo(() => {
-    if (!data || !data.days) return [];
+    const count = timeRange === 'today' ? 1 : timeRange === '7days' ? 7 : timeRange === '14days' ? 14 : 30;
+    const result: DayAnalytics[] = [];
+    const now = new Date();
 
-    const allDates = Object.keys(data.days).sort();
-    if (allDates.length === 0) return [];
+    for (let i = count - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400 * 1000);
+      const vnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+      const dateStr = vnTime.toISOString().slice(0, 10);
 
-    if (timeRange === 'today') {
-      const todayDate = allDates[allDates.length - 1];
-      return todayDate && data.days[todayDate] ? [data.days[todayDate]] : [];
+      if (data?.days && data.days[dateStr]) {
+        result.push(data.days[dateStr]);
+      } else {
+        result.push({
+          date: dateStr,
+          pageviews: 0,
+          visitors: 0,
+          totalDurationSeconds: 0,
+          sessions: 0,
+          devices: { mobile: 0, desktop: 0, tablet: 0 },
+          browsers: {},
+          os: {},
+          pages: {},
+        });
+      }
     }
-
-    const count = timeRange === '7days' ? 7 : timeRange === '14days' ? 14 : 30;
-    const selectedDates = allDates.slice(-count);
-    return selectedDates.map((d) => data.days[d]).filter(Boolean);
+    return result;
   }, [data, timeRange]);
 
   // Tính toán số liệu tổng hợp trong khoảng thời gian đã chọn

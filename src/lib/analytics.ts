@@ -175,6 +175,17 @@ export function generateInitialSeedData(): WebAnalyticsSummary {
   };
 }
 
+// Khởi tạo dữ liệu sạch (100% người dùng thực, không sinh số ảo)
+export function createEmptyAnalyticsData(): WebAnalyticsSummary {
+  return {
+    totalPageviews: 0,
+    totalVisitors: 0,
+    days: {},
+    recentSessions: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * Đọc dữ liệu thống kê từ Supabase
  */
@@ -187,21 +198,20 @@ export async function getWebAnalyticsData(): Promise<WebAnalyticsSummary> {
       .maybeSingle();
 
     if (error || !data || !data.slogan_cuoi_trang_noi_dung) {
-      const seed = generateInitialSeedData();
-      // Lưu seed vào database nếu chưa có
-      await saveWebAnalyticsData(seed).catch(() => {});
-      return seed;
+      const clean = createEmptyAnalyticsData();
+      await saveWebAnalyticsData(clean).catch(() => {});
+      return clean;
     }
 
     try {
       const parsed: WebAnalyticsSummary = JSON.parse(data.slogan_cuoi_trang_noi_dung);
       return parsed;
     } catch {
-      return generateInitialSeedData();
+      return createEmptyAnalyticsData();
     }
   } catch (err) {
     console.error('Lỗi đọc dữ liệu web_analytics:', err);
-    return generateInitialSeedData();
+    return createEmptyAnalyticsData();
   }
 }
 
