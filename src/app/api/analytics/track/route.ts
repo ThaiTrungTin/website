@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
       os,
       durationIncrementSeconds,
       referrer,
+      loadSpeedMs,
     } = body;
 
     if (!visitorId || typeof visitorId !== 'string') {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       os: os || 'Other',
       durationIncrementSeconds: Number(durationIncrementSeconds) || 0,
       referrer: referrer || 'direct',
+      loadSpeedMs: Number(loadSpeedMs) || 0,
     });
 
     return NextResponse.json({ success: true });

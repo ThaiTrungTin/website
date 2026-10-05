@@ -11,6 +11,11 @@ export interface DayAnalytics {
     desktop: number;
     tablet: number;
   };
+  deviceSpeeds?: {
+    mobile: { totalMs: number; count: number };
+    desktop: { totalMs: number; count: number };
+    tablet: { totalMs: number; count: number };
+  };
   browsers: Record<string, number>;
   os: Record<string, number>;
   pages: Record<string, number>;
@@ -26,6 +31,7 @@ export interface RecentVisitorSession {
   durationSeconds: number;
   time: string;
   referrer?: string;
+  loadSpeedMs?: number; // Tốc độ tải (ms)
 }
 
 export interface WebAnalyticsSummary {
@@ -244,6 +250,7 @@ export async function recordAnalyticsEvent(params: {
   os?: string;
   durationIncrementSeconds?: number;
   referrer?: string;
+  loadSpeedMs?: number;
 }): Promise<void> {
   try {
     const {
@@ -254,6 +261,7 @@ export async function recordAnalyticsEvent(params: {
       os = 'Other',
       durationIncrementSeconds = 0,
       referrer = 'direct',
+      loadSpeedMs = 0,
     } = params;
 
     const data = await getWebAnalyticsData();
@@ -267,6 +275,11 @@ export async function recordAnalyticsEvent(params: {
         totalDurationSeconds: 0,
         sessions: 0,
         devices: { mobile: 0, desktop: 0, tablet: 0 },
+        deviceSpeeds: {
+          mobile: { totalMs: 0, count: 0 },
+          desktop: { totalMs: 0, count: 0 },
+          tablet: { totalMs: 0, count: 0 },
+        },
         browsers: {},
         os: {},
         pages: {},
@@ -274,6 +287,19 @@ export async function recordAnalyticsEvent(params: {
     }
 
     const day = data.days[todayStr];
+    if (!day.deviceSpeeds) {
+      day.deviceSpeeds = {
+        mobile: { totalMs: 0, count: 0 },
+        desktop: { totalMs: 0, count: 0 },
+        tablet: { totalMs: 0, count: 0 },
+      };
+    }
+
+    // Nếu có tốc độ tải trang hợp lệ (từ 50ms đến 30s)
+    if (loadSpeedMs > 50 && loadSpeedMs < 30000) {
+      day.deviceSpeeds[device].totalMs += loadSpeedMs;
+      day.deviceSpeeds[device].count += 1;
+    }
 
     // Nếu có durationIncrementSeconds (heartbeat/unload)
     if (durationIncrementSeconds > 0) {
@@ -325,6 +351,7 @@ export async function recordAnalyticsEvent(params: {
         durationSeconds: 15,
         time: new Date().toISOString(),
         referrer,
+        loadSpeedMs: loadSpeedMs > 50 ? loadSpeedMs : undefined,
       };
 
       data.recentSessions = [newSession, ...data.recentSessions.slice(0, 29)];

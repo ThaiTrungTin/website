@@ -61,11 +61,31 @@ export default function WebAnalyticsTracker() {
     const currentPath = pathname + (window.location.hash || '');
     const referrer = document.referrer ? new URL(document.referrer, window.location.href).hostname : 'direct';
 
-    // 5. Gửi sự kiện Pageview
+    // 5. Gửi sự kiện Pageview kèm đo Tốc độ tải trang thực tế
     sessionStartTimeRef.current = Date.now();
     lastHeartbeatTimeRef.current = Date.now();
 
-    const trackPageview = async () => {
+    const getLoadSpeed = (): number => {
+      try {
+        const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+        if (navEntries && navEntries.length > 0) {
+          const nav = navEntries[0];
+          const dur = nav.duration || (nav.loadEventEnd ? nav.loadEventEnd - nav.startTime : 0);
+          if (dur > 30) return Math.round(dur);
+        }
+        if (window.performance && window.performance.timing) {
+          const t = window.performance.timing;
+          const dur = (t.loadEventEnd || t.responseEnd || Date.now()) - t.navigationStart;
+          if (dur > 30 && dur < 30000) return Math.round(dur);
+        }
+      } catch {}
+      return 0;
+    };
+
+    let hasTracked = false;
+    const trackPageview = async (speedMs: number = 0) => {
+      if (hasTracked) return;
+      hasTracked = true;
       try {
         await fetch('/api/analytics/track', {
           method: 'POST',
@@ -77,12 +97,25 @@ export default function WebAnalyticsTracker() {
             browser,
             os,
             referrer,
+            loadSpeedMs: speedMs,
           }),
         });
       } catch {}
     };
 
-    trackPageview();
+    if (document.readyState === 'complete') {
+      trackPageview(getLoadSpeed());
+    } else {
+      const onWindowLoad = () => {
+        setTimeout(() => {
+          trackPageview(getLoadSpeed());
+        }, 100);
+      };
+      window.addEventListener('load', onWindowLoad, { once: true });
+      setTimeout(() => {
+        trackPageview(getLoadSpeed());
+      }, 1500);
+    }
 
     // 6. Gửi cập nhật thời lượng xem trang (Session Duration Heartbeat)
     const sendDurationUpdate = (isFinal = false) => {
