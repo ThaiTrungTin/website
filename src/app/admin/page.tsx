@@ -6097,7 +6097,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 <span>Thử</span>
                               </button>
                             </div>
-                            <p className="text-[11px] text-slate-400">Địa chỉ email lễ tân/phòng khám nhận thông tin khi khách đặt lịch khám mới</p>
                           </div>
 
                           {/* 2. Email Nhận Tuyển Dụng & CV */}
@@ -6130,7 +6129,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 <span>Thử</span>
                               </button>
                             </div>
-                            <p className="text-[11px] text-slate-400">Địa chỉ email Ban Nhân Sự tiếp nhận hồ sơ ứng tuyển kèm liên kết file CV</p>
                           </div>
 
                           {/* 3. Tài khoản Gmail gửi thư & Tên người gửi hiển thị (2 cột gọn gàng) */}
@@ -6146,7 +6144,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_email: e.target.value }))}
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
                               />
-                              <p className="text-[11px] text-slate-400">Tài khoản Google sử dụng để gửi thư SMTP</p>
                             </div>
 
                             <div className="space-y-1.5">
@@ -6159,7 +6156,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_sender_name: e.target.value }))}
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
                               />
-                              <p className="text-[11px] text-slate-400">Tên thương hiệu xuất hiện ở tiêu đề thư khách hàng nhận</p>
                             </div>
                           </div>
 
@@ -6192,11 +6188,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_password: e.target.value }))}
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-mono tracking-wider focus:border-[#2D5A27] focus:outline-none bg-white"
                             />
-                            <p className="text-[11px] text-slate-400">
-                              {smtpForm.hasPassword
-                                ? 'Đã lưu khóa bảo mật trong hệ thống. Nhập giá trị mới nếu bạn muốn cập nhật.'
-                                : 'Chuỗi 16 ký tự tạo từ trang Google App Passwords'}
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -6204,10 +6195,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   </div>
 
                   {/* Nút Submit Lưu & Nút Gửi Thử Nghiệm */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <p className="text-xs text-slate-500">
-                      Mật khẩu được lưu trữ an toàn trong database và sử dụng giao thức mã hóa SSL khi gửi.
-                    </p>
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-end gap-3">
                     <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                       <button
                         type="button"
@@ -6332,11 +6320,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                             Song Ngữ VI / EN
                           </span>
                         </h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {activeTemplateType === 'booking'
-                            ? 'Tự động gửi email xác nhận đặt lịch khám/spa đến khách hàng sau khi gửi form trực tuyến.'
-                            : 'Tự động gửi email xác nhận đã tiếp nhận hồ sơ ứng tuyển & CV đến hòm thư của ứng viên sau khi nộp đơn.'}
-                        </p>
                       </div>
                     </div>
 
@@ -6357,12 +6340,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               setRecruitmentTemplateForm((prev) => ({ ...prev, logoUrl: val }));
                             }
                           }}
-                          placeholder="/logo_petmm_full.png hoặc link ảnh online https://..."
                           className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
                         />
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Để trống sẽ tự động nhúng logo chuẩn của viện (đính kèm trực tiếp không bị Gmail chặn ảnh).
-                        </p>
                       </div>
                       <div className="w-full sm:w-1/3 flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900 border border-slate-700 min-h-[70px]">
                         <span className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Xem trước Logo:</span>
@@ -6570,10 +6549,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   </div>
 
                   {/* Nút lưu mẫu thư & gửi thử */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <p className="text-xs text-slate-500">
-                      Hệ thống tự động chọn phiên bản Tiếng Việt hoặc English tùy theo ngôn ngữ khách hàng đang xem trên website.
-                    </p>
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-end gap-3">
                     <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                       <button
                         type="button"
