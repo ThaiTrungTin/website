@@ -10,13 +10,9 @@ import {
   Tablet,
   TrendingUp,
   RefreshCw,
-  Globe,
   Compass,
   Activity,
   Layers,
-  Sparkles,
-  ArrowUpRight,
-  ShieldCheck,
   Calendar,
 } from 'lucide-react';
 import { DayAnalytics, WebAnalyticsSummary, RecentVisitorSession } from '@/lib/analytics';
@@ -37,16 +33,18 @@ function formatDuration(seconds: number): string {
   return `${m}p ${s}s`;
 }
 
-// Map thân thiện tên trang từ path
-function getPageFriendlyName(path: string): { title: string; category: string } {
-  if (path === '/' || path === '') return { title: 'Trang chủ (Home)', category: 'Tổng quan' };
-  if (path.includes('booking')) return { title: 'Form đặt lịch khám & Spa', category: 'Chuyển đổi' };
-  if (path.includes('chi-nhanh')) return { title: 'Hệ thống Chi nhánh', category: 'Cơ sở' };
-  if (path.includes('doi-ngu')) return { title: 'Đội ngũ Bác sĩ', category: 'Giới thiệu' };
-  if (path.includes('kien-thuc') || path.includes('bai-viet')) return { title: 'Cẩm nang & Kiến thức', category: 'Nội dung' };
-  if (path.includes('tuyen-dung')) return { title: 'Tuyển dụng nhân sự', category: 'Tuyển dụng' };
-  if (path.includes('gioi-thieu')) return { title: 'Về PetM&M', category: 'Giới thiệu' };
-  return { title: path, category: 'Khác' };
+// Map thân thiện tên trang từ path - LOẠI BỎ TOÀN BỘ CHÚ THÍCH DẠNG /#booking
+function getPageFriendlyName(path: string): string {
+  if (!path || path === '/' || path === '') return 'Trang chủ';
+  if (path.includes('booking')) return 'Đặt lịch khám & Spa';
+  if (path.includes('chi-nhanh')) return 'Hệ thống Chi nhánh';
+  if (path.includes('doi-ngu')) return 'Đội ngũ Bác sĩ';
+  if (path.includes('kien-thuc') || path.includes('bai-viet')) return 'Cẩm nang & Kiến thức';
+  if (path.includes('tuyen-dung')) return 'Tuyển dụng nhân sự';
+  if (path.includes('gioi-thieu')) return 'Về PetM&M';
+  if (path.includes('danhgiadichvu') || path.includes('danh-gia')) return 'Đánh giá dịch vụ';
+  if (path.includes('taodanhgia')) return 'Gửi phản hồi đánh giá';
+  return 'Trang chuyên mục';
 }
 
 // Format ngày YYYY-MM-DD -> DD/MM
@@ -76,7 +74,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [timeRange, setTimeRange] = useState<TimeRange>('7days');
-  const [activeTab, setActiveTab] = useState<'overview' | 'pages' | 'devices' | 'live'>('overview');
+  const [hoveredPoint, setHoveredPoint] = useState<DayAnalytics | null>(null);
 
   const fetchAnalytics = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -98,7 +96,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
 
   useEffect(() => {
     fetchAnalytics();
-    // Tự động làm mới mỗi 45 giây để admin theo dõi theo thời gian thực
     const interval = setInterval(() => {
       fetchAnalytics(true);
     }, 45000);
@@ -145,10 +142,11 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       deviceMap.desktop += day.devices?.desktop || 0;
       deviceMap.tablet += day.devices?.tablet || 0;
 
-      // Pages
+      // Pages (gộp theo tên trang thân thiện để không còn hiện /#booking)
       if (day.pages) {
         Object.entries(day.pages).forEach(([p, count]) => {
-          pageMap[p] = (pageMap[p] || 0) + count;
+          const friendly = getPageFriendlyName(p);
+          pageMap[friendly] = (pageMap[friendly] || 0) + count;
         });
       }
 
@@ -169,8 +167,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
 
     const avgDurationPerVisitor =
       totalVisitors > 0 ? Math.round(totalDurationSeconds / totalVisitors) : 0;
-    const avgDurationPerView =
-      totalViews > 0 ? Math.round(totalDurationSeconds / totalViews) : 0;
 
     const totalDeviceCount = deviceMap.mobile + deviceMap.desktop + deviceMap.tablet || 1;
     const mobilePercent = Math.round((deviceMap.mobile / totalDeviceCount) * 100);
@@ -179,15 +175,13 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
 
     // Top pages sorted
     const topPages = Object.entries(pageMap)
-      .map(([path, count]) => ({ path, count }))
+      .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // Top browsers
     const topBrowsers = Object.entries(browserMap)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // Top OS
     const topOS = Object.entries(osMap)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
@@ -198,7 +192,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       totalDurationSeconds,
       totalSessions,
       avgDurationPerVisitor,
-      avgDurationPerView,
       deviceMap,
       mobilePercent,
       desktopPercent,
@@ -209,45 +202,68 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     };
   }, [filteredDays]);
 
-  // Max views in daily array for bar chart scaling
-  const maxDayViews = useMemo(() => {
-    if (filteredDays.length === 0) return 100;
-    return Math.max(...filteredDays.map((d) => d.pageviews || 0), 10);
+  // Max views & max duration for SVG line chart scaling
+  const chartScales = useMemo(() => {
+    if (filteredDays.length === 0) return { maxViews: 100, maxDuration: 300 };
+    const maxViews = Math.max(...filteredDays.map((d) => d.pageviews || 0), 10);
+    const maxDuration = Math.max(
+      ...filteredDays.map((d) =>
+        d.visitors > 0 ? Math.round(d.totalDurationSeconds / d.visitors) : 0
+      ),
+      60
+    );
+    return { maxViews, maxDuration };
   }, [filteredDays]);
+
+  // Tính tọa độ đường cong SVG
+  const linePoints = useMemo(() => {
+    const W = 800;
+    const H = 140;
+    const padX = 35;
+    const padY = 20;
+
+    const n = filteredDays.length;
+    if (n === 0) return { viewsPath: '', durationPath: '', areaPath: '', points: [] };
+
+    const points = filteredDays.map((day, idx) => {
+      const x = n === 1 ? W / 2 : padX + (idx / (n - 1)) * (W - padX * 2);
+      const yViews = H - padY - ((day.pageviews || 0) / chartScales.maxViews) * (H - padY * 2);
+      const avgDur = day.visitors > 0 ? Math.round(day.totalDurationSeconds / day.visitors) : 0;
+      const yDuration = H - padY - (avgDur / chartScales.maxDuration) * (H - padY * 2);
+      return { x, yViews, yDuration, day, avgDur };
+    });
+
+    const viewsPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.yViews.toFixed(1)}`).join(' ');
+    const durationPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.yDuration.toFixed(1)}`).join(' ');
+    const areaPath = `${viewsPath} L ${points[points.length - 1].x.toFixed(1)} ${H} L ${points[0].x.toFixed(1)} ${H} Z`;
+
+    return { viewsPath, durationPath, areaPath, points };
+  }, [filteredDays, chartScales]);
 
   return (
     <div className={`bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden ${className}`}>
-      {/* ── HEADER THANH CÔNG CỤ ── */}
-      <div className="p-5 border-b border-slate-200 bg-linear-to-r from-emerald-50/40 via-white to-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#2D5A27] flex items-center justify-center text-white shadow-xs">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                  Lưu Lượng &amp; Khách Truy Cập Website (Web Analytics)
-                </h3>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Realtime
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Theo dõi lượng khách, thiết bị (ĐTDĐ, Laptop, Tablet), trang xem nhiều và thời lượng xem web
-              </p>
-            </div>
+      {/* ── HEADER CÔNG CỤ: GỌN GÀNG, BỎ CHÚ THÍCH DÀI, CHỈ ĐỂ CHẤM XANH NHÁY ── */}
+      <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#2D5A27] flex items-center justify-center text-white shadow-xs">
+            <TrendingUp className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+              Lưu Lượng &amp; Khách Truy Cập Website
+            </h3>
+            {/* CHỈ ĐỂ DẤU CHẤM XANH NHÁY, BỎ TIÊU ĐỀ REALTIME / ĐANG TRỰC TUYẾN */}
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
         </div>
 
-        {/* BỘ LỌC THỜI GIAN & LÀM MỚI */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+        {/* BỘ LỌC THỜI GIAN */}
+        <div className="flex items-center gap-2">
+          <div className="inline-flex bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold">
             {(
               [
                 { key: 'today', label: 'Hôm nay' },
-                { key: '7days', label: '7 ngày qua' },
+                { key: '7days', label: '7 ngày' },
                 { key: '14days', label: '14 ngày' },
                 { key: '30days', label: '30 ngày' },
               ] as const
@@ -256,10 +272,10 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 key={filter.key}
                 type="button"
                 onClick={() => setTimeRange(filter.key)}
-                className={`px-3 py-1.5 rounded-lg transition text-xs font-bold ${
+                className={`px-2.5 py-1 rounded-md transition text-xs font-bold ${
                   timeRange === filter.key
-                    ? 'bg-white text-[#2D5A27] shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-950'
+                    ? 'bg-white text-[#2D5A27] shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {filter.label}
@@ -271,252 +287,277 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
             type="button"
             onClick={() => fetchAnalytics(true)}
             disabled={isRefreshing || loading}
-            title="Làm mới số liệu"
-            className="p-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition disabled:opacity-50 cursor-pointer"
+            title="Làm mới"
+            className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#2D5A27]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#2D5A27]' : ''}`} />
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-xs font-medium text-slate-500">
-          <div className="w-8 h-8 mx-auto mb-2 border-2 border-[#2D5A27] border-t-transparent rounded-full animate-spin" />
-          Đang tổng hợp dữ liệu phân tích web...
+        <div className="py-14 text-center text-xs font-medium text-slate-500">
+          <div className="w-6 h-6 mx-auto mb-2 border-2 border-[#2D5A27] border-t-transparent rounded-full animate-spin" />
+          Đang tải số liệu...
         </div>
       ) : (
-        <div className="p-5 space-y-6">
-          {/* ── 4 THẺ CHỈ SỐ LỚN (METRIC CARDS) ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* THẺ 1: NGƯỜI TRUY CẬP (VISITORS) */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-linear-to-br from-white to-emerald-50/20 hover:border-emerald-300 transition shadow-2xs">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* ── 4 THẺ CHỈ SỐ GỌN GÀNG ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* THẺ 1: NGƯỜI TRUY CẬP */}
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-[#2D5A27]" />
                   Khách truy cập
                 </span>
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                  Người dùng thật
-                </span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl font-black text-slate-900">
                   {aggregateMetrics.totalVisitors.toLocaleString('vi-VN')}
                 </span>
-                <span className="text-xs font-semibold text-slate-500">khách</span>
+                <span className="text-[11px] font-semibold text-slate-500">khách</span>
               </div>
-              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Số phiên: {aggregateMetrics.totalSessions.toLocaleString('vi-VN')}</span>
-                <span className="text-emerald-700 font-bold">100% người dùng thực</span>
+              <div className="mt-1 text-[11px] text-slate-500">
+                {aggregateMetrics.totalSessions.toLocaleString('vi-VN')} phiên xem
               </div>
             </div>
 
-            {/* THẺ 2: LƯỢT XEM TRANG (PAGEVIEWS) */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-linear-to-br from-white to-blue-50/20 hover:border-blue-300 transition shadow-2xs">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+            {/* THẺ 2: LƯỢT XEM TRANG */}
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                <span className="flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5 text-blue-600" />
                   Lượt xem trang
                 </span>
-                <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-1.5 py-0.5 rounded">
-                  Pageviews
-                </span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl font-black text-slate-900">
                   {aggregateMetrics.totalViews.toLocaleString('vi-VN')}
                 </span>
-                <span className="text-xs font-semibold text-slate-500">lượt</span>
+                <span className="text-[11px] font-semibold text-slate-500">lượt</span>
               </div>
-              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Trung bình / khách</span>
-                <span className="font-bold text-slate-800">
-                  {aggregateMetrics.totalVisitors > 0
-                    ? (aggregateMetrics.totalViews / aggregateMetrics.totalVisitors).toFixed(1)
-                    : 0}{' '}
-                  trang
-                </span>
+              <div className="mt-1 text-[11px] text-slate-500">
+                TB{' '}
+                {aggregateMetrics.totalVisitors > 0
+                  ? (aggregateMetrics.totalViews / aggregateMetrics.totalVisitors).toFixed(1)
+                  : 0}{' '}
+                trang/khách
               </div>
             </div>
 
-            {/* THẺ 3: THỜI LƯỢNG TRUNG BÌNH (AVG DURATION) */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-linear-to-br from-white to-amber-50/20 hover:border-amber-300 transition shadow-2xs">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+            {/* THẺ 3: THỜI LƯỢNG TRUNG BÌNH */}
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                <span className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-amber-600" />
                   Thời lượng xem web
                 </span>
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
-                  Mỗi khách
-                </span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl font-black text-slate-900">
                   {formatDuration(aggregateMetrics.avgDurationPerVisitor)}
                 </span>
-                <span className="text-xs font-semibold text-slate-500">/ lượt ghé</span>
+                <span className="text-[11px] font-semibold text-slate-500">/ khách</span>
               </div>
-              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Tổng thời gian đọc</span>
-                <span className="font-bold text-slate-800">
-                  {formatDuration(aggregateMetrics.totalDurationSeconds)}
-                </span>
+              <div className="mt-1 text-[11px] text-slate-500">
+                Tổng: {formatDuration(aggregateMetrics.totalDurationSeconds)}
               </div>
             </div>
 
-            {/* THẺ 4: TỶ LỆ THIẾT BỊ PHỔ BIẾN (DEVICE BREAKDOWN) */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-linear-to-br from-white to-purple-50/20 hover:border-purple-300 transition shadow-2xs">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+            {/* THẺ 4: TỶ LỆ THIẾT BỊ */}
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <div className="flex items-center justify-between text-xs text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                <span className="flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5 text-purple-600" />
-                  Thiết bị truy cập
-                </span>
-                <span className="text-[10px] font-bold text-purple-800 bg-purple-100 px-1.5 py-0.5 rounded">
-                  {aggregateMetrics.mobilePercent}% ĐTDĐ
+                  Thiết bị chính
                 </span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl font-black text-slate-900">
                   {aggregateMetrics.mobilePercent}%
                 </span>
-                <span className="text-xs font-semibold text-slate-500">Điện thoại di động</span>
+                <span className="text-[11px] font-semibold text-slate-500">Điện thoại</span>
               </div>
-              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Laptop/PC: {aggregateMetrics.desktopPercent}%</span>
+              <div className="mt-1 text-[11px] text-slate-500 flex gap-2">
+                <span>Laptop: {aggregateMetrics.desktopPercent}%</span>
                 <span>Tablet: {aggregateMetrics.tabletPercent}%</span>
               </div>
             </div>
           </div>
 
-          {/* ── BIỂU ĐỒ LƯỢT XEM VÀ THỜI LƯỢNG THEO TỪNG NGÀY ── */}
-          <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
-                  Lưu lượng &amp; Thời lượng xem web theo từng ngày
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Cột thể hiện số lượt xem (Pageviews), nhãn hiển thị thời lượng xem trung bình trong ngày
-                </p>
+          {/* ── BIỂU ĐỒ ĐƯỜNG: LƯU LƯỢNG & THỜI LƯỢNG THEO TỪNG NGÀY (THU NHỎ LẠI) ── */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
+                Lưu lượng &amp; Thời lượng xem web theo từng ngày
               </div>
 
-              <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
+              {/* Chú giải đường */}
+              <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-xs bg-[#2D5A27]" />
-                  <span>Lượt xem trang</span>
+                  <span className="w-3 h-0.5 bg-[#2D5A27] rounded-full" />
+                  <span className="text-[11px]">Lượt xem trang</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-xs bg-emerald-300" />
-                  <span>Khách truy cập</span>
+                  <span className="w-3 h-0.5 bg-amber-500 rounded-full border-t border-dashed border-amber-500" />
+                  <span className="text-[11px]">Thời lượng xem TB</span>
                 </div>
               </div>
             </div>
 
-            {/* BAR CHART TỰ DỰNG BẰNG CSS/HTML ĐẢM BẢO HOẠT ĐỘNG 100% KHÔNG CẦN LIB BÊN NGOÀI */}
-            <div className="h-44 flex items-end gap-2 sm:gap-3 pt-6 pb-2 border-b border-slate-200">
-              {filteredDays.map((day) => {
-                const heightPercent = Math.max(12, Math.round((day.pageviews / maxDayViews) * 100));
-                const avgDuration =
-                  day.visitors > 0 ? Math.round(day.totalDurationSeconds / day.visitors) : 0;
+            {/* SVG LINE CHART THU NHỎ (CAO CHỈ 125PX) */}
+            <div className="relative w-full h-[125px] select-none pt-2">
+              <svg
+                viewBox="0 0 800 140"
+                className="w-full h-full overflow-visible"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="viewsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2D5A27" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#2D5A27" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
 
-                return (
-                  <div
-                    key={day.date}
-                    className="flex-1 flex flex-col items-center h-full justify-end group relative"
-                  >
-                    {/* Tooltip hover */}
-                    <div className="absolute -top-12 z-10 hidden group-hover:flex flex-col items-center bg-slate-900 text-white text-[10px] py-1 px-2.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
-                      <div className="font-bold text-emerald-400">{formatDateShort(day.date)}</div>
-                      <div>
-                        {day.pageviews} xem • {day.visitors} khách • TB: {formatDuration(avgDuration)}
-                      </div>
-                    </div>
+                {/* Vùng mờ bên dưới đường lượt xem */}
+                {linePoints.areaPath && (
+                  <path d={linePoints.areaPath} fill="url(#viewsAreaGrad)" />
+                )}
 
-                    {/* Giá trị trên cột */}
-                    <span className="text-[10px] font-bold text-slate-700 mb-1 opacity-70 group-hover:opacity-100 transition">
-                      {day.pageviews}
-                    </span>
+                {/* Đường Lượt xem trang (Xanh lá) */}
+                {linePoints.viewsPath && (
+                  <path
+                    d={linePoints.viewsPath}
+                    fill="none"
+                    stroke="#2D5A27"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
 
-                    {/* Thanh cột phân tầng */}
-                    <div
-                      style={{ height: `${heightPercent}%` }}
-                      className="w-full max-w-[42px] rounded-t-lg bg-linear-to-t from-[#1b3817] via-[#2D5A27] to-emerald-500 group-hover:brightness-110 transition-all flex flex-col justify-end overflow-hidden shadow-2xs"
-                    >
-                      <div
-                        style={{
-                          height: `${Math.min(100, Math.round((day.visitors / (day.pageviews || 1)) * 100))}%`,
-                        }}
-                        className="bg-emerald-300/40 w-full"
-                      />
-                    </div>
+                {/* Đường Thời lượng xem (Cam hổ phách) */}
+                {linePoints.durationPath && (
+                  <path
+                    d={linePoints.durationPath}
+                    fill="none"
+                    stroke="#F59E0B"
+                    strokeWidth="2"
+                    strokeDasharray="4 3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
 
-                    {/* Nhãn ngày bên dưới */}
-                    <span className="text-[11px] font-bold text-slate-600 mt-2">
-                      {formatDateShort(day.date)}
-                    </span>
-                    <span className="text-[9px] font-semibold text-slate-600 font-mono">
-                      {formatDuration(avgDuration)}
-                    </span>
+                {/* Các điểm tròn dữ liệu trên đường */}
+                {linePoints.points.map((p, idx) => (
+                  <g key={idx} className="cursor-pointer">
+                    {/* Điểm lượt xem */}
+                    <circle
+                      cx={p.x}
+                      cy={p.yViews}
+                      r="4"
+                      className="fill-white stroke-[#2D5A27] stroke-2 hover:r-5 transition-all"
+                      onMouseEnter={() => setHoveredPoint(p.day)}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    />
+                    {/* Điểm thời lượng */}
+                    <circle
+                      cx={p.x}
+                      cy={p.yDuration}
+                      r="3"
+                      className="fill-white stroke-amber-500 stroke-2 hover:r-4 transition-all"
+                      onMouseEnter={() => setHoveredPoint(p.day)}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    />
+                  </g>
+                ))}
+              </svg>
+
+              {/* Tooltip khi hover điểm */}
+              {hoveredPoint && (
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-3 py-1 rounded-lg shadow-md pointer-events-none flex items-center gap-3 z-10">
+                  <span className="font-bold text-emerald-400">
+                    {formatDateShort(hoveredPoint.date)}:
+                  </span>
+                  <span>{hoveredPoint.pageviews} xem</span>
+                  <span>•</span>
+                  <span>{hoveredPoint.visitors} khách</span>
+                  <span>•</span>
+                  <span className="text-amber-300">
+                    TB:{' '}
+                    {formatDuration(
+                      hoveredPoint.visitors > 0
+                        ? Math.round(hoveredPoint.totalDurationSeconds / hoveredPoint.visitors)
+                        : 0
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Nhãn ngày bên dưới biểu đồ */}
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 px-2 mt-1 border-t border-slate-200/80 pt-1">
+              {filteredDays.map((d) => (
+                <div key={d.date} className="text-center">
+                  <div>{formatDateShort(d.date)}</div>
+                  <div className="text-[9px] font-mono text-slate-400">
+                    {formatDuration(
+                      d.visitors > 0 ? Math.round(d.totalDurationSeconds / d.visitors) : 0
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* ── 2 CỘT: CỘT 1 (TRANG XEM NHIỀU NHẤT) & CỘT 2 (PHÂN BỔ THIẾT BỊ / NỀN TẢNG) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* CỘT TRÁI: TOP TRANG ĐƯỢC XEM NHIỀU NHẤT */}
-            <div className="p-5 rounded-xl border border-slate-200 bg-white">
-              <div className="flex items-center justify-between mb-3.5">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Compass className="w-3.5 h-3.5 text-[#2D5A27]" />
-                    Trang được xem nhiều nhất (Top Pages)
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Xác định nội dung thu hút khách hàng quan tâm nhất
-                  </p>
+          {/* ── 2 CỘT NẰM CẠNH NHAU (THU NHỎ LẠI): TOP TRANG (BIỂU ĐỒ ĐƯỜNG) & NHẬT KÝ PHIÊN GẦN ĐÂY ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* CỘT TRÁI: TRANG ĐƯỢC XEM NHIỀU NHẤT (BIỂU ĐỒ ĐƯỜNG TIẾN TRÌNH GỌN GÀNG, BỎ MÃ PATH) */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-[#2D5A27]" />
+                  Trang được xem nhiều nhất
                 </div>
                 <span className="text-xs font-semibold text-slate-500">
                   {aggregateMetrics.topPages.length} trang
                 </span>
               </div>
 
-              <div className="space-y-3">
-                {aggregateMetrics.topPages.slice(0, 7).map((item, idx) => {
+              <div className="space-y-2.5">
+                {aggregateMetrics.topPages.slice(0, 6).map((item, idx) => {
                   const percentage =
                     aggregateMetrics.totalViews > 0
                       ? Math.round((item.count / aggregateMetrics.totalViews) * 100)
                       : 0;
-                  const friendly = getPageFriendlyName(item.path);
 
                   return (
-                    <div key={item.path} className="group">
-                      <div className="flex items-center justify-between text-xs mb-1">
+                    <div key={item.name} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 truncate pr-2">
-                          <span className="w-4 text-[11px] font-bold text-slate-400 font-mono">
+                          <span className="w-3.5 text-[11px] font-bold text-slate-400 font-mono">
                             #{idx + 1}
                           </span>
-                          <span className="font-bold text-slate-900 truncate">
-                            {friendly.title}
+                          {/* CHỈ HIỂN THỊ TÊN THÂN THIỆN, BỎ TOÀN BỘ DẠNG /#booking */}
+                          <span className="font-bold text-slate-800 truncate">
+                            {item.name}
                           </span>
-                          <code className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded font-mono hidden sm:inline">
-                            {item.path}
-                          </code>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-bold text-slate-900 font-mono">
+                          <span className="font-bold text-slate-900 font-mono text-[11px]">
                             {item.count.toLocaleString('vi-VN')}
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-500 w-8 text-right font-mono">
+                          <span className="text-[10px] font-semibold text-slate-500 w-7 text-right font-mono">
                             {percentage}%
                           </span>
                         </div>
                       </div>
 
-                      {/* Progress bar */}
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      {/* Đường thanh tiến trình thanh thoát */}
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                         <div
                           style={{ width: `${percentage}%` }}
                           className={`h-full rounded-full transition-all duration-500 ${
@@ -534,226 +575,129 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
               </div>
             </div>
 
-            {/* CỘT PHẢI: PHÂN BỔ THIẾT BỊ, TRÌNH DUYỆT & HỆ ĐIỀU HÀNH */}
-            <div className="p-5 rounded-xl border border-slate-200 bg-white space-y-5">
+            {/* CỘT PHẢI: NHẬT KÝ PHIÊN TRUY CẬP GẦN ĐÂY (THU NHỎ LẠI, NẰM CẠNH TOP TRANG) */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col justify-between">
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-purple-600" />
-                  Phân bổ thiết bị &amp; Môi trường truy cập
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Tỷ lệ thiết bị (Điện thoại, Laptop, Máy tính bảng), Trình duyệt và Hệ điều hành
-                </p>
-              </div>
-
-              {/* 1. THIẾT BỊ */}
-              <div className="space-y-2.5">
-                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                  1. Loại Thiết Bị
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {/* Phone */}
-                  <div className="p-2.5 rounded-lg border border-purple-200 bg-purple-50/50">
-                    <Smartphone className="w-4 h-4 mx-auto text-purple-700 mb-1" />
-                    <div className="text-xs font-bold text-slate-900">
-                      {aggregateMetrics.mobilePercent}%
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-medium">Điện thoại</div>
-                    <div className="text-[10px] font-semibold text-purple-700 font-mono mt-0.5">
-                      {aggregateMetrics.deviceMap.mobile} lượt
-                    </div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                    Nhật ký phiên gần đây
                   </div>
-
-                  {/* Laptop / Desktop */}
-                  <div className="p-2.5 rounded-lg border border-blue-200 bg-blue-50/50">
-                    <Monitor className="w-4 h-4 mx-auto text-blue-700 mb-1" />
-                    <div className="text-xs font-bold text-slate-900">
-                      {aggregateMetrics.desktopPercent}%
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-medium">Laptop / PC</div>
-                    <div className="text-[10px] font-semibold text-blue-700 font-mono mt-0.5">
-                      {aggregateMetrics.deviceMap.desktop} lượt
-                    </div>
-                  </div>
-
-                  {/* Tablet */}
-                  <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/50">
-                    <Tablet className="w-4 h-4 mx-auto text-amber-700 mb-1" />
-                    <div className="text-xs font-bold text-slate-900">
-                      {aggregateMetrics.tabletPercent}%
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-medium">Máy tính bảng</div>
-                    <div className="text-[10px] font-semibold text-amber-700 font-mono mt-0.5">
-                      {aggregateMetrics.deviceMap.tablet} lượt
-                    </div>
-                  </div>
+                  {/* CHỈ ĐỂ DẤU CHẤM XANH NHÁY */}
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
 
-                {/* Progress bar kết hợp */}
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
-                  <div
-                    style={{ width: `${aggregateMetrics.mobilePercent}%` }}
-                    className="bg-purple-600 h-full"
-                    title={`Điện thoại: ${aggregateMetrics.mobilePercent}%`}
-                  />
-                  <div
-                    style={{ width: `${aggregateMetrics.desktopPercent}%` }}
-                    className="bg-blue-600 h-full"
-                    title={`Laptop/PC: ${aggregateMetrics.desktopPercent}%`}
-                  />
-                  <div
-                    style={{ width: `${aggregateMetrics.tabletPercent}%` }}
-                    className="bg-amber-500 h-full"
-                    title={`Tablet: ${aggregateMetrics.tabletPercent}%`}
-                  />
-                </div>
-              </div>
-
-              {/* 2. TRÌNH DUYỆT & HỆ ĐIỀU HÀNH */}
-              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-                {/* Trình duyệt */}
-                <div>
-                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    2. Trình duyệt
-                  </div>
-                  <div className="space-y-1.5 text-xs">
-                    {aggregateMetrics.topBrowsers.slice(0, 4).map((b) => (
-                      <div key={b.name} className="flex items-center justify-between">
-                        <span className="text-slate-700 font-medium">{b.name}</span>
-                        <span className="font-bold text-slate-900 font-mono">
-                          {b.count}{' '}
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            (
-                            {aggregateMetrics.totalViews > 0
-                              ? Math.round((b.count / aggregateMetrics.totalViews) * 100)
-                              : 0}
-                            %)
-                          </span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hệ điều hành */}
-                <div>
-                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    3. Hệ điều hành
-                  </div>
-                  <div className="space-y-1.5 text-xs">
-                    {aggregateMetrics.topOS.slice(0, 4).map((o) => (
-                      <div key={o.name} className="flex items-center justify-between">
-                        <span className="text-slate-700 font-medium">{o.name}</span>
-                        <span className="font-bold text-slate-900 font-mono">
-                          {o.count}{' '}
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            (
-                            {aggregateMetrics.totalViews > 0
-                              ? Math.round((o.count / aggregateMetrics.totalViews) * 100)
-                              : 0}
-                            %)
-                          </span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                        <th className="pb-1.5 px-2">Thời gian</th>
+                        <th className="pb-1.5 px-2">Trang đang xem</th>
+                        <th className="pb-1.5 px-2">Thiết bị</th>
+                        <th className="pb-1.5 px-2 text-right">Thời lượng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {(!data?.recentSessions || data.recentSessions.length === 0) ? (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
+                            Chưa có phiên truy cập nào gần đây.
+                          </td>
+                        </tr>
+                      ) : (
+                        data.recentSessions.slice(0, 6).map((sess, idx) => {
+                          const friendly = getPageFriendlyName(sess.path);
+                          return (
+                            <tr key={sess.id || idx} className="hover:bg-slate-50/80 transition">
+                              <td className="py-2 px-2 text-slate-500 text-[10px] whitespace-nowrap">
+                                {formatRelativeTime(sess.time)}
+                              </td>
+                              <td className="py-2 px-2">
+                                {/* CHỈ HIỂN THỊ TÊN THÂN THIỆN, BỎ /#booking */}
+                                <div className="font-bold text-slate-800 text-xs">
+                                  {friendly}
+                                </div>
+                              </td>
+                              <td className="py-2 px-2 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    sess.device === 'mobile'
+                                      ? 'bg-purple-50 text-purple-700'
+                                      : sess.device === 'tablet'
+                                      ? 'bg-amber-50 text-amber-700'
+                                      : 'bg-blue-50 text-blue-700'
+                                  }`}
+                                >
+                                  {sess.device === 'mobile' ? (
+                                    <Smartphone className="w-2.5 h-2.5" />
+                                  ) : sess.device === 'tablet' ? (
+                                    <Tablet className="w-2.5 h-2.5" />
+                                  ) : (
+                                    <Monitor className="w-2.5 h-2.5" />
+                                  )}
+                                  {sess.device === 'mobile'
+                                    ? 'ĐTDĐ'
+                                    : sess.device === 'tablet'
+                                    ? 'Tablet'
+                                    : 'Laptop'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2 text-right whitespace-nowrap">
+                                <span className="font-bold text-emerald-800 font-mono text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  {formatDuration(sess.durationSeconds || 15)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── BẢNG CÁC PHIÊN TRUY CẬP GẦN ĐÂY (REAL-TIME ACTIVITY FEED) ── */}
-          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-            <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                  Nhật Ký Phiên Truy Cập Gần Đây (Live Visitor Stream)
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Danh sách khách hàng đang ghé thăm website theo thời gian thực
-                </p>
-              </div>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                Đang trực tuyến
+          {/* ── DÒNG PHÂN BỔ THIẾT BỊ GỌN GÀNG ── */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 text-xs">
+              <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-purple-600" />
+                Phân bổ thiết bị &amp; Môi trường truy cập
               </span>
+              <div className="flex items-center gap-3 text-slate-600 text-[11px] font-semibold">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-xs bg-purple-600" />
+                  ĐTDĐ: {aggregateMetrics.mobilePercent}%
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-xs bg-blue-600" />
+                  Laptop: {aggregateMetrics.desktopPercent}%
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-xs bg-amber-500" />
+                  Tablet: {aggregateMetrics.tabletPercent}%
+                </span>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-100/60 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
-                    <th className="py-2.5 px-4">Thời gian</th>
-                    <th className="py-2.5 px-3">Trang đang xem</th>
-                    <th className="py-2.5 px-3">Thiết bị</th>
-                    <th className="py-2.5 px-3">Trình duyệt &amp; HĐH</th>
-                    <th className="py-2.5 px-3 text-right">Thời lượng xem</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {(!data?.recentSessions || data.recentSessions.length === 0) ? (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
-                        Chưa có phiên truy cập nào gần đây.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.recentSessions.slice(0, 10).map((sess, idx) => {
-                      const friendly = getPageFriendlyName(sess.path);
-                      return (
-                        <tr key={sess.id || idx} className="hover:bg-slate-50/80 transition">
-                          <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
-                            {formatRelativeTime(sess.time)}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <div className="font-bold text-slate-900 text-xs">
-                              {friendly.title}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              {sess.path}
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                sess.device === 'mobile'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : sess.device === 'tablet'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}
-                            >
-                              {sess.device === 'mobile' ? (
-                                <Smartphone className="w-3 h-3" />
-                              ) : sess.device === 'tablet' ? (
-                                <Tablet className="w-3 h-3" />
-                              ) : (
-                                <Monitor className="w-3 h-3" />
-                              )}
-                              {sess.device === 'mobile'
-                                ? 'Điện thoại'
-                                : sess.device === 'tablet'
-                                ? 'Máy tính bảng'
-                                : 'Laptop/PC'}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-600 text-xs">
-                            <span className="font-semibold text-slate-800">{sess.browser}</span>
-                            <span className="text-slate-400 mx-1">•</span>
-                            <span className="text-slate-500">{sess.os}</span>
-                          </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-mono text-[11px]">
-                              {formatDuration(sess.durationSeconds || 15)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+            {/* Thanh progress bar đa sắc gọn gàng */}
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+              <div
+                style={{ width: `${aggregateMetrics.mobilePercent}%` }}
+                className="bg-purple-600 h-full"
+                title={`Điện thoại: ${aggregateMetrics.mobilePercent}%`}
+              />
+              <div
+                style={{ width: `${aggregateMetrics.desktopPercent}%` }}
+                className="bg-blue-600 h-full"
+                title={`Laptop/PC: ${aggregateMetrics.desktopPercent}%`}
+              />
+              <div
+                style={{ width: `${aggregateMetrics.tabletPercent}%` }}
+                className="bg-amber-500 h-full"
+                title={`Tablet: ${aggregateMetrics.tabletPercent}%`}
+              />
             </div>
           </div>
         </div>
