@@ -51,6 +51,7 @@ import { SystemConfigProvider } from "@/context/SystemConfigContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import DynamicFavicon from "@/components/DynamicFavicon";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
+import WebAnalyticsTracker from "@/components/WebAnalyticsTracker";
 
 export default function RootLayout({
   children,
@@ -68,6 +69,7 @@ export default function RootLayout({
         <SystemConfigProvider>
           <LanguageProvider>
             <DynamicFavicon />
+            <WebAnalyticsTracker />
             {children}
             <AnnouncementPopup />
           </LanguageProvider>

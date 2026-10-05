@@ -1,0 +1,148 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
+
+export default function WebAnalyticsTracker() {
+  const pathname = usePathname();
+  const sessionStartTimeRef = useRef<number>(Date.now());
+  const lastHeartbeatTimeRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    // Không ghi nhận lượt truy cập của ban quản trị khi đang trong trang admin
+    if (typeof window === 'undefined' || pathname.startsWith('/admin')) {
+      return;
+    }
+
+    // 1. Định danh khách truy cập (Visitor ID) bền vững qua localStorage
+    let visitorId = '';
+    try {
+      visitorId = localStorage.getItem('petmm_vid') || '';
+      if (!visitorId) {
+        visitorId = 'vis_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+        localStorage.setItem('petmm_vid', visitorId);
+      }
+    } catch {
+      visitorId = 'vis_' + Math.random().toString(36).slice(2, 9);
+    }
+
+    // 2. Nhận diện loại thiết bị
+    const ua = navigator.userAgent || '';
+    const width = window.innerWidth;
+    let device: 'mobile' | 'desktop' | 'tablet' = 'desktop';
+
+    if (
+      /iPad|Tablet|PlayBook/i.test(ua) ||
+      (navigator.maxTouchPoints > 1 && width >= 768 && width <= 1024)
+    ) {
+      device = 'tablet';
+    } else if (
+      /Mobile|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+      width < 768
+    ) {
+      device = 'mobile';
+    }
+
+    // 3. Nhận diện trình duyệt
+    let browser = 'Chrome';
+    if (/Zalo/i.test(ua)) browser = 'Zalo';
+    else if (/CocCoc/i.test(ua)) browser = 'Cốc Cốc';
+    else if (/Edg/i.test(ua)) browser = 'Edge';
+    else if (/Firefox/i.test(ua)) browser = 'Firefox';
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+
+    // 4. Nhận diện hệ điều hành
+    let os = 'Windows';
+    if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Macintosh|Mac OS X/i.test(ua)) os = 'macOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    const currentPath = pathname + (window.location.hash || '');
+    const referrer = document.referrer ? new URL(document.referrer, window.location.href).hostname : 'direct';
+
+    // 5. Gửi sự kiện Pageview
+    sessionStartTimeRef.current = Date.now();
+    lastHeartbeatTimeRef.current = Date.now();
+
+    const trackPageview = async () => {
+      try {
+        await fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            visitorId,
+            path: currentPath,
+            device,
+            browser,
+            os,
+            referrer,
+          }),
+        });
+      } catch {}
+    };
+
+    trackPageview();
+
+    // 6. Gửi cập nhật thời lượng xem trang (Session Duration Heartbeat)
+    const sendDurationUpdate = (isFinal = false) => {
+      const now = Date.now();
+      const elapsedSeconds = Math.round((now - lastHeartbeatTimeRef.current) / 1000);
+      lastHeartbeatTimeRef.current = now;
+
+      if (elapsedSeconds < 2) return;
+
+      const payload = JSON.stringify({
+        visitorId,
+        path: currentPath,
+        durationIncrementSeconds: elapsedSeconds,
+      });
+
+      if (isFinal && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/analytics/track', blob);
+      } else {
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+
+    // Heartbeat định kỳ mỗi 30 giây khi tab đang active
+    const heartbeatInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        sendDurationUpdate(false);
+      }
+    }, 30000);
+
+    // Bắt sự kiện khi khách chuyển tab hoặc đóng trình duyệt
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sendDurationUpdate(true);
+      } else {
+        lastHeartbeatTimeRef.current = Date.now();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      sendDurationUpdate(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+      sendDurationUpdate(true);
+    };
+  }, [pathname]);
+
+  return null;
+}

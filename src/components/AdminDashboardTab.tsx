@@ -36,6 +36,7 @@ import {
   HoSoTuyenDungRecord,
   TuyenDungRecord,
 } from '@/lib/supabase';
+import AdminAnalyticsSection from '@/components/AdminAnalyticsSection';
 
 type AdminTab =
   | 'dashboard'
@@ -383,7 +384,10 @@ export default function AdminDashboardTab({
         </div>
       </div>
 
-      {/* ── 2. BẢNG DỮ LIỆU CHÍNH (LỊCH HẸN & PHÂN BỔ) ── */}
+      {/* ── 2. PHÂN TÍCH LƯU LƯỢNG TRUY CẬP WEBSITE (WEB ANALYTICS) ── */}
+      <AdminAnalyticsSection />
+
+      {/* ── 3. BẢNG DỮ LIỆU CHÍNH (LỊCH HẸN & PHÂN BỔ) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* CỘT TRÁI (2/3): LỊCH HẸN GẦN ĐÂY */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-300 overflow-hidden shadow-xs">
