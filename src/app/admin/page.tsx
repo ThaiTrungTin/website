@@ -11,6 +11,7 @@ import {
   Edit3,
   CheckCircle2,
   ArrowLeft,
+  ArrowRight,
   RefreshCw,
   Move,
   Layers,
@@ -71,9 +72,10 @@ import {
   Unlock,
   Shield,
   Activity,
+  MonitorX,
 } from 'lucide-react';
 import { usePresenceHeartbeat } from '@/lib/usePresenceHeartbeat';
-import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG } from '@/lib/supabase';
+import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG, HoSoTuyenDungRecord, TuyenDungRecord } from '@/lib/supabase';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
 import AdminInteractiveCropper from '@/components/AdminInteractiveCropper';
@@ -87,6 +89,8 @@ import { SloganTickerItem, parseSloganList, isSloganActive, renderWithShakingIco
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 import AdminResizableModal from '@/components/AdminResizableModal';
+import AdminDashboardTab from '@/components/AdminDashboardTab';
+import AdminNotificationBell from '@/components/AdminNotificationBell';
 
 // ── BẢNG ICON RUNG PHONG CÁCH ZALO ──
 export interface VibratingEmojiItem {
@@ -230,7 +234,7 @@ function SloganInlineEditor({
   );
 }
 
-type AdminTab = 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff';
+type AdminTab = 'dashboard' | 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff';
 export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
 
 // ── LOGOUT CONFIRMATION MODAL ──────────────────────────────────────────────
@@ -1139,11 +1143,57 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('banners');
+  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [configSubTab, setConfigSubTab] = useState<ConfigSubTab>('contact');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // -------------------------------------------------------------
+  // DỮ LIỆU TUYỂN DỤNG & HỒ SƠ ỨNG VIÊN
+  // -------------------------------------------------------------
+  const [jobApplications, setJobApplications] = useState<HoSoTuyenDungRecord[]>([]);
+  const [jobs, setJobs] = useState<TuyenDungRecord[]>([]);
+
+  // KIỂM TRA MÀN HÌNH QUÁ NHỎ (MOBILE & TABLET < 1024px)
+  const [isScreenTooSmall, setIsScreenTooSmall] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      setIsScreenTooSmall(window.innerWidth < 1024);
+    };
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
+
+  const loadJobApplications = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ho_so_tuyen_dung')
+        .select('*')
+        .order('ngay_tao', { ascending: false });
+      if (!error && data) {
+        setJobApplications(data as HoSoTuyenDungRecord[]);
+      }
+    } catch (e) {
+      console.error('Error loading job applications:', e);
+    }
+  }, []);
+
+  const loadJobsList = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tuyen_dung')
+        .select('*')
+        .order('thu_tu', { ascending: true });
+      if (!error && data) {
+        setJobs(data as TuyenDungRecord[]);
+      }
+    } catch (e) {
+      console.error('Error loading jobs:', e);
+    }
+  }, []);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -1151,6 +1201,69 @@ export default function AdminDashboardPage() {
       setNotification(null);
     }, 4000);
   };
+
+  // -------------------------------------------------------------
+  // TRẠNG THÁI HIGHLIGHT HÀNG KHI CLICK CHUÔNG THÔNG BÁO
+  // -------------------------------------------------------------
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleNavigateWithHighlight = useCallback((tab: AdminTab, itemId?: string) => {
+    setActiveTab(tab);
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    if (itemId) {
+      setHighlightedId(itemId);
+      // Đợi DOM render sau khi chuyển tab rồi cuộn tới hàng và tô xanh
+      setTimeout(() => {
+        const el =
+          document.getElementById(`appointment-row-${itemId}`) ||
+          document.getElementById(`applicant-row-${itemId}`) ||
+          document.getElementById(`review-row-${itemId}`) ||
+          document.getElementById(itemId);
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 250);
+
+      // Tự động bỏ tô xanh sau 4 giây (như rê chuột vào xong nhả ra)
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedId(null);
+      }, 4000);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
+
+  const handleUpdateApplicantStatus = useCallback(async (appId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('ho_so_tuyen_dung')
+        .update({ trang_thai: newStatus, ngay_cap_nhat: new Date().toISOString() })
+        .eq('id', appId);
+
+      if (error) {
+        showNotification('error', `Lỗi khi cập nhật trạng thái: ${error.message}`);
+        return;
+      }
+
+      setJobApplications((prev) =>
+        prev.map((item) => (item.id === appId ? { ...item, trang_thai: newStatus } : item))
+      );
+
+      const labels: Record<string, string> = {
+        bo_qua: 'Đã chuyển hồ sơ sang trạng thái "Bỏ qua"',
+        da_lien_he: 'Đã xác nhận "Đã liên hệ" với ứng viên',
+        hen_phong_van: 'Đã xác nhận "Lịch hẹn phỏng vấn" với ứng viên',
+        moi: 'Đã khôi phục hồ sơ mới',
+      };
+      showNotification('success', labels[newStatus] || 'Đã cập nhật trạng thái ứng viên thành công!');
+    } catch (err: any) {
+      showNotification('error', `Không thể cập nhật: ${err?.message || 'Lỗi hệ thống'}`);
+    }
+  }, []);
 
   // -------------------------------------------------------------
   // TAB 1: QUẢN LÝ ẢNH NỀN HERO BANNER
@@ -2035,6 +2148,9 @@ export default function AdminDashboardPage() {
     smtp_notify_recruitment_email: 'tuyendung@petmm.vn',
     smtp_notify_contact_email: 'thaitrtin@gmail.com',
     hasPassword: false,
+    email_enabled: true,
+    email_booking_mode: 'always' as 'always' | 'on_zalo_fail' | 'disabled',
+    email_recruitment_enabled: true,
   });
   const [isSmtpLoading, setIsSmtpLoading] = useState(false);
   const [isSmtpSaving, setIsSmtpSaving] = useState(false);
@@ -2047,10 +2163,18 @@ export default function AdminDashboardPage() {
     zalo_app_id: '',
     zalo_secret_key: '',
     zalo_template_id: '',
+    zalo_review_template_id: '',
     zalo_enabled: false,
+    zalo_booking_enabled: true,
+    zalo_review_enabled: true,
+    zalo_access_token: '',
+    zalo_refresh_token: '',
+    zalo_test_phone: '0364605514',
   });
   const [isZaloSaving, setIsZaloSaving] = useState(false);
+  const [isZaloTesting, setIsZaloTesting] = useState(false);
   const [showZaloSecret, setShowZaloSecret] = useState(false);
+  const [showZaloToken, setShowZaloToken] = useState(false);
 
   // Cấu hình Template Email song ngữ gửi cho khách hàng
   const [emailTemplateForm, setEmailTemplateForm] = useState<{
@@ -2134,6 +2258,9 @@ export default function AdminDashboardPage() {
           smtp_notify_recruitment_email: data.config.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
           smtp_notify_contact_email: data.config.smtp_notify_contact_email || data.config.smtp_notify_email || 'thaitrtin@gmail.com',
           hasPassword: Boolean(data.config.hasPassword),
+          email_enabled: data.config.email_enabled !== undefined ? Boolean(data.config.email_enabled) : true,
+          email_booking_mode: data.config.email_booking_mode || 'always',
+          email_recruitment_enabled: data.config.email_recruitment_enabled !== undefined ? Boolean(data.config.email_recruitment_enabled) : true,
         }));
       }
       if (data.success && data.zalo) {
@@ -2142,7 +2269,13 @@ export default function AdminDashboardPage() {
           zalo_app_id: data.zalo.zalo_app_id || '',
           zalo_secret_key: data.zalo.zalo_secret_key || '',
           zalo_template_id: data.zalo.zalo_template_id || '',
+          zalo_review_template_id: data.zalo.zalo_review_template_id || '',
           zalo_enabled: Boolean(data.zalo.zalo_enabled),
+          zalo_booking_enabled: data.zalo.zalo_booking_enabled !== undefined ? Boolean(data.zalo.zalo_booking_enabled) : true,
+          zalo_review_enabled: data.zalo.zalo_review_enabled !== undefined ? Boolean(data.zalo.zalo_review_enabled) : true,
+          zalo_access_token: data.zalo.zalo_access_token || '',
+          zalo_refresh_token: data.zalo.zalo_refresh_token || '',
+          zalo_test_phone: data.zalo.zalo_test_phone || '0364605514',
         });
       }
       if (data.success && data.template) {
@@ -2217,6 +2350,45 @@ export default function AdminDashboardPage() {
       showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
     } finally {
       setIsZaloSaving(false);
+    }
+  };
+
+  const handleTestZalo = async (targetPhone?: string) => {
+    const phoneToTest = (typeof targetPhone === 'string' && targetPhone.trim())
+      ? targetPhone.trim()
+      : (zaloForm.zalo_test_phone || '').trim();
+    if (!phoneToTest) {
+      showNotification('error', 'Vui lòng nhập số điện thoại nhận tin ZNS thử nghiệm!');
+      return;
+    }
+    setIsZaloTesting(true);
+    try {
+      const res = await fetch('/api/admin/zalo/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phoneToTest,
+          zalo_oa_id: zaloForm.zalo_oa_id,
+          zalo_app_id: zaloForm.zalo_app_id,
+          zalo_secret_key: zaloForm.zalo_secret_key,
+          zalo_template_id: zaloForm.zalo_template_id,
+          zalo_access_token: zaloForm.zalo_access_token,
+          zalo_refresh_token: zaloForm.zalo_refresh_token,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Gửi ZNS thử nghiệm thất bại!');
+        return;
+      }
+      showNotification('success', data.message || `Đã gửi tin nhắn ZNS thử nghiệm thành công tới ${phoneToTest}!`);
+      if (data.tokensUpdated) {
+        loadSmtpConfig();
+      }
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Gửi Zalo thử nghiệm thất bại'));
+    } finally {
+      setIsZaloTesting(false);
     }
   };
 
@@ -4059,6 +4231,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     loadTeamMembers();
     loadAboutSlides();
     loadArticles();
+    loadJobApplications();
+    loadJobsList();
 
     // Lắng nghe Realtime lịch hẹn mới khi khách đặt trên website
     const channel = supabase
@@ -4072,10 +4246,23 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       )
       .subscribe();
 
+    // Lắng nghe Realtime hồ sơ ứng viên nộp CV mới
+    const appChannel = supabase
+      .channel('ho_so_tuyen_dung_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ho_so_tuyen_dung' },
+        () => {
+          loadJobApplications();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(appChannel);
     };
-  }, [loadAppointments]);
+  }, [loadAppointments, loadJobApplications, loadJobsList]);
 
   // Filtered data for tables
   const filteredBanners = banners.filter((b) => {
@@ -4182,6 +4369,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
   // Current tab metadata for Breadcrumbs
   const tabTitles: Record<AdminTab, { title: string; category: string; icon: any }> = {
+    dashboard: { title: 'Tổng Quan Hệ Thống', category: 'Điều Hành', icon: BarChart3 },
     banners: { title: 'Quản Lý Ảnh Nền Hero', category: 'Nội Dung Giao Diện', icon: ImageIcon },
     branches: { title: 'Quản Lý Hệ Thống Chi Nhánh', category: 'Cơ Sở Bệnh Viện', icon: MapPin },
     services: { title: 'Quản Lý Dịch Vụ Chuẩn 5 Sao', category: 'Dịch Vụ & Bảng Giá', icon: Stethoscope },
@@ -4242,6 +4430,45 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     return null;
   }
 
+  // THIẾT BỊ MÀN HÌNH NHỎ (MOBILE & TABLET): CHẶN VÀ BÁO YÊU CẦU MÁY TÍNH
+  if (isScreenTooSmall) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center mb-5 shadow-xl">
+          <MonitorX className="w-8 h-8" />
+        </div>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 mb-3">
+          Yêu cầu màn hình Desktop / Laptop
+        </span>
+        <h2 className="text-xl sm:text-2xl font-black text-white max-w-md tracking-tight">
+          Màn hình thiết bị quá nhỏ
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-300 mt-3 max-w-md leading-relaxed">
+          Cổng Quản Trị Hệ Thống <strong>PetM&amp;M ERP</strong> được thiết kế chuyên sâu với nhiều bảng số liệu và biểu đồ lớn. Để đảm bảo thao tác chính xác, vui lòng thực hiện trên màn hình máy tính để bàn (Desktop) hoặc Laptop.
+        </p>
+        <p className="text-xs text-amber-200/90 font-medium mt-2 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl max-w-md">
+          Hệ thống đã tự động khóa hiển thị trên điện thoại &amp; máy tính bảng để bảo vệ dữ liệu vận hành.
+        </p>
+
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+          <Link
+            href="/taodanhgia"
+            className="w-full py-3 px-4 rounded-xl bg-[#2D5A27] hover:bg-[#234A1E] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg"
+          >
+            <span>Vào Cổng Lễ Tân (/taodanhgia)</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/"
+            className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center justify-center"
+          >
+            <span>Về Trang Chủ Web</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex antialiased">
       {/* ========================================================= */}
@@ -4294,6 +4521,29 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               Quản Lý Dữ Liệu
             </div>
             <nav className="space-y-1">
+              {/* Menu 0: Dashboard */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('dashboard');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
+                  activeTab === 'dashboard'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <BarChart3
+                    className={`w-4 h-4 transition ${
+                      activeTab === 'dashboard' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span>Tổng Quan Hệ Thống</span>
+                </div>
+              </button>
+
               {/* Menu 1: Banners */}
               <button
                 type="button"
@@ -4901,6 +5151,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
             <button
               type="button"
               onClick={() => {
+                if (activeTab === 'dashboard') {
+                  loadAppointments();
+                  loadReviews();
+                  loadBranches();
+                  loadServices();
+                  loadTeamMembers();
+                  loadArticles();
+                }
                 if (activeTab === 'banners') loadBanners();
                 if (activeTab === 'branches') loadBranches();
                 if (activeTab === 'services') loadServices();
@@ -4923,6 +5181,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               <RefreshCw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Làm Mới</span>
             </button>
+
+            {/* CHUÔNG THÔNG BÁO HỆ THỐNG */}
+            <AdminNotificationBell
+              appointments={appointments}
+              applications={jobApplications}
+              reviews={reviews}
+              onNavigateTab={handleNavigateWithHighlight}
+            />
 
             <Link
               href="/"
@@ -4955,6 +5221,36 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
         {/* WORKSPACE BODY */}
         <main className="flex-1 p-4 sm:p-8 max-w-[1720px] w-full mx-auto">
+          {/* ===================================================== */}
+          {/* TAB 0: TỔNG QUAN HỆ THỐNG (DASHBOARD) */}
+          {/* ===================================================== */}
+          {activeTab === 'dashboard' && (
+            <AdminDashboardTab
+              appointments={appointments}
+              reviews={reviews}
+              services={services}
+              branches={branches}
+              teamMembers={teamMembers}
+              articles={articles}
+              applications={jobApplications}
+              jobs={jobs}
+              highlightedId={highlightedId}
+              onUpdateApplicantStatus={handleUpdateApplicantStatus}
+              onNavigateTab={handleNavigateWithHighlight}
+              onRefresh={() => {
+                loadAppointments();
+                loadReviews();
+                loadBranches();
+                loadServices();
+                loadTeamMembers();
+                loadArticles();
+                loadJobApplications();
+                loadJobsList();
+                showNotification('success', 'Đã cập nhật số liệu mới nhất!');
+              }}
+            />
+          )}
+
           {/* ===================================================== */}
           {/* TAB 1: BẢNG DỮ LIỆU QUẢN LÝ ẢNH NỀN HERO BANNER */}
           {/* ===================================================== */}
@@ -5332,19 +5628,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       </span>
                     </div>
 
-                    {/* Hướng dẫn ẩn icon khi để trống */}
-                    <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2.5">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div className="space-y-1 text-[11px] leading-relaxed">
-                        <p className="font-semibold text-amber-900">Quy tắc tự động ẩn icon khi không có thông tin:</p>
-                        <p className="text-amber-800">
-                          Nếu để trống bất kỳ kênh nào dưới đây, toàn bộ biểu tượng (icon) của kênh đó sẽ <strong>tự động ẩn hoàn toàn</strong> trên thanh nổi liên hệ, chân trang Footer và các khu vực khác trên website.
-                        </p>
-                        <p className="text-amber-800">
-                          Đối với ô <strong>Gmail</strong>, khi khách hàng bấm vào biểu tượng Gmail trên web sẽ tự động mở ứng dụng gửi thư (mailto:) tới email này.
-                        </p>
-                      </div>
-                    </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -5483,10 +5766,242 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           </p>
                         </div>
                       </div>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 self-start sm:self-auto">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Gmail SSL (Cổng 465)
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Gmail SSL (Cổng 465)
+                        </span>
+
+                        {/* Công tắc Bật/Tắt Gửi Email Tổng */}
+                        <label className="inline-flex items-center gap-2 cursor-pointer select-none bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl transition">
+                          <input
+                            type="checkbox"
+                            checked={smtpForm.email_enabled}
+                            onChange={(e) => setSmtpForm((prev) => ({ ...prev, email_enabled: e.target.checked }))}
+                            className="sr-only"
+                          />
+                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
+                            smtpForm.email_enabled
+                              ? 'bg-[#2D5A27] border-[#2D5A27] text-white'
+                              : 'border-slate-300 bg-white text-transparent'
+                          }`}>
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-800">
+                            {smtpForm.email_enabled ? (
+                              <span className="text-[#2D5A27] flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[#2D5A27] animate-pulse"></span>
+                                Bật Gửi Email (Tất cả)
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">Tắt Toàn Bộ Email</span>
+                            )}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* KHỐI TÙY CHỌN BẬT / TẮT CHI TIẾT TỪNG MỤC EMAIL */}
+                    <div className="p-4 sm:p-5 bg-slate-50/80 rounded-2xl border border-slate-200/90 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                          <SlidersHorizontal className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Phân Loại Gửi Email &amp; Điều Kiện Kích Hoạt</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 hidden sm:inline">
+                          Điều chỉnh cơ chế gửi tự động theo từng nghiệp vụ
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* 1. XÁC NHẬN LỊCH HẸN KHÁCH HÀNG (3 CHẾ ĐỘ DẤU TICK) */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                <CalendarCheck className="w-4 h-4 text-[#2D5A27]" />
+                                <span>Xác Nhận Lịch Hẹn (Gửi Khách Hàng)</span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                Cơ chế gửi thư thông báo xác nhận khi khách đặt lịch khám trên website
+                              </p>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                              !smtpForm.email_enabled || smtpForm.email_booking_mode === 'disabled'
+                                ? 'bg-slate-100 text-slate-600'
+                                : smtpForm.email_booking_mode === 'on_zalo_fail'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {!smtpForm.email_enabled
+                                ? 'Email Tổng Đang Tắt'
+                                : smtpForm.email_booking_mode === 'always'
+                                ? 'Luôn luôn gửi'
+                                : smtpForm.email_booking_mode === 'on_zalo_fail'
+                                ? 'Khi Zalo lỗi / hết tiền'
+                                : 'Đang tắt'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 pt-1">
+                            {/* Tùy chọn 1: Luôn luôn */}
+                            <label
+                              onClick={() => setSmtpForm((prev) => ({ ...prev, email_booking_mode: 'always' }))}
+                              className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                                smtpForm.email_booking_mode === 'always' && smtpForm.email_enabled
+                                  ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-300/40'
+                                  : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                smtpForm.email_booking_mode === 'always'
+                                  ? 'bg-[#2D5A27] border-[#2D5A27] text-white'
+                                  : 'border-slate-300 bg-white text-transparent'
+                              }`}>
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-slate-900">Luôn luôn</div>
+                                <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                                  Luôn tự động gửi email xác nhận đặt lịch ngay sau khi khách hoàn tất gửi form trên web.
+                                </div>
+                              </div>
+                            </label>
+
+                            {/* Tùy chọn 2: Khi Zalo bị lỗi */}
+                            <label
+                              onClick={() => setSmtpForm((prev) => ({ ...prev, email_booking_mode: 'on_zalo_fail' }))}
+                              className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                                smtpForm.email_booking_mode === 'on_zalo_fail' && smtpForm.email_enabled
+                                  ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-300/40'
+                                  : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                smtpForm.email_booking_mode === 'on_zalo_fail'
+                                  ? 'bg-amber-600 border-amber-600 text-white'
+                                  : 'border-slate-300 bg-white text-transparent'
+                              }`}>
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                  <span>Khi Zalo bị lỗi / Hết tiền</span>
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold">Tự Động Dự Phòng</span>
+                                </div>
+                                <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                                  Hệ thống ưu tiên gửi Zalo trước. Nếu Zalo bị lỗi, hết tiền số dư hoặc không gửi được qua Zalo thì hệ thống sẽ tự động kích hoạt gửi Email thay thế.
+                                </div>
+                              </div>
+                            </label>
+
+                            {/* Tùy chọn 3: Tắt */}
+                            <label
+                              onClick={() => setSmtpForm((prev) => ({ ...prev, email_booking_mode: 'disabled' }))}
+                              className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                                smtpForm.email_booking_mode === 'disabled' || !smtpForm.email_enabled
+                                  ? 'bg-slate-100 border-slate-300 text-slate-700'
+                                  : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                smtpForm.email_booking_mode === 'disabled'
+                                  ? 'bg-slate-700 border-slate-700 text-white'
+                                  : 'border-slate-300 bg-white text-transparent'
+                              }`}>
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-slate-900">Tắt</div>
+                                <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                  Không gửi email xác nhận lịch hẹn cho khách hàng (chỉ gửi Zalo nếu Zalo bật).
+                                </div>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* 2. XÁC NHẬN ỨNG VIÊN (TUYỂN DỤNG & CV) (BẬT / TẮT DẤU TICK) */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-2xs flex flex-col justify-between">
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                  <Briefcase className="w-4 h-4 text-blue-700" />
+                                  <span>Xác Nhận Ứng Viên (Tuyển Dụng &amp; CV)</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                  Tự động gửi email biên nhận tiếp nhận hồ sơ &amp; CV cho ứng viên nộp qua website
+                                </p>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                smtpForm.email_recruitment_enabled && smtpForm.email_enabled
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {smtpForm.email_recruitment_enabled && smtpForm.email_enabled ? 'Đang Bật' : 'Đang Tắt'}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2 pt-1">
+                              {/* Tùy chọn Bật */}
+                              <label
+                                onClick={() => setSmtpForm((prev) => ({ ...prev, email_recruitment_enabled: true }))}
+                                className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                                  smtpForm.email_recruitment_enabled && smtpForm.email_enabled
+                                    ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-300/40'
+                                    : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
+                                }`}
+                              >
+                                <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                  smtpForm.email_recruitment_enabled
+                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                    : 'border-slate-300 bg-white text-transparent'
+                                }`}>
+                                  <Check className="w-3 h-3 stroke-[3]" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                    <span>Bật Gửi Thư Xác Nhận</span>
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-semibold">Khuyên Dùng</span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                                    Khi ứng viên nộp đơn ứng tuyển, hệ thống sẽ tự động gửi email thông báo Ban Nhân Sự đã tiếp nhận hồ sơ thành công.
+                                  </div>
+                                </div>
+                              </label>
+
+                              {/* Tùy chọn Tắt */}
+                              <label
+                                onClick={() => setSmtpForm((prev) => ({ ...prev, email_recruitment_enabled: false }))}
+                                className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                                  !smtpForm.email_recruitment_enabled || !smtpForm.email_enabled
+                                    ? 'bg-slate-100 border-slate-300 text-slate-700'
+                                    : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
+                                }`}
+                              >
+                                <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                  !smtpForm.email_recruitment_enabled
+                                    ? 'bg-slate-700 border-slate-700 text-white'
+                                    : 'border-slate-300 bg-white text-transparent'
+                                }`}>
+                                  <Check className="w-3 h-3 stroke-[3]" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-slate-900">Tắt Gửi Thư Cho Ứng Viên</div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                    Không gửi thư tự động cho ứng viên (hồ sơ vẫn được lưu vào hệ thống và gửi đến hòm thư Ban Nhân Sự bình thường).
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
+                            <strong>Lưu ý:</strong> Cả 2 hòm thư thông báo quản trị (Lịch Hẹn &amp; Tuyển Dụng) vẫn hoạt động dựa trên cài đặt email bên dưới.
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {isSmtpLoading ? (
@@ -5573,7 +6088,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 required
                                 value={smtpForm.smtp_notify_email}
                                 onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_email: e.target.value }))}
-                                placeholder="letan@petmm.vn hoặc thaitrtin@gmail.com"
                                 className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
                               />
                               <button
@@ -5587,6 +6101,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 <span>Thử</span>
                               </button>
                             </div>
+                            <p className="text-[11px] text-slate-400">Địa chỉ email lễ tân/phòng khám nhận thông tin khi khách đặt lịch khám mới</p>
                           </div>
 
                           {/* 2. Email Nhận Tuyển Dụng & CV */}
@@ -5606,7 +6121,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 required
                                 value={smtpForm.smtp_notify_recruitment_email}
                                 onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_notify_recruitment_email: e.target.value }))}
-                                placeholder="tuyendung@petmm.vn hoặc hr@petmm.vn"
                                 className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-medium focus:border-blue-600 focus:outline-none bg-white"
                               />
                               <button
@@ -5620,6 +6134,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 <span>Thử</span>
                               </button>
                             </div>
+                            <p className="text-[11px] text-slate-400">Địa chỉ email Ban Nhân Sự tiếp nhận hồ sơ ứng tuyển kèm liên kết file CV</p>
                           </div>
 
                           {/* 3. Tài khoản Gmail gửi thư & Tên người gửi hiển thị (2 cột gọn gàng) */}
@@ -5633,9 +6148,9 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 required
                                 value={smtpForm.smtp_email}
                                 onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_email: e.target.value }))}
-                                placeholder="thaitrtin@gmail.com"
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
                               />
+                              <p className="text-[11px] text-slate-400">Tài khoản Google sử dụng để gửi thư SMTP</p>
                             </div>
 
                             <div className="space-y-1.5">
@@ -5646,9 +6161,9 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 type="text"
                                 value={smtpForm.smtp_sender_name}
                                 onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_sender_name: e.target.value }))}
-                                placeholder="Bệnh Viện Thú Y PetM&amp;M 5★"
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none bg-white"
                               />
+                              <p className="text-[11px] text-slate-400">Tên thương hiệu xuất hiện ở tiêu đề thư khách hàng nhận</p>
                             </div>
                           </div>
 
@@ -5679,9 +6194,13 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               type={showSmtpPassword ? 'text' : 'password'}
                               value={smtpForm.smtp_password}
                               onChange={(e) => setSmtpForm((prev) => ({ ...prev, smtp_password: e.target.value }))}
-                              placeholder={smtpForm.hasPassword ? '•••• •••• •••• •••• (Đã lưu, nhập mới nếu muốn đổi)' : 'Nhập mã khóa 16 chữ cái (ví dụ: abcd efgh ijkl mnop)'}
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-mono tracking-wider focus:border-[#2D5A27] focus:outline-none bg-white"
                             />
+                            <p className="text-[11px] text-slate-400">
+                              {smtpForm.hasPassword
+                                ? 'Đã lưu khóa bảo mật trong hệ thống. Nhập giá trị mới nếu bạn muốn cập nhật.'
+                                : 'Chuỗi 16 ký tự tạo từ trang Google App Passwords'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -6113,26 +6632,104 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         </div>
                       </div>
 
-                      {/* Công tắc Bật/Tắt Zalo */}
-                      <label className="inline-flex items-center gap-2.5 cursor-pointer select-none self-start sm:self-auto bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full transition">
+                      {/* Công tắc Bật/Tắt Zalo Tổng */}
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl transition">
                         <input
                           type="checkbox"
                           checked={zaloForm.zalo_enabled}
                           onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_enabled: e.target.checked }))}
-                          className="sr-only peer"
+                          className="sr-only"
                         />
-                        <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#0068FF] relative"></div>
-                        <span className="text-xs font-bold text-slate-700">
+                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
+                          zaloForm.zalo_enabled
+                            ? 'bg-[#0068FF] border-[#0068FF] text-white'
+                            : 'border-slate-300 bg-white text-transparent'
+                        }`}>
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-800">
                           {zaloForm.zalo_enabled ? (
-                            <span className="text-blue-700 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                              Đang Bật Gửi Zalo ZNS
+                            <span className="text-[#0068FF] flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#0068FF] animate-pulse"></span>
+                              Bật Gửi Zalo (Tất cả)
                             </span>
                           ) : (
-                            <span className="text-slate-500">Đang Tắt</span>
+                            <span className="text-slate-500">Tắt Toàn Bộ Zalo</span>
                           )}
                         </span>
                       </label>
+                    </div>
+
+                    {/* KHỐI TÙY CHỌN BẬT / TẮT CHI TIẾT TỪNG MỤC ZALO */}
+                    <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 space-y-3">
+                      <div className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                        Phân Loại Tin Nhắn Zalo
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Mục 1: Xác nhận lịch hẹn */}
+                        <label className={`p-3.5 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                          zaloForm.zalo_booking_enabled && zaloForm.zalo_enabled
+                            ? 'bg-blue-50/60 border-blue-200'
+                            : 'bg-white border-slate-200 opacity-70'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={zaloForm.zalo_booking_enabled}
+                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_booking_enabled: e.target.checked }))}
+                            className="sr-only"
+                          />
+                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                            zaloForm.zalo_booking_enabled
+                              ? 'bg-[#0068FF] border-[#0068FF] text-white'
+                              : 'border-slate-300 bg-white text-transparent'
+                          }`}>
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <span>Xác Nhận Lịch Hẹn</span>
+                              {zaloForm.zalo_booking_enabled && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-semibold">Bật</span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                              Tự động gửi tin nhắn ZNS xác nhận khi khách đặt lịch khám trên web
+                            </div>
+                          </div>
+                        </label>
+
+                        {/* Mục 2: Khảo sát & Đánh giá */}
+                        <label className={`p-3.5 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
+                          zaloForm.zalo_review_enabled && zaloForm.zalo_enabled
+                            ? 'bg-blue-50/60 border-blue-200'
+                            : 'bg-white border-slate-200 opacity-70'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={zaloForm.zalo_review_enabled}
+                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_review_enabled: e.target.checked }))}
+                            className="sr-only"
+                          />
+                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                            zaloForm.zalo_review_enabled
+                              ? 'bg-[#0068FF] border-[#0068FF] text-white'
+                              : 'border-slate-300 bg-white text-transparent'
+                          }`}>
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <span>Đánh Giá Dịch Vụ</span>
+                              {zaloForm.zalo_review_enabled && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-semibold">Bật</span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                              Tự động gửi tin nhắn ZNS 5 sao có nút mở link web đánh giá kèm hình ảnh
+                            </div>
+                          </div>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -6140,7 +6737,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       <div className="lg:col-span-5 bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-blue-50/80 border border-blue-200/90 rounded-2xl p-5 space-y-3.5">
                         <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
                           <KeyRound className="w-4 h-4 text-blue-600" />
-                          <span>4 THÔNG SỐ KỸ THUẬT TỪ ZALO OA</span>
+                          <span>5 THÔNG SỐ KỸ THUẬT & GỬI THỬ ZNS</span>
                         </div>
                         <div className="space-y-3 text-xs text-slate-700">
                           <div className="flex items-start gap-2">
@@ -6166,13 +6763,20 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           <div className="flex items-start gap-2">
                             <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">4</span>
                             <div>
-                              <strong className="text-slate-900">ZALO_TEMPLATE_ID:</strong> Mã ID mẫu tin nhắn ZNS đã được Zalo phê duyệt.
+                              <strong className="text-slate-900">ZALO_TEMPLATE_ID:</strong> Mã ID mẫu tin nhắn ZNS đã được Zalo phê duyệt (VD: 645197).
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">5</span>
+                            <div>
+                              <strong className="text-slate-900">ACCESS & REFRESH TOKEN:</strong> Lấy tại{' '}
+                              <a href="https://developers.zalo.me/tools/explorer" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">API Explorer</a> để gọi ZNS và tự động gia hạn token.
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Cột phải: 4 Ô nhập liệu */}
+                      {/* Cột phải: Các Ô nhập liệu */}
                       <div className="lg:col-span-7 space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Trường 1: ZALO_OA_ID */}
@@ -6184,7 +6788,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               type="text"
                               value={zaloForm.zalo_oa_id}
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_oa_id: e.target.value }))}
-                              placeholder="Ví dụ: 123456789012345678"
                               className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                             />
                             <p className="text-[11px] text-slate-400">ID định danh Zalo Official Account</p>
@@ -6199,7 +6802,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               type="text"
                               value={zaloForm.zalo_app_id}
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_app_id: e.target.value }))}
-                              placeholder="Ví dụ: 987654321098765"
                               className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                             />
                             <p className="text-[11px] text-slate-400">ID ứng dụng trên developers.zalo.me</p>
@@ -6225,25 +6827,145 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                             type={showZaloSecret ? 'text' : 'password'}
                             value={zaloForm.zalo_secret_key}
                             onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_secret_key: e.target.value }))}
-                            placeholder="Nhập Secret Key ứng dụng Zalo"
                             className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                           />
                           <p className="text-[11px] text-slate-400">Khóa bảo mật ứng dụng Zalo</p>
                         </div>
 
-                        {/* Trường 4: ZALO_TEMPLATE_ID */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <span>4. ZALO_TEMPLATE_ID:</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={zaloForm.zalo_template_id}
-                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_template_id: e.target.value }))}
-                            placeholder="Ví dụ: 384729"
-                            className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
-                          />
-                          <p className="text-[11px] text-slate-400">Mã mẫu tin nhắn ZNS đã được Zalo phê duyệt</p>
+                        {/* Trường 5: ZALO_ACCESS_TOKEN & REFRESH_TOKEN */}
+                        <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200/80 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <KeyRound className="w-3.5 h-3.5 text-blue-600" />
+                              <span>5. Zalo Access Token & Refresh Token (Bắt buộc cho ZNS):</span>
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <a
+                                href="https://developers.zalo.me/tools/explorer"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] text-blue-700 hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                <span>Lấy Token tại API Explorer</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => setShowZaloToken((prev) => !prev)}
+                                className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                              >
+                                {showZaloToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                <span>{showZaloToken ? 'Ẩn token' : 'Hiện token'}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <span className="text-[11px] font-semibold text-slate-700">Access Token (Hiệu lực 25h):</span>
+                              <input
+                                type={showZaloToken ? 'text' : 'password'}
+                                value={zaloForm.zalo_access_token}
+                                onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_access_token: e.target.value }))}
+                                className="w-full text-xs font-mono px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-[11px] font-semibold text-slate-700">Refresh Token (Gia hạn tự động 3 tháng):</span>
+                              <input
+                                type={showZaloToken ? 'text' : 'password'}
+                                value={zaloForm.zalo_refresh_token}
+                                onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_refresh_token: e.target.value }))}
+                                className="w-full text-xs font-mono px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-snug">
+                            Khi có Refresh Token, hệ thống sẽ tự động cấp mới Access Token mỗi khi hết hạn mà không làm gián đoạn việc gửi tin ZNS.
+                          </p>
+                        </div>
+
+                        {/* TÁCH RÕ 2 TEMPLATE ID CHO 2 MỤC ĐÍCH */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Trường 4A: Template ID Xác nhận lịch hẹn */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>4. Template ID Xác Nhận Lịch Hẹn:</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={zaloForm.zalo_template_id}
+                              onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_template_id: e.target.value }))}
+                              className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                            />
+                            <p className="text-[11px] text-slate-400">Mã mẫu ZNS Xác nhận lịch (VD: 645197)</p>
+                          </div>
+
+                          {/* Trường 4B: Template ID Đánh giá */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>Template ID Đánh Giá Dịch Vụ:</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={zaloForm.zalo_review_template_id}
+                              onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_review_template_id: e.target.value }))}
+                              className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                            />
+                            <p className="text-[11px] text-slate-400">Mã mẫu ZNS Khảo sát 5 sao có nút mở web</p>
+                          </div>
+                        </div>
+
+                        {/* KHU VỰC GỬI THỬ NGHIỆM ZNS TRỰC TIẾP */}
+                        <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 border-2 border-blue-200/90 shadow-2xs space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                              <Send className="w-4 h-4 text-blue-600" />
+                              <span>GỬI THỬ NGHIỆM TIN NHẮN ZALO ZNS</span>
+                            </div>
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold inline-flex items-center gap-1 w-fit">
+                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                              Khớp mẫu 645197
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                            <div className="flex-1 space-y-1.5">
+                              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
+                                <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Số điện thoại nhận tin ZNS thử nghiệm:</span>
+                              </label>
+                              <input
+                                type="tel"
+                                value={zaloForm.zalo_test_phone}
+                                onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_test_phone: e.target.value }))}
+                                className="w-full text-xs font-bold text-blue-900 px-3.5 py-2.5 rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white shadow-2xs"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleTestZalo()}
+                              disabled={isZaloTesting}
+                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow transition cursor-pointer shrink-0"
+                            >
+                              {isZaloTesting ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  <span>Đang gửi thử...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-4 h-4" />
+                                  <span>Gửi Thử ZNS Ngay</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            💡 Tin nhắn thử nghiệm sẽ gửi phiếu khám mẫu với 4 tham số: <strong>Mã số</strong> (booking_code), <strong>Thời gian</strong> (schedule_time), <strong>Địa chỉ</strong> (address), <strong>Tên khách hàng</strong> (customer_name) trực tiếp tới số Zalo đã nhập.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -8171,7 +8893,15 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           const currentBadge = statusBadges[app.trang_thai] || statusBadges.cho_xac_nhan;
 
                           return (
-                            <tr key={app.id} className="hover:bg-slate-50/80 transition group">
+                            <tr
+                              key={app.id}
+                              id={`appointment-row-${app.id}`}
+                              className={`transition-all duration-500 group ${
+                                highlightedId === app.id
+                                  ? 'bg-emerald-100/90 ring-2 ring-emerald-500 shadow-md font-bold'
+                                  : 'hover:bg-slate-50/80'
+                              }`}
+                            >
                               <td className="py-3 px-4 font-mono">
                                 <span className="font-bold text-[#2D5A27] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                   {app.ma_lich_hen}
@@ -8947,7 +9677,15 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredReviews.map((rev, index) => (
-                          <tr key={rev.id} className="hover:bg-slate-50/60 transition group">
+                          <tr
+                            key={rev.id}
+                            id={`review-row-${rev.id}`}
+                            className={`transition-all duration-500 group ${
+                              highlightedId === rev.id
+                                ? 'bg-emerald-100/90 ring-2 ring-emerald-500 shadow-md font-bold'
+                                : 'hover:bg-slate-50/60'
+                            }`}
+                          >
                             <td className="py-3.5 px-4 text-center font-bold text-slate-400">
                               {index + 1}
                             </td>

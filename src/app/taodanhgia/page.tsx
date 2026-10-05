@@ -625,24 +625,38 @@ export default function TaoDanhGiaPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="space-y-2">
                   <a
-                    href={generatedLink}
+                    href={`https://zalo.me/${createdRecord.so_dien_thoai ? createdRecord.so_dien_thoai.replace(/\D/g, '') : ''}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition text-center flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 rounded-xl bg-[#0068FF] hover:bg-[#0055d4] text-white text-xs font-bold transition text-center flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Mở xem thử</span>
+                    <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.5 5.42 3.84 7.02-.17.97-.66 2.38-1.53 3.32-.17.18-.08.47.16.51.52.09 1.95.12 3.49-.66 1.29.53 2.65.81 4.04.81 5.52 0 10-4.03 10-9s-4.48-9-10-9zm1.09 12.35h-3.2c-.3 0-.54-.24-.54-.54 0-.3.24-.54.54-.54h2.29l-2.48-3.55c-.15-.21-.08-.51.13-.66.11-.08.24-.12.37-.12h2.95c.3 0 .54.24.54.54 0 .3-.24.54-.54.54h-2.07l2.48 3.55c.15.21.08.51-.13.66-.1.08-.24.12-.37.12z"/>
+                    </svg>
+                    <span>Mở Zalo gửi link cho khách</span>
                   </a>
-                  <button
-                    type="button"
-                    onClick={handleResetForm}
-                    className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition text-center flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <PlusCircle className="w-3.5 h-3.5" />
-                    <span>Tạo tiếp</span>
-                  </button>
+
+                  <div className="flex gap-2">
+                    <a
+                      href={generatedLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition text-center flex items-center justify-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Mở xem thử</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleResetForm}
+                      className="flex-1 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition text-center flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>Tạo tiếp</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (

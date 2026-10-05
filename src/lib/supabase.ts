@@ -345,3 +345,18 @@ export interface TuyenDungRecord {
   updated_at?: string;
 }
 
+export interface HoSoTuyenDungRecord {
+  id: string;
+  tuyen_dung_id?: string | null;
+  tieu_de_vi_tri?: string | null;
+  ho_ten: string;
+  so_dien_thoai: string;
+  email: string;
+  link_cv?: string | null;
+  ten_file_cv?: string | null;
+  gioi_thieu?: string | null;
+  ip_address?: string | null;
+  trang_thai?: string | null;
+  ngay_tao?: string;
+  ngay_cap_nhat?: string;
+}

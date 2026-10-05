@@ -248,18 +248,25 @@ export async function POST(req: NextRequest) {
     // ========================================================
     let emailSent = false;
     try {
-      await sendRecruitmentApplicationEmail({
-        candidateName: fullName.trim(),
-        phone: numOnly,
-        email: cleanEmail,
-        jobTitle,
-        cvLink: finalCvLink,
-        cvFileName: pdfFileName || (pdfUrl ? 'CV_Ung_Tuyen.pdf' : undefined),
-        notes: (notes || '').trim(),
-        isEn,
-        ip: clientIp,
-      });
-      emailSent = true;
+      const { getSmtpConfig } = await import('@/lib/mailer');
+      const smtpConfig = await getSmtpConfig().catch(() => null);
+      const emailAllEnabled = smtpConfig?.email_enabled !== false;
+      const recruitmentEmailEnabled = smtpConfig?.email_recruitment_enabled !== false;
+
+      if (emailAllEnabled && recruitmentEmailEnabled) {
+        await sendRecruitmentApplicationEmail({
+          candidateName: fullName.trim(),
+          phone: numOnly,
+          email: cleanEmail,
+          jobTitle,
+          cvLink: finalCvLink,
+          cvFileName: pdfFileName || (pdfUrl ? 'CV_Ung_Tuyen.pdf' : undefined),
+          notes: (notes || '').trim(),
+          isEn,
+          ip: clientIp,
+        });
+        emailSent = true;
+      }
     } catch (mailErr: any) {
       console.error('Lỗi gửi email tuyển dụng tự động:', mailErr);
     }

@@ -453,7 +453,7 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Đang xác thực Supabase...</span>
+                  <span>Đang đăng nhập...</span>
                 </>
               ) : (
                 <>

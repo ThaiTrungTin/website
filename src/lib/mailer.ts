@@ -10,6 +10,10 @@ export interface SmtpConfig {
   smtp_notify_email: string; // Email nhận thông báo đặt lịch khám
   smtp_notify_recruitment_email?: string; // Email nhận hồ sơ tuyển dụng & CV
   smtp_notify_contact_email?: string; // Email nhận góp ý & liên hệ chung
+  // Cài đặt bật / tắt chi tiết
+  email_enabled?: boolean; // Bật / Tắt tất cả email
+  email_booking_mode?: 'always' | 'on_zalo_fail' | 'disabled'; // Luôn luôn / Khi Zalo lỗi / Tắt
+  email_recruitment_enabled?: boolean; // Xác nhận ứng viên (Bật / Tắt)
 }
 
 export interface EmailTemplateConfig {
@@ -171,30 +175,28 @@ export async function getRecruitmentEmailTemplateConfig(): Promise<RecruitmentEm
 // Lấy cấu hình SMTP từ bảng cau_hinh
 export async function getSmtpConfig(): Promise<SmtpConfig> {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('cau_hinh')
-      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
-      .eq('id', 'system')
-      .maybeSingle();
+    const { getNotificationSettings } = await import('./notificationSettings');
+    const [dbRes, notifySettings] = await Promise.all([
+      supabaseAdmin
+        .from('cau_hinh')
+        .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
+        .eq('id', 'system')
+        .maybeSingle(),
+      getNotificationSettings().catch(() => null),
+    ]);
 
-    if (error || !data) {
-      return {
-        smtp_email: 'thaitrtin@gmail.com',
-        smtp_password: '',
-        smtp_sender_name: 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
-        smtp_notify_email: 'thaitrtin@gmail.com',
-        smtp_notify_recruitment_email: 'tuyendung@petmm.vn',
-        smtp_notify_contact_email: 'thaitrtin@gmail.com',
-      };
-    }
+    const data = dbRes.data;
 
     return {
-      smtp_email: data.smtp_email || 'thaitrtin@gmail.com',
-      smtp_password: data.smtp_password || '',
-      smtp_sender_name: data.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
-      smtp_notify_email: data.smtp_notify_email || 'thaitrtin@gmail.com',
-      smtp_notify_recruitment_email: data.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
-      smtp_notify_contact_email: data.smtp_notify_contact_email || data.smtp_notify_email || 'thaitrtin@gmail.com',
+      smtp_email: data?.smtp_email || 'thaitrtin@gmail.com',
+      smtp_password: data?.smtp_password || '',
+      smtp_sender_name: data?.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
+      smtp_notify_email: data?.smtp_notify_email || 'thaitrtin@gmail.com',
+      smtp_notify_recruitment_email: data?.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
+      smtp_notify_contact_email: data?.smtp_notify_contact_email || data?.smtp_notify_email || 'thaitrtin@gmail.com',
+      email_enabled: notifySettings?.email_enabled !== undefined ? Boolean(notifySettings.email_enabled) : true,
+      email_booking_mode: (notifySettings?.email_booking_mode as any) || 'always',
+      email_recruitment_enabled: notifySettings?.email_recruitment_enabled !== undefined ? Boolean(notifySettings.email_recruitment_enabled) : true,
     };
   } catch (err) {
     console.error('Lỗi đọc cấu hình SMTP:', err);
@@ -205,6 +207,9 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
       smtp_notify_email: 'thaitrtin@gmail.com',
       smtp_notify_recruitment_email: 'tuyendung@petmm.vn',
       smtp_notify_contact_email: 'thaitrtin@gmail.com',
+      email_enabled: true,
+      email_booking_mode: 'always',
+      email_recruitment_enabled: true,
     };
   }
 }

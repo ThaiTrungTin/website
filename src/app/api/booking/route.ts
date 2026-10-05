@@ -82,46 +82,6 @@ export async function POST(req: NextRequest) {
     const todayVN = getTodayVN();
     const dailyIpKey = `${todayVN}_${clientIp}`;
 
-    // ========================================================
-    // TÍNH NĂNG CHỐNG SPAM: GIỚI HẠN 1 IP TỐI ĐA 3 LỊCH HẸN / NGÀY
-    // Không hiển thị bất kỳ dấu hiệu/cảnh báo nào để khách biết trước.
-    // Nếu bắt đầu gửi tới tin thứ 4 mới chặn và báo lỗi song ngữ:
-    // - VI: "Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày"
-    // - EN: "Maximum of 3 appointments allowed per day"
-    // ========================================================
-    let ipTodayCount = dailyIpCountMap.get(dailyIpKey) || 0;
-
-    // Tra cứu thêm số lượng từ Supabase lich_hen nếu bộ nhớ đệm < 3 (phòng khi serverless reload)
-    if (ipTodayCount < 3 && clientIp !== '127.0.0.1' && clientIp !== 'unknown') {
-      try {
-        const startOfDayISO = new Date(`${todayVN}T00:00:00+07:00`).toISOString();
-        const { count, error } = await supabaseAdmin
-          .from('lich_hen')
-          .select('id', { count: 'exact', head: true })
-          .gte('ngay_tao', startOfDayISO)
-          .ilike('ghi_chu', `%[IP: ${clientIp}]%`);
-
-        if (!error && typeof count === 'number') {
-          ipTodayCount = Math.max(ipTodayCount, count);
-          dailyIpCountMap.set(dailyIpKey, ipTodayCount);
-        }
-      } catch (dbErr) {
-        console.warn('Lỗi kiểm tra số lượt IP từ Supabase:', dbErr);
-      }
-    }
-
-    if (ipTodayCount >= 3) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: isEn
-            ? 'Maximum of 3 appointments allowed per day'
-            : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày',
-        },
-        { status: 429 }
-      );
-    }
-
     // Validate bắt buộc
     if (!ownerName || !ownerName.trim()) {
       return NextResponse.json(
@@ -145,6 +105,91 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, message: isEn ? 'Invalid phone number pattern' : 'Số điện thoại không hợp lệ, vui lòng kiểm tra lại' },
         { status: 400 }
+      );
+    }
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    // ========================================================
+    // TÍNH NĂNG CHỐNG SPAM: GIỚI HẠN TỐI ĐA 3 LỊCH HẸN / NGÀY
+    // THEO IP, SỐ ĐIỆN THOẠI VÀ EMAIL
+    // Nếu bắt đầu gửi tới tin thứ 4 mới chặn và báo lỗi song ngữ:
+    // - VI: "Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày"
+    // - EN: "Maximum of 3 appointments allowed per day"
+    // ========================================================
+    const startOfDayISO = new Date(`${todayVN}T00:00:00+07:00`).toISOString();
+
+    // 2.1. Kiểm tra giới hạn IP
+    let ipTodayCount = dailyIpCountMap.get(dailyIpKey) || 0;
+    if (ipTodayCount < 3 && clientIp !== '127.0.0.1' && clientIp !== 'unknown') {
+      try {
+        const { count, error } = await supabaseAdmin
+          .from('lich_hen')
+          .select('id', { count: 'exact', head: true })
+          .gte('ngay_tao', startOfDayISO)
+          .ilike('ghi_chu', `%[IP: ${clientIp}]%`);
+
+        if (!error && typeof count === 'number') {
+          ipTodayCount = Math.max(ipTodayCount, count);
+          dailyIpCountMap.set(dailyIpKey, ipTodayCount);
+        }
+      } catch (dbErr) {
+        console.warn('Lỗi kiểm tra số lượt IP từ Supabase:', dbErr);
+      }
+    }
+
+    // 2.2. Kiểm tra giới hạn Số Điện Thoại
+    const dailyPhoneKey = `${todayVN}_phone_${numOnly}`;
+    let phoneTodayCount = dailyIpCountMap.get(dailyPhoneKey) || 0;
+    if (phoneTodayCount < 3) {
+      try {
+        const { count, error } = await supabaseAdmin
+          .from('lich_hen')
+          .select('id', { count: 'exact', head: true })
+          .gte('ngay_tao', startOfDayISO)
+          .ilike('so_dien_thoai', `%${numOnly.slice(-9)}`);
+
+        if (!error && typeof count === 'number') {
+          phoneTodayCount = Math.max(phoneTodayCount, count);
+          dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount);
+        }
+      } catch (dbErr) {
+        console.warn('Lỗi kiểm tra số lượt SĐT từ Supabase:', dbErr);
+      }
+    }
+
+    // 2.3. Kiểm tra giới hạn Email (nếu khách có điền email)
+    let emailTodayCount = 0;
+    const dailyEmailKey = cleanEmail && cleanEmail.includes('@') ? `${todayVN}_email_${cleanEmail}` : '';
+    if (dailyEmailKey) {
+      emailTodayCount = dailyIpCountMap.get(dailyEmailKey) || 0;
+      if (emailTodayCount < 3) {
+        try {
+          const { count, error } = await supabaseAdmin
+            .from('lich_hen')
+            .select('id', { count: 'exact', head: true })
+            .gte('ngay_tao', startOfDayISO)
+            .ilike('ghi_chu', `%[Email: ${cleanEmail}]%`);
+
+          if (!error && typeof count === 'number') {
+            emailTodayCount = Math.max(emailTodayCount, count);
+            dailyIpCountMap.set(dailyEmailKey, emailTodayCount);
+          }
+        } catch (dbErr) {
+          console.warn('Lỗi kiểm tra số lượt Email từ Supabase:', dbErr);
+        }
+      }
+    }
+
+    if (ipTodayCount >= 3 || phoneTodayCount >= 3 || emailTodayCount >= 3) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: isEn
+            ? 'Maximum of 3 appointments allowed per day'
+            : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày',
+        },
+        { status: 429 }
       );
     }
 
@@ -185,7 +230,6 @@ export async function POST(req: NextRequest) {
       ? clientBookingCode
       : 'PMM-' + Math.floor(100000 + Math.random() * 900000);
 
-    const cleanEmail = email ? email.trim() : '';
     const cleanNote = note ? note.trim() : '';
     const ipTag = `[IP: ${clientIp}]`;
 
@@ -226,12 +270,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Cập nhật số lần gửi thành công của IP trong ngày
+    // Cập nhật số lần gửi thành công của IP, SĐT và Email trong ngày
     dailyIpCountMap.set(dailyIpKey, ipTodayCount + 1);
+    dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount + 1);
+    if (dailyEmailKey) {
+      dailyIpCountMap.set(dailyEmailKey, emailTodayCount + 1);
+    }
 
-    // 2. Gửi email xác nhận nếu khách có cung cấp email
+    // 2. Lấy cấu hình email và zalo để kiểm tra luồng gửi
     let emailSent = false;
-    if (cleanEmail && cleanEmail.includes('@')) {
+    const smtpConfig = await getSmtpConfig().catch(() => null);
+    const emailAllEnabled = smtpConfig?.email_enabled !== false;
+    const bookingEmailMode = smtpConfig?.email_booking_mode || 'always'; // 'always' | 'on_zalo_fail' | 'disabled'
+
+    // 3. Thử gửi tin nhắn Zalo OA (ZNS) trước
+    let zaloSuccess = false;
+    try {
+      const { sendZaloZnsBookingNotification } = await import('@/lib/zalo');
+      const zaloRes = await sendZaloZnsBookingNotification({
+        phone: cleanPhone,
+        bookingCode: finalBookingCode,
+        ownerName: ownerName.trim(),
+        petName: petName.trim(),
+        service: displayService,
+        dateTime: formattedDateTime,
+        branchName: defaultBranchName,
+      });
+      if (zaloRes && zaloRes.success && !zaloRes.mock) {
+        zaloSuccess = true;
+      }
+    } catch (zErr: any) {
+      console.warn('[Zalo ZNS Failed]:', zErr?.message || zErr);
+      zaloSuccess = false;
+    }
+
+    // 4. Quyết định có gửi email xác nhận cho khách hàng không:
+    // - Khi email_enabled = true VÀ
+    // - (bookingEmailMode === 'always' HOẶC (bookingEmailMode === 'on_zalo_fail' VÀ Zalo thất bại))
+    const shouldSendCustomerEmail =
+      emailAllEnabled &&
+      bookingEmailMode !== 'disabled' &&
+      (bookingEmailMode === 'always' || (bookingEmailMode === 'on_zalo_fail' && !zaloSuccess));
+
+    if (shouldSendCustomerEmail && cleanEmail && cleanEmail.includes('@')) {
       try {
         await sendBookingConfirmationEmail({
           toEmail: cleanEmail,
@@ -251,10 +332,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Gửi thông báo đến email Admin phòng khám (chạy ngầm không chặn luồng)
-    try {
-      const smtpConfig = await getSmtpConfig();
-      if (smtpConfig?.smtp_notify_email) {
+    // 5. Gửi thông báo đến email Admin phòng khám (nếu email chung bật)
+    if (emailAllEnabled && smtpConfig?.smtp_notify_email) {
+      try {
         const adminSubject = `[LỊCH HẸN MỚI] #${finalBookingCode} - Khách ${ownerName} (${petName})`;
         const adminHtml = `
           <div style="font-family: sans-serif; padding: 20px; line-height: 1.6; color: #333;">
@@ -267,6 +347,7 @@ export async function POST(req: NextRequest) {
             <p><strong>Dịch vụ:</strong> ${displayService}</p>
             <p><strong>Thời gian hẹn:</strong> ${formattedDateTime}</p>
             ${cleanNote ? `<p><strong>Ghi chú:</strong> ${cleanNote}</p>` : ''}
+            <p><strong>Trạng thái gửi Zalo ZNS:</strong> ${zaloSuccess ? '✅ Đã gửi' : '⚠️ Thất bại/Chưa kích hoạt'}</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
             <p style="font-size: 12px; color: #777;">Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</p>
           </div>
@@ -276,25 +357,7 @@ export async function POST(req: NextRequest) {
           subject: adminSubject,
           html: adminHtml,
         }).catch((e) => console.warn('Lỗi gửi mail notify admin:', e?.message));
-      }
-    } catch {}
-
-    // 4. Gửi tin nhắn Zalo OA (ZNS) cho khách hàng (chạy ngầm không chặn phản hồi)
-    try {
-      const { sendZaloZnsBookingNotification } = await import('@/lib/zalo');
-      sendZaloZnsBookingNotification({
-        phone: cleanPhone,
-        bookingCode: finalBookingCode,
-        ownerName: ownerName.trim(),
-        petName: petName.trim(),
-        service: displayService,
-        dateTime: formattedDateTime,
-        branchName: defaultBranchName,
-      }).catch((zErr) => {
-        console.warn('Lỗi gửi Zalo ZNS:', zErr?.message || zErr);
-      });
-    } catch (zaloInitErr: any) {
-      console.warn('Không thể khởi tạo Zalo ZNS:', zaloInitErr?.message || zaloInitErr);
+      } catch {}
     }
 
     return NextResponse.json({

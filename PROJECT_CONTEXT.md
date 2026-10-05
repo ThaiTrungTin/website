@@ -1031,3 +1031,40 @@ interface PopupAnnouncementConfig {
 - **Đánh giá dịch vụ & Ý kiến đóng góp**: Không bắt buộc (tuân thủ quy tắc KHÔNG placeholder).
 - **Sau khi gửi**: Hiển thị màn hình thông báo hoàn tất với **Dấu tick xanh/vàng kim**, dòng chữ: *"PetM&M cảm ơn Anh/chị đã sử dụng và đánh giá dịch vụ của Phòng Khám"*.
 - **Truy cập lại link đã đánh giá**: Nhận diện trạng thái đã đánh giá và hiển thị ngay màn hình thông báo cảm ơn có dấu tick, không cho gửi lại.
+- **Nút gửi Zalo trực tiếp**: Thêm nút màu xanh "Mở Zalo gửi link cho khách" 1-chạm ngay sau khi tạo mã đánh giá thành công.
+
+---
+
+## 32. TÍCH HỢP HỆ THỐNG ZALO OA & ZALO NOTIFICATION SERVICE (ZNS AUTOMATION)
+- **Ngày thực hiện**: 05/10/2026
+- **Tập tin liên quan**:
+  - Module Zalo: [`src/lib/zalo.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/zalo.ts)
+  - API Đặt lịch tích hợp ZNS: [`src/app/api/booking/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/booking/route.ts)
+  - Trang tạo đánh giá gắn Zalo 1-chạm: [`src/app/taodanhgia/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/taodanhgia/page.tsx)
+  - Tài liệu đặc tả mẫu ZNS: [`ZALO_ZNS_TEMPLATES.md`](file:///c:/Users/Windows%2011/Desktop/testtt/ZALO_ZNS_TEMPLATES.md)
+  - Cơ sở dữ liệu: Cột `zalo_oa_id`, `zalo_app_id`, `zalo_secret_key`, `zalo_template_id`, `zalo_enabled` trong bảng `cau_hinh` (Supabase).
+
+### 1. Thông Số & Tài Nguyên Zalo Đã Cấu Hình:
+- **Zalo OA chính thức (Tick Vàng)**: Bệnh viện PetM&M hospital (`OA ID: 1538021236450838103`).
+- **Ứng dụng Zalo Developers**: `PetMM` (`App ID: 3580577377578293174`).
+- **Tài khoản Zalo Business Solutions (ZBS)**: `PetMMHospital` (Mã tài khoản: `ZBS-316588`).
+  - Đã liên kết Zalo OA PetM&M vào ZBS.
+  - Đã liên kết App Developers vào ZBS.
+  - Đã nạp số dư ví dịch vụ gửi tin: 50.000 VNĐ.
+
+### 2. Các Mẫu Tin Nhắn ZNS Đã Khai Báo & Gửi Duyệt:
+1. **Mẫu 1: Xác Nhận Lịch Hẹn Khám (Booking Confirmation)**
+   - Mục đích: Tự động gửi tin nhắn Zalo xác nhận sau khi khách đặt lịch hẹn trên website.
+   - Các tham số: `customer_name`, `booking_code`, `schedule_time`, `address`.
+   - Nút thao tác: Gọi hotline phòng khám `0838 112 112`.
+2. **Mẫu 2: Khảo Sát & Đánh Giá Dịch Vụ 5 Sao (Service Review)**
+   - Mục đích: Gửi sau khi khám, hiển thị 5 sao màu vàng cam tương tác cực kỳ bắt mắt.
+   - Nội dung cố định thương hiệu: `"Bệnh viện Thú y PetM&M"`.
+   - Các tham số: `customer_name`, `order_id` (mã hồ sơ khám).
+   - Nút thao tác (Open Web URL): `"Đánh giá kèm hình ảnh tại đây"` mở link `https://petsmm.vercel.app/danhgiadichvu/<review_code>`.
+
+### 3. Trạng Thái Hiện Tại:
+- Code website đã sẵn sàng 100%, tự động nhận diện và gửi tin qua Zalo khi khách đặt lịch hoặc tạo đánh giá.
+- Hai mẫu tin ZNS đang trong hàng đợi kiểm duyệt của đội ngũ Zalo Business Solutions (ZBS).
+- Sau khi Zalo duyệt, chỉ cần điền `ZALO_TEMPLATE_ID` vào trang Admin (`/admin` -> Cấu hình hệ thống -> Zalo OA) là tính năng kích hoạt hoàn toàn.
+

@@ -268,6 +268,7 @@ const getTodayDateVN = () => {
       localCount = parseInt(localStorage.getItem(localDailyKey) || '0', 10);
     } catch {}
 
+    // TÍNH NĂNG CHỐNG SPAM: Giới hạn tối đa 3 lần / ngày
     if (localCount >= 3) {
       setErrorMsg(
         isEn
@@ -277,7 +278,7 @@ const getTodayDateVN = () => {
       return;
     }
 
-    // 2. CHỐNG SPAM: Rate limiting / Cooldown 15 giây tránh gửi lặp liên tục
+    // TÍNH NĂNG CHỐNG SPAM: Cooldown 15 giây tránh gửi lặp liên tục
     const now = Date.now();
     if (now - lastSubmitRef.current < 15000) {
       const waitSeconds = Math.ceil((15000 - (now - lastSubmitRef.current)) / 1000);
@@ -315,7 +316,7 @@ const getTodayDateVN = () => {
       return;
     }
 
-    lastSubmitRef.current = now;
+    lastSubmitRef.current = Date.now();
 
     // Tìm tên chi nhánh hiển thị
     let branchName = isEn ? 'PetM&M Veterinary Clinic' : 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';

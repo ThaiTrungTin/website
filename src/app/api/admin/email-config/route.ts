@@ -16,13 +16,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('cau_hinh')
-      .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email, zalo_oa_id, zalo_app_id, zalo_secret_key, zalo_template_id, zalo_enabled')
-      .eq('id', 'system')
-      .maybeSingle();
+    const { getNotificationSettings, DEFAULT_NOTIFICATION_SETTINGS } = await import('@/lib/notificationSettings');
+    const [systemRes, notifySettings] = await Promise.all([
+      supabaseAdmin
+        .from('cau_hinh')
+        .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email, zalo_oa_id, zalo_app_id, zalo_secret_key, zalo_template_id, zalo_enabled')
+        .eq('id', 'system')
+        .maybeSingle(),
+      getNotificationSettings().catch(() => DEFAULT_NOTIFICATION_SETTINGS),
+    ]);
 
-    if (error) throw error;
+    if (systemRes.error) throw systemRes.error;
+    const data = systemRes.data;
 
     const templateConfig = await getEmailTemplateConfig();
     const { getRecruitmentEmailTemplateConfig } = await import('@/lib/mailer');
@@ -37,13 +42,22 @@ export async function GET(req: NextRequest) {
         smtp_notify_recruitment_email: data?.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
         smtp_notify_contact_email: data?.smtp_notify_contact_email || data?.smtp_notify_email || 'thaitrtin@gmail.com',
         hasPassword: Boolean(data?.smtp_password && data.smtp_password.trim().length > 0),
+        email_enabled: notifySettings.email_enabled,
+        email_booking_mode: notifySettings.email_booking_mode,
+        email_recruitment_enabled: notifySettings.email_recruitment_enabled,
       },
       zalo: {
         zalo_oa_id: data?.zalo_oa_id || '',
         zalo_app_id: data?.zalo_app_id || '',
         zalo_secret_key: data?.zalo_secret_key || '',
         zalo_template_id: data?.zalo_template_id || '',
+        zalo_review_template_id: notifySettings.zalo_review_template_id || '',
         zalo_enabled: Boolean(data?.zalo_enabled),
+        zalo_booking_enabled: notifySettings.zalo_booking_enabled,
+        zalo_review_enabled: notifySettings.zalo_review_enabled,
+        zalo_access_token: notifySettings.zalo_access_token || '',
+        zalo_refresh_token: notifySettings.zalo_refresh_token || '',
+        zalo_test_phone: notifySettings.zalo_test_phone || '0364605514',
       },
       template: templateConfig,
       recruitmentTemplate: recruitmentTemplateConfig,
@@ -78,8 +92,13 @@ export async function POST(req: NextRequest) {
       smtp_notify_email,
       smtp_notify_recruitment_email,
       smtp_notify_contact_email,
+      email_enabled,
+      email_booking_mode,
+      email_recruitment_enabled,
       template,
     } = body;
+
+    const { saveNotificationSettings } = await import('@/lib/notificationSettings');
 
     // 1. Cập nhật SMTP nếu có trường smtp_email
     if (smtp_email !== undefined) {
@@ -90,7 +109,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const updatePayload: Record<string, string> = {
+      const updatePayload: Record<string, any> = {
         smtp_email: smtp_email.trim(),
         smtp_sender_name: smtp_sender_name?.trim() || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
         smtp_notify_email: smtp_notify_email?.trim() || smtp_email.trim(),
@@ -98,7 +117,6 @@ export async function POST(req: NextRequest) {
         smtp_notify_contact_email: smtp_notify_contact_email?.trim() || smtp_notify_email?.trim() || smtp_email.trim(),
       };
 
-      // Chỉ cập nhật mật khẩu nếu người dùng nhập mới
       if (typeof smtp_password === 'string' && smtp_password.trim().length > 0) {
         updatePayload.smtp_password = smtp_password.trim();
       }
@@ -111,8 +129,18 @@ export async function POST(req: NextRequest) {
       if (smtpErr) throw smtpErr;
     }
 
+    // 1.2. Cập nhật cờ email notification settings
+    const emailNotifyUpdates: Record<string, any> = {};
+    if (email_enabled !== undefined) emailNotifyUpdates.email_enabled = Boolean(email_enabled);
+    if (email_booking_mode !== undefined) emailNotifyUpdates.email_booking_mode = email_booking_mode;
+    if (email_recruitment_enabled !== undefined) emailNotifyUpdates.email_recruitment_enabled = Boolean(email_recruitment_enabled);
+
+    if (Object.keys(emailNotifyUpdates).length > 0) {
+      await saveNotificationSettings(emailNotifyUpdates);
+    }
+
     // 1.5. Cập nhật cấu hình Zalo OA (ZNS) nếu có
-    if (body.zalo !== undefined || body.zalo_oa_id !== undefined) {
+    if (body.zalo !== undefined || body.zalo_oa_id !== undefined || body.zalo_enabled !== undefined) {
       const zaloData = body.zalo || body;
       const zaloPayload: Record<string, any> = {};
       if (zaloData.zalo_oa_id !== undefined) zaloPayload.zalo_oa_id = String(zaloData.zalo_oa_id || '').trim();
@@ -127,6 +155,18 @@ export async function POST(req: NextRequest) {
           .update(zaloPayload)
           .eq('id', 'system');
         if (zaloErr) throw zaloErr;
+      }
+
+      const zaloNotifyUpdates: Record<string, any> = {};
+      if (zaloData.zalo_review_template_id !== undefined) zaloNotifyUpdates.zalo_review_template_id = String(zaloData.zalo_review_template_id || '').trim();
+      if (zaloData.zalo_booking_enabled !== undefined) zaloNotifyUpdates.zalo_booking_enabled = Boolean(zaloData.zalo_booking_enabled);
+      if (zaloData.zalo_review_enabled !== undefined) zaloNotifyUpdates.zalo_review_enabled = Boolean(zaloData.zalo_review_enabled);
+      if (zaloData.zalo_access_token !== undefined) zaloNotifyUpdates.zalo_access_token = String(zaloData.zalo_access_token || '').trim();
+      if (zaloData.zalo_refresh_token !== undefined) zaloNotifyUpdates.zalo_refresh_token = String(zaloData.zalo_refresh_token || '').trim();
+      if (zaloData.zalo_test_phone !== undefined) zaloNotifyUpdates.zalo_test_phone = String(zaloData.zalo_test_phone || '').trim();
+
+      if (Object.keys(zaloNotifyUpdates).length > 0) {
+        await saveNotificationSettings(zaloNotifyUpdates);
       }
     }
 
