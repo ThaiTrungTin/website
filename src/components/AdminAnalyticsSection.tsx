@@ -879,13 +879,13 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                               </span>
                             </td>
                             <td className="py-2 px-3 text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-2">
                                 {sess.loadSpeedMs && (
-                                  <span className="font-bold text-emerald-900 font-mono text-[11px] bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
+                                  <span className="font-bold text-emerald-700 font-mono text-xs">
                                     ⚡ {(sess.loadSpeedMs / 1000).toFixed(1)}s
                                   </span>
                                 )}
-                                <span className="font-bold text-slate-900 font-mono text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
+                                <span className="font-bold text-slate-700 font-mono text-xs">
                                   {formatDuration(sess.durationSeconds || 15)}
                                 </span>
                               </div>
