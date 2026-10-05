@@ -52,7 +52,7 @@ export async function getZaloConfig(): Promise<ZaloOaConfig> {
       zalo_review_enabled: notifySettings?.zalo_review_enabled !== undefined ? Boolean(notifySettings.zalo_review_enabled) : true,
       zalo_access_token: (notifySettings?.zalo_access_token || process.env.ZALO_ACCESS_TOKEN || '').trim(),
       zalo_refresh_token: (notifySettings?.zalo_refresh_token || process.env.ZALO_REFRESH_TOKEN || '').trim(),
-      zalo_test_phone: (notifySettings?.zalo_test_phone || '0364605514').trim(),
+      zalo_test_phone: (notifySettings?.zalo_test_phone || '').trim(),
     };
   } catch (err) {
     console.warn('Lỗi lấy cấu hình Zalo từ DB:', err);
@@ -67,7 +67,7 @@ export async function getZaloConfig(): Promise<ZaloOaConfig> {
       zalo_review_enabled: true,
       zalo_access_token: (process.env.ZALO_ACCESS_TOKEN || '').trim(),
       zalo_refresh_token: (process.env.ZALO_REFRESH_TOKEN || '').trim(),
-      zalo_test_phone: '0364605514',
+      zalo_test_phone: '',
     };
   }
 }

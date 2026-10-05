@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         zalo_review_enabled: notifySettings.zalo_review_enabled,
         zalo_access_token: notifySettings.zalo_access_token || '',
         zalo_refresh_token: notifySettings.zalo_refresh_token || '',
-        zalo_test_phone: notifySettings.zalo_test_phone || '0364605514',
+        zalo_test_phone: notifySettings.zalo_test_phone || '',
       },
       template: templateConfig,
       recruitmentTemplate: recruitmentTemplateConfig,

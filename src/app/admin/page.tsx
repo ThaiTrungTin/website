@@ -5996,10 +5996,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               </label>
                             </div>
                           </div>
-
-                          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
-                            <strong>Lưu ý:</strong> Cả 2 hòm thư thông báo quản trị (Lịch Hẹn &amp; Tuyển Dụng) vẫn hoạt động dựa trên cài đặt email bên dưới.
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -6733,50 +6729,98 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                      {/* Cột trái: Hướng dẫn 4 bước */}
-                      <div className="lg:col-span-5 bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-blue-50/80 border border-blue-200/90 rounded-2xl p-5 space-y-3.5">
-                        <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
-                          <KeyRound className="w-4 h-4 text-blue-600" />
-                          <span>5 THÔNG SỐ KỸ THUẬT & GỬI THỬ ZNS</span>
+                      {/* Cột trái: Thử nghiệm ZNS & Hướng dẫn */}
+                      <div className="lg:col-span-5 space-y-4">
+                        {/* Box thử nghiệm Zalo ZNS */}
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 border-2 border-blue-200/90 shadow-2xs space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                              <Send className="w-4 h-4 text-blue-600" />
+                              <span>GỬI THỬ NGHIỆM TIN NHẮN ZALO ZNS</span>
+                            </div>
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold inline-flex items-center gap-1 w-fit">
+                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                              Mẫu 645197
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
+                              <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Số điện thoại nhận tin ZNS thử nghiệm:</span>
+                            </label>
+                            <input
+                              type="tel"
+                              value={zaloForm.zalo_test_phone}
+                              onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_test_phone: e.target.value }))}
+                              className="w-full text-xs font-bold text-blue-900 px-3.5 py-2.5 rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white shadow-2xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleTestZalo()}
+                              disabled={isZaloTesting}
+                              className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow transition cursor-pointer"
+                            >
+                              {isZaloTesting ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  <span>Đang gửi thử...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-4 h-4" />
+                                  <span>Gửi Thử ZNS Ngay</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <div className="space-y-3 text-xs text-slate-700">
-                          <div className="flex items-start gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">1</span>
-                            <div>
-                              <strong className="text-slate-900">ZALO_OA_ID:</strong> ID định danh Zalo OA (xem trên góc trang{' '}
-                              <a href="https://oa.zalo.me" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">oa.zalo.me</a>).
-                            </div>
+
+                        {/* Hướng dẫn 5 thông số kỹ thuật */}
+                        <div className="bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-blue-50/80 border border-blue-200/90 rounded-2xl p-5 space-y-3.5">
+                          <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                            <KeyRound className="w-4 h-4 text-blue-600" />
+                            <span>5 THÔNG SỐ KỸ THUẬT ZNS</span>
                           </div>
-                          <div className="flex items-start gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">2</span>
-                            <div>
-                              <strong className="text-slate-900">ZALO_APP_ID:</strong> ID ứng dụng Zalo trên{' '}
-                              <a href="https://developers.zalo.me" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">developers.zalo.me</a> liên kết với OA.
+                          <div className="space-y-3 text-xs text-slate-700">
+                            <div className="flex items-start gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">1</span>
+                              <div>
+                                <strong className="text-slate-900">ZALO_OA_ID:</strong> ID định danh Zalo OA (xem trên góc trang{' '}
+                                <a href="https://oa.zalo.me" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">oa.zalo.me</a>).
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">3</span>
-                            <div>
-                              <strong className="text-slate-900">ZALO_SECRET_KEY:</strong> Khóa bí mật (Secret Key) của ứng dụng Zalo.
+                            <div className="flex items-start gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">2</span>
+                              <div>
+                                <strong className="text-slate-900">ZALO_APP_ID:</strong> ID ứng dụng Zalo trên{' '}
+                                <a href="https://developers.zalo.me" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">developers.zalo.me</a> liên kết với OA.
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">4</span>
-                            <div>
-                              <strong className="text-slate-900">ZALO_TEMPLATE_ID:</strong> Mã ID mẫu tin nhắn ZNS đã được Zalo phê duyệt (VD: 645197).
+                            <div className="flex items-start gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">3</span>
+                              <div>
+                                <strong className="text-slate-900">ZALO_SECRET_KEY:</strong> Khóa bí mật (Secret Key) của ứng dụng Zalo.
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">5</span>
-                            <div>
-                              <strong className="text-slate-900">ACCESS & REFRESH TOKEN:</strong> Lấy tại{' '}
-                              <a href="https://developers.zalo.me/tools/explorer" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">API Explorer</a> để gọi ZNS và tự động gia hạn token.
+                            <div className="flex items-start gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">4</span>
+                              <div>
+                                <strong className="text-slate-900">ZALO_TEMPLATE_ID:</strong> Mã ID mẫu tin nhắn ZNS đã được Zalo phê duyệt.
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">5</span>
+                              <div>
+                                <strong className="text-slate-900">ACCESS & REFRESH TOKEN:</strong> Lấy tại{' '}
+                                <a href="https://developers.zalo.me/tools/explorer" target="_blank" rel="noreferrer" className="text-blue-700 underline font-semibold">API Explorer</a> để gọi ZNS và tự động gia hạn token.
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Cột phải: Các Ô nhập liệu */}
+                      {/* Cột phải: Các Ô nhập liệu (Đã bỏ toàn bộ chú thích bên dưới ô) */}
                       <div className="lg:col-span-7 space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Trường 1: ZALO_OA_ID */}
@@ -6790,7 +6834,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_oa_id: e.target.value }))}
                               className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                             />
-                            <p className="text-[11px] text-slate-400">ID định danh Zalo Official Account</p>
                           </div>
 
                           {/* Trường 2: ZALO_APP_ID */}
@@ -6804,7 +6847,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_app_id: e.target.value }))}
                               className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                             />
-                            <p className="text-[11px] text-slate-400">ID ứng dụng trên developers.zalo.me</p>
                           </div>
                         </div>
 
@@ -6829,7 +6871,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                             onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_secret_key: e.target.value }))}
                             className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                           />
-                          <p className="text-[11px] text-slate-400">Khóa bảo mật ứng dụng Zalo</p>
                         </div>
 
                         {/* Trường 5: ZALO_ACCESS_TOKEN & REFRESH_TOKEN */}
@@ -6837,7 +6878,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           <div className="flex items-center justify-between">
                             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                               <KeyRound className="w-3.5 h-3.5 text-blue-600" />
-                              <span>5. Zalo Access Token & Refresh Token (Bắt buộc cho ZNS):</span>
+                              <span>5. Zalo Access Token & Refresh Token:</span>
                             </label>
                             <div className="flex items-center gap-3">
                               <a
@@ -6862,7 +6903,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <span className="text-[11px] font-semibold text-slate-700">Access Token (Hiệu lực 25h):</span>
+                              <span className="text-[11px] font-semibold text-slate-700">Access Token:</span>
                               <input
                                 type={showZaloToken ? 'text' : 'password'}
                                 value={zaloForm.zalo_access_token}
@@ -6871,7 +6912,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               />
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[11px] font-semibold text-slate-700">Refresh Token (Gia hạn tự động 3 tháng):</span>
+                              <span className="text-[11px] font-semibold text-slate-700">Refresh Token:</span>
                               <input
                                 type={showZaloToken ? 'text' : 'password'}
                                 value={zaloForm.zalo_refresh_token}
@@ -6880,9 +6921,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               />
                             </div>
                           </div>
-                          <p className="text-[11px] text-slate-500 leading-snug">
-                            Khi có Refresh Token, hệ thống sẽ tự động cấp mới Access Token mỗi khi hết hạn mà không làm gián đoạn việc gửi tin ZNS.
-                          </p>
                         </div>
 
                         {/* TÁCH RÕ 2 TEMPLATE ID CHO 2 MỤC ĐÍCH */}
@@ -6898,7 +6936,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_template_id: e.target.value }))}
                               className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                             />
-                            <p className="text-[11px] text-slate-400">Mã mẫu ZNS Xác nhận lịch (VD: 645197)</p>
                           </div>
 
                           {/* Trường 4B: Template ID Đánh giá */}
@@ -6912,69 +6949,13 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_review_template_id: e.target.value }))}
                               className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                             />
-                            <p className="text-[11px] text-slate-400">Mã mẫu ZNS Khảo sát 5 sao có nút mở web</p>
                           </div>
-                        </div>
-
-                        {/* KHU VỰC GỬI THỬ NGHIỆM ZNS TRỰC TIẾP */}
-                        <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 border-2 border-blue-200/90 shadow-2xs space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
-                              <Send className="w-4 h-4 text-blue-600" />
-                              <span>GỬI THỬ NGHIỆM TIN NHẮN ZALO ZNS</span>
-                            </div>
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold inline-flex items-center gap-1 w-fit">
-                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                              Khớp mẫu 645197
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-                            <div className="flex-1 space-y-1.5">
-                              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
-                                <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Số điện thoại nhận tin ZNS thử nghiệm:</span>
-                              </label>
-                              <input
-                                type="tel"
-                                value={zaloForm.zalo_test_phone}
-                                onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_test_phone: e.target.value }))}
-                                className="w-full text-xs font-bold text-blue-900 px-3.5 py-2.5 rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white shadow-2xs"
-                              />
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleTestZalo()}
-                              disabled={isZaloTesting}
-                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow transition cursor-pointer shrink-0"
-                            >
-                              {isZaloTesting ? (
-                                <>
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
-                                  <span>Đang gửi thử...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Send className="w-4 h-4" />
-                                  <span>Gửi Thử ZNS Ngay</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-
-                          <p className="text-[11px] text-slate-600 leading-relaxed">
-                            💡 Tin nhắn thử nghiệm sẽ gửi phiếu khám mẫu với 4 tham số: <strong>Mã số</strong> (booking_code), <strong>Thời gian</strong> (schedule_time), <strong>Địa chỉ</strong> (address), <strong>Tên khách hàng</strong> (customer_name) trực tiếp tới số Zalo đã nhập.
-                          </p>
                         </div>
                       </div>
                     </div>
 
                     {/* Nút lưu Zalo */}
-                    <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                      <p className="text-xs text-slate-500">
-                        Hệ thống sẽ tự động gửi tin nhắn Zalo ZNS khi khách hàng xác nhận đặt lịch khám.
-                      </p>
+                    <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3">
                       <button
                         type="submit"
                         disabled={isZaloSaving}

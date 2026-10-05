@@ -21,7 +21,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   zalo_review_template_id: '',
   zalo_access_token: '',
   zalo_refresh_token: '',
-  zalo_test_phone: '0364605514',
+  zalo_test_phone: '',
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
