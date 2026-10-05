@@ -294,6 +294,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     const friendlyReferrer = (r: string) => {
       if (r === 'direct' || !r) return 'Trực tiếp';
       if (r.includes('google')) return 'Google';
+      if (r.includes('messenger')) return 'Messenger';
       if (r.includes('facebook') || r.includes('fb.com')) return 'Facebook';
       if (r.includes('zalo')) return 'Zalo';
       if (r.includes('tiktok')) return 'TikTok';
