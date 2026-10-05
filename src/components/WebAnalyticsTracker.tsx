@@ -59,9 +59,46 @@ export default function WebAnalyticsTracker() {
     else if (/Linux/i.test(ua)) os = 'Linux';
 
     const currentPath = pathname + (window.location.hash || '');
-    const referrer = document.referrer ? new URL(document.referrer, window.location.href).hostname : 'direct';
-    // Ngôn ngữ trình duyệt (rút gọn: "vi-VN" -> "vi", "en-US" -> "en")
-    const language = (navigator.language || 'vi').split('-')[0].toLowerCase();
+
+    // Nhận diện nguồn truy cập thông minh (FB, Zalo, Google, Direct, hoặc UTM)
+    let referrer = 'direct';
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const utmSource = urlParams.get('utm_source');
+
+      if (utmSource) {
+        referrer = utmSource.toLowerCase();
+      } else if (urlParams.has('fbclid')) {
+        referrer = 'facebook.com';
+      } else if (urlParams.has('zarsrc')) {
+        referrer = 'zalo.me';
+      } else if (urlParams.has('gclid')) {
+        referrer = 'google.com';
+      } else if (urlParams.has('ttclid')) {
+        referrer = 'tiktok.com';
+      } else if (document.referrer) {
+        const refUrl = new URL(document.referrer, window.location.href);
+        // Nếu là chuyển trang nội bộ trên website -> giữ nguồn ban đầu của phiên
+        if (refUrl.hostname === window.location.hostname) {
+          referrer = sessionStorage.getItem('petmm_initial_referrer') || 'direct';
+        } else {
+          referrer = refUrl.hostname.toLowerCase();
+        }
+      } else {
+        referrer = sessionStorage.getItem('petmm_initial_referrer') || 'direct';
+      }
+
+      // Lưu lại nguồn ban đầu cho các lần bấm xem trang tiếp theo trong phiên
+      if (referrer && referrer !== 'direct') {
+        sessionStorage.setItem('petmm_initial_referrer', referrer);
+      }
+    } catch {
+      referrer = 'direct';
+    }
+
+    // Ngôn ngữ trình duyệt của khách (rút gọn: "vi-VN" -> "vi", "en-US" -> "en")
+    const rawLang = navigator.language || (navigator as any).userLanguage || 'vi';
+    const language = rawLang.split('-')[0].toLowerCase();
 
     // 5. Gửi sự kiện Pageview kèm đo Tốc độ tải trang thực tế
     sessionStartTimeRef.current = Date.now();

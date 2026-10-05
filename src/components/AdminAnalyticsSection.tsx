@@ -226,17 +226,23 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       }
 
       // Referrers (nguồn truy cập)
-      if (day.referrers) {
+      if (day.referrers && Object.keys(day.referrers).length > 0) {
         Object.entries(day.referrers).forEach(([r, count]) => {
           referrerMap[r] = (referrerMap[r] || 0) + count;
         });
+      } else if (day.pageviews > 0) {
+        // Đối với các ngày trước khi lưu nguồn: mặc định gán là Trực tiếp
+        referrerMap['direct'] = (referrerMap['direct'] || 0) + day.pageviews;
       }
 
       // Languages (ngôn ngữ)
-      if (day.languages) {
+      if (day.languages && Object.keys(day.languages).length > 0) {
         Object.entries(day.languages).forEach(([l, count]) => {
           languageMap[l] = (languageMap[l] || 0) + count;
         });
+      } else if (day.pageviews > 0) {
+        // Mặc định ngôn ngữ khách Việt Nam
+        languageMap['vi'] = (languageMap['vi'] || 0) + day.pageviews;
       }
     });
 
