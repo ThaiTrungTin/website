@@ -218,7 +218,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
   // Tính tọa độ đường cong SVG
   const linePoints = useMemo(() => {
     const W = 800;
-    const H = 140;
+    const H = 150;
     const padX = 35;
     const padY = 20;
 
@@ -252,7 +252,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
             <h3 className="text-sm font-bold text-slate-900 tracking-tight">
               Lưu Lượng &amp; Khách Truy Cập Website
             </h3>
-            {/* CHỈ ĐỂ DẤU CHẤM XANH NHÁY, BỎ TIÊU ĐỀ REALTIME / ĐANG TRỰC TUYẾN */}
+            {/* CHỈ ĐỂ DẤU CHẤM XANH NHÁY */}
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
         </div>
@@ -386,136 +386,226 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
             </div>
           </div>
 
-          {/* ── BIỂU ĐỒ ĐƯỜNG: LƯU LƯỢNG & THỜI LƯỢNG THEO TỪNG NGÀY (THU NHỎ LẠI) ── */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
-                Lưu lượng &amp; Thời lượng xem web theo từng ngày
-              </div>
+          {/* ── HÀNG 1: LƯU LƯỢNG & THỜI LƯỢNG + PHÂN BỔ THIẾT BỊ & MÔI TRƯỜNG NẰM TRÊN 1 HÀNG ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+            {/* CỘT TRÁI (7/12): BIỂU ĐỒ ĐƯỜNG LƯU LƯỢNG & THỜI LƯỢNG */}
+            <div className="lg:col-span-7 p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
+                    Lưu lượng &amp; Thời lượng xem web theo từng ngày
+                  </div>
 
-              {/* Chú giải đường */}
-              <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-0.5 bg-[#2D5A27] rounded-full" />
-                  <span className="text-[11px]">Lượt xem trang</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-0.5 bg-amber-500 rounded-full border-t border-dashed border-amber-500" />
-                  <span className="text-[11px]">Thời lượng xem TB</span>
-                </div>
-              </div>
-            </div>
-
-            {/* SVG LINE CHART THU NHỎ (CAO CHỈ 125PX) */}
-            <div className="relative w-full h-[125px] select-none pt-2">
-              <svg
-                viewBox="0 0 800 140"
-                className="w-full h-full overflow-visible"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="viewsAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2D5A27" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#2D5A27" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Vùng mờ bên dưới đường lượt xem */}
-                {linePoints.areaPath && (
-                  <path d={linePoints.areaPath} fill="url(#viewsAreaGrad)" />
-                )}
-
-                {/* Đường Lượt xem trang (Xanh lá) */}
-                {linePoints.viewsPath && (
-                  <path
-                    d={linePoints.viewsPath}
-                    fill="none"
-                    stroke="#2D5A27"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                )}
-
-                {/* Đường Thời lượng xem (Cam hổ phách) */}
-                {linePoints.durationPath && (
-                  <path
-                    d={linePoints.durationPath}
-                    fill="none"
-                    stroke="#F59E0B"
-                    strokeWidth="2"
-                    strokeDasharray="4 3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                )}
-
-                {/* Các điểm tròn dữ liệu trên đường */}
-                {linePoints.points.map((p, idx) => (
-                  <g key={idx} className="cursor-pointer">
-                    {/* Điểm lượt xem */}
-                    <circle
-                      cx={p.x}
-                      cy={p.yViews}
-                      r="4"
-                      className="fill-white stroke-[#2D5A27] stroke-2 hover:r-5 transition-all"
-                      onMouseEnter={() => setHoveredPoint(p.day)}
-                      onMouseLeave={() => setHoveredPoint(null)}
-                    />
-                    {/* Điểm thời lượng */}
-                    <circle
-                      cx={p.x}
-                      cy={p.yDuration}
-                      r="3"
-                      className="fill-white stroke-amber-500 stroke-2 hover:r-4 transition-all"
-                      onMouseEnter={() => setHoveredPoint(p.day)}
-                      onMouseLeave={() => setHoveredPoint(null)}
-                    />
-                  </g>
-                ))}
-              </svg>
-
-              {/* Tooltip khi hover điểm */}
-              {hoveredPoint && (
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-3 py-1 rounded-lg shadow-md pointer-events-none flex items-center gap-3 z-10">
-                  <span className="font-bold text-emerald-400">
-                    {formatDateShort(hoveredPoint.date)}:
-                  </span>
-                  <span>{hoveredPoint.pageviews} xem</span>
-                  <span>•</span>
-                  <span>{hoveredPoint.visitors} khách</span>
-                  <span>•</span>
-                  <span className="text-amber-300">
-                    TB:{' '}
-                    {formatDuration(
-                      hoveredPoint.visitors > 0
-                        ? Math.round(hoveredPoint.totalDurationSeconds / hoveredPoint.visitors)
-                        : 0
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Nhãn ngày bên dưới biểu đồ */}
-            <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 px-2 mt-1 border-t border-slate-200/80 pt-1">
-              {filteredDays.map((d) => (
-                <div key={d.date} className="text-center">
-                  <div>{formatDateShort(d.date)}</div>
-                  <div className="text-[9px] font-mono text-slate-400">
-                    {formatDuration(
-                      d.visitors > 0 ? Math.round(d.totalDurationSeconds / d.visitors) : 0
-                    )}
+                  {/* Chú giải đường */}
+                  <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 bg-[#2D5A27] rounded-full" />
+                      <span className="text-[11px]">Lượt xem trang</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 bg-amber-500 rounded-full border-t border-dashed border-amber-500" />
+                      <span className="text-[11px]">Thời lượng xem TB</span>
+                    </div>
                   </div>
                 </div>
-              ))}
+
+                {/* SVG LINE CHART */}
+                <div className="relative w-full h-[155px] select-none pt-2">
+                  <svg
+                    viewBox="0 0 800 150"
+                    className="w-full h-full overflow-visible"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="viewsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2D5A27" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#2D5A27" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Vùng mờ bên dưới đường lượt xem */}
+                    {linePoints.areaPath && (
+                      <path d={linePoints.areaPath} fill="url(#viewsAreaGrad)" />
+                    )}
+
+                    {/* Đường Lượt xem trang (Xanh lá) */}
+                    {linePoints.viewsPath && (
+                      <path
+                        d={linePoints.viewsPath}
+                        fill="none"
+                        stroke="#2D5A27"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Đường Thời lượng xem (Cam hổ phách) */}
+                    {linePoints.durationPath && (
+                      <path
+                        d={linePoints.durationPath}
+                        fill="none"
+                        stroke="#F59E0B"
+                        strokeWidth="2"
+                        strokeDasharray="4 3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Các điểm tròn dữ liệu trên đường */}
+                    {linePoints.points.map((p, idx) => (
+                      <g key={idx} className="cursor-pointer">
+                        <circle
+                          cx={p.x}
+                          cy={p.yViews}
+                          r="4"
+                          className="fill-white stroke-[#2D5A27] stroke-2 hover:r-5 transition-all"
+                          onMouseEnter={() => setHoveredPoint(p.day)}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        />
+                        <circle
+                          cx={p.x}
+                          cy={p.yDuration}
+                          r="3"
+                          className="fill-white stroke-amber-500 stroke-2 hover:r-4 transition-all"
+                          onMouseEnter={() => setHoveredPoint(p.day)}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        />
+                      </g>
+                    ))}
+                  </svg>
+
+                  {/* Tooltip khi hover điểm */}
+                  {hoveredPoint && (
+                    <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-3 py-1 rounded-lg shadow-md pointer-events-none flex items-center gap-3 z-10">
+                      <span className="font-bold text-emerald-400">
+                        {formatDateShort(hoveredPoint.date)}:
+                      </span>
+                      <span>{hoveredPoint.pageviews} xem</span>
+                      <span>•</span>
+                      <span>{hoveredPoint.visitors} khách</span>
+                      <span>•</span>
+                      <span className="text-amber-300">
+                        TB:{' '}
+                        {formatDuration(
+                          hoveredPoint.visitors > 0
+                            ? Math.round(hoveredPoint.totalDurationSeconds / hoveredPoint.visitors)
+                            : 0
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Nhãn ngày bên dưới biểu đồ */}
+              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 px-2 mt-2 border-t border-slate-200/80 pt-1.5">
+                {filteredDays.map((d) => (
+                  <div key={d.date} className="text-center">
+                    <div>{formatDateShort(d.date)}</div>
+                    <div className="text-[9px] font-mono text-slate-400">
+                      {formatDuration(
+                        d.visitors > 0 ? Math.round(d.totalDurationSeconds / d.visitors) : 0
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CỘT PHẢI (5/12): PHÂN BỔ THIẾT BỊ & MÔI TRƯỜNG TRUY CẬP (3 BẢNG: THIẾT BỊ, TRÌNH DUYỆT, HỆ ĐIỀU HÀNH) */}
+            <div className="lg:col-span-5 p-4 rounded-xl border border-slate-200 bg-white flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 uppercase tracking-wider text-xs flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-purple-600" />
+                  Phân bổ thiết bị &amp; Môi trường truy cập
+                </span>
+              </div>
+
+              {/* 1. BẢNG/KHỐI THIẾT BỊ */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  Thiết bị
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 text-center">
+                  <div className="p-1.5 rounded-lg border border-purple-100 bg-purple-50/40">
+                    <Smartphone className="w-3.5 h-3.5 mx-auto text-purple-600 mb-0.5" />
+                    <div className="text-xs font-black text-slate-900">{aggregateMetrics.mobilePercent}%</div>
+                    <div className="text-[9px] text-slate-500 font-semibold">ĐTDĐ ({aggregateMetrics.deviceMap.mobile})</div>
+                  </div>
+                  <div className="p-1.5 rounded-lg border border-blue-100 bg-blue-50/40">
+                    <Monitor className="w-3.5 h-3.5 mx-auto text-blue-600 mb-0.5" />
+                    <div className="text-xs font-black text-slate-900">{aggregateMetrics.desktopPercent}%</div>
+                    <div className="text-[9px] text-slate-500 font-semibold">Laptop ({aggregateMetrics.deviceMap.desktop})</div>
+                  </div>
+                  <div className="p-1.5 rounded-lg border border-amber-100 bg-amber-50/40">
+                    <Tablet className="w-3.5 h-3.5 mx-auto text-amber-600 mb-0.5" />
+                    <div className="text-xs font-black text-slate-900">{aggregateMetrics.tabletPercent}%</div>
+                    <div className="text-[9px] text-slate-500 font-semibold">Tablet ({aggregateMetrics.deviceMap.tablet})</div>
+                  </div>
+                </div>
+
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex mt-1">
+                  <div style={{ width: `${aggregateMetrics.mobilePercent}%` }} className="bg-purple-600 h-full" />
+                  <div style={{ width: `${aggregateMetrics.desktopPercent}%` }} className="bg-blue-600 h-full" />
+                  <div style={{ width: `${aggregateMetrics.tabletPercent}%` }} className="bg-amber-500 h-full" />
+                </div>
+              </div>
+
+              {/* 2 & 3. BẢNG TRÌNH DUYỆT & BẢNG HỆ ĐIỀU HÀNH */}
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                {/* 2. BẢNG TRÌNH DUYỆT */}
+                <div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Trình duyệt
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    {aggregateMetrics.topBrowsers.slice(0, 4).map((b) => {
+                      const pct = aggregateMetrics.totalViews > 0
+                        ? Math.round((b.count / aggregateMetrics.totalViews) * 100)
+                        : 0;
+                      return (
+                        <div key={b.name} className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-700 font-medium truncate">{b.name}</span>
+                          <span className="font-bold text-slate-900 font-mono text-[10px]">
+                            {b.count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. BẢNG HỆ ĐIỀU HÀNH */}
+                <div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Hệ điều hành
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    {aggregateMetrics.topOS.slice(0, 4).map((o) => {
+                      const pct = aggregateMetrics.totalViews > 0
+                        ? Math.round((o.count / aggregateMetrics.totalViews) * 100)
+                        : 0;
+                      return (
+                        <div key={o.name} className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-700 font-medium truncate">{o.name}</span>
+                          <span className="font-bold text-slate-900 font-mono text-[10px]">
+                            {o.count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ── 2 CỘT NẰM CẠNH NHAU (THU NHỎ LẠI): TOP TRANG (BIỂU ĐỒ ĐƯỜNG) & NHẬT KÝ PHIÊN GẦN ĐÂY ── */}
+          {/* ── HÀNG 2: TOP TRANG & NHẬT KÝ PHIÊN GẦN ĐÂY ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* CỘT TRÁI: TRANG ĐƯỢC XEM NHIỀU NHẤT (BIỂU ĐỒ ĐƯỜNG TIẾN TRÌNH GỌN GÀNG, BỎ MÃ PATH) */}
+            {/* CỘT TRÁI: TRANG ĐƯỢC XEM NHIỀU NHẤT */}
             <div className="p-4 rounded-xl border border-slate-200 bg-white">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
@@ -541,7 +631,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                           <span className="w-3.5 text-[11px] font-bold text-slate-400 font-mono">
                             #{idx + 1}
                           </span>
-                          {/* CHỈ HIỂN THỊ TÊN THÂN THIỆN, BỎ TOÀN BỘ DẠNG /#booking */}
                           <span className="font-bold text-slate-800 truncate">
                             {item.name}
                           </span>
@@ -575,7 +664,7 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
               </div>
             </div>
 
-            {/* CỘT PHẢI: NHẬT KÝ PHIÊN TRUY CẬP GẦN ĐÂY (THU NHỎ LẠI, NẰM CẠNH TOP TRANG) */}
+            {/* CỘT PHẢI: NHẬT KÝ PHIÊN TRUY CẬP GẦN ĐÂY */}
             <div className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -613,7 +702,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                                 {formatRelativeTime(sess.time)}
                               </td>
                               <td className="py-2 px-2">
-                                {/* CHỈ HIỂN THỊ TÊN THÂN THIỆN, BỎ /#booking */}
                                 <div className="font-bold text-slate-800 text-xs">
                                   {friendly}
                                 </div>
@@ -655,49 +743,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                   </table>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* ── DÒNG PHÂN BỔ THIẾT BỊ GỌN GÀNG ── */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 text-xs">
-              <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-purple-600" />
-                Phân bổ thiết bị &amp; Môi trường truy cập
-              </span>
-              <div className="flex items-center gap-3 text-slate-600 text-[11px] font-semibold">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-purple-600" />
-                  ĐTDĐ: {aggregateMetrics.mobilePercent}%
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-blue-600" />
-                  Laptop: {aggregateMetrics.desktopPercent}%
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-amber-500" />
-                  Tablet: {aggregateMetrics.tabletPercent}%
-                </span>
-              </div>
-            </div>
-
-            {/* Thanh progress bar đa sắc gọn gàng */}
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
-              <div
-                style={{ width: `${aggregateMetrics.mobilePercent}%` }}
-                className="bg-purple-600 h-full"
-                title={`Điện thoại: ${aggregateMetrics.mobilePercent}%`}
-              />
-              <div
-                style={{ width: `${aggregateMetrics.desktopPercent}%` }}
-                className="bg-blue-600 h-full"
-                title={`Laptop/PC: ${aggregateMetrics.desktopPercent}%`}
-              />
-              <div
-                style={{ width: `${aggregateMetrics.tabletPercent}%` }}
-                className="bg-amber-500 h-full"
-                title={`Tablet: ${aggregateMetrics.tabletPercent}%`}
-              />
             </div>
           </div>
         </div>
