@@ -19,6 +19,8 @@ export interface DayAnalytics {
   browsers: Record<string, number>;
   os: Record<string, number>;
   pages: Record<string, number>;
+  referrers?: Record<string, number>;  // Nguồn truy cập: google, facebook, zalo, direct...
+  languages?: Record<string, number>;  // Ngôn ngữ trình duyệt: vi, en, ...
 }
 
 export interface RecentVisitorSession {
@@ -251,6 +253,7 @@ export async function recordAnalyticsEvent(params: {
   durationIncrementSeconds?: number;
   referrer?: string;
   loadSpeedMs?: number;
+  language?: string;
 }): Promise<void> {
   try {
     const {
@@ -262,6 +265,7 @@ export async function recordAnalyticsEvent(params: {
       durationIncrementSeconds = 0,
       referrer = 'direct',
       loadSpeedMs = 0,
+      language = 'vi',
     } = params;
 
     const data = await getWebAnalyticsData();
@@ -283,6 +287,8 @@ export async function recordAnalyticsEvent(params: {
         browsers: {},
         os: {},
         pages: {},
+        referrers: {},
+        languages: {},
       };
     }
 
@@ -329,6 +335,16 @@ export async function recordAnalyticsEvent(params: {
       // Đếm trang được xem
       const cleanPath = path || '/';
       day.pages[cleanPath] = (day.pages[cleanPath] || 0) + 1;
+
+      // Đếm nguồn truy cập
+      if (!day.referrers) day.referrers = {};
+      const refKey = referrer || 'direct';
+      day.referrers[refKey] = (day.referrers[refKey] || 0) + 1;
+
+      // Đếm ngôn ngữ trình duyệt
+      if (!day.languages) day.languages = {};
+      const langKey = language || 'vi';
+      day.languages[langKey] = (day.languages[langKey] || 0) + 1;
 
       // Kiểm tra unique visitor trong ngày
       const alreadyVisitedToday = data.recentSessions.some(

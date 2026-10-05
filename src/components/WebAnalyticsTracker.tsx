@@ -60,6 +60,8 @@ export default function WebAnalyticsTracker() {
 
     const currentPath = pathname + (window.location.hash || '');
     const referrer = document.referrer ? new URL(document.referrer, window.location.href).hostname : 'direct';
+    // Ngôn ngữ trình duyệt (rút gọn: "vi-VN" -> "vi", "en-US" -> "en")
+    const language = (navigator.language || 'vi').split('-')[0].toLowerCase();
 
     // 5. Gửi sự kiện Pageview kèm đo Tốc độ tải trang thực tế
     sessionStartTimeRef.current = Date.now();
@@ -98,6 +100,7 @@ export default function WebAnalyticsTracker() {
             os,
             referrer,
             loadSpeedMs: speedMs,
+            language,
           }),
         });
       } catch {}

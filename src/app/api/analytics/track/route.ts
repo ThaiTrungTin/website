@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       durationIncrementSeconds,
       referrer,
       loadSpeedMs,
+      language,
     } = body;
 
     if (!visitorId || typeof visitorId !== 'string') {
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
       durationIncrementSeconds: Number(durationIncrementSeconds) || 0,
       referrer: referrer || 'direct',
       loadSpeedMs: Number(loadSpeedMs) || 0,
+      language: language || 'vi',
     });
 
     return NextResponse.json({ success: true });

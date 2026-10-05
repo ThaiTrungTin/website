@@ -167,6 +167,8 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     const pageMap: Record<string, number> = {};
     const browserMap: Record<string, number> = {};
     const osMap: Record<string, number> = {};
+    const referrerMap: Record<string, number> = {};
+    const languageMap: Record<string, number> = {};
 
     // Tập hợp số điện thoại đặt lịch riêng biệt trong khoảng thời gian này (tránh tính trùng)
     const uniquePhonesSet = new Set<string>();
@@ -220,6 +222,20 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
           osMap[o] = (osMap[o] || 0) + count;
         });
       }
+
+      // Referrers (nguồn truy cập)
+      if (day.referrers) {
+        Object.entries(day.referrers).forEach(([r, count]) => {
+          referrerMap[r] = (referrerMap[r] || 0) + count;
+        });
+      }
+
+      // Languages (ngôn ngữ)
+      if (day.languages) {
+        Object.entries(day.languages).forEach(([l, count]) => {
+          languageMap[l] = (languageMap[l] || 0) + count;
+        });
+      }
     });
 
     const avgDurationPerVisitor =
@@ -266,6 +282,40 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
+    // Xử lý tên nguồn truy cập đẹp hơn
+    const friendlyReferrer = (r: string) => {
+      if (r === 'direct' || !r) return 'Trực tiếp';
+      if (r.includes('google')) return 'Google';
+      if (r.includes('facebook') || r.includes('fb.com')) return 'Facebook';
+      if (r.includes('zalo')) return 'Zalo';
+      if (r.includes('tiktok')) return 'TikTok';
+      if (r.includes('youtube')) return 'YouTube';
+      if (r.includes('instagram')) return 'Instagram';
+      return r;
+    };
+    // Gộp các key gốc giống nhau thành 1 nhóm
+    const mergedReferrerMap: Record<string, number> = {};
+    Object.entries(referrerMap).forEach(([r, count]) => {
+      const key = friendlyReferrer(r);
+      mergedReferrerMap[key] = (mergedReferrerMap[key] || 0) + count;
+    });
+    const topReferrers = Object.entries(mergedReferrerMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Xử lý tên ngôn ngữ đẹp hơn
+    const friendlyLang = (l: string) => {
+      const map: Record<string, string> = {
+        vi: 'Tiếng Việt', en: 'Tiếng Anh', zh: 'Tiếng Trung',
+        ja: 'Tiếng Nhật', ko: 'Tiếng Hàn', fr: 'Tiếng Pháp',
+        de: 'Tiếng Đức', es: 'Tiếng Tây Ban Nha',
+      };
+      return map[l] || l.toUpperCase();
+    };
+    const topLanguages = Object.entries(languageMap)
+      .map(([code, count]) => ({ name: friendlyLang(code), count }))
+      .sort((a, b) => b.count - a.count);
+
     return {
       totalViews,
       totalVisitors,
@@ -285,6 +335,8 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
       topPages,
       topBrowsers,
       topOS,
+      topReferrers,
+      topLanguages,
     };
   }, [filteredDays, bookingsSummary]);
 
@@ -602,89 +654,113 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                 </span>
               </div>
 
-              {/* 1. BẢNG THIẾT BỊ (ĐẬM NÉT, KÈM TỐC ĐỘ TẢI TỪNG THIẾT BỊ) */}
+              {/* 1. BẢNG THIẾT BỊ - SạCH, KHÔNG MÀU NỚN */}
               <div className="space-y-1.5">
                 <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
                   <span>1. Thiết bị</span>
-                  <span className="text-emerald-800 font-bold lowercase">⚡ tốc độ tải</span>
+                  <span className="text-slate-600 font-bold lowercase normal-case">⚡ tốc độ tải</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5 text-center">
                   {/* ĐTDĐ */}
-                  <div className="p-2 rounded-lg border border-purple-200 bg-purple-50">
-                    <Smartphone className="w-4 h-4 mx-auto text-purple-800 mb-0.5" />
+                  <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                    <Smartphone className="w-4 h-4 mx-auto text-slate-600 mb-0.5" />
                     <div className="text-sm font-black text-slate-950">{aggregateMetrics.mobilePercent}%</div>
-                    <div className="text-[10px] text-slate-800 font-bold">ĐTDĐ ({aggregateMetrics.deviceMap.mobile})</div>
-                    <div className="text-[10px] font-bold text-emerald-800 font-mono mt-0.5">
+                    <div className="text-[10px] text-slate-700 font-bold">ĐTDĐ ({aggregateMetrics.deviceMap.mobile})</div>
+                    <div className="text-[10px] font-bold text-emerald-700 font-mono mt-0.5">
                       ⚡ {aggregateMetrics.mobileSpeedSec}s
                     </div>
                   </div>
                   {/* Laptop */}
-                  <div className="p-2 rounded-lg border border-blue-200 bg-blue-50">
-                    <Monitor className="w-4 h-4 mx-auto text-blue-800 mb-0.5" />
+                  <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                    <Monitor className="w-4 h-4 mx-auto text-slate-600 mb-0.5" />
                     <div className="text-sm font-black text-slate-950">{aggregateMetrics.desktopPercent}%</div>
-                    <div className="text-[10px] text-slate-800 font-bold">Laptop ({aggregateMetrics.deviceMap.desktop})</div>
-                    <div className="text-[10px] font-bold text-emerald-800 font-mono mt-0.5">
+                    <div className="text-[10px] text-slate-700 font-bold">Laptop ({aggregateMetrics.deviceMap.desktop})</div>
+                    <div className="text-[10px] font-bold text-emerald-700 font-mono mt-0.5">
                       ⚡ {aggregateMetrics.desktopSpeedSec}s
                     </div>
                   </div>
                   {/* Tablet */}
-                  <div className="p-2 rounded-lg border border-amber-200 bg-amber-50">
-                    <Tablet className="w-4 h-4 mx-auto text-amber-800 mb-0.5" />
+                  <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                    <Tablet className="w-4 h-4 mx-auto text-slate-600 mb-0.5" />
                     <div className="text-sm font-black text-slate-950">{aggregateMetrics.tabletPercent}%</div>
-                    <div className="text-[10px] text-slate-800 font-bold">Tablet ({aggregateMetrics.deviceMap.tablet})</div>
-                    <div className="text-[10px] font-bold text-emerald-800 font-mono mt-0.5">
+                    <div className="text-[10px] text-slate-700 font-bold">Tablet ({aggregateMetrics.deviceMap.tablet})</div>
+                    <div className="text-[10px] font-bold text-emerald-700 font-mono mt-0.5">
                       ⚡ {aggregateMetrics.tabletSpeedSec}s
                     </div>
                   </div>
                 </div>
 
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex mt-1">
-                  <div style={{ width: `${aggregateMetrics.mobilePercent}%` }} className="bg-purple-700 h-full" />
-                  <div style={{ width: `${aggregateMetrics.desktopPercent}%` }} className="bg-blue-700 h-full" />
-                  <div style={{ width: `${aggregateMetrics.tabletPercent}%` }} className="bg-amber-600 h-full" />
+                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex mt-1">
+                  <div style={{ width: `${aggregateMetrics.mobilePercent}%` }} className="bg-slate-500 h-full" />
+                  <div style={{ width: `${aggregateMetrics.desktopPercent}%` }} className="bg-slate-400 h-full" />
+                  <div style={{ width: `${aggregateMetrics.tabletPercent}%` }} className="bg-slate-300 h-full" />
                 </div>
               </div>
 
-              {/* 2 & 3. BẢNG TRÌNH DUYỆT & BẢNG HỆ ĐIỀU HÀNH — SCROLLABLE */}
+              {/* 2-5: BẢNG 5 CỘT TRONG LƯỚI 2x2+1 */}
               <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-200">
-                {/* 2. BẢNG TRÌNH DUYỆT */}
+                {/* 2. TRÌNH DUYỆT */}
                 <div className="flex flex-col">
-                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">
-                    2. Trình duyệt
-                  </div>
-                  <div className="overflow-y-auto max-h-[110px] space-y-1 text-xs pr-0.5">
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">2. Trình duyệt</div>
+                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
                     {aggregateMetrics.topBrowsers.map((b) => {
-                      const pct = aggregateMetrics.totalViews > 0
-                        ? Math.round((b.count / aggregateMetrics.totalViews) * 100)
-                        : 0;
+                      const pct = aggregateMetrics.totalViews > 0 ? Math.round((b.count / aggregateMetrics.totalViews) * 100) : 0;
                       return (
-                        <div key={b.name} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-900 font-semibold truncate max-w-[60%]">{b.name}</span>
-                          <span className="font-bold text-slate-950 font-mono text-xs shrink-0">
-                            {b.count} <span className="text-slate-700 font-medium">({pct}%)</span>
-                          </span>
+                        <div key={b.name} className="flex items-center justify-between">
+                          <span className="text-slate-800 font-semibold truncate max-w-[55%]">{b.name}</span>
+                          <span className="font-bold text-slate-950 font-mono shrink-0">{b.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* 3. BẢNG HỆ ĐIỀU HÀNH */}
+                {/* 3. HỆ ĐIỀU HÀNH */}
                 <div className="flex flex-col">
-                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">
-                    3. Hệ điều hành
-                  </div>
-                  <div className="overflow-y-auto max-h-[110px] space-y-1 text-xs pr-0.5">
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">3. Hệ điều hành</div>
+                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
                     {aggregateMetrics.topOS.map((o) => {
-                      const pct = aggregateMetrics.totalViews > 0
-                        ? Math.round((o.count / aggregateMetrics.totalViews) * 100)
-                        : 0;
+                      const pct = aggregateMetrics.totalViews > 0 ? Math.round((o.count / aggregateMetrics.totalViews) * 100) : 0;
                       return (
-                        <div key={o.name} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-900 font-semibold truncate max-w-[60%]">{o.name}</span>
-                          <span className="font-bold text-slate-950 font-mono text-xs shrink-0">
-                            {o.count} <span className="text-slate-700 font-medium">({pct}%)</span>
-                          </span>
+                        <div key={o.name} className="flex items-center justify-between">
+                          <span className="text-slate-800 font-semibold truncate max-w-[55%]">{o.name}</span>
+                          <span className="font-bold text-slate-950 font-mono shrink-0">{o.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. NGUỒN TRUY CẬP */}
+                <div className="flex flex-col">
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">4. Nguồn truy cập</div>
+                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
+                    {aggregateMetrics.topReferrers.length === 0 ? (
+                      <div className="text-slate-500 text-xs italic">Chưa có dữ liệu</div>
+                    ) : aggregateMetrics.topReferrers.map((r) => {
+                      const pct = aggregateMetrics.totalViews > 0 ? Math.round((r.count / aggregateMetrics.totalViews) * 100) : 0;
+                      return (
+                        <div key={r.name} className="flex items-center justify-between">
+                          <span className="text-slate-800 font-semibold truncate max-w-[55%]">{r.name}</span>
+                          <span className="font-bold text-slate-950 font-mono shrink-0">{r.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 5. NGÔN NGỮ */}
+                <div className="flex flex-col">
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 shrink-0">5. Ngôn ngữ</div>
+                  <div className="overflow-y-auto max-h-[100px] space-y-1 text-xs">
+                    {aggregateMetrics.topLanguages.length === 0 ? (
+                      <div className="text-slate-500 text-xs italic">Chưa có dữ liệu</div>
+                    ) : aggregateMetrics.topLanguages.map((l) => {
+                      const pct = aggregateMetrics.totalViews > 0 ? Math.round((l.count / aggregateMetrics.totalViews) * 100) : 0;
+                      return (
+                        <div key={l.name} className="flex items-center justify-between">
+                          <span className="text-slate-800 font-semibold truncate max-w-[55%]">{l.name}</span>
+                          <span className="font-bold text-slate-950 font-mono shrink-0">{l.count} <span className="text-slate-600 font-medium">({pct}%)</span></span>
                         </div>
                       );
                     })}
@@ -791,21 +867,13 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
                               <div className="font-bold text-slate-950 text-xs">{friendly}</div>
                             </td>
                             <td className="py-2 px-3 whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                  sess.device === 'mobile'
-                                    ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                                    : sess.device === 'tablet'
-                                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                    : 'bg-blue-100 text-blue-900 border border-blue-200'
-                                }`}
-                              >
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700">
                                 {sess.device === 'mobile' ? (
-                                  <Smartphone className="w-3 h-3" />
+                                  <Smartphone className="w-3 h-3 text-slate-500" />
                                 ) : sess.device === 'tablet' ? (
-                                  <Tablet className="w-3 h-3" />
+                                  <Tablet className="w-3 h-3 text-slate-500" />
                                 ) : (
-                                  <Monitor className="w-3 h-3" />
+                                  <Monitor className="w-3 h-3 text-slate-500" />
                                 )}
                                 {sess.device === 'mobile' ? 'ĐTDĐ' : sess.device === 'tablet' ? 'Tablet' : 'Laptop'}
                               </span>
