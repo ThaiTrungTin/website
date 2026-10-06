@@ -1102,3 +1102,42 @@ interface PopupAnnouncementConfig {
 - **Kết nối chuẩn xác Vercel**: Xóa bỏ project tạm `testtt`, liên kết chuẩn và kết nối webhook GitHub vào dự án **`petsmm`**.
 - **Quy trình Deploy khép kín**: Mọi lần `git push` về sau sẽ tự động kích hoạt Vercel build và cập nhật trực tiếp lên website chính thức [https://www.petmm.vn](https://www.petmm.vn).
 
+---
+
+## 34. KẾ HOẠCH & TIẾN TRÌNH TIẾP THEO: BỔ SUNG CÀI ĐẶT TIÊU ĐỀ MỤC CHO CÁC KHỐI NỘI DUNG LỚN NGOÀI WEBSITE
+- **Mục tiêu**: Bổ sung tính năng **"Cài Đặt Tiêu Đề Mục" (Section Header Settings)** đồng bộ và chuẩn hóa cho toàn bộ các khối nội dung lớn hiển thị ngoài website, áp dụng mô hình thiết kế mẫu mực đã triển khai thành công tại view **"Quản Lý Hệ Thống Chi Nhánh"** (`handleOpenBranchTitleModal`).
+
+### 1. Các Khối Lớn Cần Bổ Sung Cài Đặt Tiêu Đề:
+1. **Dịch Vụ Chuẩn 5★** ([`ServicesSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ServicesSection.tsx)):
+   - Quản trị: Tab *Dịch Vụ Chuẩn 5★* (`activeTab === 'services'`).
+   - Tiêu đề chính & phụ đề/mô tả dẫn dắt danh mục dịch vụ thú y & spa.
+2. **Cẩm Nang & Bài Viết Y Khoa** ([`KnowledgeSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/KnowledgeSection.tsx)):
+   - Quản trị: Tab *Bài Viết & Cẩm Nang* (`activeTab === 'articles'`).
+   - Tiêu đề mục kiến thức, cẩm nang bác sĩ PetM&M.
+3. **Đánh Giá Khách Hàng 5 Sao** ([`ReviewsSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/ReviewsSection.tsx)):
+   - Quản trị: Tab *Đánh Giá Khách Hàng* (`activeTab === 'reviews'`).
+   - Tiêu đề mục cảm nhận, phản hồi từ các ba mẹ thú cưng.
+4. **Tuyển Dụng & Gia Nhập Đội Ngũ** ([`CareersSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/CareersSection.tsx)):
+   - Quản trị: Tab *Tuyển Dụng* (`activeTab === 'careers'`).
+   - Tiêu đề mời gọi nhân tài, cơ hội nghề nghiệp chuẩn Fear-Free 5 sao.
+5. **Đội Ngũ Y Bác Sĩ** ([`AboutSection.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/components/AboutSection.tsx)):
+   - Quản trị: Tab *Đội Ngũ Y Tế* (`activeTab === 'team'`).
+   - Tiêu đề giới thiệu đội ngũ chuyên gia, bác sĩ chuyên khoa.
+
+### 2. Tiêu Chuẩn Tính Năng Chuẩn Hóa (Theo Mẫu Chi Nhánh):
+- **Vị trí nút thao tác**: Đặt nút nổi bật *"Cài Đặt Tiêu Đề Mục"* (`<Settings className="w-4 h-4 text-amber-700" />`) ngay tại Header Card cạnh ô tìm kiếm của từng tab.
+- **Cửa sổ cấu hình `AdminResizableModal`**:
+  - **Tab song ngữ**: Chuyển đổi giữa `Bản Tiếng Việt` $\leftrightarrow$ `Bản English`.
+  - **Dịch tự động AI 1-chạm**: Nút *"Chuyển đổi ENG"* tự động dịch tiêu đề và chú thích sang tiếng Anh chuẩn văn phong y khoa.
+  - **Trình soạn thảo `RichTextEditor`**:
+    - Soạn thảo Tiêu đề chính (`minHeight={150}`) & Chú thích/Mô tả phụ (`minHeight={120}`).
+    - Cho phép bôi đen đổi màu xanh rêu thương hiệu `#2D5A27`, in đậm, in nghiêng, ngắt dòng `<br/>`.
+  - **Nút tiện ích nhanh**:
+    - Nút *"Khôi phục mẫu tiêu đề mặc định"*.
+    - Nút *"Dùng gợi ý chú thích mẫu"*.
+  - **Khung Xem Trước Trực Quan Thực Tế (Live Preview)**:
+    - Hiển thị trực tiếp font chữ thương hiệu (`font-editorial`), tỷ lệ kích thước và màu sắc giống 100% ngoài trang chủ theo thời gian thực khi đang gõ.
+- **Lưu trữ & Phản hồi Frontend**:
+  - Mở rộng các cột tương ứng trong bảng `cau_hinh` trên Supabase (ví dụ: `section_dich_vu_tieu_de`, `section_dich_vu_tieu_de_en`, `section_dich_vu_mo_ta`, v.v.).
+  - Cập nhật Context `useSystemConfig()` để truyền tải dữ liệu tức thì tới các Component giao diện ngoài trang chủ.
+
