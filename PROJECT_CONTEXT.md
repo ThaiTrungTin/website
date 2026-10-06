@@ -1068,3 +1068,37 @@ interface PopupAnnouncementConfig {
 - Hai mẫu tin ZNS đang trong hàng đợi kiểm duyệt của đội ngũ Zalo Business Solutions (ZBS).
 - Sau khi Zalo duyệt, chỉ cần điền `ZALO_TEMPLATE_ID` vào trang Admin (`/admin` -> Cấu hình hệ thống -> Zalo OA) là tính năng kích hoạt hoàn toàn.
 
+---
+
+## 33. NÂNG CẤP BỘ CHỌN MẪU TEST ZALO ZNS, TỐI ƯU GIAO DIỆN ADMIN & ĐỒNG BỘ DEPLOY VERCEL
+- **Ngày thực hiện**: 06/10/2026 - 07/10/2026
+- **Tập tin liên quan**:
+  - Giao diện Admin: [`src/app/admin/page.tsx`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/admin/page.tsx)
+  - API Test ZNS: [`src/app/api/admin/zalo/test/route.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/app/api/admin/zalo/test/route.ts)
+  - Module Zalo OpenAPI: [`src/lib/zalo.ts`](file:///c:/Users/Windows%2011/Desktop/testtt/src/lib/zalo.ts)
+  - Quản lý Deploy: Dự án Vercel `thai-trung-tins-projects/petsmm` & Domain [`https://www.petmm.vn`](https://www.petmm.vn)
+
+### 1. Nâng Cấp Bộ Thử Nghiệm Zalo ZNS Linh Hoạt:
+- **Bộ chọn 2 mẫu trực quan**:
+  - 📅 **Mẫu Xác Nhận Lịch Hẹn**: Tự động nhận diện ID từ ô `zalo_template_id`.
+  - ⭐ **Mẫu Đánh Giá Dịch Vụ**: Tự động nhận diện ID từ ô `zalo_review_template_id`.
+- **Badge & Nút bấm tương tác động**:
+  - Badge góc trên hiển thị chính xác ID của mẫu đang chọn (`Mẫu #...`).
+  - Nút bấm cập nhật nhãn theo mẫu (`Gửi Thử Mẫu Xác Nhận Lịch Hẹn Ngay` / `Gửi Thử Mẫu Đánh Giá Dịch Vụ Ngay`).
+  - Cho phép test ngay với giá trị ID vừa gõ vào ô cấu hình mà không bắt buộc bấm lưu trước.
+- **Giữ trống số điện thoại thử nghiệm**: Ngăn chặn việc tự động lưu đè SĐT thử nghiệm vào database để ô nhập luôn trống theo yêu cầu.
+- **Xử lý Backend (`/api/admin/zalo/test`)**:
+  - Tự động chuẩn bị payload chuẩn hóa theo từng mẫu (Lịch hẹn: mã lịch, ngày hẹn, địa chỉ cơ sở; Đánh giá: mã hóa đơn, mã khảo sát).
+  - Cập nhật cả `sendZaloZnsBookingNotification` và `sendZaloZnsReviewNotification` hỗ trợ nhận `customTemplateId`.
+  - Báo lỗi chi tiết với các mã lỗi đặc thù từ Zalo OpenAPI (-124 token hết hạn, -120 thiếu quyền/chưa nạp tiền ZBS, -108 số không dùng Zalo, v.v.).
+
+### 2. Dọn Dẹp Cấu Hình Thừa & Tối Ưu Giao Diện Admin:
+- **Ẩn cụm nút gạt cấu hình tự động**: Do tin ZNS hiện tại chủ yếu gửi thủ công sau khi nhân viên duyệt, đã loại bỏ các cụm nút gạt không cần thiết.
+- **Gỡ bỏ khối trùng lặp ở "Quản Lý Ảnh Nền Hero"**: Loại bỏ cụm Slogan & 2 Nút bị trùng lặp, chỉ giữ lại duy nhất tại tab "Khẩu Hiệu & Slogan".
+- **Xóa thư mục build tạm `out/`**: Loại bỏ thư mục tĩnh tạm thừa, xử lý triệt để cảnh báo duplicate `<title>` tag trên VS Code.
+
+### 3. Đồng Bộ Hóa GitHub & Tự Động Hóa Vercel Production:
+- **Đồng bộ GitHub**: Mã nguồn được commit và push đầy đủ lên nhánh `main` của repo [`ThaiTrungTin/website`](https://github.com/ThaiTrungTin/website).
+- **Kết nối chuẩn xác Vercel**: Xóa bỏ project tạm `testtt`, liên kết chuẩn và kết nối webhook GitHub vào dự án **`petsmm`**.
+- **Quy trình Deploy khép kín**: Mọi lần `git push` về sau sẽ tự động kích hoạt Vercel build và cập nhật trực tiếp lên website chính thức [https://www.petmm.vn](https://www.petmm.vn).
+
