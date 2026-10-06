@@ -1,8 +1,9 @@
 # PET M&M — SỔ TAY NGỮ CẢNH DỰ ÁN (PROJECT CONTEXT)
 
 > 🆔 **MÃ CUỘC TRÒ CHUYỆN (CONVERSATION ID)**:
-> - **Phiên hiện tại (Latest)**: `94636bed-0ada-4ce6-a927-5858feaf34b7`
-> - **Phiên trước**: `43991119-8237-4895-a7ff-c47117034f65`
+> - **Phiên hiện tại (Latest)**: `ba4bceb0-d40f-4342-9c0a-ac77e2d88615`
+> - **Phiên trước**: `94636bed-0ada-4ce6-a927-5858feaf34b7`
+> - **Phiên cũ hơn**: `43991119-8237-4895-a7ff-c47117034f65`
 > - **Phiên khởi tạo (Origin)**: `dcd00ee0-4028-4c4b-8357-a1ca0d04d25d`
 > 
 > *Dành cho AI Agent*: Đọc file này khi bắt đầu một phiên làm việc mới để nắm toàn bộ bối cảnh, thẩm mỹ, các linh kiện đã hoàn thành và kế hoạch phát triển backend tiếp theo mà không cần người dùng phải giải thích lại.
