@@ -14,7 +14,6 @@ import {
   Activity,
   Layers,
   Calendar,
-  Zap,
   CalendarCheck,
   Globe,
   Languages,
@@ -402,18 +401,6 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
           <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
         </div>
 
-        {/* TỐC ĐỘ TẢI TRANG — GỌN Ở GÓC TRÊN PHẢI */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-white border border-emerald-300 rounded-lg px-2.5 py-1 shadow-2xs">
-          <Zap className="w-3 h-3 text-emerald-700 shrink-0" />
-          <span className="text-[11px] font-bold text-slate-800">Tốc độ tải:</span>
-          <span className="text-[11px] font-black text-slate-950 font-mono">⌀ {aggregateMetrics.avgOverallSpeedSec}s</span>
-          <span className="text-slate-400 text-[11px]">|</span>
-          <span className="text-[11px] font-bold text-slate-700">ĐTDĐ <strong className="text-slate-950 font-mono">{aggregateMetrics.mobileSpeedSec}s</strong></span>
-          <span className="text-slate-400 text-[11px]">·</span>
-          <span className="text-[11px] font-bold text-slate-700">Laptop <strong className="text-slate-950 font-mono">{aggregateMetrics.desktopSpeedSec}s</strong></span>
-          <span className="text-slate-400 text-[11px]">·</span>
-          <span className="text-[11px] font-bold text-slate-700">Tablet <strong className="text-slate-950 font-mono">{aggregateMetrics.tabletSpeedSec}s</strong></span>
-        </div>
 
         {/* BỘ LỌC THỜI GIAN + NÚT LÀM MỚI */}
         <div className="flex items-center gap-2">

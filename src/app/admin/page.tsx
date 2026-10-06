@@ -91,6 +91,21 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ss
 import AdminResizableModal from '@/components/AdminResizableModal';
 import AdminDashboardTab from '@/components/AdminDashboardTab';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
+import AdminFloatingNotification, {
+  FloatingAppointmentNotification,
+  sendBrowserNotification,
+  requestBrowserNotificationPermission,
+  playNotificationSound,
+} from '@/components/AdminFloatingNotification';
+import AdminNotificationSettingsModal, {
+  AdminNotifSettings,
+  getLocalAdminNotifSettings,
+  DEFAULT_ADMIN_NOTIF_SETTINGS,
+} from '@/components/AdminNotificationSettingsModal';
+import AdminNotificationFailureToast, {
+  NotificationFailureItem,
+} from '@/components/AdminNotificationFailureToast';
+import AdminNotificationLogsManager from '@/components/AdminNotificationLogsManager';
 
 // ── BẢNG ICON RUNG PHONG CÁCH ZALO ──
 export interface VibratingEmojiItem {
@@ -235,7 +250,7 @@ function SloganInlineEditor({
 }
 
 type AdminTab = 'dashboard' | 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff';
-export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
+export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'spam' | 'notification-logs' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
 
 // ── LOGOUT CONFIRMATION MODAL ──────────────────────────────────────────────
 function LogoutConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
@@ -1207,26 +1222,49 @@ export default function AdminDashboardPage() {
   // -------------------------------------------------------------
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const highlightTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const openAppointmentByIdRef = useRef<((id: string) => void) | null>(null);
 
   const handleNavigateWithHighlight = useCallback((tab: AdminTab, itemId?: string) => {
-    setActiveTab(tab);
+    // Nếu chuyển đến hồ sơ ứng viên tuyển dụng: tự động mở Tab Đội ngũ y tế & Sub-tab Tuyển dụng
+    const isJobApp =
+      tab === 'team' ||
+      (itemId && (itemId.startsWith('job_') || jobApplications.some((a) => a.id === itemId)));
+
+    if (tab === 'config' && itemId === 'notification-logs') {
+      setActiveTab('config');
+      setConfigSubTab('notification-logs');
+    } else if (isJobApp) {
+      setActiveTab('team');
+      setTeamSubTab('careers');
+    } else {
+      setActiveTab(tab);
+    }
+
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
     }
     if (itemId) {
-      setHighlightedId(itemId);
+      const cleanItemId = itemId.startsWith('job_') ? itemId.replace('job_', '') : itemId;
+      setHighlightedId(cleanItemId);
       // Đợi DOM render sau khi chuyển tab rồi cuộn tới hàng và tô xanh
       setTimeout(() => {
         const el =
-          document.getElementById(`appointment-row-${itemId}`) ||
-          document.getElementById(`applicant-row-${itemId}`) ||
-          document.getElementById(`review-row-${itemId}`) ||
-          document.getElementById(itemId);
+          document.getElementById(`appointment-row-${cleanItemId}`) ||
+          document.getElementById(`applicant-row-${cleanItemId}`) ||
+          document.getElementById(`review-row-${cleanItemId}`) ||
+          document.getElementById(cleanItemId);
 
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 250);
+      }, 350);
+
+      // Nếu là lịch hẹn, tự động mở luôn modal Chi Tiết & Chốt Lịch Hẹn
+      if (tab === 'appointments' && openAppointmentByIdRef.current) {
+        setTimeout(() => {
+          openAppointmentByIdRef.current?.(cleanItemId);
+        }, 150);
+      }
 
       // Tự động bỏ tô xanh sau 4 giây (như rê chuột vào xong nhả ra)
       highlightTimerRef.current = setTimeout(() => {
@@ -1235,7 +1273,7 @@ export default function AdminDashboardPage() {
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, []);
+  }, [jobApplications]);
 
   const handleUpdateApplicantStatus = useCallback(async (appId: string, newStatus: string) => {
     try {
@@ -1786,6 +1824,74 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Cài đặt Tiêu đề & Chú thích mục Chi nhánh ngoài trang chủ
+  const [isBranchTitleModalOpen, setIsBranchTitleModalOpen] = useState(false);
+  const [branchTitleInput, setBranchTitleInput] = useState('');
+  const [branchDescInput, setBranchDescInput] = useState('');
+  const [isSavingBranchTitle, setIsSavingBranchTitle] = useState(false);
+  const [branchTitleEnInput, setBranchTitleEnInput] = useState('');
+  const [branchDescEnInput, setBranchDescEnInput] = useState('');
+  const [branchTitleLang, setBranchTitleLang] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingBranchTitle, setIsTranslatingBranchTitle] = useState(false);
+
+  // Cấu hình Slogan & 2 Nút Đầu Trang (Hero Banner)
+  const [isSavingHeroControls, setIsSavingHeroControls] = useState(false);
+  const [heroPosDevice, setHeroPosDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [heroCardLang, setHeroCardLang] = useState<'vi' | 'en'>('vi');
+  const [heroNudgeStep, setHeroNudgeStep] = useState<number>(20);
+
+  const handleNudgeHeroPosition = (dx: number, dy: number) => {
+    if (heroPosDevice === 'desktop') {
+      setConfigForm((prev) => ({
+        ...prev,
+        hero_slogan_x_desktop: (prev.hero_slogan_x_desktop ?? 0) + dx,
+        hero_slogan_y_desktop: (prev.hero_slogan_y_desktop ?? 0) + dy,
+      }));
+    } else {
+      setConfigForm((prev) => ({
+        ...prev,
+        hero_slogan_x_mobile: (prev.hero_slogan_x_mobile ?? 0) + dx,
+        hero_slogan_y_mobile: (prev.hero_slogan_y_mobile ?? 0) + dy,
+      }));
+    }
+  };
+
+  const handleSetHeroPreset = (preset: 'left' | 'center' | 'right') => {
+    if (heroPosDevice === 'desktop') {
+      const xMap = { left: -320, center: 0, right: 320 };
+      setConfigForm((prev) => ({
+        ...prev,
+        hero_slogan_x_desktop: xMap[preset],
+        hero_slogan_align_desktop: preset,
+      }));
+    } else {
+      const xMap = { left: -60, center: 0, right: 60 };
+      setConfigForm((prev) => ({
+        ...prev,
+        hero_slogan_x_mobile: xMap[preset],
+        hero_slogan_align_mobile: preset,
+      }));
+    }
+  };
+
+  const handleResetHeroPosition = () => {
+    if (heroPosDevice === 'desktop') {
+      setConfigForm((prev) => ({
+        ...prev,
+        hero_slogan_x_desktop: 0,
+        hero_slogan_y_desktop: 0,
+        hero_slogan_align_desktop: 'center',
+      }));
+    } else {
+      setConfigForm((prev) => ({
+        ...prev,
+        hero_slogan_x_mobile: 0,
+        hero_slogan_y_mobile: 0,
+        hero_slogan_align_mobile: 'center',
+      }));
+    }
+  };
+
   // -------------------------------------------------------------
   // TAB 3: CẤU HÌNH LIÊN HỆ & MẠNG XÃ HỘI
   // -------------------------------------------------------------
@@ -2049,6 +2155,145 @@ export default function AdminDashboardPage() {
     setConfigForm(globalConfig);
   }, [globalConfig]);
 
+  const handleOpenBranchTitleModal = () => {
+    setBranchTitleInput(
+      configForm.section_chi_nhanh_tieu_de ||
+      globalConfig.section_chi_nhanh_tieu_de ||
+      '<h2>Hệ Thống Cơ Sở &amp; <br /><span style="color: #2D5A27; font-style: italic;">Bản Đồ Chỉ Đường Trực Quan</span></h2>'
+    );
+    setBranchDescInput(
+      configForm.section_chi_nhanh_mo_ta ||
+      globalConfig.section_chi_nhanh_mo_ta ||
+      ''
+    );
+    setBranchTitleEnInput(
+      configForm.section_chi_nhanh_tieu_de_en ||
+      globalConfig.section_chi_nhanh_tieu_de_en ||
+      '<h2>Clinic Network &amp; <br /><span style="color: #2D5A27; font-style: italic;">Interactive Direction Maps</span></h2>'
+    );
+    setBranchDescEnInput(
+      configForm.section_chi_nhanh_mo_ta_en ||
+      globalConfig.section_chi_nhanh_mo_ta_en ||
+      ''
+    );
+    setBranchTitleLang('vi');
+    setIsBranchTitleModalOpen(true);
+  };
+
+  const handleAutoTranslateBranchTitle = async () => {
+    setIsTranslatingBranchTitle(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            section_chi_nhanh_tieu_de: branchTitleInput || '',
+            section_chi_nhanh_mo_ta: branchDescInput || '',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        if (data.translations.section_chi_nhanh_tieu_de !== undefined) {
+          setBranchTitleEnInput(data.translations.section_chi_nhanh_tieu_de);
+        }
+        if (data.translations.section_chi_nhanh_mo_ta !== undefined) {
+          setBranchDescEnInput(data.translations.section_chi_nhanh_mo_ta);
+        }
+        setBranchTitleLang('en');
+        showNotification('success', 'Đã chuyển đổi tiêu đề & chú thích sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingBranchTitle(false);
+    }
+  };
+
+  const handleSaveBranchTitle = async () => {
+    setIsSavingBranchTitle(true);
+    try {
+      const payload = {
+        id: 'system',
+        section_chi_nhanh_tieu_de: branchTitleInput,
+        section_chi_nhanh_mo_ta: branchDescInput,
+        section_chi_nhanh_tieu_de_en: branchTitleEnInput,
+        section_chi_nhanh_mo_ta_en: branchDescEnInput,
+        ngay_cap_nhat: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('cau_hinh').upsert([payload]);
+      if (error) throw error;
+
+      setConfigForm((prev) => ({
+        ...prev,
+        section_chi_nhanh_tieu_de: branchTitleInput,
+        section_chi_nhanh_mo_ta: branchDescInput,
+        section_chi_nhanh_tieu_de_en: branchTitleEnInput,
+        section_chi_nhanh_mo_ta_en: branchDescEnInput,
+      }));
+      await refreshConfig();
+      showNotification('success', 'Đã lưu tiêu đề & chú thích mục Chi Nhánh thành công!');
+      setIsBranchTitleModalOpen(false);
+    } catch (err: any) {
+      console.error('Lỗi lưu tiêu đề chi nhánh:', err);
+      showNotification('error', `Lỗi lưu tiêu đề: ${err.message}`);
+    } finally {
+      setIsSavingBranchTitle(false);
+    }
+  };
+
+  const handleSaveHeroControls = async () => {
+    setIsSavingHeroControls(true);
+    try {
+      const payload = {
+        id: 'system',
+        slogan_dau_trang_tieu_de: configForm.slogan_dau_trang_tieu_de || '',
+        slogan_dau_trang_tieu_de_en: configForm.slogan_dau_trang_tieu_de_en || '',
+        hero_nut_1_text: configForm.hero_nut_1_text ?? 'Đặt Lịch Thăm Khám',
+        hero_nut_1_text_en: configForm.hero_nut_1_text_en ?? 'Book Appointment',
+        hero_nut_1_link: configForm.hero_nut_1_link ?? '#booking',
+        hero_nut_1_hien_thi: configForm.hero_nut_1_hien_thi !== false,
+        hero_nut_2_text: configForm.hero_nut_2_text ?? 'Xem Dịch Vụ',
+        hero_nut_2_text_en: configForm.hero_nut_2_text_en ?? 'Our Services',
+        hero_nut_2_link: configForm.hero_nut_2_link ?? '#services',
+        hero_nut_2_hien_thi: configForm.hero_nut_2_hien_thi !== false,
+        hero_slogan_x_desktop: configForm.hero_slogan_x_desktop ?? 0,
+        hero_slogan_y_desktop: configForm.hero_slogan_y_desktop ?? 0,
+        hero_slogan_align_desktop: configForm.hero_slogan_align_desktop || 'center',
+        hero_slogan_x_mobile: configForm.hero_slogan_x_mobile ?? 0,
+        hero_slogan_y_mobile: configForm.hero_slogan_y_mobile ?? 0,
+        hero_slogan_align_mobile: configForm.hero_slogan_align_mobile || 'center',
+        ngay_cap_nhat: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('cau_hinh').upsert([payload]);
+      if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('petmm_system_config_cache');
+          const prevCache = cached ? JSON.parse(cached) : {};
+          const newCache = { ...prevCache, ...payload };
+          localStorage.setItem('petmm_system_config_cache', JSON.stringify(newCache));
+          const r = document.documentElement;
+          r.style.setProperty('--hero-x-desktop', `${payload.hero_slogan_x_desktop}px`);
+          r.style.setProperty('--hero-y-desktop', `${payload.hero_slogan_y_desktop}px`);
+          r.style.setProperty('--hero-x-mobile', `${payload.hero_slogan_x_mobile}px`);
+          r.style.setProperty('--hero-y-mobile', `${payload.hero_slogan_y_mobile}px`);
+        } catch {}
+      }
+
+      await refreshConfig();
+      showNotification('success', 'Đã lưu cấu hình Slogan & 2 Nút Đầu Trang thành công!');
+    } catch (err: any) {
+      console.error('Lỗi lưu cấu hình Hero:', err);
+      showNotification('error', `Lỗi lưu cấu hình: ${err.message}`);
+    } finally {
+      setIsSavingHeroControls(false);
+    }
+  };
+
   const handleSaveConfig = async (e?: React.FormEvent) => {
     if (e && e.preventDefault) e.preventDefault();
     setIsConfigSaving(true);
@@ -2101,6 +2346,24 @@ export default function AdminDashboardPage() {
         'tieu_de_trang_en',
         'slogan_dau_trang_tieu_de_en',
         'slogan_dau_trang_noi_dung_en',
+        'hero_nut_1_text',
+        'hero_nut_1_text_en',
+        'hero_nut_1_link',
+        'hero_nut_1_hien_thi',
+        'hero_nut_2_text',
+        'hero_nut_2_text_en',
+        'hero_nut_2_link',
+        'hero_nut_2_hien_thi',
+        'section_chi_nhanh_tieu_de',
+        'section_chi_nhanh_mo_ta',
+        'section_chi_nhanh_tieu_de_en',
+        'section_chi_nhanh_mo_ta_en',
+        'hero_slogan_x_desktop',
+        'hero_slogan_y_desktop',
+        'hero_slogan_align_desktop',
+        'hero_slogan_x_mobile',
+        'hero_slogan_y_mobile',
+        'hero_slogan_align_mobile',
       ];
 
       const payload: Record<string, any> = {
@@ -2122,6 +2385,8 @@ export default function AdminDashboardPage() {
         contact: 'Hotline & Mạng xã hội',
         email: 'Email',
         zalo: 'Zalo OA (ZNS)',
+        spam: 'Chống Spam Đặt Lịch',
+        'notification-logs': 'Nhật ký gửi tin',
         about: 'Giới thiệu & Triết lý',
         slides: 'Slide ảnh giới thiệu',
         stats: 'Thông số thống kê',
@@ -2169,12 +2434,24 @@ export default function AdminDashboardPage() {
     zalo_review_enabled: true,
     zalo_access_token: '',
     zalo_refresh_token: '',
-    zalo_test_phone: '0364605514',
+    zalo_test_phone: '',
   });
   const [isZaloSaving, setIsZaloSaving] = useState(false);
   const [isZaloTesting, setIsZaloTesting] = useState(false);
+  const [testZaloTemplateType, setTestZaloTemplateType] = useState<'booking' | 'review'>('booking');
   const [showZaloSecret, setShowZaloSecret] = useState(false);
   const [showZaloToken, setShowZaloToken] = useState(false);
+
+  // Cấu hình Chống Spam Đặt Lịch (IP, Số Điện Thoại, Email)
+  const [antiSpamForm, setAntiSpamForm] = useState({
+    spam_limit_enabled: true,
+    spam_limit_ip: true,
+    spam_limit_phone: true,
+    spam_limit_email: true,
+    spam_max_bookings_per_day: 3,
+    spam_cooldown_seconds: 15,
+  });
+  const [isAntiSpamSaving, setIsAntiSpamSaving] = useState(false);
 
   // Cấu hình Template Email song ngữ gửi cho khách hàng
   const [emailTemplateForm, setEmailTemplateForm] = useState<{
@@ -2275,7 +2552,7 @@ export default function AdminDashboardPage() {
           zalo_review_enabled: data.zalo.zalo_review_enabled !== undefined ? Boolean(data.zalo.zalo_review_enabled) : true,
           zalo_access_token: data.zalo.zalo_access_token || '',
           zalo_refresh_token: data.zalo.zalo_refresh_token || '',
-          zalo_test_phone: data.zalo.zalo_test_phone || '0364605514',
+          zalo_test_phone: data.zalo.zalo_test_phone || '',
         });
       }
       if (data.success && data.template) {
@@ -2290,6 +2567,16 @@ export default function AdminDashboardPage() {
           ...data.recruitmentTemplate,
         }));
       }
+      if (data.success && data.antiSpam) {
+        setAntiSpamForm({
+          spam_limit_enabled: Boolean(data.antiSpam.spam_limit_enabled),
+          spam_limit_ip: Boolean(data.antiSpam.spam_limit_ip),
+          spam_limit_phone: Boolean(data.antiSpam.spam_limit_phone),
+          spam_limit_email: Boolean(data.antiSpam.spam_limit_email),
+          spam_max_bookings_per_day: typeof data.antiSpam.spam_max_bookings_per_day === 'number' ? data.antiSpam.spam_max_bookings_per_day : 3,
+          spam_cooldown_seconds: typeof data.antiSpam.spam_cooldown_seconds === 'number' ? data.antiSpam.spam_cooldown_seconds : 15,
+        });
+      }
     } catch (err: any) {
       console.error('Lỗi tải cấu hình SMTP & Template:', err);
     } finally {
@@ -2298,7 +2585,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (configSubTab === 'email' || configSubTab === 'zalo') {
+    if (configSubTab === 'email' || configSubTab === 'zalo' || configSubTab === 'spam') {
       loadSmtpConfig();
     }
   }, [configSubTab, loadSmtpConfig]);
@@ -2337,7 +2624,7 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/admin/email-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zalo: zaloForm }),
+        body: JSON.stringify({ zalo: { ...zaloForm, zalo_enabled: true, zalo_booking_enabled: true, zalo_review_enabled: true } }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -2353,7 +2640,265 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleTestZalo = async (targetPhone?: string) => {
+  const handleSaveAntiSpam = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsAntiSpamSaving(true);
+    try {
+      const res = await fetch('/api/admin/email-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ antiSpam: antiSpamForm }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotification('error', data.message || 'Không thể lưu cài đặt chống spam!');
+        return;
+      }
+      showNotification(
+        'success',
+        antiSpamForm.spam_limit_enabled
+          ? 'Đã bật & lưu cài đặt Chống Spam Đặt Lịch thành công!'
+          : 'Đã tắt Chống Spam Đặt Lịch!'
+      );
+      loadSmtpConfig();
+    } catch (err: any) {
+      showNotification('error', 'Lỗi: ' + (err.message || 'Không thể lưu'));
+    } finally {
+      setIsAntiSpamSaving(false);
+    }
+  };
+
+  const renderAntiSpamCard = () => (
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+      {/* Header Thẻ */}
+      <div className="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${
+            antiSpamForm.spam_limit_enabled 
+              ? 'bg-emerald-50 text-[#2D5A27] border-emerald-200' 
+              : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <span>Cài Đặt Chống Spam Đặt Lịch (IP, SĐT, Email & Giới Hạn)</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Quản lý giới hạn đặt lịch theo IP, số điện thoại và email để bảo vệ hệ thống.
+            </p>
+          </div>
+        </div>
+
+        {/* Master Switch Bật / Tắt Chống Spam Tổng */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <label className="inline-flex items-center gap-2.5 cursor-pointer select-none bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl transition shadow-2xs">
+            <input
+              type="checkbox"
+              checked={antiSpamForm.spam_limit_enabled}
+              onChange={(e) => setAntiSpamForm((prev) => ({ ...prev, spam_limit_enabled: e.target.checked }))}
+              className="sr-only"
+            />
+            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+              antiSpamForm.spam_limit_enabled
+                ? 'bg-[#2D5A27] border-[#2D5A27] text-white'
+                : 'border-slate-300 bg-white text-transparent'
+            }`}>
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            </div>
+            <div className="text-xs font-bold">
+              {antiSpamForm.spam_limit_enabled ? (
+                <span className="text-[#2D5A27] flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#2D5A27] animate-pulse"></span>
+                  Đang Bật Chống Spam (Bảo Vệ)
+                </span>
+              ) : (
+                <span className="text-amber-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  Đang Tắt Chống Spam
+                </span>
+              )}
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* 3 TIÊU CHÍ CHỐNG SPAM RIÊNG LẺ */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-[#2D5A27]" />
+          <span>Chọn các tiêu chí muốn kích hoạt chống spam:</span>
+        </label>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Tiêu chí 1: Địa chỉ IP */}
+          <label className={`relative p-3.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
+            antiSpamForm.spam_limit_ip && antiSpamForm.spam_limit_enabled
+              ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+              : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+          }`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={antiSpamForm.spam_limit_ip}
+                  disabled={!antiSpamForm.spam_limit_enabled}
+                  onChange={(e) => setAntiSpamForm((prev) => ({ ...prev, spam_limit_ip: e.target.checked }))}
+                  className="rounded border-slate-300 text-[#2D5A27] focus:ring-[#2D5A27] w-4 h-4 cursor-pointer disabled:opacity-40"
+                />
+                <span className="text-xs font-bold text-slate-800">1. Chặn theo Địa Chỉ IP</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                antiSpamForm.spam_limit_ip && antiSpamForm.spam_limit_enabled
+                  ? 'bg-emerald-100 text-[#2D5A27]'
+                  : 'bg-slate-200 text-slate-600'
+              }`}>
+                {antiSpamForm.spam_limit_ip && antiSpamForm.spam_limit_enabled ? 'Bật' : 'Tắt'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              Chặn cùng 1 thiết bị mạng / wifi gửi quá số lần tối đa trong 1 ngày.
+            </p>
+          </label>
+
+          {/* Tiêu chí 2: Số Điện Thoại */}
+          <label className={`relative p-3.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
+            antiSpamForm.spam_limit_phone && antiSpamForm.spam_limit_enabled
+              ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+              : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+          }`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={antiSpamForm.spam_limit_phone}
+                  disabled={!antiSpamForm.spam_limit_enabled}
+                  onChange={(e) => setAntiSpamForm((prev) => ({ ...prev, spam_limit_phone: e.target.checked }))}
+                  className="rounded border-slate-300 text-[#2D5A27] focus:ring-[#2D5A27] w-4 h-4 cursor-pointer disabled:opacity-40"
+                />
+                <span className="text-xs font-bold text-slate-800">2. Chặn theo Số Điện Thoại</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                antiSpamForm.spam_limit_phone && antiSpamForm.spam_limit_enabled
+                  ? 'bg-emerald-100 text-[#2D5A27]'
+                  : 'bg-slate-200 text-slate-600'
+              }`}>
+                {antiSpamForm.spam_limit_phone && antiSpamForm.spam_limit_enabled ? 'Bật' : 'Tắt'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              Chặn nếu cùng 1 số điện thoại thực hiện đặt quá số lần tối đa trong 1 ngày.
+            </p>
+          </label>
+
+          {/* Tiêu chí 3: Email */}
+          <label className={`relative p-3.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
+            antiSpamForm.spam_limit_email && antiSpamForm.spam_limit_enabled
+              ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+              : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+          }`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={antiSpamForm.spam_limit_email}
+                  disabled={!antiSpamForm.spam_limit_enabled}
+                  onChange={(e) => setAntiSpamForm((prev) => ({ ...prev, spam_limit_email: e.target.checked }))}
+                  className="rounded border-slate-300 text-[#2D5A27] focus:ring-[#2D5A27] w-4 h-4 cursor-pointer disabled:opacity-40"
+                />
+                <span className="text-xs font-bold text-slate-800">3. Chặn theo Hòm Thư Email</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                antiSpamForm.spam_limit_email && antiSpamForm.spam_limit_enabled
+                  ? 'bg-emerald-100 text-[#2D5A27]'
+                  : 'bg-slate-200 text-slate-600'
+              }`}>
+                {antiSpamForm.spam_limit_email && antiSpamForm.spam_limit_enabled ? 'Bật' : 'Tắt'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              Chặn nếu cùng 1 địa chỉ email được dùng để đặt lịch vượt quá giới hạn ngày.
+            </p>
+          </label>
+        </div>
+      </div>
+
+      {/* THIẾT LẬP THÔNG SỐ GIỚI HẠN (SỐ LẦN & COOLDOWN) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+        {/* 1. Số lần đặt tối đa / ngày */}
+        <div className="space-y-1.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+            <span>Số Lần Đặt Tối Đa Trong 1 Ngày: *</span>
+            <span className="text-[11px] font-mono font-bold text-[#2D5A27]">
+              {antiSpamForm.spam_max_bookings_per_day} lần/ngày
+            </span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            required
+            value={antiSpamForm.spam_max_bookings_per_day}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              setAntiSpamForm((prev) => ({
+                ...prev,
+                spam_max_bookings_per_day: isNaN(val) ? 1 : Math.max(1, val),
+              }));
+            }}
+            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
+          />
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Mặc định là <strong>3 lần</strong>. Nếu khách hoặc IP đặt sang lần thứ {antiSpamForm.spam_max_bookings_per_day + 1}, hệ thống sẽ từ chối và thông báo đạt giới hạn.
+          </p>
+        </div>
+
+        {/* 2. Cooldown giây giữa 2 lần bấm */}
+        <div className="space-y-1.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+            <span>Thời Gian Chờ Giữa 2 Lần Đặt (Giây): *</span>
+            <span className="text-[11px] font-mono font-bold text-[#2D5A27]">
+              {antiSpamForm.spam_cooldown_seconds} giây
+            </span>
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={300}
+            required
+            value={antiSpamForm.spam_cooldown_seconds}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              setAntiSpamForm((prev) => ({
+                ...prev,
+                spam_cooldown_seconds: isNaN(val) ? 0 : Math.max(0, val),
+              }));
+            }}
+            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-bold focus:border-[#2D5A27] focus:outline-none bg-white"
+          />
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Mặc định là <strong>15 giây</strong>. Ngăn chặn bot hoặc click liên tục nhiều lần cùng một thời điểm. Đặt là <strong>0</strong> nếu không muốn chờ.
+          </p>
+        </div>
+      </div>
+
+      {/* Nút Submit Lưu Cài Đặt Chống Spam */}
+      <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => handleSaveAntiSpam()}
+          disabled={isAntiSpamSaving}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+        >
+          {isAntiSpamSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{isAntiSpamSaving ? 'Đang lưu...' : 'Lưu Cài Đặt Chống Spam'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const handleTestZalo = async (targetPhone?: string, overrideTemplateType?: 'booking' | 'review') => {
+    const activeType = overrideTemplateType || testZaloTemplateType;
     const phoneToTest = (typeof targetPhone === 'string' && targetPhone.trim())
       ? targetPhone.trim()
       : (zaloForm.zalo_test_phone || '').trim();
@@ -2361,6 +2906,17 @@ export default function AdminDashboardPage() {
       showNotification('error', 'Vui lòng nhập số điện thoại nhận tin ZNS thử nghiệm!');
       return;
     }
+    const currentTemplateId = (activeType === 'review'
+      ? (zaloForm.zalo_review_template_id || '')
+      : (zaloForm.zalo_template_id || '')
+    ).trim();
+    const typeLabel = activeType === 'review' ? 'Đánh Giá Dịch Vụ' : 'Xác Nhận Lịch Hẹn';
+
+    if (!currentTemplateId) {
+      showNotification('error', `Vui lòng nhập Template ID cho Mẫu ${typeLabel} trước khi gửi thử!`);
+      return;
+    }
+
     setIsZaloTesting(true);
     try {
       const res = await fetch('/api/admin/zalo/test', {
@@ -2368,20 +2924,22 @@ export default function AdminDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: phoneToTest,
+          templateType: activeType,
           zalo_oa_id: zaloForm.zalo_oa_id,
           zalo_app_id: zaloForm.zalo_app_id,
           zalo_secret_key: zaloForm.zalo_secret_key,
           zalo_template_id: zaloForm.zalo_template_id,
+          zalo_review_template_id: zaloForm.zalo_review_template_id,
           zalo_access_token: zaloForm.zalo_access_token,
           zalo_refresh_token: zaloForm.zalo_refresh_token,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        showNotification('error', data.message || 'Gửi ZNS thử nghiệm thất bại!');
+        showNotification('error', data.message || `Gửi ZNS thử nghiệm [${typeLabel}] thất bại!`);
         return;
       }
-      showNotification('success', data.message || `Đã gửi tin nhắn ZNS thử nghiệm thành công tới ${phoneToTest}!`);
+      showNotification('success', data.message || `Đã gửi tin nhắn ZNS [${typeLabel}] thử nghiệm thành công tới ${phoneToTest}!`);
       if (data.tokensUpdated) {
         loadSmtpConfig();
       }
@@ -3368,18 +3926,837 @@ export default function AdminDashboardPage() {
   };
 
   const extractEmailAndNote = (ghiChu?: string | null) => {
-    if (!ghiChu) return { email: null, cleanNote: '' };
+    if (!ghiChu) return { email: null, cleanNote: '', lang: 'vi' as 'vi' | 'en' };
     const emailMatch = ghiChu.match(/\[Email:\s*([^\]]+)\]/i);
     const email = emailMatch ? emailMatch[1].trim() : null;
+    const langMatch = ghiChu.match(/\[Lang:\s*(en|vi)\]/i);
+    const lang = (langMatch ? langMatch[1].toLowerCase() : 'vi') as 'vi' | 'en';
     const cleanNote = ghiChu
+      .replace(/\[Lang:\s*[^\]]+\]/gi, '')
       .replace(/\[Email:\s*[^\]]+\]/gi, '')
       .replace(/\[IP:\s*[^\]]+\]/gi, '')
       .trim();
-    return { email, cleanNote };
+    return { email, cleanNote, lang };
+  };
+
+  // Hàm chuyển đổi Dịch Vụ sang Tiếng Việt cho danh sách quản trị
+  const getAdminServiceVi = (serviceStr?: string | null): string => {
+    if (!serviceStr || !serviceStr.trim()) return 'Khám Tổng Quát & Tư Vấn';
+    const cleanRaw = serviceStr.replace(/^[;,\s]+|[;,\s]+$/g, '');
+    const parts = cleanRaw.split(/,\s*|\s*;\s*/).map((s) => s.trim().replace(/^[;,\s]+|[;,\s]+$/g, '')).filter(Boolean);
+    const translated = parts.map((srv) => {
+      const found = services.find(
+        (s) =>
+          s.ten_dich_vu_en?.toLowerCase() === srv.toLowerCase() ||
+          s.ten_dich_vu.toLowerCase() === srv.toLowerCase()
+      );
+      if (found) return found.ten_dich_vu;
+
+      const lower = srv.toLowerCase();
+      if (lower === 'try the service' || lower.includes('try the service')) return 'Khám & Trải Nghiệm Dịch Vụ';
+      if (lower.includes('general health') || lower.includes('consultation') || lower.includes('tổng quát') || lower.includes('khám')) {
+        return 'Khám Sức Khỏe Tổng Quát & Tư Vấn';
+      }
+      if (lower.includes('preventive vaccination') || lower.includes('vaccin') || lower.includes('tiêm')) {
+        return 'Tiêm Chủng Vaccine Dự Phòng Chuẩn GSP';
+      }
+      if (lower.includes('imaging') || lower.includes('diagnost') || lower.includes('xét nghiệm') || lower.includes('chẩn đoán')) {
+        return 'Xét Nghiệm & Chẩn Đoán Hình Ảnh Kỹ Thuật Số';
+      }
+      if (lower.includes('surger') || lower.includes('neuter') || lower.includes('phẫu thuật') || lower.includes('triệt sản')) {
+        return 'Phẫu Thuật Ngoại Khoa & Triệt Sản An Toàn';
+      }
+      if (lower.includes('emergency') || lower.includes('inpatient') || lower.includes('cấp cứu') || lower.includes('nội trú')) {
+        return 'Điều Trị Nội Trú & Hồi Sức Cấp Cứu 24/7';
+      }
+      if (lower.includes('spa') || lower.includes('groom') || lower.includes('cắt tỉa')) {
+        return 'Spa Grooming & Cắt Tỉa Tạo Kiểu 5 Sao';
+      }
+      if (lower.includes('hotel') || lower.includes('khách sạn') || lower.includes('lưu trú')) {
+        return 'Khách Sạn Thú Cưng & Lưu Trú Tiêu Chuẩn';
+      }
+      return srv;
+    });
+    return Array.from(new Set(translated)).join(', ');
+  };
+
+  // Hàm chuyển đổi Cơ Sở sang Tiếng Việt chuẩn cho danh sách quản trị
+  const getAdminBranchVi = (branchStr?: string | null, branchId?: string | null): string => {
+    if (!branchStr && !branchId) return 'Hệ Thống Bệnh Viện Thú Y PetM&M';
+    const found = branches.find(
+      (b) =>
+        (branchId && b.id === branchId) ||
+        (branchStr &&
+          ((b.ten_chi_nhanh && branchStr.includes(b.ten_chi_nhanh)) ||
+            (b.ten_ngan && branchStr.includes(b.ten_ngan)) ||
+            (b.ten_chi_nhanh_en && branchStr.includes(b.ten_chi_nhanh_en)) ||
+            (b.ten_ngan_en && branchStr.includes(b.ten_ngan_en))))
+    );
+    if (found) {
+      const title = found.ten_ngan || found.ten_chi_nhanh;
+      const addr = found.dia_chi;
+      return addr ? `${title} — ${addr}` : title;
+    }
+
+    let str = (branchStr || '').trim();
+    str = str.replace(/City facility\.?\s*Thu Duc/gi, 'Cơ sở TP. Thủ Đức — 19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh');
+    str = str.replace(/Thu Duc City Branch/gi, 'Cơ sở TP. Thủ Đức');
+    str = str.replace(/PetM&M Pet Hospital Clinic/gi, 'Hệ Thống Bệnh Viện Thú Y PetM&M');
+    str = str.replace(/PetM&M Veterinary Clinic System/gi, 'Hệ Thống Bệnh Viện Thú Y PetM&M');
+    str = str.replace(/PetM&M Veterinary Clinic/gi, 'Bệnh Viện Thú Y PetM&M');
+    str = str.replace(/Phuoc Long Ward/gi, 'Phường Phước Long');
+    str = str.replace(/City\.?\s*Thu Duc/gi, 'TP. Thủ Đức');
+    str = str.replace(/Thu Duc City/gi, 'TP. Thủ Đức');
+    return str || 'Hệ Thống Bệnh Viện Thú Y PetM&M';
+  };
+
+  // State chỉnh sửa chi tiết lịch hẹn từ trang Admin
+  const [editAppForm, setEditAppForm] = useState<{
+    ownerName: string;
+    phone: string;
+    email: string;
+    petName: string;
+    petType: string;
+    branchId: string;
+    branchName: string;
+    services: string[];
+    customService: string;
+    date: string;
+    timeSlot: string;
+    note: string;
+    status: 'cho_xac_nhan' | 'da_xac_nhan' | 'da_kham' | 'da_huy';
+    lang: 'vi' | 'en';
+  }>({
+    ownerName: '',
+    phone: '',
+    email: '',
+    petName: '',
+    petType: 'dog',
+    branchId: '',
+    branchName: '',
+    services: [],
+    customService: '',
+    date: '',
+    timeSlot: '',
+    note: '',
+    status: 'cho_xac_nhan',
+    lang: 'vi',
+  });
+  const ADMIN_TIME_SLOTS = [
+    '08:00 - 08:30',
+    '08:30 - 09:00',
+    '09:00 - 09:30',
+    '09:30 - 10:00',
+    '10:00 - 10:30',
+    '10:30 - 11:00',
+    '11:00 - 11:30',
+    '13:30 - 14:00',
+    '14:00 - 14:30',
+    '14:30 - 15:00',
+    '15:00 - 15:30',
+    '15:30 - 16:00',
+    '16:00 - 16:30',
+    '16:30 - 17:00',
+    '17:00 - 17:30',
+    '17:30 - 18:00',
+    '18:00 - 18:30',
+    '18:30 - 19:00',
+    '19:00 - 19:30',
+    '19:30 - 20:00',
+  ];
+
+  const [isSavingAppointment, setIsSavingAppointment] = useState(false);
+  const [isSendingZalo, setIsSendingZalo] = useState(false);
+  const [isSendingConfirmEmailDetail, setIsSendingConfirmEmailDetail] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isTimeSlotDropdownOpen, setIsTimeSlotDropdownOpen] = useState(false);
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [isTranslatingToEng, setIsTranslatingToEng] = useState(false);
+  const [noteCache, setNoteCache] = useState<{ vi: string; en: string }>({ vi: '', en: '' });
+
+  // Trạng thái thông báo nổi góc dưới phải (Toast + Âm thanh + Native Windows)
+  const [floatingNotification, setFloatingNotification] = useState<FloatingAppointmentNotification | null>(null);
+  const [failureNotification, setFailureNotification] = useState<NotificationFailureItem | null>(null);
+  const [browserNotifPermission, setBrowserNotifPermission] = useState<NotificationPermission>('default');
+  const [adminNotifSettings, setAdminNotifSettings] = useState<AdminNotifSettings>(DEFAULT_ADMIN_NOTIF_SETTINGS);
+  const [isNotifSettingsModalOpen, setIsNotifSettingsModalOpen] = useState(false);
+  const knownAppointmentIdsRef = useRef<Set<string>>(new Set());
+  const isInitialAppointmentsLoadedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setBrowserNotifPermission(Notification.permission);
+    }
+    setAdminNotifSettings(getLocalAdminNotifSettings());
+  }, []);
+
+  // Mở modal và nạp toàn bộ thông tin lịch hẹn vào form chỉnh sửa
+  const handleOpenAppointmentModal = (app: LichHenRecord) => {
+    setSelectedAppointment(app);
+    const { email, cleanNote, lang } = extractEmailAndNote(app.ghi_chu);
+
+    // Tách và làm sạch danh sách dịch vụ đã chọn (loại bỏ ký tự ; , thừa)
+    const cleanRawStr = (app.dich_vu || '').replace(/^[;,\s]+|[;,\s]+$/g, '');
+    const rawServices = cleanRawStr
+      .split(/,\s*|\s*;\s*/)
+      .map((s) => s.trim().replace(/^[;,\s]+|[;,\s]+$/g, ''))
+      .filter(Boolean);
+
+    // Chuẩn hóa dịch vụ theo đúng ngôn ngữ của lịch hẹn (tránh lẫn Tiếng Anh khi ở Tiếng Việt)
+    let initialServices: string[] = [];
+    if (rawServices.length > 0) {
+      if (lang === 'vi') {
+        initialServices = rawServices.map((srv) => {
+          const found = services.find((s) => s.ten_dich_vu_en && s.ten_dich_vu_en.toLowerCase() === srv.toLowerCase());
+          if (found) return found.ten_dich_vu;
+          const lower = srv.toLowerCase();
+          if (lower.includes('general health') || lower.includes('consultation')) return 'Khám Tổng Quát & Tư Vấn';
+          if (lower.includes('vaccination')) return 'Tiêm Chủng Vaccine Dự Phòng Chuẩn GSP';
+          if (lower.includes('imaging') || lower.includes('diagnostics')) return 'Xét Nghiệm & Chẩn Đoán Hình Ảnh Kỹ Thuật Số';
+          if (lower.includes('surgery') || lower.includes('neutering')) return 'Phẫu Thuật Ngoại Khoa & Triệt Sản An Toàn';
+          if (lower.includes('emergency')) return 'Điều Trị Nội Trú & Hồi Sức Cấp Cứu 24/7';
+          if (lower.includes('spa') || lower.includes('grooming')) return 'Spa & Cắt Tỉa Tạo Kiểu Lông Thú Cưng';
+          return srv;
+        });
+      } else {
+        initialServices = rawServices.map((srv) => {
+          const found = services.find((s) => s.ten_dich_vu.toLowerCase() === srv.toLowerCase());
+          if (found && found.ten_dich_vu_en) return found.ten_dich_vu_en;
+          const lower = srv.toLowerCase();
+          if (lower.includes('tổng quát') || lower.includes('khám')) return 'General Health Check & Consultation';
+          if (lower.includes('tiêm') || lower.includes('vaccine')) return 'GSP Standard Preventive Vaccination';
+          if (lower.includes('xét nghiệm') || lower.includes('hình ảnh')) return 'Digital Imaging & Diagnostics';
+          if (lower.includes('phẫu thuật') || lower.includes('triệt sản')) return 'Safe Surgery & Neutering';
+          if (lower.includes('cấp cứu') || lower.includes('nội trú')) return 'Inpatient Care & 24/7 Emergency';
+          if (lower.includes('spa') || lower.includes('cắt tỉa')) return '5-Star Spa Grooming & Styling';
+          return srv;
+        });
+      }
+    } else {
+      initialServices = [lang === 'en' ? 'General Health Check & Consultation' : 'Khám Tổng Quát & Tư Vấn'];
+    }
+
+    // Xác định tên chi nhánh ban đầu kèm địa chỉ đầy đủ
+    let initialBranchName = app.ten_chi_nhanh || '';
+    const foundBranch = branches.find((b) => b.id === app.chi_nhanh_id || (b.ten_chi_nhanh && initialBranchName.includes(b.ten_chi_nhanh)));
+    if (foundBranch) {
+      if (lang === 'en') {
+        const title = foundBranch.ten_chi_nhanh_en || foundBranch.ten_ngan_en || foundBranch.ten_chi_nhanh;
+        const addr = foundBranch.dia_chi_en || foundBranch.dia_chi;
+        initialBranchName = addr ? `${title} — ${addr}` : title;
+      } else {
+        const title = foundBranch.ten_ngan || foundBranch.ten_chi_nhanh;
+        const addr = foundBranch.dia_chi;
+        initialBranchName = addr ? `${title} — ${addr}` : title;
+      }
+    }
+
+    // Tên thú cưng & Loại thú cưng: Mặc định để trống nếu chưa có thông tin thực tế
+    const rawPet = (app.ten_thu_cung || '').trim();
+    const lowerPet = rawPet.toLowerCase();
+    const cleanPetName =
+      rawPet &&
+      lowerPet !== 'bé cưng' &&
+      lowerPet !== 'be cung' &&
+      lowerPet !== 'beloved pet' &&
+      lowerPet !== 'pet'
+        ? rawPet
+        : '';
+
+    const cleanPetType = cleanPetName && app.loai_thu_cung && ['dog', 'cat', 'other'].includes(app.loai_thu_cung)
+      ? app.loai_thu_cung
+      : '';
+
+    setNoteCache({
+      vi: lang === 'vi' ? (cleanNote || '') : '',
+      en: lang === 'en' ? (cleanNote || '') : '',
+    });
+
+    setEditAppForm({
+      ownerName: app.ho_ten_chu || '',
+      phone: app.so_dien_thoai || '',
+      email: email || '',
+      petName: cleanPetName,
+      petType: cleanPetType,
+      branchId: app.chi_nhanh_id || '',
+      branchName: initialBranchName,
+      services: Array.from(new Set(initialServices)),
+      customService: '',
+      date: app.ngay_hen || '',
+      timeSlot: app.gio_hen || (lang === 'en' ? 'Flexible' : 'Linh hoạt'),
+      note: cleanNote || '',
+      status: (app.trang_thai as any) || 'cho_xac_nhan',
+      lang,
+    });
+    setIsCancelModalOpen(false);
+    setCancelReason('');
+    setIsTimeSlotDropdownOpen(false);
+    setIsServiceDropdownOpen(false);
+  };
+
+  // Đồng bộ ref để mở modal lịch hẹn từ mọi nguồn (chuông thông báo, toast góc dưới, Windows notification)
+  useEffect(() => {
+    openAppointmentByIdRef.current = (id: string) => {
+      const found = appointments.find((a) => a.id === id);
+      if (found) {
+        handleOpenAppointmentModal(found);
+      }
+    };
+  }, [appointments]);
+
+  // Hàm chuyển tab, highlight hàng và mở luôn modal chi tiết khi click thông báo
+  const handleOpenAppointmentFromNotification = useCallback((app: LichHenRecord) => {
+    setActiveTab('appointments');
+    setHighlightedId(app.id);
+    setTimeout(() => {
+      const el = document.getElementById(`appointment-row-${app.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 250);
+    handleOpenAppointmentModal(app);
+  }, []);
+
+  // Hàm kích hoạt trọn bộ thông báo: Toast góc dưới phải + Chuông âm thanh + Windows notification
+  const triggerNewAppointmentNotification = useCallback(
+    (app: LichHenRecord) => {
+      const notifData: FloatingAppointmentNotification = {
+        id: app.id,
+        customerName: app.ho_ten_chu,
+        phone: app.so_dien_thoai,
+        service: app.dich_vu,
+        date: app.ngay_hen,
+        timeSlot: app.gio_hen,
+        branchName: app.ten_chi_nhanh,
+        petName: app.ten_thu_cung,
+        code: app.ma_lich_hen,
+        rawItem: app,
+      };
+
+      // Đọc cấu hình cài đặt thông báo tức thời
+      const currentConfig = getLocalAdminNotifSettings();
+
+      // 1. Hiện popup nổi ở góc dưới bên phải màn hình (nếu BẬT thông báo Web)
+      if (currentConfig.webEnabled) {
+        setFloatingNotification(notifData);
+      }
+
+      // 2. Gửi thông báo nổi của Windows / Trình duyệt nếu BẬT thông báo Trình duyệt
+      if (currentConfig.browserEnabled) {
+        sendBrowserNotification(notifData, () => {
+          handleOpenAppointmentFromNotification(app);
+        });
+        if (currentConfig.browserSound) {
+          playNotificationSound();
+        }
+      }
+    },
+    [handleOpenAppointmentFromNotification]
+  );
+
+  // Chuyển đổi ngôn ngữ modal lịch hẹn (🇻🇳 <-> 🇬🇧) tự động map chi nhánh kèm địa chỉ & dịch vụ
+  const handleChangeModalLanguage = (newLang: 'vi' | 'en') => {
+    setEditAppForm((prev) => {
+      // 1. Chuyển đổi tên cơ sở kèm địa chỉ đầy đủ
+      let newBranchName = prev.branchName;
+      const curBranch = branches.find(
+        (b) => b.id === prev.branchId || (b.ten_chi_nhanh && prev.branchName.includes(b.ten_chi_nhanh))
+      );
+      if (curBranch) {
+        if (newLang === 'en') {
+          const title = curBranch.ten_chi_nhanh_en || curBranch.ten_ngan_en || curBranch.ten_chi_nhanh;
+          const addr = curBranch.dia_chi_en || curBranch.dia_chi;
+          newBranchName = addr ? `${title} — ${addr}` : title;
+        } else {
+          const title = curBranch.ten_ngan || curBranch.ten_chi_nhanh;
+          const addr = curBranch.dia_chi;
+          newBranchName = addr ? `${title} — ${addr}` : title;
+        }
+      }
+
+      // 2. Chuyển đổi các dịch vụ đã chọn chuẩn xác 100%
+      const newServices = prev.services.map((srv) => {
+        if (newLang === 'en') {
+          const found = services.find((s) => s.ten_dich_vu.toLowerCase() === srv.toLowerCase());
+          if (found && found.ten_dich_vu_en) return found.ten_dich_vu_en;
+          const lower = srv.toLowerCase();
+          if (lower.includes('tổng quát') || lower.includes('khám')) return 'General Health Check & Consultation';
+          if (lower.includes('tiêm') || lower.includes('vaccine')) return 'GSP Standard Preventive Vaccination';
+          if (lower.includes('xét nghiệm') || lower.includes('hình ảnh')) return 'Digital Imaging & Diagnostics';
+          if (lower.includes('phẫu thuật') || lower.includes('triệt sản')) return 'Safe Surgery & Neutering';
+          if (lower.includes('cấp cứu') || lower.includes('nội trú')) return 'Inpatient Care & 24/7 Emergency';
+          if (lower.includes('spa') || lower.includes('cắt tỉa')) return '5-Star Spa Grooming & Styling';
+          return srv;
+        } else {
+          const found = services.find((s) => s.ten_dich_vu_en && s.ten_dich_vu_en.toLowerCase() === srv.toLowerCase());
+          if (found && found.ten_dich_vu) return found.ten_dich_vu;
+          const lower = srv.toLowerCase();
+          if (lower.includes('general health') || lower.includes('consultation')) return 'Khám Tổng Quát & Tư Vấn';
+          if (lower.includes('vaccination')) return 'Tiêm Chủng Vaccine Dự Phòng Chuẩn GSP';
+          if (lower.includes('imaging') || lower.includes('diagnostics')) return 'Xét Nghiệm & Chẩn Đoán Hình Ảnh Kỹ Thuật Số';
+          if (lower.includes('surgery') || lower.includes('neutering')) return 'Phẫu Thuật Ngoại Khoa & Triệt Sản An Toàn';
+          if (lower.includes('emergency')) return 'Điều Trị Nội Trú & Hồi Sức Cấp Cứu 24/7';
+          if (lower.includes('spa') || lower.includes('grooming')) return 'Spa & Cắt Tỉa Tạo Kiểu Lông Thú Cưng';
+          return srv;
+        }
+      });
+
+      // 3. Khung giờ mặc định
+      let newTimeSlot = prev.timeSlot;
+      if (newLang === 'en' && newTimeSlot === 'Linh hoạt') newTimeSlot = 'Flexible';
+      if (newLang === 'vi' && newTimeSlot === 'Flexible') newTimeSlot = 'Linh hoạt';
+
+      // 4. Khôi phục Ghi chú theo ngôn ngữ tương ứng
+      let nextNote = prev.note;
+      if (newLang === 'vi' && noteCache.vi) {
+        nextNote = noteCache.vi;
+      } else if (newLang === 'en' && noteCache.en) {
+        nextNote = noteCache.en;
+      }
+
+      return {
+        ...prev,
+        lang: newLang,
+        branchName: newBranchName,
+        services: Array.from(new Set(newServices)),
+        petName: prev.petName,
+        timeSlot: newTimeSlot,
+        note: nextNote,
+      };
+    });
+  };
+
+  // Chuyển đổi sang ENG và tự động dịch Ghi chú / Triệu chứng sang Tiếng Anh
+  const handleTranslateAllToEng = async () => {
+    const curViNote = editAppForm.note || noteCache.vi || '';
+    if (curViNote) {
+      setNoteCache((prev) => ({ ...prev, vi: curViNote }));
+    }
+
+    handleChangeModalLanguage('en');
+
+    if (curViNote && curViNote.trim()) {
+      setIsTranslatingToEng(true);
+      try {
+        const res = await fetch('/api/admin/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: curViNote.trim() }),
+        });
+        const data = await res.json();
+        if (data.success && data.translation) {
+          setNoteCache((prev) => ({ ...prev, vi: curViNote, en: data.translation }));
+          setEditAppForm((prev) => ({ ...prev, note: data.translation }));
+          showNotification('success', 'Đã chuyển đổi sang Bản English và dịch Ghi chú sang Tiếng Anh!');
+        } else {
+          showNotification('success', 'Đã chuyển đổi thông tin sang Bản English!');
+        }
+      } catch (err) {
+        console.error('Lỗi dịch sang Tiếng Anh:', err);
+        showNotification('success', 'Đã chuyển đổi sang Bản English (Ghi chú giữ nguyên).');
+      } finally {
+        setIsTranslatingToEng(false);
+      }
+    } else {
+      showNotification('success', 'Đã chuyển đổi thông tin sang Bản English!');
+    }
+  };
+
+  // Bật/tắt dịch vụ trong form chỉnh sửa
+  const toggleServiceInEditForm = (srvName: string) => {
+    setEditAppForm((prev) => {
+      const exists = prev.services.includes(srvName);
+      const newServices = exists
+        ? prev.services.filter((s) => s !== srvName)
+        : [...prev.services, srvName];
+      return { ...prev, services: newServices };
+    });
+  };
+
+  // Thêm dịch vụ tùy chỉnh
+  const addCustomServiceInEditForm = () => {
+    if (!editAppForm.customService.trim()) return;
+    const name = editAppForm.customService.trim();
+    if (!editAppForm.services.includes(name)) {
+      setEditAppForm((prev) => ({
+        ...prev,
+        services: [...prev.services, name],
+        customService: '',
+      }));
+    } else {
+      setEditAppForm((prev) => ({ ...prev, customService: '' }));
+    }
+  };
+
+  // Lưu toàn bộ thông tin lịch hẹn đã sửa & Chuyển sang 'Đã xác nhận'
+  const handleSaveAppointmentDetail = async () => {
+    if (!selectedAppointment) return;
+    setIsSavingAppointment(true);
+    try {
+      const isEn = editAppForm.lang === 'en';
+      const finalServicesStr =
+        editAppForm.services.filter(Boolean).join(', ') ||
+        (isEn ? 'General Health Check & Consultation' : 'Khám Tổng Quát & Tư Vấn');
+      const finalGhiChu = `[Lang: ${editAppForm.lang}] ${editAppForm.email ? `[Email: ${editAppForm.email.trim()}] ` : ''}${editAppForm.note.trim()}`;
+
+      // Chuyển sang 'da_xac_nhan' nếu đang ở 'cho_xac_nhan'
+      const nextStatus = editAppForm.status === 'cho_xac_nhan' ? 'da_xac_nhan' : editAppForm.status;
+
+      const { error } = await supabase
+        .from('lich_hen')
+        .update({
+          ho_ten_chu: editAppForm.ownerName.trim(),
+          so_dien_thoai: editAppForm.phone.trim(),
+          ten_thu_cung: editAppForm.petName.trim() || '',
+          loai_thu_cung: editAppForm.petType || '',
+          chi_nhanh_id: editAppForm.branchId || null,
+          ten_chi_nhanh: editAppForm.branchName || 'Bệnh Viện Thú Y PetM&M',
+          dich_vu: finalServicesStr,
+          ngay_hen: editAppForm.date,
+          gio_hen: editAppForm.timeSlot || 'Linh hoạt',
+          ghi_chu: finalGhiChu,
+          trang_thai: nextStatus,
+          ngay_cap_nhat: new Date().toISOString(),
+        })
+        .eq('id', selectedAppointment.id);
+
+      if (error) throw error;
+
+      setEditAppForm((prev) => ({ ...prev, status: nextStatus }));
+
+      // Cập nhật state danh sách
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === selectedAppointment.id
+            ? {
+                ...a,
+                ho_ten_chu: editAppForm.ownerName.trim(),
+                so_dien_thoai: editAppForm.phone.trim(),
+                ten_thu_cung: editAppForm.petName.trim(),
+                loai_thu_cung: editAppForm.petType,
+                chi_nhanh_id: editAppForm.branchId || null,
+                ten_chi_nhanh: editAppForm.branchName,
+                dich_vu: finalServicesStr,
+                ngay_hen: editAppForm.date,
+                gio_hen: editAppForm.timeSlot,
+                ghi_chu: finalGhiChu,
+                trang_thai: nextStatus,
+              }
+            : a
+        )
+      );
+
+      setSelectedAppointment((prev) =>
+        prev
+          ? {
+              ...prev,
+              ho_ten_chu: editAppForm.ownerName.trim(),
+              so_dien_thoai: editAppForm.phone.trim(),
+              ten_thu_cung: editAppForm.petName.trim(),
+              loai_thu_cung: editAppForm.petType,
+              chi_nhanh_id: editAppForm.branchId || null,
+              ten_chi_nhanh: editAppForm.branchName,
+              dich_vu: finalServicesStr,
+              ngay_hen: editAppForm.date,
+              gio_hen: editAppForm.timeSlot,
+              ghi_chu: finalGhiChu,
+              trang_thai: nextStatus,
+            }
+          : null
+      );
+
+      if (editAppForm.status === 'cho_xac_nhan') {
+        showNotification('success', 'Đã lưu thông tin và chuyển lịch hẹn sang: ĐÃ XÁC NHẬN!');
+      } else {
+        showNotification('success', 'Đã lưu toàn bộ thông tin lịch hẹn thành công!');
+      }
+    } catch (err: any) {
+      console.error('Lỗi lưu lịch hẹn:', err);
+      showNotification('error', `Lỗi lưu lịch hẹn: ${err.message}`);
+    } finally {
+      setIsSavingAppointment(false);
+    }
+  };
+
+  // Gửi tin nhắn Zalo ZNS xác nhận lịch hẹn (chỉ gửi khi đã xác nhận & tự động chuyển sang Đã hoàn thành)
+  const handleSendZaloFromModal = async () => {
+    if (!selectedAppointment) return;
+    if (editAppForm.status === 'cho_xac_nhan') {
+      showNotification('error', 'Vui lòng bấm Lưu để xác nhận lịch hẹn trước khi gửi tin Zalo!');
+      return;
+    }
+    if (!editAppForm.phone.trim()) {
+      showNotification('error', 'Vui lòng nhập số điện thoại để gửi Zalo ZNS!');
+      return;
+    }
+    setIsSendingZalo(true);
+    try {
+      const isEn = editAppForm.lang === 'en';
+      const finalServicesStr =
+        editAppForm.services.filter(Boolean).join(', ') ||
+        (isEn ? 'General Health Check & Consultation' : 'Khám Tổng Quát & Tư Vấn');
+      const formattedDate = editAppForm.date ? editAppForm.date.split('-').reverse().join('/') : '';
+      const formattedDateTime = editAppForm.timeSlot ? `${editAppForm.timeSlot}, ${formattedDate}` : formattedDate;
+
+      // Đảm bảo tên chi nhánh kèm địa chỉ đầy đủ và chuẩn ngôn ngữ đã chọn
+      let targetBranchName = editAppForm.branchName;
+      const bObjZalo = branches.find((b) => b.id === editAppForm.branchId || (b.ten_chi_nhanh && editAppForm.branchName.includes(b.ten_chi_nhanh)));
+      if (bObjZalo) {
+        if (isEn) {
+          const title = bObjZalo.ten_chi_nhanh_en || bObjZalo.ten_ngan_en || bObjZalo.ten_chi_nhanh;
+          const addr = bObjZalo.dia_chi_en || bObjZalo.dia_chi;
+          targetBranchName = addr ? `${title} — ${addr}` : title;
+        } else {
+          const title = bObjZalo.ten_ngan || bObjZalo.ten_chi_nhanh;
+          const addr = bObjZalo.dia_chi;
+          targetBranchName = addr ? `${title} — ${addr}` : title;
+        }
+      } else if (!targetBranchName || targetBranchName.toLowerCase().includes('thủ đức') || targetBranchName.toLowerCase().includes('thu duc')) {
+        targetBranchName = isEn
+          ? 'Thu Duc City Branch — 19 Street 1, Phuoc Long Ward, Thu Duc City, Ho Chi Minh City'
+          : 'Cơ sở TP. Thủ Đức — 19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
+      }
+
+      const res = await fetch('/api/admin/zalo/send-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: selectedAppointment.id,
+          phone: editAppForm.phone.trim(),
+          bookingCode: selectedAppointment.ma_lich_hen,
+          ownerName: editAppForm.ownerName.trim(),
+          petName: editAppForm.petName.trim() || (isEn ? 'Beloved Pet' : 'Bé cưng'),
+          service: finalServicesStr,
+          dateTime: formattedDateTime,
+          branchName: targetBranchName || (isEn ? 'PetM&M Veterinary Hospital' : 'Bệnh Viện Thú Y PetM&M'),
+          isEn,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Lỗi gửi tin Zalo');
+
+      // Tự động chuyển sang 'da_kham' và cập nhật số lần gửi Zalo thành công (xóa lỗi)
+      const updatedZaloCount = (selectedAppointment.so_lan_gui_zalo || 0) + 1;
+      await supabase.from('lich_hen').update({
+        trang_thai: 'da_kham',
+        so_lan_gui_zalo: updatedZaloCount,
+        trang_thai_zalo: 'thanh_cong',
+        ngay_cap_nhat: new Date().toISOString(),
+      }).eq('id', selectedAppointment.id);
+
+      setEditAppForm((prev) => ({ ...prev, status: 'da_kham' }));
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === selectedAppointment.id
+            ? { ...a, trang_thai: 'da_kham', so_lan_gui_zalo: updatedZaloCount, trang_thai_zalo: 'thanh_cong' }
+            : a
+        )
+      );
+      setSelectedAppointment((prev) =>
+        prev
+          ? { ...prev, trang_thai: 'da_kham', so_lan_gui_zalo: updatedZaloCount, trang_thai_zalo: 'thanh_cong' }
+          : null
+      );
+
+      showNotification('success', data.message || `Đã gửi tin nhắn Zalo ZNS và chuyển trạng thái sang Đã hoàn thành!`);
+    } catch (err: any) {
+      if (selectedAppointment) {
+        try {
+          await supabase.from('lich_hen').update({ trang_thai_zalo: 'that_bai' }).eq('id', selectedAppointment.id);
+          setAppointments((prev) =>
+            prev.map((a) => (a.id === selectedAppointment.id ? { ...a, trang_thai_zalo: 'that_bai' } : a))
+          );
+          setSelectedAppointment((prev) => (prev ? { ...prev, trang_thai_zalo: 'that_bai' } : null));
+        } catch {}
+      }
+      showNotification('error', `Lỗi gửi Zalo: ${err.message}`);
+    } finally {
+      setIsSendingZalo(false);
+    }
+  };
+
+  // Gửi email xác nhận lịch hẹn (chỉ gửi khi đã xác nhận & tự động chuyển sang Đã hoàn thành)
+  const handleSendEmailFromModal = async () => {
+    if (!selectedAppointment) return;
+    if (editAppForm.status === 'cho_xac_nhan') {
+      showNotification('error', 'Vui lòng bấm Lưu để xác nhận lịch hẹn trước khi gửi Email!');
+      return;
+    }
+    if (!editAppForm.email.trim() || !editAppForm.email.includes('@')) {
+      showNotification('error', 'Vui lòng nhập địa chỉ email hợp lệ để gửi thư xác nhận!');
+      return;
+    }
+    setIsSendingConfirmEmailDetail(true);
+    try {
+      const isEn = editAppForm.lang === 'en';
+      const finalServicesStr =
+        editAppForm.services.filter(Boolean).join(', ') ||
+        (isEn ? 'General Health Check & Consultation' : 'Khám Tổng Quát & Tư Vấn');
+      const formattedDate = editAppForm.date ? editAppForm.date.split('-').reverse().join('/') : '';
+      const formattedDateTime = editAppForm.timeSlot ? `${editAppForm.timeSlot}, ${formattedDate}` : formattedDate;
+
+      // Đảm bảo tên chi nhánh kèm địa chỉ đầy đủ và chuẩn ngôn ngữ đã chọn
+      let targetBranchName = editAppForm.branchName;
+      const bObjMail = branches.find((b) => b.id === editAppForm.branchId || (b.ten_chi_nhanh && editAppForm.branchName.includes(b.ten_chi_nhanh)));
+      if (bObjMail) {
+        if (isEn) {
+          const title = bObjMail.ten_chi_nhanh_en || bObjMail.ten_ngan_en || bObjMail.ten_chi_nhanh;
+          const addr = bObjMail.dia_chi_en || bObjMail.dia_chi;
+          targetBranchName = addr ? `${title} — ${addr}` : title;
+        } else {
+          const title = bObjMail.ten_ngan || bObjMail.ten_chi_nhanh;
+          const addr = bObjMail.dia_chi;
+          targetBranchName = addr ? `${title} — ${addr}` : title;
+        }
+      } else if (!targetBranchName || targetBranchName.toLowerCase().includes('thủ đức') || targetBranchName.toLowerCase().includes('thu duc')) {
+        targetBranchName = isEn
+          ? 'Thu Duc City Branch — 19 Street 1, Phuoc Long Ward, Thu Duc City, Ho Chi Minh City'
+          : 'Cơ sở TP. Thủ Đức — 19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
+      }
+
+      const res = await fetch('/api/booking/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: selectedAppointment.id,
+          toEmail: editAppForm.email.trim(),
+          bookingCode: selectedAppointment.ma_lich_hen,
+          ownerName: editAppForm.ownerName.trim(),
+          phone: editAppForm.phone.trim(),
+          petName: editAppForm.petName.trim() || (isEn ? 'Beloved Pet' : 'Bé cưng'),
+          petType: editAppForm.petType,
+          branchName: targetBranchName || (isEn ? 'PetM&M Veterinary Hospital' : 'Bệnh Viện Thú Y PetM&M'),
+          service: finalServicesStr,
+          dateTime: formattedDateTime,
+          date: editAppForm.date,
+          timeSlot: editAppForm.timeSlot,
+          note: editAppForm.note,
+          isEn,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Lỗi gửi email');
+
+      // Tự động chuyển sang 'da_kham' và cập nhật số lần gửi Email thành công (xóa lỗi)
+      const updatedEmailCount = (selectedAppointment.so_lan_gui_email || 0) + 1;
+      await supabase.from('lich_hen').update({
+        trang_thai: 'da_kham',
+        so_lan_gui_email: updatedEmailCount,
+        trang_thai_email: 'thanh_cong',
+        ngay_cap_nhat: new Date().toISOString(),
+      }).eq('id', selectedAppointment.id);
+
+      setEditAppForm((prev) => ({ ...prev, status: 'da_kham' }));
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === selectedAppointment.id
+            ? { ...a, trang_thai: 'da_kham', so_lan_gui_email: updatedEmailCount, trang_thai_email: 'thanh_cong' }
+            : a
+        )
+      );
+      setSelectedAppointment((prev) =>
+        prev
+          ? { ...prev, trang_thai: 'da_kham', so_lan_gui_email: updatedEmailCount, trang_thai_email: 'thanh_cong' }
+          : null
+      );
+
+      showNotification(
+        'success',
+        `Đã gửi thư xác nhận (${isEn ? 'Bản Tiếng Anh' : 'Bản Tiếng Việt'}) và chuyển trạng thái sang Đã hoàn thành!`
+      );
+    } catch (err: any) {
+      if (selectedAppointment) {
+        try {
+          await supabase.from('lich_hen').update({ trang_thai_email: 'that_bai' }).eq('id', selectedAppointment.id);
+          setAppointments((prev) =>
+            prev.map((a) => (a.id === selectedAppointment.id ? { ...a, trang_thai_email: 'that_bai' } : a))
+          );
+          setSelectedAppointment((prev) => (prev ? { ...prev, trang_thai_email: 'that_bai' } : null));
+        } catch {}
+      }
+      showNotification('error', `Lỗi gửi email: ${err.message}`);
+    } finally {
+      setIsSendingConfirmEmailDetail(false);
+    }
+  };
+
+  // Xác nhận hủy lịch hẹn với lý do bắt buộc (Form cửa sổ của Web)
+  const handleConfirmCancelAppointment = async () => {
+    if (!selectedAppointment) return;
+    const reason = cancelReason.trim();
+    if (!reason) {
+      showNotification('error', 'Vui lòng nhập lý do hủy lịch hẹn!');
+      return;
+    }
+    try {
+      const cleanPrevNote = editAppForm.note.replace(/\[Đã hủy:[^\]]+\]/gi, '').trim();
+      const updatedNote = `[Đã hủy: ${reason}] ${cleanPrevNote}`.trim();
+      const finalGhiChu = `[Lang: ${editAppForm.lang}] ${editAppForm.email ? `[Email: ${editAppForm.email.trim()}] ` : ''}${updatedNote}`;
+
+      const { error } = await supabase
+        .from('lich_hen')
+        .update({
+          trang_thai: 'da_huy',
+          ghi_chu: finalGhiChu,
+        })
+        .eq('id', selectedAppointment.id);
+
+      if (error) throw error;
+
+      setEditAppForm((prev) => ({ ...prev, status: 'da_huy', note: updatedNote }));
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === selectedAppointment.id ? { ...a, trang_thai: 'da_huy', ghi_chu: finalGhiChu } : a
+        )
+      );
+      setSelectedAppointment((prev) =>
+        prev ? { ...prev, trang_thai: 'da_huy', ghi_chu: finalGhiChu } : null
+      );
+      setIsCancelModalOpen(false);
+      setCancelReason('');
+      showNotification('success', `Đã hủy lịch hẹn #${selectedAppointment.ma_lich_hen} thành công.`);
+    } catch (err: any) {
+      showNotification('error', `Lỗi hủy lịch: ${err.message}`);
+    }
+  };
+
+  // Khôi phục lịch hẹn đã hủy trở về trạng thái 'Chờ xác nhận'
+  const handleRestoreAppointment = async () => {
+    if (!selectedAppointment) return;
+    try {
+      const cleanNoteWithoutCancel = editAppForm.note.replace(/\[Đã hủy:[^\]]+\]/gi, '').trim();
+      const finalGhiChu = `[Lang: ${editAppForm.lang}] ${editAppForm.email ? `[Email: ${editAppForm.email.trim()}] ` : ''}${cleanNoteWithoutCancel}`;
+
+      const { error } = await supabase
+        .from('lich_hen')
+        .update({
+          trang_thai: 'cho_xac_nhan',
+          ghi_chu: finalGhiChu,
+        })
+        .eq('id', selectedAppointment.id);
+
+      if (error) throw error;
+
+      setEditAppForm((prev) => ({ ...prev, status: 'cho_xac_nhan', note: cleanNoteWithoutCancel }));
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === selectedAppointment.id ? { ...a, trang_thai: 'cho_xac_nhan', ghi_chu: finalGhiChu } : a
+        )
+      );
+      setSelectedAppointment((prev) =>
+        prev ? { ...prev, trang_thai: 'cho_xac_nhan', ghi_chu: finalGhiChu } : null
+      );
+      showNotification('success', 'Đã khôi phục lịch hẹn về trạng thái Chờ xác nhận!');
+    } catch (err: any) {
+      showNotification('error', `Lỗi khôi phục lịch: ${err.message}`);
+    }
   };
 
   const handleResendConfirmEmail = async (app: LichHenRecord) => {
-    const { email, cleanNote } = extractEmailAndNote(app.ghi_chu);
+    const { email, cleanNote, lang } = extractEmailAndNote(app.ghi_chu);
     if (!email) {
       showNotification('error', 'Khách hàng này không cung cấp email khi đặt lịch!');
       return;
@@ -3393,12 +4770,16 @@ export default function AdminDashboardPage() {
           toEmail: email,
           bookingCode: app.ma_lich_hen,
           ownerName: app.ho_ten_chu,
+          phone: app.so_dien_thoai,
           petName: app.ten_thu_cung,
           petType: app.loai_thu_cung,
           branchName: app.ten_chi_nhanh || 'Hệ Thống PetM&M',
           service: app.dich_vu,
           dateTime: `${app.gio_hen}, ngày ${app.ngay_hen}`,
+          date: app.ngay_hen,
+          timeSlot: app.gio_hen,
           note: cleanNote,
+          isEn: lang === 'en',
         }),
       });
       const data = await res.json();
@@ -3420,14 +4801,31 @@ export default function AdminDashboardPage() {
         .order('ngay_tao', { ascending: false });
 
       if (error) throw error;
-      setAppointments((data as LichHenRecord[]) || []);
+      const incoming = (data as LichHenRecord[]) || [];
+
+      if (!isInitialAppointmentsLoadedRef.current) {
+        // Lần đầu vào trang Admin: ghi nhớ toàn bộ ID hiện tại, không kích hoạt thông báo cũ
+        knownAppointmentIdsRef.current = new Set(incoming.map((a) => a.id));
+        isInitialAppointmentsLoadedRef.current = true;
+      } else {
+        // Các lần cập nhật tiếp theo: kiểm tra nếu có lịch hẹn mới chưa từng ghi nhận
+        for (const app of incoming) {
+          if (!knownAppointmentIdsRef.current.has(app.id)) {
+            knownAppointmentIdsRef.current.add(app.id);
+            triggerNewAppointmentNotification(app);
+            break;
+          }
+        }
+      }
+
+      setAppointments(incoming);
     } catch (err: any) {
       console.error('Lỗi tải lịch hẹn:', err);
       showNotification('error', `Lỗi tải lịch hẹn: ${err.message}`);
     } finally {
       setAppointmentsLoading(false);
     }
-  }, []);
+  }, [triggerNewAppointmentNotification]);
 
   const handleUpdateAppointmentStatus = async (
     id: string,
@@ -4240,7 +5638,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'lich_hen' },
-        () => {
+        (payload) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newApp = payload.new as LichHenRecord;
+            if (!knownAppointmentIdsRef.current.has(newApp.id)) {
+              knownAppointmentIdsRef.current.add(newApp.id);
+              triggerNewAppointmentNotification(newApp);
+            }
+          }
           loadAppointments();
         }
       )
@@ -4258,11 +5663,43 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       )
       .subscribe();
 
+    // Lắng nghe Realtime khi gửi Email / Zalo thất bại -> bật thông báo nổi cảnh báo ngay
+    const failureChannel = supabase
+      .channel('nhat_ky_failures')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'nhat_ky_gui_tin' },
+        (payload) => {
+          if (payload.new && (payload.new as any).trang_thai === 'that_bai') {
+            const item = payload.new as any;
+            setFailureNotification({
+              id: item.id,
+              kenh: item.kenh,
+              loai_tin: item.loai_tin,
+              nguoi_nhan: item.nguoi_nhan,
+              ten_nguoi_nhan: item.ten_nguoi_nhan,
+              tieu_de: item.tieu_de,
+              chi_tiet_loi: item.chi_tiet_loi,
+              ma_loi: item.ma_loi,
+              thoi_gian: item.ngay_tao,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // Polling định kỳ mỗi 20 giây để đảm bảo 100% không bỏ sót lịch hẹn mới
+    const pollTimer = setInterval(() => {
+      loadAppointments();
+    }, 20000);
+
     return () => {
+      clearInterval(pollTimer);
       supabase.removeChannel(channel);
       supabase.removeChannel(appChannel);
+      supabase.removeChannel(failureChannel);
     };
-  }, [loadAppointments, loadJobApplications, loadJobsList]);
+  }, [loadAppointments, loadJobApplications, loadJobsList, triggerNewAppointmentNotification]);
 
   // Filtered data for tables
   const filteredBanners = banners.filter((b) => {
@@ -4386,12 +5823,28 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     contact: 'Hotline & Mạng Xã Hội',
     email: 'Email',
     zalo: 'Cấu Hình Zalo Official Account (ZNS)',
+    spam: 'Chống Spam Đặt Lịch (IP, SĐT, Email)',
+    'notification-logs': 'Nhật Ký & Bộ Đếm Gửi Tin Nhắn',
     about: 'Giới Thiệu',
     slides: 'Giới Thiệu',
     stats: 'Giới Thiệu',
     slogans: 'Khẩu Hiệu & Slogan',
     announcement: 'Poster',
   };
+
+  // CHẶN THIẾT BỊ DI ĐỘNG / TABLET NGAY TỪ ĐẦU — TRƯỚC CẢ TRANG ĐĂNG NHẬP
+  if (isScreenTooSmall) {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-[#F5F5F5] flex items-center justify-center p-0 select-none overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/admin-desktop-only.png"
+          alt="Công cụ hiện chỉ hỗ trợ trên thiết bị máy vi tính"
+          className="w-full h-full max-w-[554px] max-h-screen object-contain pointer-events-none"
+        />
+      </div>
+    );
+  }
 
   // AUTH GATE
   if (isAuthenticated === null) {
@@ -4430,44 +5883,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     return null;
   }
 
-  // THIẾT BỊ MÀN HÌNH NHỎ (MOBILE & TABLET): CHẶN VÀ BÁO YÊU CẦU MÁY TÍNH
-  if (isScreenTooSmall) {
-    return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center select-none">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center mb-5 shadow-xl">
-          <MonitorX className="w-8 h-8" />
-        </div>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 mb-3">
-          Yêu cầu màn hình Desktop / Laptop
-        </span>
-        <h2 className="text-xl sm:text-2xl font-black text-white max-w-md tracking-tight">
-          Màn hình thiết bị quá nhỏ
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-300 mt-3 max-w-md leading-relaxed">
-          Cổng Quản Trị Hệ Thống <strong>PetM&amp;M ERP</strong> được thiết kế chuyên sâu với nhiều bảng số liệu và biểu đồ lớn. Để đảm bảo thao tác chính xác, vui lòng thực hiện trên màn hình máy tính để bàn (Desktop) hoặc Laptop.
-        </p>
-        <p className="text-xs text-amber-200/90 font-medium mt-2 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl max-w-md">
-          Hệ thống đã tự động khóa hiển thị trên điện thoại &amp; máy tính bảng để bảo vệ dữ liệu vận hành.
-        </p>
-
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-          <Link
-            href="/taodanhgia"
-            className="w-full py-3 px-4 rounded-xl bg-[#2D5A27] hover:bg-[#234A1E] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg"
-          >
-            <span>Vào Cổng Lễ Tân (/taodanhgia)</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
-            href="/"
-            className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center justify-center"
-          >
-            <span>Về Trang Chủ Web</span>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex antialiased">
@@ -4931,7 +6346,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     setIsMobileSidebarOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group cursor-pointer ${
-                    activeTab === 'config' && (configSubTab === 'email' || configSubTab === 'zalo')
+                    activeTab === 'config' && (configSubTab === 'email' || configSubTab === 'zalo' || configSubTab === 'spam' || configSubTab === 'notification-logs')
                       ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
@@ -4939,7 +6354,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   <div className="flex items-center gap-2.5">
                     <Send
                       className={`w-3.5 h-3.5 transition ${
-                        activeTab === 'config' && (configSubTab === 'email' || configSubTab === 'zalo')
+                        activeTab === 'config' && (configSubTab === 'email' || configSubTab === 'zalo' || configSubTab === 'spam' || configSubTab === 'notification-logs')
                           ? 'text-amber-300'
                           : 'text-slate-400 group-hover:text-white'
                       }`}
@@ -4948,7 +6363,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   </div>
                 </button>
 
-                {/* 2 nhánh con đổ xuống: Email và Zalo */}
+                {/* 4 nhánh con: Email, Zalo, Chống Spam và Nhật Ký */}
                 <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
                   <button
                     type="button"
@@ -4987,6 +6402,45 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     {zaloForm.zalo_enabled && (
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse ml-auto" title="Đang Bật gửi ZNS" />
                     )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('config');
+                      setConfigSubTab('spam');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'config' && configSubTab === 'spam'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>Chống Spam</span>
+                    {antiSpamForm.spam_limit_enabled ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-auto" title="Đang Bật chống spam" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse ml-auto" title="Đang Tắt" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('config');
+                      setConfigSubTab('notification-logs');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                      activeTab === 'config' && configSubTab === 'notification-logs'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <BarChart3 className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span>Nhật Ký &amp; Bộ Đếm</span>
                   </button>
                 </div>
               </div>
@@ -5182,22 +6636,25 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               <span className="hidden sm:inline">Làm Mới</span>
             </button>
 
+            {/* NÚT CÀI ĐẶT THÔNG BÁO (CẠNH CHUÔNG THÔNG BÁO) */}
+            <button
+              type="button"
+              onClick={() => setIsNotifSettingsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition cursor-pointer"
+              title="Cài đặt thông báo & âm thanh (Web, Trình duyệt)"
+            >
+              <Settings className="w-3.5 h-3.5 text-slate-600" />
+              <span className="hidden sm:inline">Cài Đặt Chuông</span>
+            </button>
+
             {/* CHUÔNG THÔNG BÁO HỆ THỐNG */}
             <AdminNotificationBell
               appointments={appointments}
               applications={jobApplications}
               reviews={reviews}
+              currentUser={currentUser}
               onNavigateTab={handleNavigateWithHighlight}
             />
-
-            <Link
-              href="/"
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white transition shadow-xs"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Xem Website</span>
-            </Link>
           </div>
         </header>
 
@@ -5411,6 +6868,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   </div>
                 )}
               </div>
+
             </div>
           )}
 
@@ -5442,6 +6900,17 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:border-[#2D5A27] bg-slate-50/50"
                     />
                   </div>
+
+                  {/* Nút Cài đặt tiêu đề mục */}
+                  <button
+                    type="button"
+                    onClick={handleOpenBranchTitleModal}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+                    title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ"
+                  >
+                    <Settings className="w-4 h-4 text-amber-700" />
+                    <span>Cài Đặt Tiêu Đề Mục</span>
+                  </button>
 
                   {/* Nút "+ Thêm chi nhánh" (Y hệt nút "+ Thêm sản phẩm" trong ảnh mẫu) */}
                   <button
@@ -5561,16 +7030,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                               <td className="py-3.5 px-4 text-center">
                                 <div className="inline-flex items-center gap-1.5">
-                                  <Link
-                                    href={`/chi-nhanh/${branch.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition shadow-2xs"
-                                    title="Xem bài viết chi nhánh ngoài website"
-                                  >
-                                    <FileText className="w-3.5 h-3.5" />
-                                  </Link>
-
                                   <button
                                     type="button"
                                     onClick={() => handleEditBranch(branch)}
@@ -6581,6 +8040,11 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     </div>
                   </div>
                 </form>
+
+                {/* THẺ 3: CÀI ĐẶT CHỐNG SPAM ĐẶT LỊCH (IP, SĐT, EMAIL & SỐ LẦN) */}
+                <div className="pt-2">
+                  {renderAntiSpamCard()}
+                </div>
                 </>
               )}
 
@@ -6596,111 +8060,12 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         </div>
                         <div>
                           <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span>Cấu Hình Zalo Official Account (Zalo OA / ZNS)</span>
+                            <span>Cấu Hình Kết Nối Zalo Official Account (Zalo OA / ZNS)</span>
                           </h2>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            Tự động gửi tin nhắn xác nhận lịch hẹn vào số điện thoại Zalo của khách hàng khi đặt trên website.
+                            Cấu hình thông số kỹ thuật API để nhân viên gửi tin nhắn Zalo ZNS xác nhận lịch hẹn và đánh giá dịch vụ.
                           </p>
                         </div>
-                      </div>
-
-                      {/* Công tắc Bật/Tắt Zalo Tổng */}
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl transition">
-                        <input
-                          type="checkbox"
-                          checked={zaloForm.zalo_enabled}
-                          onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_enabled: e.target.checked }))}
-                          className="sr-only"
-                        />
-                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
-                          zaloForm.zalo_enabled
-                            ? 'bg-[#0068FF] border-[#0068FF] text-white'
-                            : 'border-slate-300 bg-white text-transparent'
-                        }`}>
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-800">
-                          {zaloForm.zalo_enabled ? (
-                            <span className="text-[#0068FF] flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#0068FF] animate-pulse"></span>
-                              Bật Gửi Zalo (Tất cả)
-                            </span>
-                          ) : (
-                            <span className="text-slate-500">Tắt Toàn Bộ Zalo</span>
-                          )}
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* KHỐI TÙY CHỌN BẬT / TẮT CHI TIẾT TỪNG MỤC ZALO */}
-                    <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 space-y-3">
-                      <div className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                        Phân Loại Tin Nhắn Zalo
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Mục 1: Xác nhận lịch hẹn */}
-                        <label className={`p-3.5 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
-                          zaloForm.zalo_booking_enabled && zaloForm.zalo_enabled
-                            ? 'bg-blue-50/60 border-blue-200'
-                            : 'bg-white border-slate-200 opacity-70'
-                        }`}>
-                          <input
-                            type="checkbox"
-                            checked={zaloForm.zalo_booking_enabled}
-                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_booking_enabled: e.target.checked }))}
-                            className="sr-only"
-                          />
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
-                            zaloForm.zalo_booking_enabled
-                              ? 'bg-[#0068FF] border-[#0068FF] text-white'
-                              : 'border-slate-300 bg-white text-transparent'
-                          }`}>
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                              <span>Xác Nhận Lịch Hẹn</span>
-                              {zaloForm.zalo_booking_enabled && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-semibold">Bật</span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                              Tự động gửi tin nhắn ZNS xác nhận khi khách đặt lịch khám trên web
-                            </div>
-                          </div>
-                        </label>
-
-                        {/* Mục 2: Khảo sát & Đánh giá */}
-                        <label className={`p-3.5 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
-                          zaloForm.zalo_review_enabled && zaloForm.zalo_enabled
-                            ? 'bg-blue-50/60 border-blue-200'
-                            : 'bg-white border-slate-200 opacity-70'
-                        }`}>
-                          <input
-                            type="checkbox"
-                            checked={zaloForm.zalo_review_enabled}
-                            onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_review_enabled: e.target.checked }))}
-                            className="sr-only"
-                          />
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
-                            zaloForm.zalo_review_enabled
-                              ? 'bg-[#0068FF] border-[#0068FF] text-white'
-                              : 'border-slate-300 bg-white text-transparent'
-                          }`}>
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                              <span>Đánh Giá Dịch Vụ</span>
-                              {zaloForm.zalo_review_enabled && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-semibold">Bật</span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                              Tự động gửi tin nhắn ZNS 5 sao có nút mở link web đánh giá kèm hình ảnh
-                            </div>
-                          </div>
-                        </label>
                       </div>
                     </div>
 
@@ -6708,28 +8073,95 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       {/* Cột trái: Thử nghiệm ZNS & Hướng dẫn */}
                       <div className="lg:col-span-5 space-y-4">
                         {/* Box thử nghiệm Zalo ZNS */}
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 border-2 border-blue-200/90 shadow-2xs space-y-3">
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 border-2 border-blue-200/90 shadow-2xs space-y-3.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
                               <Send className="w-4 h-4 text-blue-600" />
                               <span>GỬI THỬ NGHIỆM TIN NHẮN ZALO ZNS</span>
                             </div>
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold inline-flex items-center gap-1 w-fit">
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold inline-flex items-center gap-1 w-fit border border-blue-200/80">
                               <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                              Mẫu 645197
+                              <span>Mẫu {testZaloTemplateType === 'review' ? (zaloForm.zalo_review_template_id || 'Chưa nhập') : (zaloForm.zalo_template_id || 'Chưa nhập')}</span>
                             </span>
                           </div>
 
+                          {/* Bộ chọn mẫu tin nhắn để test */}
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Chọn mẫu tin nhắn ZNS để kiểm tra:</span>
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setTestZaloTemplateType('booking')}
+                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                  testZaloTemplateType === 'booking'
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-500/30'
+                                    : 'bg-white hover:bg-blue-50/50 text-slate-700 border-blue-200 hover:border-blue-300'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className="text-[11px] font-bold flex items-center gap-1.5">
+                                    <CalendarCheck className="w-3.5 h-3.5" />
+                                    <span>Xác Nhận Lịch Hẹn</span>
+                                  </span>
+                                  {testZaloTemplateType === 'booking' && (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
+                                  )}
+                                </div>
+                                <div className={`text-[10px] font-semibold truncate ${testZaloTemplateType === 'booking' ? 'text-blue-100' : 'text-slate-500'}`}>
+                                  ID: {zaloForm.zalo_template_id || '(Chưa nhập)'}
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setTestZaloTemplateType('review')}
+                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                  testZaloTemplateType === 'review'
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-500/30'
+                                    : 'bg-white hover:bg-blue-50/50 text-slate-700 border-blue-200 hover:border-blue-300'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className="text-[11px] font-bold flex items-center gap-1.5">
+                                    <Star className="w-3.5 h-3.5" />
+                                    <span>Đánh Giá Dịch Vụ</span>
+                                  </span>
+                                  {testZaloTemplateType === 'review' && (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
+                                  )}
+                                </div>
+                                <div className={`text-[10px] font-semibold truncate ${testZaloTemplateType === 'review' ? 'text-blue-100' : 'text-slate-500'}`}>
+                                  ID: {zaloForm.zalo_review_template_id || '(Chưa nhập)'}
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
-                              <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Số điện thoại nhận tin ZNS thử nghiệm:</span>
+                            <label className="text-xs font-semibold text-slate-800 flex items-center justify-between">
+                              <span className="flex items-center gap-1">
+                                <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Số điện thoại nhận tin ZNS thử nghiệm:</span>
+                              </span>
+                              {zaloForm.zalo_test_phone && (
+                                <button
+                                  type="button"
+                                  onClick={() => setZaloForm((prev) => ({ ...prev, zalo_test_phone: '' }))}
+                                  className="text-[10px] text-slate-400 hover:text-red-500 cursor-pointer"
+                                >
+                                  Xóa SĐT
+                                </button>
+                              )}
                             </label>
                             <input
                               type="tel"
+                              placeholder="Nhập số điện thoại (ví dụ: 0912345678)"
                               value={zaloForm.zalo_test_phone}
                               onChange={(e) => setZaloForm((prev) => ({ ...prev, zalo_test_phone: e.target.value }))}
-                              className="w-full text-xs font-bold text-blue-900 px-3.5 py-2.5 rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white shadow-2xs"
+                              className="w-full text-xs font-bold text-blue-900 px-3.5 py-2.5 rounded-xl border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white shadow-2xs placeholder:font-normal placeholder:text-slate-400"
                             />
                             <button
                               type="button"
@@ -6740,12 +8172,12 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               {isZaloTesting ? (
                                 <>
                                   <RefreshCw className="w-4 h-4 animate-spin" />
-                                  <span>Đang gửi thử...</span>
+                                  <span>Đang gửi thử mẫu {testZaloTemplateType === 'review' ? 'Đánh Giá Dịch Vụ' : 'Xác Nhận Lịch'}...</span>
                                 </>
                               ) : (
                                 <>
                                   <Send className="w-4 h-4" />
-                                  <span>Gửi Thử ZNS Ngay</span>
+                                  <span>Gửi Thử {testZaloTemplateType === 'review' ? 'Mẫu Đánh Giá Dịch Vụ' : 'Mẫu Xác Nhận Lịch Hẹn'} Ngay</span>
                                 </>
                               )}
                             </button>
@@ -6943,6 +8375,20 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     </div>
                   </div>
                 </form>
+              )}
+
+              {/* NHÁNH: CẤU HÌNH CHỐNG SPAM ĐẶT LỊCH (KHI CHỌN TRỰC TIẾP TỪ MENU SIDEBAR) */}
+              {configSubTab === 'spam' && (
+                <div className="space-y-6">
+                  {renderAntiSpamCard()}
+                </div>
+              )}
+
+              {/* NHÁNH: NHẬT KÝ & BỘ ĐẾM GỬI TIN */}
+              {configSubTab === 'notification-logs' && (
+                <div className="space-y-6">
+                  <AdminNotificationLogsManager />
+                </div>
               )}
 
               {/* NHÁNH 2: GIỚI THIỆU & TRIẾT LÝ */}
@@ -7680,63 +9126,418 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                   {/* Slogan Đầu Trang */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
-                    <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
+                    <div className="pb-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-[#2D5A27]" />
-                          <span>1. Khẩu Hiệu Đầu Trang (Hero Banner Slogan)</span>
+                          <span>Cụm Slogan &amp; 2 Nút</span>
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Xuất hiện ở phần đầu trang chủ trên nền các hình ảnh chuyển động nghệ thuật.
+                          Tùy chỉnh thông điệp slogan, tên 2 nút, bật/tắt và căn chỉnh vị trí hiển thị trên ảnh nền đầu trang.
                         </p>
                       </div>
-                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                        Đầu Trang
-                      </span>
+
+                      {/* Tab Ngôn ngữ: Tiếng Việt / English */}
+                      <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 shrink-0 self-start sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => setHeroCardLang('vi')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            heroCardLang === 'vi' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <VietnamFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                          <span>Tiếng Việt</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHeroCardLang('en')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            heroCardLang === 'en' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <UKFlag className="w-3.5 h-2.5 rounded-[2px]" />
+                          <span>English</span>
+                        </button>
+                      </div>
                     </div>
 
-                    {sloganSubLang === 'vi' ? (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                            <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                            <span>Tiêu đề khẩu hiệu đầu trang (Tiếng Việt):</span>
+                    {/* Phần 1: Câu Slogan & Tên 2 Nút (Trái) + Phím Điều Hướng 4 Chiều (Phải) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                      {/* Cột trái: Nhập Câu Slogan & Tên 2 Nút (có switch bật/tắt) */}
+                      <div className="lg:col-span-7 space-y-3.5">
+                        {/* Câu Slogan */}
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/90 space-y-1.5">
+                          <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              {heroCardLang === 'vi' ? <VietnamFlag className="w-4 h-3 rounded-[2px]" /> : <UKFlag className="w-4 h-3 rounded-[2px]" />}
+                              <span>Câu Slogan ({heroCardLang === 'vi' ? 'Tiếng Việt' : 'English'}):</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              Dùng dấu phẩy &ldquo;,&rdquo; để xuống dòng 2
+                            </span>
                           </label>
-                          <input
-                            type="text"
-                            value={configForm.slogan_dau_trang_tieu_de || ''}
-                            onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de: e.target.value }))
-                            }
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                          />
-                          <p className="text-[11px] text-slate-400 mt-1">
-                            Mẹo: Có thể dùng dấu phẩy &ldquo;,&rdquo; để ngắt câu xuống dòng và làm nổi bật nửa sau in nghiêng màu xanh rêu.
-                          </p>
+                          {heroCardLang === 'vi' ? (
+                            <input
+                              type="text"
+                              value={configForm.slogan_dau_trang_tieu_de || ''}
+                              placeholder="Nâng niu từng nhịp thở, an yên trọn một đời."
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de: e.target.value }))}
+                              className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={configForm.slogan_dau_trang_tieu_de_en || ''}
+                              placeholder="Cherishing Every Breath, Embracing Life with Peace."
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de_en: e.target.value }))}
+                              className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          )}
+                        </div>
+
+                        {/* 2 Nút Bấm: Chỉ sửa Tên Nút và Bật/Tắt */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Nút 1 */}
+                          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/90 space-y-2">
+                            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[#2D5A27]" />
+                                <span>Nút 1</span>
+                              </span>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                              type="checkbox"
+                              checked={configForm.hero_nut_1_hien_thi !== false}
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, hero_nut_1_hien_thi: e.target.checked }))}
+                              className="sr-only peer"
+                            />
+                            <div className="w-8 h-4.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#2D5A27]"></div>
+                            <span className="ml-1.5 text-[11px] font-semibold text-slate-700">
+                              {configForm.hero_nut_1_hien_thi !== false ? 'Bật' : 'Tắt'}
+                            </span>
+                          </label>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            Tên nút ({heroCardLang === 'vi' ? 'Tiếng Việt' : 'English'}):
+                          </label>
+                          {heroCardLang === 'vi' ? (
+                            <input
+                              type="text"
+                              value={configForm.hero_nut_1_text ?? 'Đặt Lịch Thăm Khám'}
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, hero_nut_1_text: e.target.value }))}
+                              placeholder="Đặt Lịch Thăm Khám"
+                              className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={configForm.hero_nut_1_text_en ?? 'Book Appointment'}
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, hero_nut_1_text_en: e.target.value }))}
+                              placeholder="Book Appointment"
+                              className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
-                            <UKFlag className="w-4 h-3 rounded-[2px]" />
-                            <span>Tiêu đề khẩu hiệu đầu trang (English):</span>
+
+                      {/* Nút 2 */}
+                      <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/90 space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-slate-400" />
+                            <span>Nút 2</span>
+                          </span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={configForm.hero_nut_2_hien_thi !== false}
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, hero_nut_2_hien_thi: e.target.checked }))}
+                              className="sr-only peer"
+                            />
+                            <div className="w-8 h-4.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#2D5A27]"></div>
+                            <span className="ml-1.5 text-[11px] font-semibold text-slate-700">
+                              {configForm.hero_nut_2_hien_thi !== false ? 'Bật' : 'Tắt'}
+                            </span>
                           </label>
-                          <input
-                            type="text"
-                            value={configForm.slogan_dau_trang_tieu_de_en || ''}
-                            onChange={(e) =>
-                              setConfigForm((prev) => ({ ...prev, slogan_dau_trang_tieu_de_en: e.target.value }))
-                            }
-                            placeholder="Cherishing Every Breath, Embracing Life with Peace."
-                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 font-semibold focus:border-[#2D5A27] focus:outline-none"
-                          />
-                          <p className="text-[11px] text-slate-400 mt-1">
-                            Tip: Use a comma &ldquo;,&rdquo; to split into two animated lines.
-                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            Tên nút ({heroCardLang === 'vi' ? 'Tiếng Việt' : 'English'}):
+                          </label>
+                          {heroCardLang === 'vi' ? (
+                            <input
+                              type="text"
+                              value={configForm.hero_nut_2_text ?? 'Xem Dịch Vụ'}
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, hero_nut_2_text: e.target.value }))}
+                              placeholder="Xem Dịch Vụ"
+                              className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={configForm.hero_nut_2_text_en ?? 'Our Services'}
+                              onChange={(e) => setConfigForm((prev) => ({ ...prev, hero_nut_2_text_en: e.target.value }))}
+                              placeholder="Our Services"
+                              className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 text-slate-800 font-medium focus:border-[#2D5A27] focus:outline-none bg-white"
+                            />
+                          )}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  </div>
+
+                  {/* Cột phải: Phím Điều Hướng 4 Chiều (±10px) */}
+                  <div className="lg:col-span-5 bg-slate-50 rounded-xl p-4 border border-slate-200/90 flex flex-col justify-between">
+                    {/* Switcher thiết bị: Desktop vs Điện thoại (k cần icon) */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                      <span className="text-xs font-bold text-slate-800">
+                        Vị trí thiết bị:
+                      </span>
+                      <div className="inline-flex p-0.5 rounded-lg bg-slate-200 border border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => setHeroPosDevice('desktop')}
+                          className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                            heroPosDevice === 'desktop' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Desktop
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHeroPosDevice('mobile')}
+                          className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                            heroPosDevice === 'mobile' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Điện thoại
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Phím Điều Hướng 4 Chiều (±heroNudgeStep) + Nút Căn Nhanh */}
+                    <div className="py-2 flex flex-col items-center justify-center">
+                      <div className="flex items-center justify-between w-full mb-2">
+                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                          Phím Điều Hướng (±{heroNudgeStep}px)
+                        </span>
+                        {/* Bước nhảy */}
+                        <div className="flex items-center gap-1">
+                          {[10, 20, 50].map((step) => (
+                            <button
+                              key={step}
+                              type="button"
+                              onClick={() => setHeroNudgeStep(step)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                                heroNudgeStep === step
+                                  ? 'bg-[#2D5A27] text-white shadow-2xs'
+                                  : 'bg-slate-200/80 text-slate-600 hover:bg-slate-300'
+                              }`}
+                            >
+                              ±{step}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3 Nút Căn Nhanh: Trái / Giữa / Phải */}
+                      <div className="grid grid-cols-3 gap-1.5 w-full mb-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSetHeroPreset('left')}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition shadow-2xs flex items-center justify-center gap-1 cursor-pointer ${
+                            (heroPosDevice === 'desktop' ? configForm.hero_slogan_align_desktop : configForm.hero_slogan_align_mobile) === 'left'
+                              ? 'bg-emerald-50 text-[#2D5A27] border-emerald-300'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>◀ Căn Trái</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetHeroPreset('center')}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition shadow-2xs flex items-center justify-center gap-1 cursor-pointer ${
+                            (heroPosDevice === 'desktop' ? configForm.hero_slogan_align_desktop : configForm.hero_slogan_align_mobile) === 'center'
+                              ? 'bg-emerald-50 text-[#2D5A27] border-emerald-300'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>⏺ Giữa</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetHeroPreset('right')}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition shadow-2xs flex items-center justify-center gap-1 cursor-pointer ${
+                            (heroPosDevice === 'desktop' ? configForm.hero_slogan_align_desktop : configForm.hero_slogan_align_mobile) === 'right'
+                              ? 'bg-emerald-50 text-[#2D5A27] border-emerald-300'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>▶ Căn Phải</span>
+                        </button>
+                      </div>
+
+                      {/* D-Pad 4 Chiều */}
+                      <div className="grid grid-cols-3 gap-1.5 w-36 h-36">
+                        <div />
+                        <button
+                          type="button"
+                          onClick={() => handleNudgeHeroPosition(0, -heroNudgeStep)}
+                          className="flex flex-col items-center justify-center rounded-xl bg-white hover:bg-[#2D5A27] hover:text-white text-slate-700 font-bold border border-slate-200 transition shadow-xs active:scale-95 cursor-pointer"
+                          title={`Dịch lên (-${heroNudgeStep}px)`}
+                        >
+                          <span className="text-base leading-none">⬆️</span>
+                          <span className="text-[9px] uppercase font-bold mt-0.5">Lên</span>
+                        </button>
+                        <div />
+
+                        <button
+                          type="button"
+                          onClick={() => handleNudgeHeroPosition(-heroNudgeStep, 0)}
+                          className="flex flex-col items-center justify-center rounded-xl bg-white hover:bg-[#2D5A27] hover:text-white text-slate-700 font-bold border border-slate-200 transition shadow-xs active:scale-95 cursor-pointer"
+                          title={`Dịch sang trái (-${heroNudgeStep}px)`}
+                        >
+                          <span className="text-base leading-none">⬅️</span>
+                          <span className="text-[9px] uppercase font-bold mt-0.5">Trái</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetHeroPosition}
+                          className="flex flex-col items-center justify-center rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold transition shadow-xs active:scale-95 cursor-pointer text-center px-1"
+                          title="Đặt lại (0, 0)"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 mb-0.5 text-emerald-700" />
+                          <span className="text-[9px] uppercase font-bold">Gốc (0)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleNudgeHeroPosition(heroNudgeStep, 0)}
+                          className="flex flex-col items-center justify-center rounded-xl bg-white hover:bg-[#2D5A27] hover:text-white text-slate-700 font-bold border border-slate-200 transition shadow-xs active:scale-95 cursor-pointer"
+                          title={`Dịch sang phải (+${heroNudgeStep}px)`}
+                        >
+                          <span className="text-base leading-none">➡️</span>
+                          <span className="text-[9px] uppercase font-bold mt-0.5">Phải</span>
+                        </button>
+
+                        <div />
+                        <button
+                          type="button"
+                          onClick={() => handleNudgeHeroPosition(0, heroNudgeStep)}
+                          className="flex flex-col items-center justify-center rounded-xl bg-white hover:bg-[#2D5A27] hover:text-white text-slate-700 font-bold border border-slate-200 transition shadow-xs active:scale-95 cursor-pointer"
+                          title={`Dịch xuống (+${heroNudgeStep}px)`}
+                        >
+                          <span className="text-base leading-none">⬇️</span>
+                          <span className="text-[9px] uppercase font-bold mt-0.5">Xuống</span>
+                        </button>
+                        <div />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 text-center">
+                      <span className="text-[11px] font-mono font-semibold text-slate-600">
+                        Đang dịch ({heroPosDevice === 'desktop' ? 'Desktop' : 'Điện thoại'}): X: <strong className="text-[#2D5A27]">{heroPosDevice === 'desktop' ? (configForm.hero_slogan_x_desktop ?? 0) : (configForm.hero_slogan_x_mobile ?? 0)}px</strong>, Y: <strong className="text-[#2D5A27]">{heroPosDevice === 'desktop' ? (configForm.hero_slogan_y_desktop ?? 0) : (configForm.hero_slogan_y_mobile ?? 0)}px</strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phần 2: Khung Mô Phỏng Trực Quan Thời Gian Thực */}
+                <div className="bg-[#121c14] rounded-2xl p-4 sm:p-5 border border-emerald-950/40 relative overflow-hidden shadow-inner">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        Mô Phỏng Trực Quan ({heroPosDevice === 'desktop' ? 'Desktop' : 'Điện thoại'} — {heroCardLang === 'vi' ? 'Tiếng Việt' : 'English'})
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-white/50">Di chuyển theo phím điều hướng</span>
+                  </div>
+
+                  {/* Canvas mô phỏng */}
+                  <div
+                    className={`relative mx-auto rounded-xl border border-white/15 bg-black/40 overflow-hidden flex flex-col justify-center items-center p-4 transition-all duration-300 ${
+                      heroPosDevice === 'desktop' ? 'w-full h-48 sm:h-56' : 'w-72 h-80'
+                    }`}
+                  >
+                    {/* Background hint */}
+                    <div className="absolute inset-0 bg-radial from-emerald-900/10 via-transparent to-black/60 pointer-events-none" />
+                    <div className="absolute top-2 right-2 text-[9px] font-mono text-white/30 uppercase">
+                      {heroPosDevice === 'desktop' ? 'Desktop View' : 'Mobile View'}
+                    </div>
+
+                    {/* Slogan + 2 Buttons Cluster (Scaled position) */}
+                    {(() => {
+                      const curX = heroPosDevice === 'desktop' ? (configForm.hero_slogan_x_desktop ?? 0) : (configForm.hero_slogan_x_mobile ?? 0);
+                      const curY = heroPosDevice === 'desktop' ? (configForm.hero_slogan_y_desktop ?? 0) : (configForm.hero_slogan_y_mobile ?? 0);
+                      const curAlign = heroPosDevice === 'desktop' ? (configForm.hero_slogan_align_desktop || 'center') : (configForm.hero_slogan_align_mobile || 'center');
+
+                      const scale = heroPosDevice === 'desktop' ? 0.45 : 0.72;
+                      const scaledX = Math.round(curX * scale);
+                      const scaledY = Math.round(curY * scale);
+
+                      const alignClass = curAlign === 'left' ? 'items-start text-left' : curAlign === 'right' ? 'items-end text-right' : 'items-center text-center';
+                      const btnJustify = curAlign === 'left' ? 'justify-start' : curAlign === 'right' ? 'justify-end' : 'justify-center';
+
+                      const sloganText = heroCardLang === 'vi'
+                        ? (configForm.slogan_dau_trang_tieu_de || 'Nâng niu từng nhịp thở, an yên trọn một đời.')
+                        : (configForm.slogan_dau_trang_tieu_de_en || 'Cherishing Every Breath, Embracing Life with Peace.');
+
+                      const btn1Text = heroCardLang === 'vi'
+                        ? (configForm.hero_nut_1_text || 'Đặt Lịch Thăm Khám')
+                        : (configForm.hero_nut_1_text_en || 'Book Appointment');
+
+                      const btn2Text = heroCardLang === 'vi'
+                        ? (configForm.hero_nut_2_text || 'Xem Dịch Vụ')
+                        : (configForm.hero_nut_2_text_en || 'Our Services');
+
+                      const btn1Show = configForm.hero_nut_1_hien_thi !== false;
+                      const btn2Show = configForm.hero_nut_2_hien_thi !== false;
+
+                      const parts = sloganText.includes(',') ? sloganText.split(',') : [sloganText];
+                      const line1 = parts[0].trim();
+                      const line2 = parts.slice(1).join(',').trim();
+
+                      return (
+                        <div
+                          style={{
+                            transform: `translate(${scaledX}px, ${scaledY}px)`,
+                          }}
+                          className={`relative z-10 transition-transform duration-150 flex flex-col max-w-sm pointer-events-none w-full ${alignClass}`}
+                        >
+                          {/* Slogan title in preview */}
+                          <div className="font-editorial text-sm sm:text-base text-white font-normal leading-tight drop-shadow-md">
+                            <span>{line1}{line2 ? ',' : ''}</span>
+                            {line2 && (
+                              <span className="block text-emerald-400 italic text-xs sm:text-sm mt-0.5">
+                                {line2}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* 2 CTA buttons in preview */}
+                          <div className={`flex items-center gap-1.5 mt-2.5 w-full ${btnJustify}`}>
+                            {btn1Show && (
+                              <div className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-[#2D5A27] to-emerald-700 text-white text-[10px] font-bold shadow-sm flex items-center gap-1 border border-emerald-500/30">
+                                <CalendarCheck className="w-3 h-3 text-[#FFB800]" />
+                                <span>{btn1Text}</span>
+                              </div>
+                            )}
+                            {btn2Show && (
+                              <div className="px-2 py-1 rounded-lg bg-white/90 text-slate-900 text-[10px] font-semibold shadow-sm flex items-center gap-1 border border-slate-300">
+                                <span>{btn2Text}</span>
+                                <ArrowRight className="w-2.5 h-2.5 text-[#2D5A27]" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
 
                     {/* ── BỘ QUẢN LÝ THÔNG ĐIỆP CHẠY SLIDE CHÂN BANNER ── */}
                     <div className="pt-4 border-t border-slate-100 space-y-3">
@@ -8831,7 +10632,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                           <th className="py-3 px-4">Mã &amp; Thời Gian Đặt</th>
                           <th className="py-3 px-4">Khách Hàng &amp; Liên Hệ</th>
-                          <th className="py-3 px-4">Bé Thú Cưng</th>
+                          <th className="py-3 px-4">Ghi Chú</th>
                           <th className="py-3 px-4">Cơ Sở &amp; Dịch Vụ</th>
                           <th className="py-3 px-4">Thời Gian Khám</th>
                           <th className="py-3 px-4 text-center">Trạng Thái</th>
@@ -8840,7 +10641,22 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredAppointments.map((app) => {
-                          const { email, cleanNote } = extractEmailAndNote(app.ghi_chu);
+                          const { email, cleanNote, lang } = extractEmailAndNote(app.ghi_chu);
+                          const isEnBooking = lang === 'en' || /consultation|general health|try the service|city facility|clinic/i.test((app.dich_vu || '') + ' ' + (app.ten_chi_nhanh || ''));
+                          const serviceVi = getAdminServiceVi(app.dich_vu);
+                          const branchVi = getAdminBranchVi(app.ten_chi_nhanh, app.chi_nhanh_id);
+                          const timeSlotVi = app.gio_hen === 'Flexible' ? 'Linh hoạt' : app.gio_hen;
+
+                          const rawPet = (app.ten_thu_cung || '').trim();
+                          const lowerPet = rawPet.toLowerCase();
+                          const hasRealPet = Boolean(
+                            rawPet &&
+                            lowerPet !== 'bé cưng' &&
+                            lowerPet !== 'be cung' &&
+                            lowerPet !== 'beloved pet' &&
+                            lowerPet !== 'pet'
+                          );
+
                           const statusBadges: Record<string, { label: string; class: string }> = {
                             cho_xac_nhan: { label: 'Chờ xác nhận', class: 'bg-amber-50 text-amber-800 border-amber-200' },
                             da_xac_nhan: { label: 'Đã xác nhận', class: 'bg-blue-50 text-blue-800 border-blue-200' },
@@ -8869,7 +10685,26 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               </td>
 
                               <td className="py-3 px-4">
-                                <div className="font-bold text-slate-900">{app.ho_ten_chu}</div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-slate-900">{app.ho_ten_chu}</span>
+                                  {isEnBooking ? (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold"
+                                      title="Khách đặt bằng tiếng Anh (English)"
+                                    >
+                                      <UKFlag className="w-3.5 h-2.5 rounded-xs" />
+                                      <span>ENG</span>
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold"
+                                      title="Khách đặt bằng tiếng Việt"
+                                    >
+                                      <VietnamFlag className="w-3.5 h-2.5 rounded-xs" />
+                                      <span>VN</span>
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex flex-col gap-0.5 mt-0.5">
                                   <a
                                     href={`tel:${app.so_dien_thoai}`}
@@ -8892,29 +10727,32 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 </div>
                               </td>
 
-                              <td className="py-3 px-4">
-                                <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                                  <span>{app.loai_thu_cung === 'dog' ? '🐶' : app.loai_thu_cung === 'cat' ? '🐱' : '🐰'}</span>
-                                  <span>{app.ten_thu_cung}</span>
-                                </div>
-                                {cleanNote && (
-                                  <div className="text-[11px] text-slate-500 italic max-w-xs truncate mt-0.5" title={cleanNote}>
-                                    &ldquo;{cleanNote}&rdquo;
+                              <td className="py-3 px-4 max-w-xs">
+                                {cleanNote ? (
+                                  <div className="text-xs text-slate-700 leading-relaxed line-clamp-2" title={cleanNote}>
+                                    {cleanNote}
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-slate-400 italic">—</span>
+                                )}
+                                {hasRealPet && (
+                                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                    Bé: <strong>{rawPet}</strong>
                                   </div>
                                 )}
                               </td>
 
                               <td className="py-3 px-4 max-w-xs">
-                                <div className="font-bold text-slate-900 truncate" title={app.dich_vu}>
-                                  {app.dich_vu}
+                                <div className="font-bold text-slate-900 truncate" title={serviceVi}>
+                                  {serviceVi}
                                 </div>
-                                <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                                  {app.ten_chi_nhanh || 'Chưa chọn'}
+                                <div className="text-[11px] text-slate-500 truncate mt-0.5" title={branchVi}>
+                                  {branchVi}
                                 </div>
                               </td>
 
                               <td className="py-3 px-4 whitespace-nowrap">
-                                <div className="font-bold text-[#2D5A27]">{app.gio_hen}</div>
+                                <div className="font-bold text-[#2D5A27]">{timeSlotVi}</div>
                                 <div className="text-[11px] text-slate-600 mt-0.5">
                                   {app.ngay_hen}
                                 </div>
@@ -8931,35 +10769,11 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedAppointment(app)}
+                                    onClick={() => handleOpenAppointmentModal(app)}
                                     className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#2D5A27] hover:bg-emerald-50 text-slate-700 hover:text-[#2D5A27] font-semibold text-xs transition cursor-pointer"
                                   >
                                     Xem &amp; Xử Lý
                                   </button>
-
-                                  {app.trang_thai === 'cho_xac_nhan' && (
-                                    <button
-                                      type="button"
-                                      disabled={isUpdatingStatus}
-                                      onClick={() => handleUpdateAppointmentStatus(app.id, 'da_xac_nhan')}
-                                      className="p-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 text-blue-700 transition cursor-pointer"
-                                      title="Duyệt xác nhận lịch hẹn"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-
-                                  {app.trang_thai === 'da_xac_nhan' && (
-                                    <button
-                                      type="button"
-                                      disabled={isUpdatingStatus}
-                                      onClick={() => handleUpdateAppointmentStatus(app.id, 'da_kham')}
-                                      className="p-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-50 text-emerald-700 transition cursor-pointer"
-                                      title="Đánh dấu đã hoàn thành khám"
-                                    >
-                                      <CheckCheck className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
 
                                   <button
                                     type="button"
@@ -9771,7 +11585,12 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
           {activeTab === 'team' && (
             <div className="space-y-6">
               {teamSubTab === 'careers' && (
-                <AdminCareersManager showNotification={showNotification} />
+                <AdminCareersManager
+                  showNotification={showNotification}
+                  applications={jobApplications}
+                  onUpdateApplicantStatus={handleUpdateApplicantStatus}
+                  highlightedId={highlightedId}
+                />
               )}
 
               {teamSubTab === 'members' && (
@@ -9789,15 +11608,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Link
-                    href="/doi-ngu"
-                    target="_blank"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Xem Trang Đội Ngũ</span>
-                  </Link>
-
                   <button
                     type="button"
                     onClick={handleAddNewMember}
@@ -10042,15 +11852,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Link
-                    href="/#kien-thuc"
-                    target="_blank"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Xem Ngoài Trang Chủ</span>
-                  </Link>
-
                   <button
                     type="button"
                     onClick={handleAddNewArticle}
@@ -10167,15 +11968,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                     )}
                                   </div>
                                   <div className="min-w-0">
-                                    <Link
-                                      href={`/kien-thuc/${art.id}`}
-                                      target="_blank"
-                                      className="font-bold text-slate-900 text-xs sm:text-sm hover:text-[#2D5A27] transition line-clamp-1 flex items-center gap-1"
-                                      title={art.tieu_de}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditArticle(art)}
+                                      className="font-bold text-slate-900 text-xs sm:text-sm hover:text-[#2D5A27] transition line-clamp-1 text-left cursor-pointer"
+                                      title="Chỉnh sửa bài viết"
                                     >
                                       <span>{art.tieu_de}</span>
-                                      <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
-                                    </Link>
+                                    </button>
                                     <p className="text-slate-500 text-[11px] line-clamp-1 mt-0.5">
                                       {art.mo_ta_ngan || 'Chưa có mô tả tóm tắt'}
                                     </p>
@@ -10236,14 +12036,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                               <td className="py-3.5 px-4 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
-                                  <Link
-                                    href={`/kien-thuc/${art.id}`}
-                                    target="_blank"
-                                    className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-600 transition"
-                                    title="Xem bài viết ngoài website"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </Link>
                                   <button
                                     type="button"
                                     onClick={() => handleEditArticle(art)}
@@ -10815,17 +12607,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
                         <span>Bài viết giới thiệu chi tiết chi nhánh (Tiếng Việt):</span>
                       </label>
-                      {editingBranch.id && (
-                        <Link
-                          href={`/chi-nhanh/${editingBranch.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Xem trang ngoài web</span>
-                        </Link>
-                      )}
                     </div>
                     <RichTextEditor
                       key={`branch-editor-vi-${editingBranch.id || 'new'}`}
@@ -10995,17 +12776,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
                         <span>Bài viết giới thiệu chi tiết chi nhánh (English):</span>
                       </label>
-                      {editingBranch.id && (
-                        <Link
-                          href={`/chi-nhanh/${editingBranch.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Xem trang ngoài web</span>
-                        </Link>
-                      )}
                     </div>
                     <RichTextEditor
                       key={`branch-editor-en-${editingBranch.id || 'new'}`}
@@ -11170,6 +12940,201 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               >
                 <Check className="w-4 h-4" />
                 <span>{isBranchSaving ? 'Đang lưu...' : 'Lưu Chi Nhánh'}</span>
+              </button>
+            </div>
+          </AdminResizableModal>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC CHI NHÁNH (TRANG CHỦ) */}
+      {/* ========================================================= */}
+      {isBranchTitleModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-amber-50/80 via-white to-emerald-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide">
+                    Cài Đặt Tiêu Đề &amp; Chú Thích Mục Chi Nhánh
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBranchTitleModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
+              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setBranchTitleLang('vi')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      branchTitleLang === 'vi' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản Tiếng Việt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBranchTitleLang('en')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      branchTitleLang === 'en' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <UKFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản English</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateBranchTitle}
+                  disabled={isTranslatingBranchTitle}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động tiêu đề & chú thích Tiếng Việt sang Tiếng Anh bằng AI"
+                >
+                  {isTranslatingBranchTitle ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingBranchTitle ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
+              </div>
+
+              {(() => {
+                const isVi = branchTitleLang === 'vi';
+                const titleVal = isVi ? branchTitleInput : branchTitleEnInput;
+                const setTitleVal = isVi ? setBranchTitleInput : setBranchTitleEnInput;
+                const descVal = isVi ? branchDescInput : branchDescEnInput;
+                const setDescVal = isVi ? setBranchDescInput : setBranchDescEnInput;
+                const defaultTitle = isVi
+                  ? '<h2>Hệ Thống Cơ Sở &amp; <br /><span style="color: #2D5A27; font-style: italic;">Bản Đồ Chỉ Đường Trực Quan</span></h2>'
+                  : '<h2>Clinic Network &amp; <br /><span style="color: #2D5A27; font-style: italic;">Interactive Direction Maps</span></h2>';
+                const defaultDesc = isVi
+                  ? '<p>Hệ thống phòng khám thú y chuẩn y khoa 5 sao với đầy đủ trang thiết bị hiện đại, phục vụ ba mẹ và các bé tận tâm 24/7.</p>'
+                  : '<p>A 5-star standard veterinary clinic network with fully modern equipment, caring for pet parents and their furry friends wholeheartedly 24/7.</p>';
+                const langLabel = isVi ? 'Tiếng Việt' : 'English';
+
+                return (
+                  <>
+                    {/* Tiêu đề chính */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Tiêu Đề Mục Chi Nhánh ({langLabel}):</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setTitleVal(defaultTitle)}
+                          className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold underline cursor-pointer"
+                        >
+                          Khôi phục mẫu tiêu đề mặc định
+                        </button>
+                      </div>
+                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                        <RichTextEditor
+                          key={`branch-title-${branchTitleLang}`}
+                          value={titleVal}
+                          onChange={(html) => setTitleVal(html)}
+                          minHeight={150}
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        💡 Bạn có thể chọn bôi đen chữ để đổi màu sang màu xanh rêu thương hiệu <code>#2D5A27</code>, in nghiêng, in đậm hoặc chèn icon/xuống dòng.
+                      </p>
+                    </div>
+
+                    {/* Chú thích / Mô tả phụ */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Edit3 className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Chú Thích / Mô Tả Phụ ({langLabel}):</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setDescVal(defaultDesc)}
+                          className="text-[11px] text-slate-500 hover:text-slate-700 font-medium underline cursor-pointer"
+                        >
+                          Dùng gợi ý chú thích mẫu
+                        </button>
+                      </div>
+                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                        <RichTextEditor
+                          key={`branch-desc-${branchTitleLang}`}
+                          value={descVal}
+                          onChange={(html) => setDescVal(html)}
+                          minHeight={120}
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        💡 Để trống nếu không muốn hiển thị chú thích bên dưới tiêu đề chi nhánh.
+                      </p>
+                    </div>
+
+                    {/* Khung Xem Trước Giao Diện Thực Tế */}
+                    <div className="p-5 rounded-2xl bg-[#F8FAF7] border border-slate-200 shadow-2xs">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 mb-3">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-[#2D5A27]" />
+                          <span>Xem trước thực tế ngoài Trang Chủ ({langLabel}):</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">Hiển thị trực quan theo thời gian thực</span>
+                      </div>
+                      <div className="text-center max-w-2xl mx-auto py-4">
+                        <div
+                          className="font-editorial text-2xl sm:text-4xl text-slate-900 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
+                          dangerouslySetInnerHTML={{ __html: titleVal || defaultTitle }}
+                        />
+                        {descVal && (
+                          <div
+                            className="mt-3 text-xs sm:text-sm text-slate-600 font-light [&_p]:m-0"
+                            dangerouslySetInnerHTML={{ __html: descVal }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50/50">
+              <button
+                type="button"
+                onClick={() => setIsBranchTitleModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveBranchTitle}
+                disabled={isSavingBranchTitle}
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md hover:shadow-lg transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSavingBranchTitle ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>{isSavingBranchTitle ? 'Đang lưu...' : 'Lưu Tiêu Đề Mục'}</span>
               </button>
             </div>
           </AdminResizableModal>
@@ -12260,225 +14225,843 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       )}
 
       {/* ========================================================= */}
-      {/* 5. MODAL CHI TIẾT & XỬ LÝ LỊCH HẸN                       */}
+      {/* 5. MODAL CHI TIẾT & CHỐT LỊCH HẸN CHO NHÂN VIÊN          */}
       {/* ========================================================= */}
       {selectedAppointment && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <AdminResizableModal className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl lg:max-w-[940px] max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#2D5A27]/10 flex items-center justify-center text-[#2D5A27]">
-                  <CalendarDays className="w-5 h-5" />
+            <div className="px-6 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-white shrink-0">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-bold text-base text-slate-900">
+                    Chi Tiết &amp; Chốt Lịch Hẹn
+                  </h3>
+                  <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                    #{selectedAppointment.ma_lich_hen}
+                  </span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-slate-900">
-                      Chi Tiết Lịch Hẹn
-                    </h3>
-                    <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#2D5A27] border border-emerald-200">
-                      {selectedAppointment.ma_lich_hen}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Đặt lúc: {selectedAppointment.ngay_tao ? new Date(selectedAppointment.ngay_tao).toLocaleString('vi-VN') : 'Không rõ'}
-                  </p>
-                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Đặt lúc: {selectedAppointment.ngay_tao ? new Date(selectedAppointment.ngay_tao).toLocaleString('vi-VN') : 'Không rõ'}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedAppointment(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* Thanh chọn ngôn ngữ (có cờ 🇻🇳 🇬🇧) & Nút Chuyển đổi ENG */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex items-center gap-1 p-1 rounded-xl border border-slate-200 bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={() => handleChangeModalLanguage('vi')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      editAppForm.lang === 'vi'
+                        ? 'bg-[#2D5A27] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title="Chuyển sang Bản Tiếng Việt"
+                  >
+                    <span>🇻🇳</span>
+                    <span>Bản Tiếng Việt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeModalLanguage('en')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      editAppForm.lang === 'en'
+                        ? 'bg-blue-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title="Switch to English"
+                  >
+                    <span>🇬🇧</span>
+                    <span>Bản English</span>
+                  </button>
+                </div>
+
+                {/* Nút Chuyển đổi ENG tự động dịch Ghi chú */}
+                <button
+                  type="button"
+                  disabled={isTranslatingToEng}
+                  onClick={handleTranslateAllToEng}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold shadow-xs hover:shadow transition cursor-pointer disabled:opacity-50"
+                  title="Tự động dịch Ghi chú / Triệu chứng và đổi toàn bộ dữ liệu sang Tiếng Anh"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isTranslatingToEng ? 'Đang dịch...' : 'Chuyển đổi ENG'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAppointment(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-5">
-              {/* Card 1: Khách hàng & Liên hệ */}
-              {(() => {
-                const { email: customerEmail, cleanNote } = extractEmailAndNote(selectedAppointment.ghi_chu);
-                return (
-                  <>
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Thông tin chủ nuôi &amp; Liên hệ
+            {/* THANH TIẾN TRÌNH CỐ ĐỊNH (STICKY/FIXED DƯỚI HEADER KHÔNG BỊ CUỘN MẤT) */}
+            <div className="px-6 py-3 bg-slate-50/80 border-b border-slate-200 shrink-0">
+              {editAppForm.status === 'da_huy' ? (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-rose-600 text-white">
+                        Lịch hẹn đã hủy
+                      </span>
+                      <span className="text-xs text-rose-800 font-medium">
+                        Không thể gửi tin Zalo hoặc Email
+                      </span>
+                    </div>
+                    {(() => {
+                      const matchCancel = editAppForm.note.match(/\[Đã hủy:\s*([^\]]+)\]/i);
+                      const existingCancelReason = matchCancel ? matchCancel[1].trim() : '';
+                      return existingCancelReason ? (
+                        <p className="text-xs text-rose-700 mt-1">
+                          <span className="font-semibold">Lý do hủy:</span> {existingCancelReason}
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRestoreAppointment}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-rose-300 hover:bg-rose-100 text-rose-900 text-xs font-bold transition cursor-pointer shadow-2xs whitespace-nowrap"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Khôi phục về Chờ xác nhận</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="py-0.5">
+                  {/* Thanh Timeline 3 bước */}
+                  <div className="relative flex items-center justify-between px-6 sm:px-12">
+                    {/* Line nền */}
+                    <div className="absolute left-12 right-12 top-4 h-0.5 bg-slate-200 z-0" />
+                    {/* Line tiến độ thực tế */}
+                    <div
+                      className={`absolute left-12 top-4 h-0.5 bg-[#2D5A27] transition-all duration-300 z-0 ${
+                        editAppForm.status === 'da_kham'
+                          ? 'right-12'
+                          : editAppForm.status === 'da_xac_nhan'
+                          ? 'w-1/2'
+                          : 'w-0'
+                      }`}
+                    />
+
+                    {/* Bước 1: Chờ xác nhận */}
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                          editAppForm.status === 'cho_xac_nhan'
+                            ? 'bg-[#2D5A27] text-white ring-4 ring-emerald-100'
+                            : 'bg-[#2D5A27] text-white'
+                        }`}
+                      >
+                        {editAppForm.status !== 'cho_xac_nhan' ? <Check className="w-4 h-4" /> : '1'}
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-slate-500">Họ và tên:</span>
-                          <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedAppointment.ho_ten_chu}</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">Số điện thoại:</span>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="font-mono font-bold text-slate-900 text-sm">{selectedAppointment.so_dien_thoai}</p>
-                            <a
-                              href={`tel:${selectedAppointment.so_dien_thoai}`}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition shadow-xs"
-                            >
-                              <PhoneCall className="w-3 h-3" />
-                              <span>Gọi Ngay</span>
-                            </a>
+                      <span className="text-xs font-bold text-slate-800 mt-1.5">Chờ xác nhận</span>
+                      <span className="text-[10px] text-slate-400">Khách vừa đăng ký</span>
+                    </div>
+
+                    {/* Bước 2: Đã xác nhận */}
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                          editAppForm.status === 'da_xac_nhan'
+                            ? 'bg-[#2D5A27] text-white ring-4 ring-emerald-100'
+                            : editAppForm.status === 'da_kham'
+                            ? 'bg-[#2D5A27] text-white'
+                            : 'bg-white border-2 border-slate-300 text-slate-400'
+                        }`}
+                      >
+                        {editAppForm.status === 'da_kham' ? <Check className="w-4 h-4" /> : '2'}
+                      </div>
+                      <span
+                        className={`text-xs font-bold mt-1.5 ${
+                          editAppForm.status === 'da_xac_nhan' || editAppForm.status === 'da_kham'
+                            ? 'text-slate-800'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        Đã xác nhận
+                      </span>
+                      <span className="text-[10px] text-slate-400">Đã chốt thông tin</span>
+                    </div>
+
+                    {/* Bước 3: Đã hoàn thành */}
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                          editAppForm.status === 'da_kham'
+                            ? 'bg-emerald-700 text-white ring-4 ring-emerald-100'
+                            : 'bg-white border-2 border-slate-300 text-slate-400'
+                        }`}
+                      >
+                        {editAppForm.status === 'da_kham' ? <Check className="w-4 h-4" /> : '3'}
+                      </div>
+                      <span
+                        className={`text-xs font-bold mt-1.5 ${
+                          editAppForm.status === 'da_kham' ? 'text-emerald-700' : 'text-slate-400'
+                        }`}
+                      >
+                        Đã hoàn thành
+                      </span>
+                      <span className="text-[10px] text-slate-400">Đã gửi Zalo / Email</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Body: Cuộn nội dung (Không chứa tiêu đề nhóm rườm rà) */}
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              {/* HÀNG 1: THÔNG TIN KHÁCH HÀNG & LIÊN HỆ */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Họ và tên khách: *</label>
+                  <input
+                    type="text"
+                    value={editAppForm.ownerName}
+                    onChange={(e) => setEditAppForm((prev) => ({ ...prev, ownerName: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs font-semibold text-slate-900 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Số điện thoại: *</label>
+                  {/* Ô SĐT có nút Gọi khách nằm gọn bên trong */}
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={editAppForm.phone}
+                      onChange={(e) => setEditAppForm((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="w-full pl-3 pr-28 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs font-mono font-bold text-slate-900 outline-none"
+                    />
+                    {editAppForm.phone && (
+                      <a
+                        href={`tel:${editAppForm.phone}`}
+                        className="absolute right-1 top-1 bottom-1 px-2.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 transition shadow-2xs"
+                        title={`Gọi ngay ${editAppForm.phone}`}
+                      >
+                        <PhoneCall className="w-3 h-3" />
+                        <span>Gọi khách</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Gmail / Email:</label>
+                  <input
+                    type="email"
+                    value={editAppForm.email}
+                    onChange={(e) => setEditAppForm((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="khachhang@gmail.com"
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs text-blue-700 font-medium outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* HÀNG 2: THÔNG TIN THÚ CƯNG */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1 border-t border-slate-100">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Tên thú cưng:</label>
+                  <input
+                    type="text"
+                    value={editAppForm.petName}
+                    onChange={(e) => setEditAppForm((prev) => ({ ...prev, petName: e.target.value }))}
+                    placeholder="Nhập tên thú cưng (nếu có)..."
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs font-medium text-slate-900 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Loài thú cưng:</label>
+                  <select
+                    value={editAppForm.petType}
+                    onChange={(e) => setEditAppForm((prev) => ({ ...prev, petType: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs font-medium text-slate-900 outline-none cursor-pointer"
+                  >
+                    <option value="">-- Chọn loài thú cưng --</option>
+                    <option value="dog">Chó (Dog)</option>
+                    <option value="cat">Mèo (Cat)</option>
+                    <option value="other">Loài khác (Other)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* HÀNG 3: CƠ SỞ TIẾP ĐÓN & DỊCH VỤ */}
+              <div className="space-y-3 pt-1 border-t border-slate-100">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1 text-xs">
+                    Cơ sở tiếp đón:
+                  </label>
+                  <select
+                    value={editAppForm.branchId}
+                    onChange={(e) => {
+                      const b = branches.find((item) => item.id === e.target.value);
+                      let targetName = editAppForm.branchName;
+                      if (b) {
+                        if (editAppForm.lang === 'en') {
+                          const title = b.ten_chi_nhanh_en || b.ten_ngan_en || b.ten_chi_nhanh;
+                          const addr = b.dia_chi_en || b.dia_chi;
+                          targetName = addr ? `${title} — ${addr}` : title;
+                        } else {
+                          const title = b.ten_ngan || b.ten_chi_nhanh;
+                          const addr = b.dia_chi;
+                          targetName = addr ? `${title} — ${addr}` : title;
+                        }
+                      }
+                      setEditAppForm((prev) => ({
+                        ...prev,
+                        branchId: e.target.value,
+                        branchName: targetName,
+                      }));
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs font-medium text-slate-900 outline-none cursor-pointer"
+                  >
+                    <option value="">{editAppForm.lang === 'en' ? '-- Select Clinic Branch --' : '-- Chọn cơ sở tiếp đón --'}</option>
+                    {branches.map((b) => {
+                      const bTitle = editAppForm.lang === 'en' ? (b.ten_chi_nhanh_en || b.ten_chi_nhanh) : b.ten_chi_nhanh;
+                      const bAddr = editAppForm.lang === 'en' ? (b.dia_chi_en || b.dia_chi) : b.dia_chi;
+                      return (
+                        <option key={b.id} value={b.id}>
+                          {bTitle} - {bAddr}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-600 font-medium text-xs">
+                      Dịch vụ đã chọn ({editAppForm.services.length}):
+                    </label>
+                    {editAppForm.services.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setEditAppForm((prev) => ({ ...prev, services: [] }))}
+                        className="text-[11px] text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                      >
+                        Xóa tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Danh sách tags dịch vụ đã chọn */}
+                  <div className="flex flex-wrap gap-1.5 mb-2 min-h-[36px] p-2 rounded-lg bg-slate-50 border border-slate-200">
+                    {editAppForm.services.length === 0 ? (
+                      <span className="text-slate-400 text-xs italic py-0.5">Chưa chọn dịch vụ nào</span>
+                    ) : (
+                      editAppForm.services.map((srv) => (
+                        <span
+                          key={srv}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white text-[#2D5A27] border border-emerald-200 text-xs font-semibold shadow-2xs"
+                        >
+                          <span>{srv}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleServiceInEditForm(srv)}
+                            className="hover:text-rose-600 font-normal ml-0.5 cursor-pointer text-slate-400 hover:font-bold"
+                            title="Bỏ chọn"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Droplist (của Web) chọn / bỏ chọn nhanh dịch vụ */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsServiceDropdownOpen(!isServiceDropdownOpen)}
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 hover:border-slate-400 focus:border-[#2D5A27] text-xs font-medium text-slate-700 flex items-center justify-between transition cursor-pointer text-left"
+                    >
+                      <span className="text-slate-500">
+                        {editAppForm.lang === 'en'
+                          ? '-- Click to select / add services --'
+                          : '-- Bấm để chọn / bỏ chọn nhanh dịch vụ --'}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-slate-400 transition-transform ${
+                          isServiceDropdownOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {isServiceDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsServiceDropdownOpen(false)}
+                        />
+                        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 p-2 text-xs animate-in fade-in zoom-in-95 duration-150 max-h-60 overflow-y-auto">
+                          <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-slate-100">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {editAppForm.lang === 'en' ? 'Available Services' : 'Danh sách dịch vụ hệ thống'}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {editAppForm.services.length} đã chọn
+                            </span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {services.map((s) => {
+                              const title =
+                                editAppForm.lang === 'en' && s.ten_dich_vu_en ? s.ten_dich_vu_en : s.ten_dich_vu;
+                              const isSelected =
+                                editAppForm.services.includes(title) || editAppForm.services.includes(s.ten_dich_vu);
+                              return (
+                                <button
+                                  type="button"
+                                  key={s.id}
+                                  onClick={() => toggleServiceInEditForm(title)}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-emerald-50 text-[#2D5A27] font-bold'
+                                      : 'hover:bg-slate-50 text-slate-700'
+                                  }`}
+                                >
+                                  <span>{title}</span>
+                                  {isSelected && <Check className="w-4 h-4 text-[#2D5A27]" />}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
+                      </>
+                    )}
+                  </div>
 
-                        {customerEmail && (
-                          <div className="sm:col-span-2 pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                              <span className="text-slate-500">Gmail / Email xác nhận:</span>
-                              <div className="flex items-center gap-1.5 mt-0.5 font-mono text-blue-700 font-bold text-xs">
-                                <Mail className="w-3.5 h-3.5 text-blue-600" />
-                                <a href={`mailto:${customerEmail}`} className="hover:underline">{customerEmail}</a>
-                              </div>
-                            </div>
+                  {/* Thêm dịch vụ tùy chỉnh */}
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      value={editAppForm.customService}
+                      onChange={(e) => setEditAppForm((prev) => ({ ...prev, customService: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCustomServiceInEditForm();
+                        }
+                      }}
+                      placeholder="Hoặc nhập tên dịch vụ khác rồi bấm Thêm..."
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs outline-none focus:border-[#2D5A27]"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomServiceInEditForm}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold cursor-pointer transition"
+                    >
+                      Thêm
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* HÀNG 4: THỜI GIAN KHÁM & GHI CHÚ (CÓ THỂ KÉO DÃN RỘNG XUỐNG DƯỚI) */}
+              <div className="space-y-3 pt-1 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-600 font-medium mb-1">Ngày hẹn: *</label>
+                    <input
+                      type="date"
+                      value={editAppForm.date}
+                      onChange={(e) => setEditAppForm((prev) => ({ ...prev, date: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs font-semibold text-slate-900 outline-none"
+                    />
+                  </div>
+
+                  {/* Khung giờ hẹn: Cô đọng đúng 1 ô duy nhất & Droplist của Web */}
+                  <div className="relative">
+                    <label className="block text-slate-600 font-medium mb-1">Khung giờ hẹn: *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsTimeSlotDropdownOpen(!isTimeSlotDropdownOpen)}
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 hover:border-slate-400 focus:border-[#2D5A27] text-xs font-bold text-slate-900 flex items-center justify-between transition cursor-pointer text-left"
+                    >
+                      <span className={editAppForm.timeSlot ? 'text-[#2D5A27]' : 'text-slate-400 font-normal'}>
+                        {editAppForm.timeSlot || (editAppForm.lang === 'en' ? 'Select Time Slot' : 'Chọn khung giờ hẹn')}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-slate-400 transition-transform ${
+                          isTimeSlotDropdownOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Droplist Web Popup */}
+                    {isTimeSlotDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsTimeSlotDropdownOpen(false)}
+                        />
+                        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 p-3 text-xs animate-in fade-in zoom-in-95 duration-150">
+                          <div className="mb-2 pb-2 border-b border-slate-100 flex items-center justify-between">
+                            <span className="font-semibold text-slate-700 text-[11px] uppercase tracking-wider">
+                              {editAppForm.lang === 'en' ? 'Select Time Slot' : 'Chọn Khung Giờ'}
+                            </span>
                             <button
                               type="button"
-                              disabled={isSendingConfirmEmail}
-                              onClick={() => handleResendConfirmEmail(selectedAppointment)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
+                              onClick={() => {
+                                setEditAppForm((prev) => ({
+                                  ...prev,
+                                  timeSlot: editAppForm.lang === 'en' ? 'Flexible' : 'Linh hoạt',
+                                }));
+                                setIsTimeSlotDropdownOpen(false);
+                              }}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                                editAppForm.timeSlot === 'Linh hoạt' || editAppForm.timeSlot === 'Flexible'
+                                  ? 'bg-emerald-100 text-[#2D5A27]'
+                                  : 'text-slate-600 hover:bg-slate-100'
+                              }`}
                             >
-                              <Send className="w-3 h-3" />
-                              <span>{isSendingConfirmEmail ? 'Đang gửi...' : 'Gửi Lại Email Xác Nhận'}</span>
+                              {editAppForm.lang === 'en' ? 'Flexible Time' : 'Giờ linh hoạt'}
                             </button>
                           </div>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Card 2: Thú cưng & Dịch vụ */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Thông tin thú cưng &amp; Dịch vụ đăng ký
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-slate-500">Tên thú cưng:</span>
-                          <p className="font-bold text-slate-900 text-sm mt-0.5 flex items-center gap-1.5">
-                            <span>{selectedAppointment.loai_thu_cung === 'dog' ? '🐶' : selectedAppointment.loai_thu_cung === 'cat' ? '🐱' : '🐰'}</span>
-                            <span>{selectedAppointment.ten_thu_cung}</span>
-                          </p>
+                          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                            <div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                {editAppForm.lang === 'en' ? 'Morning (08:00 - 11:30)' : 'Buổi Sáng (08:00 - 11:30)'}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                {ADMIN_TIME_SLOTS.slice(0, 7).map((slot) => (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    onClick={() => {
+                                      setEditAppForm((prev) => ({ ...prev, timeSlot: slot }));
+                                      setIsTimeSlotDropdownOpen(false);
+                                    }}
+                                    className={`py-1.5 px-1.5 rounded text-[11px] font-medium text-center transition cursor-pointer ${
+                                      editAppForm.timeSlot === slot
+                                        ? 'bg-[#2D5A27] text-white font-bold'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {slot}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                {editAppForm.lang === 'en' ? 'Afternoon (13:30 - 17:00)' : 'Buổi Chiều (13:30 - 17:00)'}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                {ADMIN_TIME_SLOTS.slice(7, 14).map((slot) => (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    onClick={() => {
+                                      setEditAppForm((prev) => ({ ...prev, timeSlot: slot }));
+                                      setIsTimeSlotDropdownOpen(false);
+                                    }}
+                                    className={`py-1.5 px-1.5 rounded text-[11px] font-medium text-center transition cursor-pointer ${
+                                      editAppForm.timeSlot === slot
+                                        ? 'bg-[#2D5A27] text-white font-bold'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {slot}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                {editAppForm.lang === 'en' ? 'Evening (17:00 - 20:00)' : 'Buổi Tối (17:00 - 20:00)'}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                {ADMIN_TIME_SLOTS.slice(14).map((slot) => (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    onClick={() => {
+                                      setEditAppForm((prev) => ({ ...prev, timeSlot: slot }));
+                                      setIsTimeSlotDropdownOpen(false);
+                                    }}
+                                    className={`py-1.5 px-1.5 rounded text-[11px] font-medium text-center transition cursor-pointer ${
+                                      editAppForm.timeSlot === slot
+                                        ? 'bg-[#2D5A27] text-white font-bold'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {slot}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Nhập giờ khác */}
+                          <div className="pt-2 mt-2 border-t border-slate-100 flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500 whitespace-nowrap">Giờ khác:</span>
+                            <input
+                              type="text"
+                              value={editAppForm.timeSlot}
+                              onChange={(e) => setEditAppForm((prev) => ({ ...prev, timeSlot: e.target.value }))}
+                              placeholder="VD: 08:15..."
+                              className="flex-1 px-2 py-1 rounded bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:border-[#2D5A27]"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  setIsTimeSlotDropdownOpen(false);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setIsTimeSlotDropdownOpen(false)}
+                              className="px-2.5 py-1 rounded bg-slate-800 text-white text-[11px] font-semibold"
+                            >
+                              Xong
+                            </button>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-slate-500">Dịch vụ yêu cầu:</span>
-                          <p className="font-bold text-[#2D5A27] text-sm mt-0.5">{selectedAppointment.dich_vu}</p>
-                        </div>
-                        <div className="sm:col-span-2 pt-2 border-t border-slate-200">
-                          <span className="text-slate-500">Cơ sở đăng ký:</span>
-                          <p className="font-semibold text-slate-800 mt-0.5">{selectedAppointment.ten_chi_nhanh || 'Chưa xác định cơ sở'}</p>
-                        </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                    {/* Card 3: Thời gian khám & Ghi chú */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Thời gian khám &amp; Yêu cầu đặc thù
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-3">
-                        <div>
-                          <span className="text-slate-500">Khung giờ:</span>
-                          <p className="font-bold text-[#2D5A27] text-base mt-0.5">{selectedAppointment.gio_hen}</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">Ngày hẹn:</span>
-                          <p className="font-bold text-slate-900 text-base mt-0.5">{selectedAppointment.ngay_hen}</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="text-slate-500 text-xs">Ghi chú của khách hàng:</span>
-                        <div className="mt-1 p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed font-light">
-                          {cleanNote || '(Không có ghi chú thêm)'}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-
-              {/* Card 4: Điều hướng trạng thái 1-Click */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">
-                  Chuyển Trạng Thái Lịch Hẹn Nhanh:
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus}
-                    onClick={() => handleUpdateAppointmentStatus(selectedAppointment.id, 'cho_xac_nhan')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
-                      selectedAppointment.trang_thai === 'cho_xac_nhan'
-                        ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-400/30'
-                        : 'bg-white hover:bg-amber-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    ⏳ Chờ xác nhận
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus}
-                    onClick={() => handleUpdateAppointmentStatus(selectedAppointment.id, 'da_xac_nhan')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
-                      selectedAppointment.trang_thai === 'da_xac_nhan'
-                        ? 'bg-blue-100 text-blue-900 border-blue-300 ring-2 ring-blue-400/30'
-                        : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    ✓ Đã xác nhận
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus}
-                    onClick={() => handleUpdateAppointmentStatus(selectedAppointment.id, 'da_kham')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
-                      selectedAppointment.trang_thai === 'da_kham'
-                        ? 'bg-emerald-100 text-emerald-900 border-emerald-300 ring-2 ring-emerald-400/30'
-                        : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    ✓✓ Đã hoàn thành
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isUpdatingStatus}
-                    onClick={() => handleUpdateAppointmentStatus(selectedAppointment.id, 'da_huy')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
-                      selectedAppointment.trang_thai === 'da_huy'
-                        ? 'bg-rose-100 text-rose-900 border-rose-300 ring-2 ring-rose-400/30'
-                        : 'bg-white hover:bg-rose-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    ✕ Hủy lịch
-                  </button>
+                {/* Ghi chú / Triệu chứng: có thể kéo dãn rộng xuống dưới tự do */}
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1 text-xs">
+                    Ghi chú / Triệu chứng:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editAppForm.note}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditAppForm((prev) => ({ ...prev, note: val }));
+                      setNoteCache((prev) => ({
+                        ...prev,
+                        [editAppForm.lang]: val,
+                      }));
+                    }}
+                    placeholder="Ghi chú về tình trạng thú cưng hoặc yêu cầu của khách..."
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-[#2D5A27] text-xs text-slate-800 outline-none resize-y min-h-[90px]"
+                  />
                 </div>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50/70">
-              <button
-                type="button"
-                onClick={() => handleDeleteAppointment(selectedAppointment)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Xóa Lịch Hẹn</span>
-              </button>
+            <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+              <div className="flex items-center gap-2">
+                {editAppForm.status !== 'da_huy' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCancelModalOpen(true)}
+                    className="px-3 py-2 rounded-lg text-rose-700 hover:bg-rose-50 border border-rose-200 hover:border-rose-300 text-xs font-semibold transition cursor-pointer"
+                  >
+                    Hủy Lịch Hẹn
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAppointment(selectedAppointment)}
+                  className="px-3 py-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-slate-100 text-xs font-medium transition cursor-pointer"
+                >
+                  Xóa vĩnh viễn
+                </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedAppointment(null)}
-                className="px-6 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-              >
-                Đóng
-              </button>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                {/* Nút 1: Lưu thay đổi (Ấn lưu sẽ chuyển sang Đã xác nhận nếu đang Chờ xác nhận) */}
+                <button
+                  type="button"
+                  disabled={isSavingAppointment}
+                  onClick={handleSaveAppointmentDetail}
+                  className="px-4 py-2 rounded-lg bg-[#2D5A27] hover:bg-emerald-800 text-white text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingAppointment
+                    ? 'Đang lưu...'
+                    : editAppForm.status === 'cho_xac_nhan'
+                    ? 'Xác Nhận & Lưu Lịch'
+                    : 'Lưu Thông Tin'}
+                </button>
+
+                {/* Nút 2: Gửi Zalo (Chỉ sáng khi đã xác nhận hoặc đã hoàn thành, không có icon cờ) */}
+                <div className="relative inline-block">
+                  <button
+                    type="button"
+                    disabled={editAppForm.status === 'cho_xac_nhan' || editAppForm.status === 'da_huy' || isSendingZalo}
+                    onClick={handleSendZaloFromModal}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-2xs ${
+                      editAppForm.status === 'cho_xac_nhan' || editAppForm.status === 'da_huy'
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                    }`}
+                    title={
+                      editAppForm.status === 'cho_xac_nhan'
+                        ? 'Vui lòng xác nhận và lưu thông tin trước khi gửi Zalo'
+                        : `Gửi tin nhắn Zalo ZNS xác nhận lịch hẹn${selectedAppointment.so_lan_gui_zalo ? ` - Đã gửi ${selectedAppointment.so_lan_gui_zalo} lần` : ''}`
+                    }
+                  >
+                    {isSendingZalo
+                      ? 'Đang gửi...'
+                      : `Gửi Zalo (${editAppForm.lang === 'en' ? 'ENG' : 'VIE'})`}
+                  </button>
+                  {/* Badge Zalo: Lỗi (!) hoặc số lần gửi màu xanh lá cây */}
+                  {selectedAppointment.trang_thai_zalo === 'that_bai' ? (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-xs ring-2 ring-white animate-pulse pointer-events-none"
+                      title="Lần gửi Zalo gần nhất bị lỗi"
+                    >
+                      !
+                    </span>
+                  ) : (selectedAppointment.so_lan_gui_zalo || 0) > 0 ? (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs ring-2 ring-white pointer-events-none"
+                      title={`Đã gửi Zalo thành công ${selectedAppointment.so_lan_gui_zalo} lần`}
+                    >
+                      {selectedAppointment.so_lan_gui_zalo}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Nút 3: Gửi Email (Chỉ sáng khi đã xác nhận hoặc đã hoàn thành, không có icon cờ) */}
+                <div className="relative inline-block">
+                  <button
+                    type="button"
+                    disabled={editAppForm.status === 'cho_xac_nhan' || editAppForm.status === 'da_huy' || isSendingConfirmEmailDetail}
+                    onClick={handleSendEmailFromModal}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-2xs ${
+                      editAppForm.status === 'cho_xac_nhan' || editAppForm.status === 'da_huy'
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                    }`}
+                    title={
+                      editAppForm.status === 'cho_xac_nhan'
+                        ? 'Vui lòng xác nhận và lưu thông tin trước khi gửi Email'
+                        : `Gửi email xác nhận đặt lịch${selectedAppointment.so_lan_gui_email ? ` - Đã gửi ${selectedAppointment.so_lan_gui_email} lần` : ''}`
+                    }
+                  >
+                    {isSendingConfirmEmailDetail
+                      ? 'Đang gửi...'
+                      : `Gửi Email (${editAppForm.lang === 'en' ? 'ENG' : 'VIE'})`}
+                  </button>
+                  {/* Badge Email: Lỗi (!) hoặc số lần gửi màu xanh lá cây */}
+                  {selectedAppointment.trang_thai_email === 'that_bai' ? (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-xs ring-2 ring-white animate-pulse pointer-events-none"
+                      title="Lần gửi Email gần nhất bị lỗi"
+                    >
+                      !
+                    </span>
+                  ) : (selectedAppointment.so_lan_gui_email || 0) > 0 ? (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs ring-2 ring-white pointer-events-none"
+                      title={`Đã gửi Email thành công ${selectedAppointment.so_lan_gui_email} lần`}
+                    >
+                      {selectedAppointment.so_lan_gui_email}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Nút 4: Đóng */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAppointment(null)}
+                  className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </AdminResizableModal>
+
+          {/* CỬA SỔ WEB ĐIỀN LÝ DO HỦY LỊCH (BẮT BUỘC NHẬP MỚI CHO HỦY) */}
+          {isCancelModalOpen && (
+            <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+              <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-5 text-slate-900 animate-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <h4 className="font-bold text-sm text-slate-900">
+                    Xác Nhận Hủy Lịch Hẹn
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setIsCancelModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 text-lg leading-none cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="py-4 space-y-3 text-xs">
+                  <p className="text-slate-600">
+                    Vui lòng nhập <strong className="text-slate-900">lý do hủy lịch</strong> để lưu vào hồ sơ khách hàng #{selectedAppointment.ma_lich_hen}:
+                  </p>
+
+                  {/* Gợi ý lý do bấm nhanh */}
+                  <div>
+                    <span className="text-[11px] text-slate-400 block mb-1">Gợi ý nhanh:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        'Khách bận việc đột xuất xin hủy',
+                        'Không liên lạc được với khách hàng',
+                        'Khách đổi sang khám tại cơ sở khác',
+                        'Bé cưng đã khỏe / Không cần khám',
+                        'Khách đặt nhầm / Trùng lặp lịch',
+                      ].map((quick) => (
+                        <button
+                          key={quick}
+                          type="button"
+                          onClick={() => setCancelReason(quick)}
+                          className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] transition cursor-pointer"
+                        >
+                          {quick}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      Lý do cụ thể: *
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Nhập lý do hủy lịch hẹn..."
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 focus:border-rose-500 text-xs text-slate-900 outline-none resize-none"
+                      autoFocus
+                    />
+                    {!cancelReason.trim() && (
+                      <span className="text-[11px] text-rose-500 mt-1 block">
+                        * Lý do là bắt buộc để xác nhận hủy lịch hẹn.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsCancelModalOpen(false)}
+                    className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium cursor-pointer"
+                  >
+                    Quay lại
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!cancelReason.trim()}
+                    onClick={handleConfirmCancelAppointment}
+                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Xác Nhận Hủy Lịch
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -13552,17 +16135,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         <FileText className="w-3.5 h-3.5 text-[#2D5A27]" />
                         <span>Nội dung chi tiết bài viết (Tiếng Việt):</span>
                       </label>
-                      {editingArticle.id && (
-                        <Link
-                          href={`/kien-thuc/${editingArticle.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Xem trang ngoài web</span>
-                        </Link>
-                      )}
                     </div>
                     <RichTextEditor
                       key={`article-editor-vi-${editingArticle.id || 'new'}`}
@@ -13825,6 +16397,36 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
           onCancel={() => setShowLogoutConfirm(false)}
         />
       )}
+
+      {/* THÔNG BÁO NỔI LỊCH HẸN MỚI (TOAST GÓC DƯỚI PHẢI + CHUÔNG ÂM THANH) */}
+      <AdminFloatingNotification
+        notification={floatingNotification}
+        playSound={adminNotifSettings.webSound}
+        onClose={() => setFloatingNotification(null)}
+        onOpenDetail={(app) => {
+          handleOpenAppointmentFromNotification(app);
+          setFloatingNotification(null);
+        }}
+      />
+
+      {/* THÔNG BÁO NỔI CẢNH BÁO GỬI EMAIL / ZALO THẤT BẠI */}
+      <AdminNotificationFailureToast
+        failure={failureNotification}
+        playSound={adminNotifSettings.webSound}
+        onClose={() => setFailureNotification(null)}
+      />
+
+      {/* MODAL CÀI ĐẶT THÔNG BÁO (BẬT/TẮT WEB & TRÌNH DUYỆT + ÂM THANH) */}
+      <AdminNotificationSettingsModal
+        isOpen={isNotifSettingsModalOpen}
+        onClose={() => setIsNotifSettingsModalOpen(false)}
+        settings={adminNotifSettings}
+        onChangeSettings={(newSettings) => {
+          setAdminNotifSettings(newSettings);
+          showNotification('success', 'Đã lưu cài đặt thông báo!');
+        }}
+        onPermissionChange={(perm) => setBrowserNotifPermission(perm)}
+      />
     </div>
   );
 }

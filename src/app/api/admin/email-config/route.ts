@@ -59,6 +59,14 @@ export async function GET(req: NextRequest) {
         zalo_refresh_token: notifySettings.zalo_refresh_token || '',
         zalo_test_phone: notifySettings.zalo_test_phone || '',
       },
+      antiSpam: {
+        spam_limit_enabled: notifySettings.spam_limit_enabled !== undefined ? Boolean(notifySettings.spam_limit_enabled) : true,
+        spam_limit_ip: notifySettings.spam_limit_ip !== undefined ? Boolean(notifySettings.spam_limit_ip) : true,
+        spam_limit_phone: notifySettings.spam_limit_phone !== undefined ? Boolean(notifySettings.spam_limit_phone) : true,
+        spam_limit_email: notifySettings.spam_limit_email !== undefined ? Boolean(notifySettings.spam_limit_email) : true,
+        spam_max_bookings_per_day: typeof notifySettings.spam_max_bookings_per_day === 'number' ? notifySettings.spam_max_bookings_per_day : 3,
+        spam_cooldown_seconds: typeof notifySettings.spam_cooldown_seconds === 'number' ? notifySettings.spam_cooldown_seconds : 15,
+      },
       template: templateConfig,
       recruitmentTemplate: recruitmentTemplateConfig,
     });
@@ -167,6 +175,28 @@ export async function POST(req: NextRequest) {
 
       if (Object.keys(zaloNotifyUpdates).length > 0) {
         await saveNotificationSettings(zaloNotifyUpdates);
+      }
+    }
+
+    // 1.8. Cập nhật cấu hình Chống Spam Đặt Lịch (IP, SĐT, Email) nếu có
+    if (body.antiSpam !== undefined || body.spam_limit_enabled !== undefined) {
+      const spamData = body.antiSpam || body;
+      const spamUpdates: Record<string, any> = {};
+      if (spamData.spam_limit_enabled !== undefined) spamUpdates.spam_limit_enabled = Boolean(spamData.spam_limit_enabled);
+      if (spamData.spam_limit_ip !== undefined) spamUpdates.spam_limit_ip = Boolean(spamData.spam_limit_ip);
+      if (spamData.spam_limit_phone !== undefined) spamUpdates.spam_limit_phone = Boolean(spamData.spam_limit_phone);
+      if (spamData.spam_limit_email !== undefined) spamUpdates.spam_limit_email = Boolean(spamData.spam_limit_email);
+      if (spamData.spam_max_bookings_per_day !== undefined) {
+        const parsed = parseInt(String(spamData.spam_max_bookings_per_day), 10);
+        if (!isNaN(parsed) && parsed > 0) spamUpdates.spam_max_bookings_per_day = parsed;
+      }
+      if (spamData.spam_cooldown_seconds !== undefined) {
+        const parsed = parseInt(String(spamData.spam_cooldown_seconds), 10);
+        if (!isNaN(parsed) && parsed >= 0) spamUpdates.spam_cooldown_seconds = parsed;
+      }
+
+      if (Object.keys(spamUpdates).length > 0) {
+        await saveNotificationSettings(spamUpdates);
       }
     }
 

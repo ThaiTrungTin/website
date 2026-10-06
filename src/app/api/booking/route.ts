@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendBookingConfirmationEmail, sendMail, getSmtpConfig, formatDateDMY } from '@/lib/mailer';
+import { sendCustomerReceiptEmail, sendMail, getSmtpConfig, formatDateDMY } from '@/lib/mailer';
 
 // In-memory rate limiting map chống spam: key = sđt_ip, value = timestamp
 const rateLimitMap = new Map<string, number>();
@@ -93,10 +93,10 @@ export async function POST(req: NextRequest) {
     const cleanPhone = (phone || '').replace(/\s+/g, '');
     const numOnly = cleanPhone.replace(/\D/g, '');
 
-    // 2. TÍNH NĂNG CHỐNG SPAM: Kiểm tra số điện thoại hợp lệ, loại trừ số rác / lặp
-    if (numOnly.length < 9 || numOnly.length > 11) {
+    // 2. TÍNH NĂNG CHỐNG SPAM: Kiểm tra số điện thoại hợp lệ (9 - 15 chữ số cho cả Việt Nam và Quốc Tế)
+    if (numOnly.length < 9 || numOnly.length > 15) {
       return NextResponse.json(
-        { success: false, message: isEn ? 'Please enter a valid phone number (9-11 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số)' },
+        { success: false, message: isEn ? 'Please enter a valid phone number (9-15 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 15 chữ số)' },
         { status: 400 }
       );
     }
@@ -111,59 +111,78 @@ export async function POST(req: NextRequest) {
     const cleanEmail = (email || '').trim().toLowerCase();
 
     // ========================================================
-    // TÍNH NĂNG CHỐNG SPAM: GIỚI HẠN TỐI ĐA 3 LỊCH HẸN / NGÀY
-    // THEO IP, SỐ ĐIỆN THOẠI VÀ EMAIL
-    // Nếu bắt đầu gửi tới tin thứ 4 mới chặn và báo lỗi song ngữ:
-    // - VI: "Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày"
-    // - EN: "Maximum of 3 appointments allowed per day"
+    // TÍNH NĂNG CHỐNG SPAM: CẤU HÌNH TỰ ĐỘNG TỪ ADMIN (IP, SĐT, EMAIL & SỐ LẦN)
     // ========================================================
+    const { getNotificationSettings } = await import('@/lib/notificationSettings');
+    const notifySettings = await getNotificationSettings().catch(() => null);
+
+    const spamLimitEnabled = notifySettings?.spam_limit_enabled !== false;
+    const checkIp = notifySettings?.spam_limit_ip !== false;
+    const checkPhone = notifySettings?.spam_limit_phone !== false;
+    const checkEmail = notifySettings?.spam_limit_email !== false;
+    const maxBookingsPerDay =
+      typeof notifySettings?.spam_max_bookings_per_day === 'number' && notifySettings.spam_max_bookings_per_day > 0
+        ? notifySettings.spam_max_bookings_per_day
+        : 3;
+    const cooldownSeconds =
+      typeof notifySettings?.spam_cooldown_seconds === 'number'
+        ? notifySettings.spam_cooldown_seconds
+        : 15;
+
+    const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost' || clientIp === 'unknown';
     const startOfDayISO = new Date(`${todayVN}T00:00:00+07:00`).toISOString();
 
-    // 2.1. Kiểm tra giới hạn IP
-    let ipTodayCount = dailyIpCountMap.get(dailyIpKey) || 0;
-    if (ipTodayCount < 3 && clientIp !== '127.0.0.1' && clientIp !== 'unknown') {
-      try {
-        const { count, error } = await supabaseAdmin
-          .from('lich_hen')
-          .select('id', { count: 'exact', head: true })
-          .gte('ngay_tao', startOfDayISO)
-          .ilike('ghi_chu', `%[IP: ${clientIp}]%`);
+    // 2.1. Kiểm tra giới hạn IP (chỉ áp dụng khi bật spamLimitEnabled và checkIp)
+    let ipTodayCount = 0;
+    if (spamLimitEnabled && checkIp && !isLocalhost) {
+      ipTodayCount = dailyIpCountMap.get(dailyIpKey) || 0;
+      if (ipTodayCount < maxBookingsPerDay) {
+        try {
+          const { count, error } = await supabaseAdmin
+            .from('lich_hen')
+            .select('id', { count: 'exact', head: true })
+            .gte('ngay_tao', startOfDayISO)
+            .ilike('ghi_chu', `%[IP: ${clientIp}]%`);
 
-        if (!error && typeof count === 'number') {
-          ipTodayCount = Math.max(ipTodayCount, count);
-          dailyIpCountMap.set(dailyIpKey, ipTodayCount);
+          if (!error && typeof count === 'number') {
+            ipTodayCount = Math.max(ipTodayCount, count);
+            dailyIpCountMap.set(dailyIpKey, ipTodayCount);
+          }
+        } catch (dbErr) {
+          console.warn('Lỗi kiểm tra số lượt IP từ Supabase:', dbErr);
         }
-      } catch (dbErr) {
-        console.warn('Lỗi kiểm tra số lượt IP từ Supabase:', dbErr);
       }
     }
 
     // 2.2. Kiểm tra giới hạn Số Điện Thoại
+    let phoneTodayCount = 0;
     const dailyPhoneKey = `${todayVN}_phone_${numOnly}`;
-    let phoneTodayCount = dailyIpCountMap.get(dailyPhoneKey) || 0;
-    if (phoneTodayCount < 3) {
-      try {
-        const { count, error } = await supabaseAdmin
-          .from('lich_hen')
-          .select('id', { count: 'exact', head: true })
-          .gte('ngay_tao', startOfDayISO)
-          .ilike('so_dien_thoai', `%${numOnly.slice(-9)}`);
+    if (spamLimitEnabled && checkPhone && !isLocalhost) {
+      phoneTodayCount = dailyIpCountMap.get(dailyPhoneKey) || 0;
+      if (phoneTodayCount < maxBookingsPerDay) {
+        try {
+          const { count, error } = await supabaseAdmin
+            .from('lich_hen')
+            .select('id', { count: 'exact', head: true })
+            .gte('ngay_tao', startOfDayISO)
+            .ilike('so_dien_thoai', `%${numOnly.slice(-9)}`);
 
-        if (!error && typeof count === 'number') {
-          phoneTodayCount = Math.max(phoneTodayCount, count);
-          dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount);
+          if (!error && typeof count === 'number') {
+            phoneTodayCount = Math.max(phoneTodayCount, count);
+            dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount);
+          }
+        } catch (dbErr) {
+          console.warn('Lỗi kiểm tra số lượt SĐT từ Supabase:', dbErr);
         }
-      } catch (dbErr) {
-        console.warn('Lỗi kiểm tra số lượt SĐT từ Supabase:', dbErr);
       }
     }
 
     // 2.3. Kiểm tra giới hạn Email (nếu khách có điền email)
     let emailTodayCount = 0;
     const dailyEmailKey = cleanEmail && cleanEmail.includes('@') ? `${todayVN}_email_${cleanEmail}` : '';
-    if (dailyEmailKey) {
+    if (spamLimitEnabled && checkEmail && !isLocalhost && dailyEmailKey) {
       emailTodayCount = dailyIpCountMap.get(dailyEmailKey) || 0;
-      if (emailTodayCount < 3) {
+      if (emailTodayCount < maxBookingsPerDay) {
         try {
           const { count, error } = await supabaseAdmin
             .from('lich_hen')
@@ -181,49 +200,54 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (ipTodayCount >= 3 || phoneTodayCount >= 3 || emailTodayCount >= 3) {
+    if (
+      spamLimitEnabled &&
+      !isLocalhost &&
+      ((checkIp && ipTodayCount >= maxBookingsPerDay) ||
+        (checkPhone && phoneTodayCount >= maxBookingsPerDay) ||
+        (checkEmail && emailTodayCount >= maxBookingsPerDay))
+    ) {
+      const waitSeconds = cooldownSeconds > 0 ? cooldownSeconds : 15;
       return NextResponse.json(
         {
           success: false,
+          cooldown: waitSeconds,
           message: isEn
-            ? 'Maximum of 3 appointments allowed per day'
-            : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày',
+            ? `Please try again in ${waitSeconds}s`
+            : `Vui lòng gửi lại sau ${waitSeconds}s`,
         },
         { status: 429 }
       );
     }
 
-    // 3. TÍNH NĂNG CHỐNG SPAM: Rate Limiting theo SĐT & IP (Cooldown 15 giây)
-    const rateLimitKey = `${numOnly}_${clientIp}`;
-    const now = Date.now();
-    const lastSubmitTime = rateLimitMap.get(rateLimitKey);
+    // 3. TÍNH NĂNG CHỐNG SPAM: Rate Limiting theo Cooldown giữa 2 lần gửi liên tiếp
+    if (spamLimitEnabled && cooldownSeconds > 0 && !isLocalhost) {
+      const rateLimitKey = `${numOnly}_${clientIp}`;
+      const now = Date.now();
+      const lastSubmitTime = rateLimitMap.get(rateLimitKey);
+      const cooldownMs = cooldownSeconds * 1000;
 
-    if (lastSubmitTime && now - lastSubmitTime < 15000) {
-      const waitSeconds = Math.ceil((15000 - (now - lastSubmitTime)) / 1000);
-      return NextResponse.json(
-        {
-          success: false,
-          message: isEn
-            ? `Please wait ${waitSeconds}s before submitting again to prevent spam.`
-            : `Hệ thống chống spam: Vui lòng đợi ${waitSeconds} giây trước khi gửi tiếp.`,
-        },
-        { status: 429 }
-      );
+      if (lastSubmitTime && now - lastSubmitTime < cooldownMs) {
+        const waitSeconds = Math.max(1, Math.ceil((cooldownMs - (now - lastSubmitTime)) / 1000));
+        return NextResponse.json(
+          {
+            success: false,
+            cooldown: waitSeconds,
+            message: isEn
+              ? `Please try again in ${waitSeconds}s`
+              : `Vui lòng gửi lại sau ${waitSeconds}s`,
+          },
+          { status: 429 }
+        );
+      }
+      rateLimitMap.set(rateLimitKey, now);
     }
-    rateLimitMap.set(rateLimitKey, now);
 
-    if (!petName || !petName.trim()) {
-      return NextResponse.json(
-        { success: false, message: isEn ? "Please enter your pet's name" : 'Vui lòng nhập tên bé thú cưng' },
-        { status: 400 }
-      );
-    }
-    if (!branch) {
-      return NextResponse.json(
-        { success: false, message: isEn ? 'Please select a clinic branch' : 'Vui lòng chọn cơ sở tiếp đón' },
-        { status: 400 }
-      );
-    }
+    const isDummyPet = !petName || ['pet', 'bé cưng', 'be cung', 'beloved pet'].includes(petName.toLowerCase().trim());
+    const finalPetName = isDummyPet ? '' : petName.trim();
+    const finalPetType = finalPetName && petType && petType.trim() ? petType.trim() : '';
+    const finalDate = date || todayVN;
+    const finalTimeSlot = timeSlot && timeSlot.trim() ? timeSlot.trim() : (isEn ? 'Flexible' : 'Linh hoạt');
 
     // Sử dụng mã bookingCode từ client sinh sẵn (để phản hồi tức thì cho khách) hoặc sinh mới
     const finalBookingCode = clientBookingCode && /^PMM-\d{6}$/.test(clientBookingCode)
@@ -233,16 +257,18 @@ export async function POST(req: NextRequest) {
     const cleanNote = note ? note.trim() : '';
     const ipTag = `[IP: ${clientIp}]`;
 
-    // Gộp email và IP vào ghi chú để lưu trữ an toàn trong Supabase lich_hen
-    const finalGhiChu = `${cleanEmail ? `[Email: ${cleanEmail}] ` : ''}${cleanNote ? `${cleanNote} ` : ''}${ipTag}`.trim();
+    const langTag = `[Lang: ${isEn ? 'en' : 'vi'}]`;
+    const finalGhiChu = `${langTag} ${cleanEmail ? `[Email: ${cleanEmail}] ` : ''}${cleanNote ? `${cleanNote} ` : ''}${ipTag}`.trim();
 
     const displayService = service && service.trim()
       ? service.trim()
       : (isEn ? 'General Health Check & Consultation' : 'Khám tổng quát & Tư vấn trực tiếp');
 
-    const formattedDateDMY = formatDateDMY(date);
-    const formattedDateTime = `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formattedDateDMY}`;
-    const defaultBranchName = branchName || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
+    const formattedDateDMY = formatDateDMY(finalDate);
+    const formattedDateTime = timeSlot && timeSlot.trim()
+      ? `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formattedDateDMY}`
+      : `${isEn ? 'Date' : 'Ngày'} ${formattedDateDMY} (${isEn ? 'Flexible' : 'Linh hoạt'})`;
+    const defaultBranchName = branchName || (isEn ? 'PetM&M Veterinary Clinic' : 'Bệnh Viện Thú Y PetM&M');
 
     // 1. Lưu vào bảng lich_hen
     const { error: dbError } = await supabaseAdmin.from('lich_hen').insert([
@@ -250,13 +276,13 @@ export async function POST(req: NextRequest) {
         ma_lich_hen: finalBookingCode,
         ho_ten_chu: ownerName.trim(),
         so_dien_thoai: cleanPhone,
-        ten_thu_cung: petName.trim(),
-        loai_thu_cung: petType,
+        ten_thu_cung: finalPetName,
+        loai_thu_cung: finalPetType,
         chi_nhanh_id: branch || null,
         ten_chi_nhanh: defaultBranchName,
         dich_vu: displayService,
-        ngay_hen: date,
-        gio_hen: timeSlot,
+        ngay_hen: finalDate,
+        gio_hen: finalTimeSlot,
         ghi_chu: finalGhiChu || null,
         trang_thai: 'cho_xac_nhan',
       },
@@ -271,10 +297,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Cập nhật số lần gửi thành công của IP, SĐT và Email trong ngày
-    dailyIpCountMap.set(dailyIpKey, ipTodayCount + 1);
-    dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount + 1);
-    if (dailyEmailKey) {
-      dailyIpCountMap.set(dailyEmailKey, emailTodayCount + 1);
+    if (!isLocalhost) {
+      dailyIpCountMap.set(dailyIpKey, ipTodayCount + 1);
+      dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount + 1);
+      if (dailyEmailKey) {
+        dailyIpCountMap.set(dailyEmailKey, emailTodayCount + 1);
+      }
     }
 
     // 2. Lấy cấu hình email và zalo để kiểm tra luồng gửi
@@ -283,81 +311,56 @@ export async function POST(req: NextRequest) {
     const emailAllEnabled = smtpConfig?.email_enabled !== false;
     const bookingEmailMode = smtpConfig?.email_booking_mode || 'always'; // 'always' | 'on_zalo_fail' | 'disabled'
 
-    // 3. Thử gửi tin nhắn Zalo OA (ZNS) trước
-    let zaloSuccess = false;
-    try {
-      const { sendZaloZnsBookingNotification } = await import('@/lib/zalo');
-      const zaloRes = await sendZaloZnsBookingNotification({
-        phone: cleanPhone,
-        bookingCode: finalBookingCode,
-        ownerName: ownerName.trim(),
-        petName: petName.trim(),
-        service: displayService,
-        dateTime: formattedDateTime,
-        branchName: defaultBranchName,
-      });
-      if (zaloRes && zaloRes.success && !zaloRes.mock) {
-        zaloSuccess = true;
-      }
-    } catch (zErr: any) {
-      console.warn('[Zalo ZNS Failed]:', zErr?.message || zErr);
-      zaloSuccess = false;
-    }
-
-    // 4. Quyết định có gửi email xác nhận cho khách hàng không:
-    // - Khi email_enabled = true VÀ
-    // - (bookingEmailMode === 'always' HOẶC (bookingEmailMode === 'on_zalo_fail' VÀ Zalo thất bại))
-    const shouldSendCustomerEmail =
-      emailAllEnabled &&
-      bookingEmailMode !== 'disabled' &&
-      (bookingEmailMode === 'always' || (bookingEmailMode === 'on_zalo_fail' && !zaloSuccess));
-
-    if (shouldSendCustomerEmail && cleanEmail && cleanEmail.includes('@')) {
+    // 3. Gửi email tiếp nhận thông tin cho khách hàng (nếu khách có điền email)
+    if (emailAllEnabled && cleanEmail && cleanEmail.includes('@')) {
       try {
-        await sendBookingConfirmationEmail({
+        await sendCustomerReceiptEmail({
           toEmail: cleanEmail,
           bookingCode: finalBookingCode,
           ownerName: ownerName.trim(),
-          petName: petName.trim(),
-          petType,
-          branchName: defaultBranchName,
+          phone: cleanPhone,
           service: displayService,
           dateTime: formattedDateTime,
-          note: cleanNote,
+          date: formattedDateDMY,
+          timeSlot: timeSlot && timeSlot.trim() ? timeSlot.trim() : (isEn ? 'Flexible' : 'Linh hoạt'),
           isEn: Boolean(isEn),
         });
         emailSent = true;
       } catch (mailErr: any) {
-        console.warn('Không thể gửi mail xác nhận khách hàng:', mailErr?.message || mailErr);
+        console.warn('Không thể gửi mail tiếp nhận khách hàng:', mailErr?.message || mailErr);
       }
     }
 
     // 5. Gửi thông báo đến email Admin phòng khám (nếu email chung bật)
     if (emailAllEnabled && smtpConfig?.smtp_notify_email) {
       try {
-        const adminSubject = `[LỊCH HẸN MỚI] #${finalBookingCode} - Khách ${ownerName} (${petName})`;
+        const langBadge = isEn ? '🇬🇧 English' : '🇻🇳 Tiếng Việt';
+        const adminSubject = `[LỊCH HẸN MỚI ${isEn ? '- ENG' : ''}] #${finalBookingCode} - Khách ${ownerName}${finalPetName ? ` (${finalPetName})` : ''}`;
         const adminHtml = `
           <div style="font-family: sans-serif; padding: 20px; line-height: 1.6; color: #333;">
             <h2 style="color: #2D5A27;">🎉 Có Khách Hàng Vừa Đặt Lịch Hẹn Mới!</h2>
             <p><strong>Mã tiếp nhận:</strong> ${finalBookingCode}</p>
+            <p><strong>Ngôn ngữ đặt hẹn:</strong> ${langBadge}</p>
             <p><strong>Khách hàng:</strong> ${ownerName} - SĐT: <a href="tel:${cleanPhone}">${cleanPhone}</a></p>
             ${cleanEmail ? `<p><strong>Email khách:</strong> ${cleanEmail}</p>` : ''}
-            <p><strong>Bé cưng:</strong> ${petName} (${petType})</p>
+            ${finalPetName ? `<p><strong>Bé cưng:</strong> ${finalPetName}${finalPetType ? ` (${finalPetType})` : ''}</p>` : ''}
             <p><strong>Cơ sở:</strong> ${defaultBranchName}</p>
             <p><strong>Dịch vụ:</strong> ${displayService}</p>
             <p><strong>Thời gian hẹn:</strong> ${formattedDateTime}</p>
             ${cleanNote ? `<p><strong>Ghi chú:</strong> ${cleanNote}</p>` : ''}
-            <p><strong>Trạng thái gửi Zalo ZNS:</strong> ${zaloSuccess ? '✅ Đã gửi' : '⚠️ Thất bại/Chưa kích hoạt'}</p>
+            <p><strong>Trạng thái:</strong> ⏳ Chờ nhân viên gọi chốt lịch &amp; gửi xác nhận sau</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
             <p style="font-size: 12px; color: #777;">Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M</p>
           </div>
         `;
-        sendMail({
+        await sendMail({
           to: smtpConfig.smtp_notify_email,
           subject: adminSubject,
           html: adminHtml,
-        }).catch((e) => console.warn('Lỗi gửi mail notify admin:', e?.message));
-      } catch {}
+        });
+      } catch (adminMailErr: any) {
+        console.warn('Lỗi gửi mail notify admin:', adminMailErr?.message || adminMailErr);
+      }
     }
 
     return NextResponse.json({

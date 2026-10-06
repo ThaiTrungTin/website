@@ -30,12 +30,17 @@ import {
   X,
   Download,
   Search,
+  Pencil,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import PetLogo from '@/components/PetLogo';
 import BarcodeScannerModal from '@/components/BarcodeScannerModal';
+import ZaloIcon from '@/components/ZaloIcon';
 import { supabase, YeuCauDanhGiaRecord } from '@/lib/supabase';
 import { usePresenceHeartbeat } from '@/lib/usePresenceHeartbeat';
+import AdminNotificationFailureToast, {
+  NotificationFailureItem,
+} from '@/components/AdminNotificationFailureToast';
 
 export default function TaoDanhGiaPage() {
   // XÁC THỰC NGƯỜI DÙNG TẠO ĐÁNH GIÁ (USER / ADMIN AUTHENTICATION)
@@ -213,7 +218,7 @@ export default function TaoDanhGiaPage() {
   const [qrModalCopied, setQrModalCopied] = useState<boolean>(false);
 
   const handleOpenQrModal = async (item: YeuCauDanhGiaRecord) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petmm.vn';
     const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
     let qrDataUrl = '';
     try {
@@ -241,6 +246,89 @@ export default function TaoDanhGiaPage() {
       document.body.removeChild(ta);
       setQrModalCopied(true);
       setTimeout(() => setQrModalCopied(false), 2500);
+    }
+  };
+
+  // Trạng thái gửi Zalo OA ZNS
+  const [zaloSending, setZaloSending] = useState(false);
+  const [zaloSendStatus, setZaloSendStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const [failureNotification, setFailureNotification] = useState<NotificationFailureItem | null>(null);
+
+  // Chế độ chỉnh sửa thông tin yêu cầu đánh giá (chỉ khi trạng thái chờ đánh giá)
+  const [editingRecord, setEditingRecord] = useState<YeuCauDanhGiaRecord | null>(null);
+
+  const handleStartEdit = (item: YeuCauDanhGiaRecord) => {
+    setCreatedRecord(null);
+    setEditingRecord(item);
+    setTenKhachHang(item.ten_khach_hang || '');
+    setSoDienThoai(item.so_dien_thoai || '');
+    setEmail(item.email || '');
+    setCoSo(item.co_so || '');
+    setMaHoaDon(item.ma_hoa_don || '');
+    setErrorMessage('');
+    setPhoneError('');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRecord(null);
+    handleResetForm();
+  };
+
+  const handleSendZaloOa = async (targetRecord: YeuCauDanhGiaRecord) => {
+    if (!targetRecord.so_dien_thoai) {
+      alert('Hồ sơ này không có số điện thoại của khách để gửi Zalo!');
+      return;
+    }
+    setZaloSending(true);
+    setZaloSendStatus(null);
+    try {
+      const res = await fetch('/api/admin/zalo/send-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: targetRecord.so_dien_thoai,
+          customerName: targetRecord.ten_khach_hang,
+          orderId: targetRecord.ma_hoa_don || targetRecord.ma_danh_gia,
+          reviewCode: targetRecord.ma_danh_gia,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setZaloSendStatus({ success: true, message: data.message || 'Đã gửi qua Zalo OA thành công!' });
+      } else {
+        const errorMsg = data.message || 'Không thể gửi qua Zalo OA.';
+        setZaloSendStatus({ success: false, message: errorMsg });
+        setFailureNotification({
+          id: 'fail_' + Date.now(),
+          kenh: 'zalo',
+          loai_tin: 'danh_gia',
+          nguoi_nhan: targetRecord.so_dien_thoai,
+          ten_nguoi_nhan: targetRecord.ten_khach_hang,
+          tieu_de: 'Mẫu Đánh Giá Dịch Vụ',
+          chi_tiet_loi: errorMsg,
+          ma_loi: data.error,
+        });
+      }
+      // Cập nhật lại lịch sử để làm mới số lần gửi & trạng thái Zalo ngay lập tức
+      fetchHistory();
+    } catch (err: any) {
+      const errorMsg = err.message || 'Lỗi kết nối khi gửi Zalo OA.';
+      setZaloSendStatus({ success: false, message: errorMsg });
+      setFailureNotification({
+        id: 'fail_' + Date.now(),
+        kenh: 'zalo',
+        loai_tin: 'danh_gia',
+        nguoi_nhan: targetRecord.so_dien_thoai,
+        ten_nguoi_nhan: targetRecord.ten_khach_hang,
+        tieu_de: 'Mẫu Đánh Giá Dịch Vụ',
+        chi_tiet_loi: errorMsg,
+      });
+      fetchHistory();
+    } finally {
+      setZaloSending(false);
     }
   };
 
@@ -329,6 +417,38 @@ export default function TaoDanhGiaPage() {
     }
     try {
       setIsSubmitting(true);
+
+      // Nếu đang trong chế độ chỉnh sửa -> Gọi PUT
+      if (editingRecord) {
+        const res = await fetch('/api/review-requests', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingRecord.id,
+            ten_khach_hang: cleanTenKH,
+            so_dien_thoai: cleanSDT || null,
+            email: email.trim() || null,
+            co_so: coSo.trim() || null,
+            ma_hoa_don: maHoaDon.trim() || null,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.error || 'Có lỗi xảy ra khi cập nhật');
+        const record: YeuCauDanhGiaRecord = json.data;
+        setCreatedRecord(record);
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petmm.vn';
+        const link = `${origin}/danhgiadichvu/${encodeURIComponent(record.ma_danh_gia)}`;
+        setGeneratedLink(link);
+        try {
+          const qrUrl = await QRCode.toDataURL(link, { width: 280, margin: 2, color: { dark: '#111827', light: '#ffffff' } });
+          setQrCodeDataUrl(qrUrl);
+        } catch {}
+        setEditingRecord(null);
+        fetchHistory();
+        return;
+      }
+
+      // Tạo mới yêu cầu đánh giá -> Gọi POST
       const res = await fetch('/api/review-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -345,7 +465,7 @@ export default function TaoDanhGiaPage() {
       if (!res.ok || !json.success) throw new Error(json.error || 'Có lỗi xảy ra');
       const record: YeuCauDanhGiaRecord = json.data;
       setCreatedRecord(record);
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petmm.vn';
       const link = `${origin}/danhgiadichvu/${encodeURIComponent(record.ma_danh_gia)}`;
       setGeneratedLink(link);
       try {
@@ -354,7 +474,7 @@ export default function TaoDanhGiaPage() {
       } catch {}
       fetchHistory();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Không thể tạo mã đánh giá, vui lòng thử lại.');
+      setErrorMessage(err.message || 'Không thể tạo/cập nhật mã đánh giá, vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -380,6 +500,7 @@ export default function TaoDanhGiaPage() {
   };
 
   const handleResetForm = () => {
+    setEditingRecord(null);
     setCreatedRecord(null);
     setGeneratedLink('');
     setQrCodeDataUrl('');
@@ -389,6 +510,7 @@ export default function TaoDanhGiaPage() {
     setMaHoaDon('');
     setErrorMessage('');
     setPhoneError('');
+    setZaloSendStatus(null);
   };
 
   const inputCls = "w-full rounded-xl bg-white border border-slate-200 pl-10 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm";
@@ -625,17 +747,38 @@ export default function TaoDanhGiaPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
+                  {/* Nút gửi Zalo OA (ZNS Template vừa tạo) */}
+                  <button
+                    type="button"
+                    onClick={() => handleSendZaloOa(createdRecord)}
+                    disabled={zaloSending}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#0068FF] to-[#0055d4] hover:from-[#0055d4] hover:to-[#0047b3] text-white text-xs font-bold transition text-center flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-60"
+                  >
+                    {zaloSending ? (
+                      <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                    ) : (
+                      <ZaloIcon className="w-4 h-4 rounded-xs shrink-0" />
+                    )}
+                    <span>{zaloSending ? 'Đang gửi qua Zalo OA...' : 'Gửi qua Zalo OA (Template ZNS)'}</span>
+                  </button>
+
+                  {/* Thông báo trạng thái gửi Zalo OA */}
+                  {zaloSendStatus && (
+                    <div className={`p-2.5 rounded-xl text-xs flex items-start gap-2 ${zaloSendStatus.success ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                      {zaloSendStatus.success ? <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /> : <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
+                      <span className="leading-tight">{zaloSendStatus.message}</span>
+                    </div>
+                  )}
+
+                  {/* Hoặc mở Zalo cá nhân */}
                   <a
                     href={`https://zalo.me/${createdRecord.so_dien_thoai ? createdRecord.so_dien_thoai.replace(/\D/g, '') : ''}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 rounded-xl bg-[#0068FF] hover:bg-[#0055d4] text-white text-xs font-bold transition text-center flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                    className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition text-center flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.5 5.42 3.84 7.02-.17.97-.66 2.38-1.53 3.32-.17.18-.08.47.16.51.52.09 1.95.12 3.49-.66 1.29.53 2.65.81 4.04.81 5.52 0 10-4.03 10-9s-4.48-9-10-9zm1.09 12.35h-3.2c-.3 0-.54-.24-.54-.54 0-.3.24-.54.54-.54h2.29l-2.48-3.55c-.15-.21-.08-.51.13-.66.11-.08.24-.12.37-.12h2.95c.3 0 .54.24.54.54 0 .3-.24.54-.54.54h-2.07l2.48 3.55c.15.21.08.51-.13.66-.1.08-.24.12-.37.12z"/>
-                    </svg>
-                    <span>Mở Zalo gửi link cho khách</span>
+                    <span>Hoặc mở Zalo cá nhân gửi tin nhắn (zalo.me)</span>
                   </a>
 
                   <div className="flex gap-2">
@@ -660,9 +803,31 @@ export default function TaoDanhGiaPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                <h3 className="font-bold text-slate-900 text-base mb-1">Thông Tin Khách Hàng</h3>
-                <p className="text-xs text-slate-500 mb-5">Nhập thông tin lượt thăm khám để tạo mã</p>
+              <div className={`bg-white rounded-2xl border shadow-sm p-6 transition-all ${editingRecord ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200'}`}>
+                {editingRecord ? (
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-100">
+                    <div>
+                      <h3 className="font-bold text-amber-950 text-base flex items-center gap-2">
+                        <Pencil className="w-4 h-4 text-amber-600" /> Sửa Phiếu Đánh Giá
+                      </h3>
+                      <p className="text-xs text-amber-700/80 mt-0.5">
+                        Mã phiếu: <span className="font-mono font-bold text-amber-900">#{editingRecord.ma_danh_gia}</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="text-xs font-bold text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+                    >
+                      Hủy sửa
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-bold text-slate-900 text-base mb-1">Thông Tin Khách Hàng</h3>
+                    <p className="text-xs text-slate-500 mb-5">Nhập thông tin lượt thăm khám để tạo mã</p>
+                  </>
+                )}
 
                 {errorMessage && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
@@ -814,23 +979,52 @@ export default function TaoDanhGiaPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-md shadow-emerald-600/20 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Đang tạo mã...</span>
-                      </>
-                    ) : (
-                      <>
-                        <QrCode className="w-4 h-4" />
-                        <span>Tạo Link &amp; Mã QR Đánh Giá</span>
-                      </>
-                    )}
-                  </button>
+                  {editingRecord ? (
+                    <div className="flex gap-2.5 mt-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="px-4 py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-md shadow-amber-600/20 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Đang lưu cập nhật...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Pencil className="w-4 h-4" />
+                            <span>Lưu Cập Nhật Phiếu</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-md shadow-emerald-600/20 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Đang tạo mã...</span>
+                        </>
+                      ) : (
+                        <>
+                          <QrCode className="w-4 h-4" />
+                          <span>Tạo Link &amp; Mã QR Đánh Giá</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </form>
               </div>
             )}
@@ -916,7 +1110,7 @@ export default function TaoDanhGiaPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
                         {filteredHistoryList.map((item) => {
-                          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petsmm.vercel.app';
+                          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petmm.vn';
                           const link = `${origin}/danhgiadichvu/${encodeURIComponent(item.ma_danh_gia)}`;
                           const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
                           const pad = (n: number) => String(n).padStart(2, '0');
@@ -925,7 +1119,14 @@ export default function TaoDanhGiaPage() {
                           const creator = rawCreator.replace(/\s*\((Admin|User|Quản trị viên|Nhân viên)\)/gi, '').trim();
 
                           return (
-                            <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                            <tr
+                              key={item.id}
+                              className={`transition ${
+                                editingRecord?.id === item.id
+                                  ? 'bg-amber-50/70 border-l-4 border-l-amber-500'
+                                  : 'hover:bg-slate-50/70'
+                              }`}
+                            >
                               {/* 1. Khách hàng */}
                               <td className="py-3 px-3.5">
                                 <div>
@@ -969,9 +1170,57 @@ export default function TaoDanhGiaPage() {
                                 )}
                               </td>
 
-                              {/* 3. Thao tác: 2 icon (Nút QR và Nút đi tới) */}
+                              {/* 3. Thao tác: Zalo OA (badge số/lỗi), Sửa (chỉ khi chờ), Mã QR, Mở link */}
                               <td className="py-3 px-3 text-center">
-                                <div className="inline-flex items-center justify-center gap-2">
+                                <div className="inline-flex items-center justify-center gap-1.5">
+                                  {/* Nút gửi Zalo OA */}
+                                  {item.so_dien_thoai && (
+                                    <div className="relative inline-block">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSendZaloOa(item)}
+                                        disabled={zaloSending}
+                                        className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0068FF] border border-blue-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                                        title={`Gửi qua Zalo OA (ZNS)${item.so_lan_gui_zalo ? ` - Đã gửi ${item.so_lan_gui_zalo} lần` : ''}`}
+                                      >
+                                        <ZaloIcon className="w-4.5 h-4.5 rounded-xs" />
+                                      </button>
+                                      {/* Badge Zalo: Lỗi (!) hoặc số lần gửi (1, 2...) */}
+                                      {item.trang_thai_zalo === 'that_bai' ? (
+                                        <span
+                                          className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-xs ring-2 ring-white animate-pulse pointer-events-none"
+                                          title="Lần gửi Zalo gần nhất bị lỗi"
+                                        >
+                                          !
+                                        </span>
+                                      ) : (item.so_lan_gui_zalo || 0) > 0 ? (
+                                        <span
+                                          className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs ring-2 ring-white pointer-events-none"
+                                          title={`Đã gửi Zalo thành công ${item.so_lan_gui_zalo} lần`}
+                                        >
+                                          {item.so_lan_gui_zalo}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  )}
+
+                                  {/* Nút Sửa: Chỉ hiển thị khi trạng thái chờ đánh giá, đã đánh giá thì ẩn */}
+                                  {item.trang_thai === 'cho_danh_gia' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEdit(item)}
+                                      className={`w-8 h-8 rounded-lg border flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer ${
+                                        editingRecord?.id === item.id
+                                          ? 'bg-amber-500 text-white border-amber-600'
+                                          : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                                      }`}
+                                      title="Chỉnh sửa thông tin phiếu đánh giá"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+
+                                  {/* Nút Xem QR */}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenQrModal(item)}
@@ -980,6 +1229,8 @@ export default function TaoDanhGiaPage() {
                                   >
                                     <QrCode className="w-4 h-4" />
                                   </button>
+
+                                  {/* Nút Đi tới trang đánh giá */}
                                   <a
                                     href={link}
                                     target="_blank"
@@ -1173,6 +1424,12 @@ export default function TaoDanhGiaPage() {
           </div>
         </div>
       )}
+      {/* THÔNG BÁO NỔI CẢNH BÁO KHI GỬI ZALO THẤT BẠI */}
+      <AdminNotificationFailureToast
+        failure={failureNotification}
+        playSound={true}
+        onClose={() => setFailureNotification(null)}
+      />
     </div>
   );
 }

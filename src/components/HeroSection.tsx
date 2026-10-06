@@ -505,12 +505,51 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
       </div>
 
       {/* 4. EDITORIAL LUXURY HEADLINE (NỀN TRONG SUỐT 100%, GỌN GÀNG ÔM SÁT TRÊN ĐIỆN THOẠI) */}
-      <div className="relative z-30 max-w-7xl mx-auto px-3.5 sm:px-12 w-full pt-1 sm:pt-14 pointer-events-none">
-        <div className="max-w-2xl text-left pointer-events-auto bg-transparent p-0 relative">
-          {/* Three.js 3D Interactive Stardust & Particle Aura Layer */}
-          <SloganAura3D className="w-[125%] h-[130%] -top-12 -left-6 sm:-top-16 sm:-left-12 pointer-events-none" />
+      {(() => {
+        const desktopAlign = config.hero_slogan_align_desktop || 'center';
+        const mobileAlign = config.hero_slogan_align_mobile || 'center';
+        const offsetXDesktop = config.hero_slogan_x_desktop ?? 0;
+        const offsetYDesktop = config.hero_slogan_y_desktop ?? 0;
+        const offsetXMobile = config.hero_slogan_x_mobile ?? 0;
+        const offsetYMobile = config.hero_slogan_y_mobile ?? 0;
 
-          {/* Majestic Editorial Title: key reset → animation chạy lại mỗi lần Hero vào viewport */}
+        const alignDesktopClass =
+          desktopAlign === 'left'
+            ? 'sm:text-left sm:items-start'
+            : desktopAlign === 'right'
+            ? 'sm:text-right sm:items-end'
+            : 'sm:text-center sm:items-center';
+
+        const alignMobileClass =
+          mobileAlign === 'left'
+            ? 'text-left items-start'
+            : mobileAlign === 'right'
+            ? 'text-right items-end'
+            : 'text-center items-center';
+
+        const buttonsDesktopJustify =
+          desktopAlign === 'left' ? 'sm:justify-start' : desktopAlign === 'right' ? 'sm:justify-end' : 'sm:justify-center';
+
+        const buttonsMobileJustify =
+          mobileAlign === 'left' ? 'justify-start' : mobileAlign === 'right' ? 'justify-end' : 'justify-center';
+
+        return (
+          <div className="relative z-30 max-w-7xl mx-auto px-3.5 sm:px-12 w-full pt-1 sm:pt-14 pointer-events-none flex flex-col items-center">
+            <style>{`
+              .hero-slogan-cluster {
+                transform: translate(var(--hero-x-mobile, ${offsetXMobile}px), var(--hero-y-mobile, ${offsetYMobile}px));
+              }
+              @media (min-width: 640px) {
+                .hero-slogan-cluster {
+                  transform: translate(var(--hero-x-desktop, ${offsetXDesktop}px), var(--hero-y-desktop, ${offsetYDesktop}px));
+                }
+              }
+            `}</style>
+            <div className={`hero-slogan-cluster max-w-2xl pointer-events-auto bg-transparent p-0 relative flex flex-col ${alignDesktopClass} ${alignMobileClass}`}>
+              {/* Three.js 3D Interactive Stardust & Particle Aura Layer */}
+              <SloganAura3D className="w-[125%] h-[130%] -top-12 -left-6 sm:-top-16 sm:-left-12 pointer-events-none" />
+
+              {/* Majestic Editorial Title: key reset → animation chạy lại mỗi lần Hero vào viewport */}
           {(() => {
             const rawTitle = isEn
               ? (config.slogan_dau_trang_tieu_de_en || 'Cherishing Every Breath, Embracing Life with Peace.')
@@ -616,36 +655,55 @@ export default function HeroSection({ onOpenBookingModal }: HeroSectionProps) {
             );
           })()}
 
-          {/* 2 CTA Buttons (Đưa lên ngay dưới Tiêu đề chính) */}
-          <div className="flex flex-row items-center gap-2 sm:gap-4 max-w-sm sm:max-w-none animate-slogan-cta mb-2 sm:mb-4">
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  const bookingEl = document.getElementById('booking');
-                  if (bookingEl) {
-                    bookingEl.scrollIntoView({ behavior: 'smooth' });
-                    window.history.pushState(null, '', '#booking');
-                  } else {
-                    window.location.href = '/#booking';
+          {/* 2 CTA Buttons (Đưa lên ngay dưới Tiêu đề chính - Cấu hình động từ Admin) */}
+          <div className={`flex flex-row items-center gap-2 sm:gap-4 max-w-sm sm:max-w-none animate-slogan-cta mb-2 sm:mb-4 w-full ${buttonsDesktopJustify} ${buttonsMobileJustify}`}>
+            {config.hero_nut_1_hien_thi !== false && (
+              <button
+                onClick={() => {
+                  const target = config.hero_nut_1_link || '#booking';
+                  if (typeof window !== 'undefined') {
+                    if (target.startsWith('#')) {
+                      const bookingEl = document.getElementById(target.replace('#', ''));
+                      if (bookingEl) {
+                        bookingEl.scrollIntoView({ behavior: 'smooth' });
+                        window.history.pushState(null, '', target);
+                      } else {
+                        window.location.href = `/${target}`;
+                      }
+                    } else {
+                      window.location.href = target;
+                    }
                   }
-                }
-              }}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-[11px] sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer whitespace-nowrap"
-            >
-              <CalendarCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FFB800]" />
-              <span>{t('btn_book_appointment', 'Đặt Lịch Thăm Khám')}</span>
-            </button>
+                }}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-[11px] sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer whitespace-nowrap"
+              >
+                <CalendarCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FFB800]" />
+                <span>
+                  {isEn
+                    ? (config.hero_nut_1_text_en || 'Book Appointment')
+                    : (config.hero_nut_1_text || 'Đặt Lịch Thăm Khám')}
+                </span>
+              </button>
+            )}
 
-            <a
-              href="#services"
-              className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-7 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-[11px] sm:text-sm bg-white/95 hover:bg-white text-slate-800 border border-slate-300 shadow-sm hover:border-[#2D5A27] transition-all duration-200 cursor-pointer backdrop-blur-sm whitespace-nowrap"
-            >
-              <span>{t('btn_view_services', 'Xem Dịch Vụ')}</span>
-              <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 text-[#2D5A27]" />
-            </a>
+            {config.hero_nut_2_hien_thi !== false && (
+              <a
+                href={config.hero_nut_2_link || '#services'}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-7 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-[11px] sm:text-sm bg-white/95 hover:bg-white text-slate-800 border border-slate-300 shadow-sm hover:border-[#2D5A27] transition-all duration-200 cursor-pointer backdrop-blur-sm whitespace-nowrap"
+              >
+                <span>
+                  {isEn
+                    ? (config.hero_nut_2_text_en || 'Our Services')
+                    : (config.hero_nut_2_text || 'Xem Dịch Vụ')}
+                </span>
+                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 text-[#2D5A27]" />
+              </a>
+            )}
           </div>
         </div>
       </div>
+    );
+  })()}
 
       {/* 5. NÚT CHUYỂN SLIDE TRÁI / PHẢI NẰM Ở RÌA (TRÊN MOBILE NẰM TRÊN THANH SLIDE, TRÊN DESKTOP NẰM GIỮA) */}
       {/* Nút Trái (Ảnh trước) */}

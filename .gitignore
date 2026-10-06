@@ -42,4 +42,4 @@ next-env.d.ts
 
 # migration & local seed scripts
 /scripts/
-
+/scratch/

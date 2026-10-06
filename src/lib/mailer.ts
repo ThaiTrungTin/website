@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { logNotification } from './notificationLogger';
 
 export interface SmtpConfig {
   smtp_email: string;
@@ -264,6 +265,8 @@ export async function sendMail({
   text,
   attachments,
   overrideConfig,
+  loaiTin = 'khac',
+  tenNguoiNhan,
 }: {
   to: string;
   subject: string;
@@ -271,23 +274,57 @@ export async function sendMail({
   text?: string;
   attachments?: any[];
   overrideConfig?: Partial<SmtpConfig>;
+  loaiTin?: 'dat_lich' | 'danh_gia' | 'tuyen_dung' | 'xac_thuc' | 'test' | 'khac';
+  tenNguoiNhan?: string;
 }) {
-  const { transporter, config } = await createMailerTransport(overrideConfig);
+  try {
+    const cleanTo = (to || '').trim().toLowerCase();
+    const typoDomains = ['@gma.com', '@gmai.com', '@gamil.com', '@gm.com', '@gmeil.com', '@yaho.com', '@hotmial.com', '@outlok.com'];
+    const matchedTypo = typoDomains.find((d) => cleanTo.endsWith(d));
+    if (matchedTypo) {
+      throw new Error(`Địa chỉ email không hợp lệ (sai tên miền "${matchedTypo.replace('@', '')}", có thể bạn muốn nhập @gmail.com)`);
+    }
 
-  const senderString = `"${config.smtp_sender_name}" <${config.smtp_email.trim()}>`;
+    const { transporter, config } = await createMailerTransport(overrideConfig);
 
-  const info = await transporter.sendMail({
-    from: senderString,
-    to,
-    subject,
-    text: text || subject,
-    html,
-    attachments,
-  });
+    const senderString = `"${config.smtp_sender_name}" <${config.smtp_email.trim()}>`;
 
-  console.log(`[SMTP Mailer] Đã gửi thư tới ${to} - MessageID: ${info.messageId} - Phản hồi: ${info.response}`);
+    const info = await transporter.sendMail({
+      from: senderString,
+      to,
+      subject,
+      text: text || subject,
+      html,
+      attachments,
+    });
 
-  return info;
+    console.log(`[SMTP Mailer] Đã gửi thư tới ${to} - MessageID: ${info.messageId} - Phản hồi: ${info.response}`);
+
+    await logNotification({
+      kenh: 'email',
+      loai_tin: loaiTin,
+      nguoi_nhan: to,
+      ten_nguoi_nhan: tenNguoiNhan,
+      tieu_de: subject,
+      trang_thai: 'thanh_cong',
+      phan_hoi: { messageId: info.messageId, response: info.response },
+    });
+
+    return info;
+  } catch (err: any) {
+    console.error(`[SMTP Mailer] Lỗi gửi thư tới ${to}:`, err);
+    await logNotification({
+      kenh: 'email',
+      loai_tin: loaiTin,
+      nguoi_nhan: to,
+      ten_nguoi_nhan: tenNguoiNhan,
+      tieu_de: subject,
+      trang_thai: 'that_bai',
+      ma_loi: err.code || 'SMTP_ERROR',
+      chi_tiet_loi: err.message || 'Lỗi gửi email qua máy chủ SMTP',
+    });
+    throw err;
+  }
 }
 
 // GỬI EMAIL MÃ OTP ĐẶT LẠI MẬT KHẨU
@@ -418,7 +455,7 @@ export async function sendTestRecruitmentEmail(
     phone: '0903 599 339',
     email: toEmail,
     jobTitle: isEn ? 'Senior Veterinary Surgeon (Test Role)' : 'Bác Sĩ Thú Y Điều Trị Nội Trú (Vị Trí Thử Nghiệm)',
-    cvLink: 'https://petsmm.vercel.app',
+    cvLink: 'https://petmm.vn',
     cvFileName: 'CV_BacSi_NguyenVanAn.pdf',
     notes: isEn
       ? 'This is a TEST recruitment application email sent from PetM&M Admin to verify your HR inbox configuration.'
@@ -486,222 +523,563 @@ export async function sendTestContactEmail(
   });
 }
 
-// GỬI EMAIL XÁC NHẬN ĐẶT LỊCH HẸN CHO KHÁCH HÀNG (HỖ TRỢ SONG NGỮ VIỆT / ANH & LOGO)
-export async function sendBookingConfirmationEmail({
+// ========================================================
+// HÀM DỊCH DỊCH VỤ SONG PHƯƠNG 2 CHIỀU (VI <-> EN)
+// Đảm bảo Tiếng Việt 100% thuần Việt và Tiếng Anh 100% thuần Anh
+// ========================================================
+export async function getTranslatedServices(servicesStr: string, isEn: boolean): Promise<string> {
+  if (!servicesStr || !servicesStr.trim()) {
+    return isEn ? 'General Health Check & Consultation' : 'Khám Tổng Quát & Tư Vấn';
+  }
+
+  try {
+    const { data: dbServices } = await supabaseAdmin
+      .from('dich_vu')
+      .select('ten_dich_vu, ten_dich_vu_en');
+
+    // Làm sạch chuỗi dịch vụ: bỏ các ký tự ; , thừa ở đầu và cuối
+    const cleanRaw = servicesStr.replace(/^[;,\s]+|[;,\s]+$/g, '');
+    const serviceList = cleanRaw
+      .split(/,\s*|\s*;\s*/)
+      .map((s) => s.trim().replace(/^[;,\s]+|[;,\s]+$/g, ''))
+      .filter(Boolean);
+
+    if (serviceList.length === 0) {
+      return isEn ? 'General Health Check & Consultation' : 'Khám Tổng Quát & Tư Vấn';
+    }
+
+    if (isEn) {
+      // Dịch tất cả sang TIẾNG ANH 100%
+      const translatedList = serviceList.map((srv) => {
+        // 1. Khớp trong DB
+        const found = dbServices?.find(
+          (db) =>
+            db.ten_dich_vu &&
+            (db.ten_dich_vu.toLowerCase() === srv.toLowerCase() ||
+              srv.toLowerCase().includes(db.ten_dich_vu.toLowerCase()))
+        );
+        if (found && found.ten_dich_vu_en && found.ten_dich_vu_en.trim()) {
+          return found.ten_dich_vu_en.trim();
+        }
+
+        // 2. Từ điển sang tiếng Anh
+        const lower = srv.toLowerCase();
+        if (lower.includes('tổng quát') || lower.includes('khám sức khỏe') || lower.includes('tư vấn')) {
+          return 'General Health Check & Consultation';
+        }
+        if (lower.includes('tiêm') || lower.includes('vaccine') || lower.includes('vắc xin')) {
+          return 'GSP Standard Preventive Vaccination';
+        }
+        if (lower.includes('phẫu thuật') || lower.includes('triệt sản') || lower.includes('mổ')) {
+          return 'Safe Surgery & Neutering';
+        }
+        if (lower.includes('xét nghiệm') || lower.includes('hình ảnh') || lower.includes('siêu âm') || lower.includes('x-quang')) {
+          return 'Digital Imaging & Diagnostics';
+        }
+        if (lower.includes('nội trú') || lower.includes('cấp cứu') || lower.includes('24/7')) {
+          return 'Inpatient Care & 24/7 Emergency';
+        }
+        if (lower.includes('nha khoa') || lower.includes('răng')) {
+          return 'Pet Dental Care & Scaling';
+        }
+        if (lower.includes('spa') || lower.includes('tắm') || lower.includes('cắt tỉa') || lower.includes('grooming')) {
+          return '5-Star Spa Grooming & Styling';
+        }
+        if (lower.includes('daycare') || lower.includes('trông giữ')) {
+          return 'Fun Daycare Care';
+        }
+        if (lower.includes('khách sạn') || lower.includes('hotel') || lower.includes('nội trú')) {
+          return '5-Star Suite Pet Hotel';
+        }
+        if (lower.includes('đưa đón') || lower.includes('taxi') || lower.includes('vận chuyển')) {
+          return 'Home Pet Taxi Service';
+        }
+        if (lower.includes('dinh dưỡng') || lower.includes('hành vi')) {
+          return 'Dietary & Behavioral Consultation';
+        }
+
+        return srv;
+      });
+
+      return Array.from(new Set(translatedList)).join(', ');
+    } else {
+      // Dịch tất cả về TIẾNG VIỆT 100% (Loại bỏ hoàn toàn tiếng Anh lẫn vào)
+      const translatedList = serviceList.map((srv) => {
+        // 1. Khớp trong DB: nếu srv trùng với ten_dich_vu_en thì lấy ten_dich_vu
+        const found = dbServices?.find(
+          (db) =>
+            db.ten_dich_vu_en &&
+            (db.ten_dich_vu_en.toLowerCase() === srv.toLowerCase() ||
+              srv.toLowerCase().includes(db.ten_dich_vu_en.toLowerCase()))
+        );
+        if (found && found.ten_dich_vu && found.ten_dich_vu.trim()) {
+          return found.ten_dich_vu.trim();
+        }
+
+        // 2. Từ điển chuyển tiếng Anh về tiếng Việt thuần túy
+        const lower = srv.toLowerCase();
+        if (lower.includes('general health') || lower.includes('check-up') || lower.includes('consultation') || lower.includes('examination')) {
+          return 'Khám Tổng Quát & Tư Vấn';
+        }
+        if (lower.includes('vaccination') || lower.includes('preventive')) {
+          return 'Tiêm Chủng Vaccine Dự Phòng Chuẩn GSP';
+        }
+        if (lower.includes('imaging') || lower.includes('diagnostics') || lower.includes('x-ray') || lower.includes('ultrasound')) {
+          return 'Xét Nghiệm & Chẩn Đoán Hình Ảnh Kỹ Thuật Số';
+        }
+        if (lower.includes('surgery') || lower.includes('surgical') || lower.includes('neutering')) {
+          return 'Phẫu Thuật Ngoại Khoa & Triệt Sản An Toàn';
+        }
+        if (lower.includes('emergency') || lower.includes('inpatient')) {
+          return 'Điều Trị Nội Trú & Hồi Sức Cấp Cứu 24/7';
+        }
+        if (lower.includes('dental') || lower.includes('scaling')) {
+          return 'Nha Khoa & Cạo Vôi Răng';
+        }
+        if (lower.includes('spa') || lower.includes('grooming') || lower.includes('styling')) {
+          return 'Spa & Cắt Tỉa Tạo Kiểu Lông Thú Cưng';
+        }
+        if (lower.includes('daycare')) {
+          return 'Trông Giữ Bán Trú Daycare';
+        }
+        if (lower.includes('hotel') || lower.includes('suite')) {
+          return 'Khách Sạn Thú Cưng Chuẩn Suite 5 Sao';
+        }
+        if (lower.includes('taxi') || lower.includes('transport')) {
+          return 'Đưa Đón Thú Cưng Tận Nhà (Pet Taxi)';
+        }
+        if (lower.includes('dietary') || lower.includes('behavioral')) {
+          return 'Tư Vấn Dinh Dưỡng & Hành Vi';
+        }
+
+        return srv;
+      });
+
+      return Array.from(new Set(translatedList)).join(', ');
+    }
+  } catch (err) {
+    console.warn('Lỗi dịch dịch vụ:', err);
+    return servicesStr.replace(/^[;,\s]+|[;,\s]+$/g, '');
+  }
+}
+
+// ========================================================
+// HÀM DỊCH CƠ SỞ / CHI NHÁNH KÈM ĐỊA CHỈ ĐẦY ĐỦ (TRA CỨU DB CHI_NHANH)
+// Luôn trả về [Tên Cơ Sở] — [Địa Chỉ Đầy Đủ]
+// ========================================================
+export async function getTranslatedBranch(branchNameOrId: string, isEn: boolean): Promise<string> {
+  const fallbackVi = 'Cơ sở TP. Thủ Đức — 19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
+  const fallbackEn = 'Thu Duc City Branch — 19 Street 1, Phuoc Long Ward, Thu Duc City, Ho Chi Minh City';
+
+  if (!branchNameOrId || !branchNameOrId.trim()) {
+    return isEn ? fallbackEn : fallbackVi;
+  }
+
+  try {
+    const { data: dbBranches } = await supabaseAdmin
+      .from('chi_nhanh')
+      .select('id, ten_chi_nhanh, ten_chi_nhanh_en, ten_ngan, ten_ngan_en, dia_chi, dia_chi_en');
+
+    const cleanInput = branchNameOrId.trim();
+
+    // Tìm chi nhánh khớp theo id, tên chi nhánh, tên ngắn hoặc địa chỉ
+    const found = dbBranches?.find(
+      (b) =>
+        b.id === cleanInput ||
+        (b.ten_chi_nhanh && cleanInput.toLowerCase().includes(b.ten_chi_nhanh.toLowerCase())) ||
+        (b.ten_ngan && cleanInput.toLowerCase().includes(b.ten_ngan.toLowerCase())) ||
+        (b.ten_chi_nhanh && b.ten_chi_nhanh.toLowerCase().includes(cleanInput.toLowerCase())) ||
+        (b.ten_ngan && b.ten_ngan.toLowerCase().includes(cleanInput.toLowerCase())) ||
+        (b.dia_chi && cleanInput.toLowerCase().includes(b.dia_chi.toLowerCase()))
+    );
+
+    if (found) {
+      if (isEn) {
+        const branchTitle = found.ten_chi_nhanh_en || found.ten_ngan_en || found.ten_chi_nhanh;
+        const branchAddr = found.dia_chi_en || found.dia_chi;
+        return branchAddr ? `${branchTitle} — ${branchAddr}` : branchTitle;
+      } else {
+        const branchTitle = found.ten_ngan || found.ten_chi_nhanh;
+        const branchAddr = found.dia_chi;
+        return branchAddr ? `${branchTitle} — ${branchAddr}` : branchTitle;
+      }
+    }
+
+    // Nếu không khớp hoàn toàn với DB, kiểm tra nếu là "Cơ sở TP. Thủ Đức"
+    if (cleanInput.toLowerCase().includes('thủ đức') || cleanInput.toLowerCase().includes('thu duc')) {
+      return isEn ? fallbackEn : fallbackVi;
+    }
+
+    if (isEn) {
+      return cleanInput
+        .replace(/Cơ sở\s*1/gi, 'Branch 1')
+        .replace(/Cơ sở\s*2/gi, 'Branch 2')
+        .replace(/Cơ sở\s*3/gi, 'Branch 3')
+        .replace(/Cơ sở/gi, 'Branch')
+        .replace(/Phường/gi, 'Ward')
+        .replace(/Quận/gi, 'District')
+        .replace(/Đ\.\s*Số/gi, 'Street')
+        .replace(/Đường/gi, 'Street')
+        .replace(/TP\.\s*Thủ Đức/gi, 'Thu Duc City')
+        .replace(/TP\.\s*Hồ Chí Minh/gi, 'Ho Chi Minh City')
+        .replace(/TP\.HCM/gi, 'HCMC');
+    }
+
+    return cleanInput;
+  } catch (err) {
+    console.warn('Lỗi dịch chi nhánh:', err);
+    return isEn ? fallbackEn : fallbackVi;
+  }
+}
+
+// ========================================================
+// 1. GỬI EMAIL TIẾP NHẬN THÔNG TIN ĐẶT HẸN & TƯ VẤN (GỬI KHI KHÁCH SUBMIT FORM TRÊN WEB)
+// Form đơn giản, logo trắng, không viền, tối ưu mobile
+// ========================================================
+export async function sendCustomerReceiptEmail({
   toEmail,
   bookingCode,
   ownerName,
-  petName,
-  petType = 'dog',
-  branchName,
-  service,
+  phone,
   dateTime,
-  note,
+  date,
+  timeSlot,
+  service,
   isEn = false,
 }: {
   toEmail: string;
-  bookingCode: string;
+  bookingCode?: string;
   ownerName: string;
-  petName: string;
-  petType?: string;
-  branchName: string;
+  phone?: string;
+  dateTime?: string;
+  date?: string;
+  timeSlot?: string;
   service?: string;
-  dateTime: string;
-  note?: string;
   isEn?: boolean;
 }) {
-  const templateCfg = await getEmailTemplateConfig();
+  let hotlineDisplay = '0364 605 544';
+  try {
+    const { data: sysCfg } = await supabaseAdmin
+      .from('cau_hinh')
+      .select('hotline, hotline_hien_thi')
+      .eq('id', 'system')
+      .maybeSingle();
+    if (sysCfg) {
+      hotlineDisplay = sysCfg.hotline_hien_thi || sysCfg.hotline || hotlineDisplay;
+    }
+  } catch {}
 
-  const petTypeDisplay = isEn
-    ? (petType === 'cat' ? 'Cat' : petType === 'dog' ? 'Dog' : 'Other Pet')
-    : (petType === 'cat' ? 'Mèo' : petType === 'dog' ? 'Chó' : 'Loài khác');
-
-  const formattedDate = formatDateDMY(dateTime);
-
-  const vars: Record<string, string> = {
-    booking_code: bookingCode,
-    code: bookingCode,
-    owner_name: ownerName,
-    pet_name: petName,
-    pet_type: petTypeDisplay,
-    branch_name: branchName,
-    service: service || (isEn ? 'General Health Consultation' : 'Khám tổng quát'),
-    date_time: formattedDate,
-    hotline: '0364 605 544',
-  };
-
-  // Chọn nội dung song ngữ theo ngôn ngữ khách đang dùng trên web
-  const subject = replacePlaceholders(
-    isEn ? templateCfg.subjectEn : templateCfg.subjectVi,
-    vars
-  );
-  const bannerTitle = replacePlaceholders(
-    isEn ? templateCfg.bannerTitleEn : templateCfg.bannerTitleVi,
-    vars
-  );
-  const bannerSubtitle = replacePlaceholders(
-    isEn ? templateCfg.bannerSubtitleEn : templateCfg.bannerSubtitleVi,
-    vars
-  );
-  const introText = replacePlaceholders(
-    isEn ? templateCfg.introEn : templateCfg.introVi,
-    vars
-  );
-  const checklistRaw = isEn ? templateCfg.checklistEn : templateCfg.checklistVi;
-  const footerNote = replacePlaceholders(
-    isEn ? templateCfg.footerEn : templateCfg.footerVi,
-    vars
-  );
-
-  // Xử lý danh sách checklist thành các dòng HTML
-  const checklistHtml = checklistRaw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => `<div style="margin-bottom: 6px; line-height: 1.5;">${line}</div>`)
-    .join('');
-
-  // Xử lý Logo trong email:
-  // Nếu có logoUrl dạng online (http/https) thì dùng trực tiếp
-  // Nếu không có hoặc link local, nhúng logo_petmm_full.png dưới dạng inline CID
-  let logoHtml = '';
   const attachments: any[] = [];
-
-  if (templateCfg.logoUrl && templateCfg.logoUrl.startsWith('http')) {
-    logoHtml = `
-      <div style="text-align: center; margin-bottom: 14px;">
-        <img src="${templateCfg.logoUrl}" alt="PetM&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
-      </div>
-    `;
+  let logoImgHtml = '';
+  const customerLogoPath = path.join(process.cwd(), 'public', 'logo_email_customer.png');
+  if (fs.existsSync(customerLogoPath)) {
+    attachments.push({
+      filename: 'logo_petmm.png',
+      path: customerLogoPath,
+      cid: 'petmm_customer_logo',
+    });
+    logoImgHtml = `<img src="cid:petmm_customer_logo" alt="PetM&M" style="max-height: 48px; max-width: 220px; display: block; border: 0;" />`;
   } else {
-    // Thử tìm logo cục bộ trong thư mục public
-    const localLogoPath = path.join(process.cwd(), 'public', 'logo_petmm_full.png');
-    if (fs.existsSync(localLogoPath)) {
+    const fallbackPath = path.join(process.cwd(), 'public', 'logo_petmm_full.png');
+    if (fs.existsSync(fallbackPath)) {
       attachments.push({
         filename: 'logo_petmm.png',
-        path: localLogoPath,
-        cid: 'petmm_logo_img',
+        path: fallbackPath,
+        cid: 'petmm_customer_logo',
       });
-      logoHtml = `
-        <div style="text-align: center; margin-bottom: 14px;">
-          <img src="cid:petmm_logo_img" alt="PetM&M Logo" style="max-height: 48px; max-width: 190px; object-fit: contain;" />
-        </div>
-      `;
+      logoImgHtml = `<img src="cid:petmm_customer_logo" alt="PetM&M" style="max-height: 48px; max-width: 220px; display: block; border: 0;" />`;
     }
   }
 
+  const formattedDate = date ? formatDateDMY(date) : (dateTime ? formatDateDMY(dateTime) : '');
+  const formattedTimeSlot = timeSlot && timeSlot.trim() ? timeSlot.trim() : (isEn ? 'Flexible' : 'Linh hoạt');
+
+  // Tự động dịch dịch vụ nếu gửi bản tiếng Anh
+  const displayService = service ? await getTranslatedServices(service, Boolean(isEn)) : '';
+
+  const subject = isEn
+    ? `[PetM&M] Information Received - Booking & Consultation`
+    : `[PetM&M] Tiếp Nhận Thông Tin Đặt Hẹn & Tư Vấn`;
+
   const html = `
-  <!DOCTYPE html>
-  <html>
-  <head><meta charset="utf-8"></head>
-  <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 16px 8px;">
-      <tr>
-        <td align="center">
-          <table width="100%" style="max-width: 520px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
-            <!-- Header Banner -->
-            <tr>
-              <td style="background: #1e3f1b; padding: 24px 20px; text-align: center;">
-                ${logoHtml}
-                <h1 style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 700;">${bannerTitle}</h1>
-                <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 13px;">
-                  ${bannerSubtitle}
-                </p>
-              </td>
-            </tr>
+<!DOCTYPE html>
+<html lang="${isEn ? 'en' : 'vi'}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${isEn ? 'Information Reception' : 'Tiếp Nhận Thông Tin'}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.6; -webkit-font-smoothing: antialiased;">
+  <div style="max-width: 540px; margin: 0 auto; padding: 24px 16px; background-color: #ffffff;">
+    <div style="background-color: #ffffff; padding: 0 0 20px 0;">
+      ${logoImgHtml}
+    </div>
 
-            <!-- Content Body -->
-            <tr>
-              <td style="padding: 24px 20px;">
-                <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155; line-height: 1.5;">
-                  ${introText}
-                </p>
+    <h2 style="margin: 0 0 18px 0; font-size: 18px; font-weight: 700; color: #1e3f1b;">
+      ${isEn ? 'Information Received - Booking & Consultation' : 'Tiếp Nhận Thông Tin Đặt Hẹn & Tư Vấn'}
+    </h2>
 
-                <!-- Boarding Pass Box -->
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px;">
-                  <div style="padding-bottom: 10px; border-bottom: 1px solid #eef2f6;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">
-                      ${isEn ? 'Booking Code' : 'Mã lịch hẹn'}
-                    </div>
-                    <div style="font-size: 20px; font-weight: 800; color: #2D5A27; font-family: monospace;">
-                      ${bookingCode}
-                    </div>
-                  </div>
+    <div style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.7;">
+      <div style="margin-bottom: 6px;">
+        <span style="color: #4b5563;">${isEn ? 'Full Name:' : 'Họ Tên:'}</span> 
+        <strong style="color: #111827;">${ownerName}</strong>
+      </div>
+      ${phone ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #4b5563;">${isEn ? 'Phone Number:' : 'SDT:'}</span> 
+        <strong style="color: #111827;">${phone}</strong>
+      </div>` : ''}
+      <div style="margin-bottom: 6px;">
+        <span style="color: #4b5563;">${isEn ? 'Date:' : 'Thời Gian:'}</span> 
+        <strong style="color: #111827;">${formattedDate}</strong>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <span style="color: #4b5563;">${isEn ? 'Time Slot:' : 'Khung Giờ:'}</span> 
+        <strong style="color: #111827;">${formattedTimeSlot}</strong>
+      </div>
+      ${displayService ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #4b5563;">${isEn ? 'Service:' : 'Dịch Vụ:'}</span> 
+        <strong style="color: #111827;">${displayService}</strong>
+      </div>` : ''}
+    </div>
 
-                  <div style="padding: 10px 0; border-bottom: 1px solid #eef2f6;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Pet Name' : 'Thú cưng'}</div>
-                    <div style="font-size: 14px; font-weight: 600; color: #0f172a;">${petName} (${petTypeDisplay})</div>
-                  </div>
+    <p style="margin: 0 0 16px 0; font-size: 15px; color: #1f2937; line-height: 1.6;">
+      ${isEn
+        ? 'PetM&M Customer Care Department has received your information and will contact you as soon as possible. Thank you for your trust and choosing PetM&M.'
+        : 'Bộ Phận CSKH của PetM&M đã tiếp nhận thông tin và sẽ liên hệ lại sớm nhất. Cảm ơn quý khách hàng đã tin tưởng lựa chọn.'}
+    </p>
 
-                  <div style="padding: 10px 0; border-bottom: 1px solid #eef2f6;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Schedule' : 'Thời gian hẹn'}</div>
-                    <div style="font-size: 14px; font-weight: 700; color: #2D5A27;">${formattedDate}</div>
-                  </div>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #374151; line-height: 1.6;">
+      ${isEn ? 'For any inquiries, please contact Hotline: ' : 'Mọi thắc mắc xin liên hệ Hotline: '}
+      <strong style="color: #1e3f1b;">${hotlineDisplay}</strong>
+    </p>
 
-                  <div style="padding: 10px 0; ${service || note ? 'border-bottom: 1px solid #eef2f6;' : ''}">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Branch' : 'Cơ sở khám'}</div>
-                    <div style="font-size: 14px; font-weight: 600; color: #0f172a;">${branchName}</div>
-                  </div>
-
-                  ${service ? `
-                  <div style="padding: 10px 0; ${note ? 'border-bottom: 1px solid #eef2f6;' : ''}">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Service' : 'Dịch vụ'}</div>
-                    <div style="font-size: 13px; color: #334155;">${service}</div>
-                  </div>` : ''}
-
-                  ${note ? `
-                  <div style="padding-top: 10px;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px;">${isEn ? 'Notes' : 'Ghi chú'}</div>
-                    <div style="font-size: 13px; color: #475569; font-style: italic;">${note}</div>
-                  </div>` : ''}
-                </div>
-
-                <!-- Lưu ý chuẩn bị -->
-                ${checklistHtml ? `
-                <div style="background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; padding: 12px 14px; margin-bottom: 18px;">
-                  <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">
-                    ${isEn ? 'Preparation Advice:' : 'Lưu ý trước khi đến:'}
-                  </div>
-                  <div style="font-size: 12px; color: #475569; line-height: 1.5;">
-                    ${checklistHtml}
-                  </div>
-                </div>` : ''}
-
-                <div style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 16px;">
-                  ${footerNote}
-                  <div style="margin-top: 4px; font-size: 14px; font-weight: 700; color: #2D5A27;">
-                    Hotline: 0364 605 544
-                  </div>
-                </div>
-
-                <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b; line-height: 1.5;">
-                  Trân trọng,<br>
-                  <strong>Bệnh Viện Thú Y PetM&amp;M</strong>
-                </div>
-              </td>
-            </tr>
-
-            <!-- Footer -->
-            <tr>
-              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 20px; text-align: center;">
-                <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">
-                  Bệnh Viện Thú Y PetM&amp;M • Hotline: 0364 605 544
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 14px; font-size: 12px; color: #9ca3af;">
+      ${isEn ? 'PetM&amp;M - Touch • Trust • Love' : 'PetM&amp;M - Chạm • Tin • Yêu'}
+    </div>
+  </div>
+</body>
+</html>
   `;
 
   return sendMail({
     to: toEmail,
     subject,
     html,
-    text: `${subject} - Lịch hẹn cho bé ${petName} tại ${branchName} lúc ${formattedDate}. Hotline: 0364 605 544.`,
+    text: `${subject} - ${ownerName} (${phone || ''}) - ${formattedDate} ${formattedTimeSlot}. Hotline: ${hotlineDisplay}.`,
+    attachments,
+  });
+}
+
+// ========================================================
+// 2. GỬI EMAIL XÁC NHẬN ĐẶT LỊCH HẸN CHÍNH THỨC (GỬI TỪ ADMIN KHI NHÂN VIÊN ĐÃ CHỐT LỊCH)
+// Thư xác nhận trang trọng, hiển thị đầy đủ Thú cưng, Cơ sở, Dịch vụ đã dịch sang EN nếu là tiếng Anh
+// ========================================================
+export async function sendBookingConfirmationEmail({
+  toEmail,
+  bookingCode,
+  ownerName,
+  phone,
+  petName,
+  petType = 'dog',
+  branchName,
+  service,
+  dateTime,
+  date,
+  timeSlot,
+  note,
+  isEn = false,
+}: {
+  toEmail: string;
+  bookingCode: string;
+  ownerName: string;
+  phone?: string;
+  petName?: string;
+  petType?: string;
+  branchName?: string;
+  service?: string;
+  dateTime: string;
+  date?: string;
+  timeSlot?: string;
+  note?: string;
+  isEn?: boolean;
+}) {
+  let hotlineDisplay = '0364 605 544';
+  try {
+    const { data: sysCfg } = await supabaseAdmin
+      .from('cau_hinh')
+      .select('hotline, hotline_hien_thi')
+      .eq('id', 'system')
+      .maybeSingle();
+    if (sysCfg) {
+      hotlineDisplay = sysCfg.hotline_hien_thi || sysCfg.hotline || hotlineDisplay;
+    }
+  } catch {}
+
+  const attachments: any[] = [];
+  let logoImgHtml = '';
+  const customerLogoPath = path.join(process.cwd(), 'public', 'logo_email_customer.png');
+  if (fs.existsSync(customerLogoPath)) {
+    attachments.push({
+      filename: 'logo_petmm.png',
+      path: customerLogoPath,
+      cid: 'petmm_customer_logo',
+    });
+    logoImgHtml = `<img src="cid:petmm_customer_logo" alt="PetM&M" style="max-height: 52px; max-width: 240px; display: block; border: 0;" />`;
+  } else {
+    const fallbackPath = path.join(process.cwd(), 'public', 'logo_petmm_full.png');
+    if (fs.existsSync(fallbackPath)) {
+      attachments.push({
+        filename: 'logo_petmm.png',
+        path: fallbackPath,
+        cid: 'petmm_customer_logo',
+      });
+      logoImgHtml = `<img src="cid:petmm_customer_logo" alt="PetM&M" style="max-height: 52px; max-width: 240px; display: block; border: 0;" />`;
+    }
+  }
+
+  // Tự động dịch Cơ sở và Dịch vụ sang tiếng Anh nếu gửi bản tiếng Anh
+  const finalServicesStr = await getTranslatedServices(service || '', Boolean(isEn));
+  const finalBranchStr = await getTranslatedBranch(branchName || '', Boolean(isEn));
+
+  const formattedDate = date ? formatDateDMY(date) : formatDateDMY(dateTime);
+  const formattedTimeSlot = timeSlot && timeSlot.trim() ? timeSlot.trim() : (isEn ? 'Flexible' : 'Linh hoạt');
+
+  // Kiểm tra nếu có tên thú cưng thực tế (nếu trống hoặc là từ mặc định thì ẩn luôn trên mail)
+  const cleanPetName = (petName || '').trim();
+  const lowerPet = cleanPetName.toLowerCase();
+  const hasRealPetName =
+    Boolean(cleanPetName &&
+    lowerPet !== 'bé cưng' &&
+    lowerPet !== 'be cung' &&
+    lowerPet !== 'beloved pet' &&
+    lowerPet !== 'pet');
+
+  const petTypeDisplay =
+    petType === 'cat'
+      ? (isEn ? 'Cat' : 'Mèo')
+      : petType === 'other'
+      ? (isEn ? 'Other' : 'Loài khác')
+      : (isEn ? 'Dog' : 'Chó');
+
+  const subject = isEn
+    ? `[PetM&M] Appointment Confirmation - #${bookingCode}`
+    : `[PetM&M] Xác Nhận Lịch Hẹn - #${bookingCode}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="${isEn ? 'en' : 'vi'}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${isEn ? 'Appointment Confirmation' : 'Xác Nhận Lịch Hẹn'}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.6; -webkit-font-smoothing: antialiased;">
+  <div style="max-width: 520px; margin: 0 auto; padding: 24px 16px; background-color: #ffffff;">
+    
+    <!-- Logo trên nền trắng -->
+    <div style="padding-bottom: 20px;">
+      ${logoImgHtml}
+    </div>
+
+    <!-- Tiêu đề & Mã lịch hẹn -->
+    <h2 style="margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: #1e3f1b;">
+      ${isEn ? 'Appointment Confirmation' : 'Xác Nhận Lịch Hẹn'}
+    </h2>
+    <div style="font-size: 13px; color: #6b7280; margin-bottom: 18px;">
+      ${isEn ? 'Booking ID:' : 'Mã lịch hẹn:'} <strong style="color: #111827;">#${bookingCode}</strong>
+    </div>
+
+    <!-- Lời chào mở đầu -->
+    <p style="margin: 0 0 18px 0; font-size: 14px; color: #374151; line-height: 1.6;">
+      ${isEn
+        ? `Dear <strong>${ownerName}</strong>,<br/>PetM&M would like to confirm that your appointment has been successfully scheduled. Below are your visit details:`
+        : `Kính chào Quý khách <strong>${ownerName}</strong>,<br/>PetM&M xin trân trọng thông báo lịch hẹn khám &amp; chăm sóc của bạn đã được xếp lịch thành công:`}
+    </p>
+
+    <!-- Danh sách thông tin tối giản (Không khung, không icon, tối ưu mobile) -->
+    <div style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.7;">
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Customer Name:' : 'Khách hàng:'}</span> 
+        <strong style="color: #111827;">${ownerName}</strong>
+      </div>
+
+      ${phone && phone.trim() ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Phone Number:' : 'Số điện thoại:'}</span> 
+        <strong style="color: #111827;">${phone.trim()}</strong>
+      </div>` : ''}
+
+      ${hasRealPetName ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Pet:' : 'Thú cưng:'}</span> 
+        <strong style="color: #111827;">${cleanPetName}</strong>
+        <span style="color: #6b7280;"> (${petTypeDisplay})</span>
+      </div>` : ''}
+
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Date:' : 'Ngày hẹn:'}</span> 
+        <strong style="color: #111827;">${formattedDate}</strong>
+      </div>
+
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Time Slot:' : 'Khung giờ:'}</span> 
+        <strong style="color: #111827;">${formattedTimeSlot}</strong>
+      </div>
+
+      ${finalServicesStr && finalServicesStr.trim() ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Services:' : 'Dịch vụ:'}</span> 
+        <strong style="color: #111827;">${finalServicesStr}</strong>
+      </div>` : ''}
+
+      ${finalBranchStr && finalBranchStr.trim() ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Location:' : 'Cơ sở tiếp đón:'}</span> 
+        <strong style="color: #111827;">${finalBranchStr}</strong>
+      </div>` : ''}
+
+      ${note && note.trim() ? `
+      <div style="margin-bottom: 6px;">
+        <span style="color: #6b7280;">${isEn ? 'Notes / Symptoms:' : 'Ghi chú / Triệu chứng:'}</span> 
+        <span style="color: #111827;">${note.trim()}</span>
+      </div>` : ''}
+    </div>
+
+    <!-- Lời dặn trước khi đến -->
+    <p style="margin: 0 0 14px 0; font-size: 13px; color: #4b5563; line-height: 1.6;">
+      ${isEn
+        ? 'Please arrive 5–10 minutes prior to your scheduled time so our veterinary team can best receive your pet.'
+        : 'Quý khách vui lòng đưa bé đến trước giờ hẹn 5–10 phút để đội ngũ bác sĩ tiếp đón và kiểm tra chu đáo nhất.'}
+    </p>
+
+    <!-- Hotline hỗ trợ -->
+    <p style="margin: 0 0 20px 0; font-size: 13px; color: #4b5563; line-height: 1.6;">
+      ${isEn ? 'For any inquiries or rescheduling, please contact Hotline: ' : 'Mọi thắc mắc hoặc cần hỗ trợ thay đổi giờ hẹn, xin liên hệ Hotline: '}
+      <strong style="color: #1e3f1b;">${hotlineDisplay}</strong>
+    </p>
+
+    <!-- Lời cảm ơn & Chữ ký -->
+    <p style="margin: 0 0 22px 0; font-size: 13px; color: #4b5563; line-height: 1.6;">
+      ${isEn ? 'Best regards,' : 'Trân trọng cảm ơn,'}<br/>
+      <strong style="color: #1e3f1b;">${isEn ? 'PetM&amp;M Veterinary Hospital' : 'Bệnh Viện Thú Y PetM&amp;M'}</strong>
+    </p>
+
+    <!-- Chân trang tối giản -->
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 14px; font-size: 12px; color: #9ca3af;">
+      ${isEn ? 'PetM&amp;M - Touch • Trust • Love' : 'PetM&amp;M - Chạm • Tin • Yêu'}
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+
+  return sendMail({
+    to: toEmail,
+    subject,
+    html,
+    text: `${subject}\n${ownerName}${hasRealPetName ? ` - ${cleanPetName}` : ''}\n${formattedTimeSlot} • ${formattedDate}\n${isEn ? 'Location:' : 'Cơ sở tiếp đón:'} ${finalBranchStr}\n${isEn ? 'Services:' : 'Dịch vụ:'} ${finalServicesStr}\nHotline: ${hotlineDisplay}`,
     attachments,
   });
 }

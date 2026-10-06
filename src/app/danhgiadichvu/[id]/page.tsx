@@ -28,6 +28,28 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     notFound();
   }
 
+  // Hỗ trợ mã DEMO hoặc placeholder cho kiểm duyệt viên Zalo ZNS
+  const isDemoOrPlaceholder = 
+    cleanId.toLowerCase() === 'demo' || 
+    cleanId.toLowerCase() === 'test' || 
+    cleanId === '<demo>' ||
+    cleanId === '<review_code>' || 
+    cleanId.toLowerCase() === 'review_code' ||
+    cleanId.startsWith('demo-');
+
+  if (isDemoOrPlaceholder) {
+    const demoRecord: import('@/lib/supabase').YeuCauDanhGiaRecord = {
+      id: 'demo-sample-id',
+      ma_danh_gia: cleanId,
+      ten_khach_hang: 'Khách hàng Trải nghiệm (Bản xem trước Zalo)',
+      so_dien_thoai: '0934395168',
+      co_so: 'Bệnh viện thú y PetM&M',
+      trang_thai: 'cho_danh_gia',
+      ngay_tao: new Date().toISOString(),
+    };
+    return <DanhGiaDichVuClient initialRecord={demoRecord} />;
+  }
+
   // Truy vấn kiểm tra mã đánh giá từ cơ sở dữ liệu
   const { data: record, error } = await supabaseAdmin
     .from('yeu_cau_danh_gia')
@@ -36,10 +58,29 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     .limit(1)
     .maybeSingle();
 
-  // "nếu người dùng cố tình bịa ra mã đánh giá sau địa chỉ , nhưng không trùng khớp sẽ báo lỗi 404"
+  // Nếu người dùng cố tình bịa ra mã đánh giá không trùng khớp -> 404
   if (error || !record) {
     notFound();
   }
 
-  return <DanhGiaDichVuClient initialRecord={record} />;
+  // Làm sạch hinh_anh nếu không phải là URL hợp lệ
+  let safeHinhAnh = record.hinh_anh;
+  if (safeHinhAnh) {
+    const isUrl =
+      safeHinhAnh.startsWith('http://') ||
+      safeHinhAnh.startsWith('https://') ||
+      safeHinhAnh.startsWith('data:image/') ||
+      safeHinhAnh.startsWith('/');
+    if (!isUrl || safeHinhAnh.startsWith('{')) {
+      safeHinhAnh = null;
+    }
+  }
+
+  const safeRecord = {
+    ...record,
+    hinh_anh: safeHinhAnh,
+  };
+
+  return <DanhGiaDichVuClient initialRecord={safeRecord} />;
 }
+

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/adminAuth';
-import { sendZaloZnsBookingNotification, getZaloConfig } from '@/lib/zalo';
-import { getNotificationSettings, saveNotificationSettings } from '@/lib/notificationSettings';
+import { sendZaloZnsBookingNotification, sendZaloZnsReviewNotification } from '@/lib/zalo';
+import { saveNotificationSettings } from '@/lib/notificationSettings';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const phone = (body.phone || body.target_phone || '0364605514').trim();
+    const phone = (body.phone || body.target_phone || '').trim();
 
     if (!phone) {
       return NextResponse.json(
@@ -26,31 +26,48 @@ export async function POST(req: NextRequest) {
     }
 
     // Nếu người dùng truyền token mới trong form test, lưu tạm vào cấu hình
-    if (body.zalo_access_token !== undefined || body.zalo_refresh_token !== undefined || body.phone !== undefined) {
+    if (body.zalo_access_token !== undefined || body.zalo_refresh_token !== undefined) {
       const updates: any = {};
       if (body.zalo_access_token !== undefined) updates.zalo_access_token = String(body.zalo_access_token).trim();
       if (body.zalo_refresh_token !== undefined) updates.zalo_refresh_token = String(body.zalo_refresh_token).trim();
-      if (body.phone) updates.zalo_test_phone = phone;
       await saveNotificationSettings(updates);
     }
 
-    const sampleBooking = {
-      phone,
-      bookingCode: 'PET-' + Math.floor(100000 + Math.random() * 900000),
-      ownerName: 'Nguyễn Văn An',
-      petName: 'Bé Đậu',
-      service: 'Khám tổng quát & Chăm sóc',
-      dateTime: '09:30 15/10/2026',
-      branchName: '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh',
-    };
+    const templateType = body.templateType || body.template_type || 'booking';
+    const customTemplateId = (templateType === 'review'
+      ? (body.zalo_review_template_id || '')
+      : (body.zalo_template_id || '')
+    ).trim();
 
-    console.log(`[Zalo Test API] Bắt đầu gửi tin ZNS thử nghiệm tới SĐT ${phone}...`);
-    const res = await sendZaloZnsBookingNotification(sampleBooking);
+    let res: any;
+    if (templateType === 'review') {
+      const sampleReview = {
+        phone,
+        customerName: 'Nguyễn Văn An (Khách Thử Nghiệm)',
+        orderId: 'HD-' + Math.floor(100000 + Math.random() * 900000),
+        reviewCode: 'REV-' + Math.floor(100000 + Math.random() * 900000),
+      };
+      console.log(`[Zalo Test API] Gửi thử mẫu Đánh giá ZNS (Template ID: ${customTemplateId || 'mặc định'}) tới SĐT ${phone}...`);
+      res = await sendZaloZnsReviewNotification(sampleReview, customTemplateId);
+    } else {
+      const sampleBooking = {
+        phone,
+        bookingCode: 'PET-' + Math.floor(100000 + Math.random() * 900000),
+        ownerName: 'Nguyễn Văn An (Khách Thử Nghiệm)',
+        petName: 'Bé Đậu',
+        service: 'Khám tổng quát & Chăm sóc',
+        dateTime: '09:30 15/10/2026',
+        branchName: '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh',
+      };
+      console.log(`[Zalo Test API] Gửi thử mẫu Đặt lịch ZNS (Template ID: ${customTemplateId || 'mặc định'}) tới SĐT ${phone}...`);
+      res = await sendZaloZnsBookingNotification(sampleBooking, customTemplateId);
+    }
 
     if (res.success && !res.mock) {
+      const typeLabel = templateType === 'review' ? 'Đánh Giá Dịch Vụ' : 'Xác Nhận Lịch Hẹn';
       return NextResponse.json({
         success: true,
-        message: `Đã gửi tin nhắn Zalo ZNS thành công tới SĐT ${phone}! Vui lòng kiểm tra ứng dụng Zalo trên điện thoại.`,
+        message: `Đã gửi tin nhắn Zalo ZNS [${typeLabel}] thành công tới SĐT ${phone}! Vui lòng kiểm tra ứng dụng Zalo trên điện thoại.`,
         data: res.data,
       });
     }

@@ -173,7 +173,7 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
 
   return (
     <div
-      className={`sticky ${stickyTopClass} z-30 flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-slate-200 bg-white shadow-xs rounded-t-xl`}
+      className={`${stickyTopClass ? `sticky ${stickyTopClass}` : ''} z-30 flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-slate-200 bg-white shadow-xs rounded-t-xl shrink-0`}
     >
       {/* Heading */}
       <select
@@ -394,6 +394,8 @@ interface RichTextEditorProps {
   minHeight?: number;
   onUploadImage?: (file: File) => Promise<string>;
   stickyTopClass?: string;
+  containerClassName?: string;
+  contentClassName?: string;
 }
 
 export default function RichTextEditor({
@@ -402,6 +404,8 @@ export default function RichTextEditor({
   minHeight = 400,
   onUploadImage,
   stickyTopClass = '-top-6',
+  containerClassName,
+  contentClassName,
 }: RichTextEditorProps) {
   const imgFileInputRef = React.useRef<HTMLInputElement>(null);
   const editor = useEditor({
@@ -446,7 +450,9 @@ export default function RichTextEditor({
 
   return (
     <div
-      className="rounded-xl border border-slate-300 bg-white focus-within:border-[#2D5A27] transition shadow-2xs relative"
+      className={`rounded-xl border border-slate-300 bg-white focus-within:border-[#2D5A27] transition shadow-2xs relative ${
+        containerClassName || ''
+      }`}
       onPaste={async (e) => {
         if (!onUploadImage || !editor) return;
         const items = e.clipboardData?.items;
@@ -470,7 +476,10 @@ export default function RichTextEditor({
         imgFileInputRef={imgFileInputRef}
         stickyTopClass={stickyTopClass}
       />
-      <EditorContent editor={editor} className="rounded-b-xl overflow-hidden" />
+      <EditorContent
+        editor={editor}
+        className={contentClassName ? `rounded-b-xl ${contentClassName}` : 'rounded-b-xl overflow-hidden'}
+      />
     </div>
   );
 }

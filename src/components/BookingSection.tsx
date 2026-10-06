@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { supabase, ChiNhanhRecord, DichVuRecord } from '@/lib/supabase';
 import { branchesData } from '@/data/branchesData';
@@ -25,6 +25,8 @@ import {
   MapPin,
   Heart,
   ChevronDown,
+  Check,
+  Stethoscope,
 } from 'lucide-react';
 
 interface BookingSectionProps {
@@ -34,6 +36,20 @@ interface BookingSectionProps {
 }
 
 const DEFAULT_COVER_IMAGE = '/about_consultation.jpg';
+
+// Helper lấy ngày hiện tại theo giờ Việt Nam (YYYY-MM-DD)
+const getTodayDateVN = () => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+};
 
 const TIME_SLOTS = [
   '08:00 - 08:30',
@@ -85,13 +101,28 @@ export default function BookingSection({
     }
   }, [initialService]);
 
-  const [date, setDate] = useState(() => {
-    const today = new Date();
-    today.setDate(today.getDate() + 1);
-    return today.toISOString().split('T')[0];
-  });
-  const [timeSlot, setTimeSlot] = useState('09:00 - 09:30');
+  const [date, setDate] = useState(() => getTodayDateVN());
+  const [timeSlot, setTimeSlot] = useState('');
   const [note, setNote] = useState('');
+
+  // Dropdown states cho web (không dùng popup trình duyệt)
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
+  const serviceDropdownRef = useRef<HTMLDivElement>(null);
+  const timeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target as Node)) {
+        setIsServiceDropdownOpen(false);
+      }
+      if (timeDropdownRef.current && !timeDropdownRef.current.contains(event.target as Node)) {
+        setIsTimeDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [coverImage, setCoverImage] = useState(DEFAULT_COVER_IMAGE);
   const [rightColConfig, setRightColConfig] = useState({
@@ -111,15 +142,37 @@ export default function BookingSection({
   const [bookingResult, setBookingResult] = useState<{
     code: string;
     ownerName: string;
+    phone?: string;
     petName: string;
     branchName: string;
     service: string;
     dateTime: string;
+    date?: string;
+    timeSlot?: string;
     emailSent?: boolean;
     email?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(0);
+
+  // Hiệu ứng đếm ngược thời gian thực (15s -> 14s -> ... -> 0s)
+  useEffect(() => {
+    if (countdownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setErrorMsg('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [countdownSeconds]);
 
   // Tính năng chống spam: Bẫy Honeypot & Cooldown timer
   const [hpWebsite, setHpWebsite] = useState('');
@@ -220,22 +273,9 @@ export default function BookingSection({
     };
   }, []);
 
-// Helper lấy ngày hiện tại theo giờ Việt Nam (YYYY-MM-DD)
-const getTodayDateVN = () => {
-  try {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().split('T')[0];
-  }
-};
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (countdownSeconds > 0) return;
     setErrorMsg('');
 
     // 1. CHỐNG SPAM: Bẫy Honeypot cho bot tự động điền form
@@ -244,61 +284,34 @@ const getTodayDateVN = () => {
       setBookingResult({
         code: fakeCode,
         ownerName: ownerName.trim(),
-        petName: petName.trim(),
-        branchName: isEn ? 'PetM&M Veterinary Clinic' : 'Cơ sở PetM&M',
-        service: service.trim() || (isEn ? 'General Health Check' : 'Khám tổng quát'),
-        dateTime: `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}`,
+        phone: phone.trim(),
+        petName: '',
+        branchName: isEn ? 'PetM&M Veterinary Clinic' : 'Bệnh Viện Thú Y PetM&M',
+        service: service.trim() || (isEn ? 'General Health Check & Consultation' : 'Khám tổng quát & Tư vấn trực tiếp'),
+        dateTime: timeSlot ? `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}` : `${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)} (${isEn ? 'Flexible' : 'Linh hoạt'})`,
+        date: formatToDMY(date),
+        timeSlot: timeSlot || (isEn ? 'Flexible' : 'Linh hoạt'),
         emailSent: false,
         email: email.trim(),
       });
       return;
     }
 
-    // ========================================================
-    // TÍNH NĂNG CHỐNG SPAM: GIỚI HẠN TỐI ĐA 3 TIN/NGÀY THEO THIẾT BỊ / IP
-    // Không hiển thị bất kỳ dấu hiệu/cảnh báo nào để khách biết trước.
-    // Nếu bắt đầu gửi tới tin thứ 4 mới chặn và hiển thị thông báo lỗi:
-    // - VI: "Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày"
-    // - EN: "Maximum of 3 appointments allowed per day"
-    // ========================================================
-    const todayVN = getTodayDateVN();
-    const localDailyKey = `petmm_booking_count_${todayVN}`;
-    let localCount = 0;
-    try {
-      localCount = parseInt(localStorage.getItem(localDailyKey) || '0', 10);
-    } catch {}
-
-    // TÍNH NĂNG CHỐNG SPAM: Giới hạn tối đa 3 lần / ngày
-    if (localCount >= 3) {
-      setErrorMsg(
-        isEn
-          ? 'Maximum of 3 appointments allowed per day'
-          : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày'
-      );
-      return;
-    }
-
-    // TÍNH NĂNG CHỐNG SPAM: Cooldown 15 giây tránh gửi lặp liên tục
+    // Cooldown chống click đúp liên tục (2 giây)
     const now = Date.now();
-    if (now - lastSubmitRef.current < 15000) {
-      const waitSeconds = Math.ceil((15000 - (now - lastSubmitRef.current)) / 1000);
-      setErrorMsg(
-        isEn
-          ? `Please wait ${waitSeconds}s before submitting again to prevent spam.`
-          : `Hệ thống chống spam: Vui lòng đợi ${waitSeconds} giây trước khi gửi tiếp.`
-      );
+    if (now - lastSubmitRef.current < 2000) {
       return;
     }
 
     if (!ownerName.trim()) {
-      setErrorMsg(isEn ? 'Please enter your full name' : 'Vui lòng nhập họ và tên chủ nuôi');
+      setErrorMsg(isEn ? 'Please enter your full name' : 'Vui lòng nhập họ và tên của bạn');
       return;
     }
 
     const cleanPhone = phone.replace(/\s+/g, '');
     const numOnly = cleanPhone.replace(/\D/g, '');
-    if (numOnly.length < 9 || numOnly.length > 11) {
-      setErrorMsg(isEn ? 'Please enter a valid phone number (9-11 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số)');
+    if (numOnly.length < 9 || numOnly.length > 15) {
+      setErrorMsg(isEn ? 'Please enter a valid phone number (9-15 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 15 chữ số)');
       return;
     }
     // Chặn số rác lặp
@@ -307,50 +320,47 @@ const getTodayDateVN = () => {
       return;
     }
 
-    if (!petName.trim()) {
-      setErrorMsg(isEn ? "Please enter your pet's name" : 'Vui lòng nhập tên của bé thú cưng');
-      return;
-    }
-    if (!branch) {
-      setErrorMsg(isEn ? 'Please select a clinic branch' : 'Vui lòng chọn cơ sở khám cho bé');
-      return;
-    }
-
     lastSubmitRef.current = Date.now();
 
-    // Tìm tên chi nhánh hiển thị
-    let branchName = isEn ? 'PetM&M Veterinary Clinic' : 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M';
+    // Tìm tên chi nhánh hiển thị (hoặc mặc định hệ thống)
+    let branchName = isEn ? 'PetM&M Veterinary Clinic System' : 'Hệ Thống Bệnh Viện Thú Y PetM&M';
+    const chosenBranch = branch || (dbBranches[0]?.id) || (branchesData[0]?.id) || '';
     if (dbBranches.length > 0) {
-      const found = dbBranches.find((b) => b.id === branch);
+      const found = dbBranches.find((b) => b.id === chosenBranch);
       if (found) {
         branchName = isEn && found.ten_ngan_en ? found.ten_ngan_en : (found.ten_ngan || found.ten_chi_nhanh);
       }
-    } else {
-      const found = branchesData.find((b) => b.id === branch);
+    } else if (branchesData.length > 0) {
+      const found = branchesData.find((b) => b.id === chosenBranch);
       if (found) branchName = found.shortName;
     }
 
-    // 1. SINH MÃ TIẾP NHẬN TỨC THÌ
+    // Sinh mã tiếp nhận
     const clientBookingCode = 'PMM-' + Math.floor(100000 + Math.random() * 900000);
     const displayService = service.trim() || (isEn ? 'General Health Check & Consultation' : 'Khám tổng quát & Tư vấn trực tiếp');
-    const formattedDateTime = `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}`;
+    const formattedDateTime = timeSlot
+      ? `${timeSlot}, ${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)}`
+      : `${isEn ? 'Date' : 'Ngày'} ${formatToDMY(date)} (${isEn ? 'Flexible' : 'Linh hoạt'})`;
     const hasEmail = Boolean(email && email.trim().includes('@'));
 
-    // 2. HIỂN THỊ NGAY KẾT QUẢ TỨC KHẮC (Không để khách hàng đợi xoay vòng)
+    // CHUYỂN NGAY LẬP TỨC SANG MÀN HÌNH CẢM ƠN (Optimistic UI - 0s chờ đợi)
     setBookingResult({
       code: clientBookingCode,
       ownerName: ownerName.trim(),
-      petName: petName.trim(),
+      phone: cleanPhone,
+      petName: '',
       branchName,
       service: displayService,
       dateTime: formattedDateTime,
+      date: formatToDMY(date),
+      timeSlot: timeSlot || (isEn ? 'Flexible' : 'Linh hoạt'),
       emailSent: hasEmail,
       email: email.trim(),
     });
 
     if (onSuccess) onSuccess();
 
-    // 3. XỬ LÝ NGẦM TRONG NỀN (Lưu Supabase và Gửi Email)
+    // Gửi ngầm API lưu Supabase và gửi email tiếp nhận
     fetch('/api/booking', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -359,9 +369,9 @@ const getTodayDateVN = () => {
         ownerName: ownerName.trim(),
         phone: cleanPhone,
         email: email.trim(),
-        petName: petName.trim(),
-        petType,
-        branch,
+        petName: '',
+        petType: '',
+        branch: chosenBranch,
         branchName,
         service: displayService,
         date,
@@ -373,24 +383,12 @@ const getTodayDateVN = () => {
     })
       .then(async (res) => {
         const data = await res.json().catch(() => null);
-        if (!res.ok || (data && !data.success)) {
-          // Bị từ chối (ví dụ đã gửi quá 3 tin trên IP này ở tab/trình duyệt khác)
-          setBookingResult(null);
-          setErrorMsg(
-            data?.message ||
-              (isEn
-                ? 'Maximum of 3 appointments allowed per day'
-                : 'Chỉ đặt tối đa 3 lịch hẹn trong 1 ngày')
-          );
-          return;
+        if (data && typeof data.cooldown === 'number' && data.cooldown > 0) {
+          setCountdownSeconds(data.cooldown);
         }
-        // Gửi thành công: Tăng bộ đếm trong ngày của thiết bị
-        try {
-          localStorage.setItem(localDailyKey, String(localCount + 1));
-        } catch {}
       })
       .catch((err) => {
-        console.warn('Lỗi xử lý ngầm API booking:', err);
+        console.warn('Lỗi gửi ngầm booking:', err);
       });
   };
 
@@ -434,85 +432,74 @@ const getTodayDateVN = () => {
         )}
 
         {/* ======================================================== */}
-        {/* CASE 1: KẾT QUẢ ĐẶT HẸN THÀNH CÔNG (BOARDING PASS TICKET) */}
+        {/* CASE 1: KẾT QUẢ TIẾP NHẬN ĐẶT HẸN & TƯ VẤN (TINH GỌN, TRANG NHÃ) */}
         {/* ======================================================== */}
         {bookingResult ? (
-          <div className="p-6 sm:p-10 rounded-3xl bg-white border border-emerald-200 shadow-2xl text-center animate-in fade-in duration-300 text-slate-900 max-w-3xl mx-auto">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-[#2D5A27] border border-emerald-200 flex items-center justify-center mx-auto mb-4 shadow-sm">
-              <CheckCircle2 className="w-9 h-9" />
+          <div className="p-6 sm:p-10 rounded-2xl bg-white border border-slate-200/90 shadow-sm text-center animate-in fade-in duration-300 text-slate-900 max-w-xl mx-auto">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#2D5A27] flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
 
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#2D5A27] bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200 inline-block">
-              {isEn ? 'Appointment Confirmed' : 'Lịch Hẹn Tiếp Nhận Thành Công'}
-            </span>
-
-            <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mt-4 mb-2">
-              {isEn ? 'Appointment Booking Receipt' : 'Phiếu Tiếp Nhận Lịch Hẹn'}
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
+              {isEn ? 'Thank you for Booking & Consultation' : 'Cảm ơn bạn đã Đặt Hẹn & Tư Vấn'}
             </h3>
 
-            <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto mb-6 font-light">
-              {bookingResult.emailSent
-                ? (isEn
-                    ? `A confirmation email has been sent to ${bookingResult.email}. Our team is ready to welcome you.`
-                    : `Thư xác nhận đã được gửi đến email ${bookingResult.email}. Bác sĩ tại phòng khám đã tiếp nhận thông tin và sẵn sàng hỗ trợ chu đáo.`)
-                : (isEn
-                    ? `A specialist at ${bookingResult.branchName} has received your appointment.`
-                    : `Bác sĩ chuyên khoa tại ${bookingResult.branchName} đã tiếp nhận lịch hẹn của bạn.`)}
+            <p className="text-xs sm:text-sm text-slate-600 mb-5 leading-relaxed">
+              {isEn
+                ? 'PetM&M Customer Care Department has received your information and will contact you as soon as possible. Thank you for your trust and choosing PetM&M.'
+                : 'Bộ Phận CSKH của PetM&M đã tiếp nhận thông tin và sẽ liên hệ lại sớm nhất. Cảm ơn quý khách hàng đã tin tưởng lựa chọn.'}
             </p>
 
-            {/* Boarding Pass Box */}
-            <div className="max-w-lg mx-auto p-5 sm:p-6 rounded-2xl bg-[#F8FAF7] border border-slate-200 text-left mb-6 shadow-xs">
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 mb-4">
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-                    {isEn ? 'Booking Code:' : 'Mã số tiếp nhận:'}
-                  </span>
-                  <span className="text-xl font-bold text-[#2D5A27] font-mono">
-                    {bookingResult.code}
-                  </span>
-                </div>
-                <button
-                  onClick={copyBookingCode}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition shadow-2xs cursor-pointer"
-                >
-                  <Copy className="w-3.5 h-3.5 text-[#2D5A27]" />
-                  <span>{copied ? (isEn ? 'Copied!' : 'Đã chép!') : (isEn ? 'Copy' : 'Sao chép')}</span>
-                </button>
+            {/* Bảng thông tin tóm tắt tinh gọn, không màu mè */}
+            <div className="max-w-md mx-auto p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-left mb-5 text-xs sm:text-sm space-y-2">
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                <span className="text-slate-500">{isEn ? 'Full Name:' : 'Họ Tên:'}</span>
+                <span className="font-semibold text-slate-900">{bookingResult.ownerName}</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-3.5 text-xs">
-                <div>
-                  <span className="text-slate-500 block font-light">{isEn ? 'Pet Parent:' : 'Chủ nuôi:'}</span>
-                  <span className="font-bold text-slate-900 text-sm">{bookingResult.ownerName}</span>
+              {bookingResult.phone && (
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                  <span className="text-slate-500">{isEn ? 'Phone:' : 'SDT:'}</span>
+                  <span className="font-semibold text-slate-900">{bookingResult.phone}</span>
                 </div>
-                <div>
-                  <span className="text-slate-500 block font-light">{isEn ? 'Pet:' : 'Bé cưng:'}</span>
-                  <span className="font-bold text-slate-900 text-sm">{bookingResult.petName}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-light">{isEn ? 'Branch:' : 'Cơ sở:'}</span>
-                  <span className="font-bold text-[#2D5A27] text-sm">{bookingResult.branchName}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-light">{isEn ? 'Schedule:' : 'Thời gian:'}</span>
-                  <span className="font-bold text-slate-900 text-sm">{bookingResult.dateTime}</span>
-                </div>
-                <div className="col-span-2 pt-2.5 border-t border-slate-200">
-                  <span className="text-slate-500 block font-light">{isEn ? 'Service:' : 'Dịch vụ:'}</span>
-                  <span className="font-bold text-[#2D5A27] text-sm">{bookingResult.service}</span>
-                </div>
+              )}
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                <span className="text-slate-500">{isEn ? 'Date:' : 'Thời Gian:'}</span>
+                <span className="font-semibold text-slate-900">{bookingResult.date || bookingResult.dateTime}</span>
               </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                <span className="text-slate-500">{isEn ? 'Time Slot:' : 'Khung Giờ:'}</span>
+                <span className="font-semibold text-slate-900">{bookingResult.timeSlot || (isEn ? 'Flexible' : 'Linh hoạt')}</span>
+              </div>
+              {bookingResult.service && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-500">{isEn ? 'Service:' : 'Dịch Vụ:'}</span>
+                  <span className="font-medium text-emerald-800">{bookingResult.service}</span>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-center pt-2">
+            <p className="text-xs sm:text-sm text-slate-600 mb-3">
+              {isEn ? 'For any inquiries, please contact Hotline:' : 'Mọi thắc mắc xin liên hệ Hotline:'}{' '}
+              <strong className="text-slate-900 font-bold">{hotlineDisplay}</strong>
+            </p>
+
+            <div className="flex items-center justify-center pt-1">
               <a
                 href={`tel:${hotlineRaw}`}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-[#2D5A27] to-emerald-700 hover:from-emerald-800 hover:to-emerald-900 text-white transition shadow-md inline-flex items-center justify-center gap-2.5"
+                className="px-6 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-[#2D5A27] hover:bg-[#23471f] text-white transition shadow-sm inline-flex items-center justify-center gap-2"
               >
                 <PhoneCall className="w-4 h-4" />
                 <span>{`Hotline: ${hotlineDisplay}`}</span>
               </a>
             </div>
+
+            {bookingResult.email && (
+              <p className="text-[11px] text-slate-400 mt-4">
+                {isEn
+                  ? `Information has been sent to ${bookingResult.email}`
+                  : `Thông tin tiếp nhận đã được gửi đến email ${bookingResult.email}`}
+              </p>
+            )}
           </div>
         ) : (
           /* ======================================================== */
@@ -525,16 +512,25 @@ const getTodayDateVN = () => {
                 {/* Form Header trong Modal hoặc On-page */}
                 <div className="mb-6">
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                    {isEn ? 'Pet Healthcare & Spa Booking' : 'Đặt Lịch Khám & Chăm Sóc Thú Cưng'}
+                    {isEn ? 'Appointment & Consultation' : 'Đặt Lịch & Tư Vấn'}
                   </h3>
                 </div>
 
-                {errorMsg && (
+                {countdownSeconds > 0 ? (
+                  <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs sm:text-sm font-semibold mb-5 shadow-xs transition-all">
+                    <Clock className="w-4 h-4 shrink-0 text-amber-600 animate-spin" style={{ animationDuration: '4s' }} />
+                    <span>
+                      {isEn
+                        ? `Please try again in ${countdownSeconds}s`
+                        : `Vui lòng gửi lại sau ${countdownSeconds}s`}
+                    </span>
+                  </div>
+                ) : errorMsg ? (
                   <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold mb-5">
                     <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                     <span>{errorMsg}</span>
                   </div>
-                )}
+                ) : null}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Bẫy Honeypot chống Bot spam tự động */}
@@ -549,17 +545,7 @@ const getTodayDateVN = () => {
                     />
                   </div>
 
-                  {/* TIÊU ĐỀ SECTION: 1. THÔNG TIN LIÊN HỆ CHỦ NUÔI */}
-                  <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-100 text-[#2D5A27] flex items-center justify-center font-bold text-xs">
-                      1
-                    </div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#2D5A27]">
-                      {isEn ? '1. Pet Parent Contact Information' : '1. Thông tin liên hệ chủ nuôi'}
-                    </span>
-                  </div>
-
-                  {/* Họ tên & Số điện thoại (Grid 2 cột) */}
+                  {/* HÀNG 1: Họ và tên của bạn * & Số điện thoại * */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -596,163 +582,130 @@ const getTodayDateVN = () => {
                     </div>
                   </div>
 
-                  {/* Gmail / Email nhận xác nhận (Full Row) */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      {isEn ? 'Gmail / Email' : 'Gmail / Email'}
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder=""
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Tên bé & Loài thú cưng (Droplist thanh lịch) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  {/* HÀNG 2: Gmail / Email (Nếu có) & Chọn dịch vụ (Không bắt buộc) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? "Pet's Name" : 'Tên của bé'} <span className="text-rose-500">*</span>
+                        {isEn ? 'Gmail / Email (Optional)' : 'Gmail / Email (Nếu có)'}
                       </label>
                       <div className="relative">
-                        <Heart className="w-4 h-4 text-rose-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
-                          type="text"
-                          value={petName}
-                          onChange={(e) => setPetName(e.target.value)}
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           placeholder=""
-                          required
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900"
                         />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Pet Species' : 'Loài thú cưng'} <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={petType}
-                          onChange={(e) => setPetType(e.target.value)}
-                          className="w-full appearance-none pl-4 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900 cursor-pointer"
-                        >
-                          <option value="dog">{isEn ? 'Dog' : 'Chó'}</option>
-                          <option value="cat">{isEn ? 'Cat' : 'Mèo'}</option>
-                          <option value="other">
-                            {isEn ? 'Other Species (Rabbit, Hamster...)' : 'Loài khác (Thỏ, Hamster, Chim...)'}
-                          </option>
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Cơ sở & Chọn Dịch vụ (Dịch vụ KHÔNG BẮT BUỘC) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Clinic Branch' : 'Cơ sở khám bệnh'} <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <select
-                          value={branch}
-                          onChange={(e) => setBranch(e.target.value)}
-                          required
-                          className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs outline-none transition text-slate-900 cursor-pointer"
-                        >
-                          <option value="" disabled>
-                            {isEn ? '-- Select Branch --' : '-- Chọn cơ sở tiếp đón --'}
-                          </option>
-                          {dbBranches.length > 0
-                            ? dbBranches.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {(isEn && b.ten_ngan_en) || b.ten_ngan || b.ten_chi_nhanh}
-                                </option>
-                              ))
-                            : branchesData.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.shortName} - {b.district}
-                                </option>
-                              ))}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-                    </div>
-
+                    {/* Droplist dịch vụ của Web gọn gàng */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         {isEn ? 'Select Service (Optional)' : 'Chọn dịch vụ (Không bắt buộc)'}
                       </label>
-                      <div className="relative">
-                        <select
-                          value={service}
-                          onChange={(e) => setService(e.target.value)}
-                          className="w-full appearance-none pl-3.5 pr-9 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs outline-none transition text-slate-900 cursor-pointer"
+                      <div className="relative" ref={serviceDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsServiceDropdownOpen(!isServiceDropdownOpen);
+                            setIsTimeDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between pl-3.5 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-left text-slate-900 cursor-pointer"
                         >
-                          <option value="">
-                            {isEn ? '-- Optional: Decide at clinic --' : '-- Tùy chọn: Tư vấn tại viện --'}
-                          </option>
-                          {dbServices.length > 0 ? (
-                            <>
-                              <optgroup label={isEn ? 'Veterinary & Medicine' : 'Thú Y & Y Tế'}>
-                                {dbServices
-                                   .filter((s) => s.nhom_dich_vu === 'medical')
-                                  .map((s) => (
-                                    <option key={s.id} value={(isEn && s.ten_dich_vu_en) || s.ten_dich_vu}>
-                                      {(isEn && s.ten_dich_vu_en) || s.ten_dich_vu}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                              <optgroup label={isEn ? 'Spa & Hotel' : 'Chăm Sóc & Spa'}>
-                                {dbServices
-                                  .filter((s) => s.nhom_dich_vu === 'care')
-                                  .map((s) => (
-                                    <option key={s.id} value={(isEn && s.ten_dich_vu_en) || s.ten_dich_vu}>
-                                      {(isEn && s.ten_dich_vu_en) || s.ten_dich_vu}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                            </>
-                          ) : (
-                            <>
-                              <optgroup label={isEn ? 'Veterinary & Medicine' : 'Thú Y & Y Tế'}>
-                                {servicesData
-                                  .filter((s) => s.category === 'medical')
-                                  .map((s) => (
-                                    <option key={s.id} value={s.title}>
-                                      {s.title}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                              <optgroup label={isEn ? 'Spa & Hotel' : 'Chăm Sóc & Spa'}>
-                                {servicesData
-                                  .filter((s) => s.category === 'care')
-                                  .map((s) => (
-                                    <option key={s.id} value={s.title}>
-                                      {s.title}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                            </>
-                          )}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <div className="flex items-center gap-2 truncate">
+                            <Stethoscope className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className={service ? 'text-slate-900 font-medium truncate' : 'text-slate-400 truncate'}>
+                              {service || (isEn ? '-- Select Service (Optional) --' : '-- Tùy chọn: Chọn dịch vụ --')}
+                            </span>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isServiceDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                        </button>
+
+                        {isServiceDropdownOpen && (
+                          <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden max-h-60 overflow-y-auto text-xs sm:text-sm divide-y divide-slate-100">
+                            <div
+                              onClick={() => {
+                                setService('');
+                                setIsServiceDropdownOpen(false);
+                              }}
+                              className={`px-3.5 py-2.5 cursor-pointer hover:bg-emerald-50/70 transition flex items-center justify-between ${
+                                !service ? 'bg-emerald-50/50 font-semibold text-[#2D5A27]' : 'text-slate-600'
+                              }`}
+                            >
+                              <span>{isEn ? '-- Optional: Decide at clinic --' : '-- Tùy chọn: Tư vấn tại phòng khám --'}</span>
+                              {!service && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                            </div>
+
+                            {/* Danh mục: Thú Y & Y Tế */}
+                            <div>
+                              <div className="px-3.5 py-1.5 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                {isEn ? 'Veterinary & Medicine' : 'Thú Y & Y Tế'}
+                              </div>
+                              {(dbServices.length > 0
+                                ? dbServices.filter((s) => s.nhom_dich_vu === 'medical')
+                                : servicesData.filter((s) => s.category === 'medical')
+                              ).map((s: any) => {
+                                const title = (isEn && s.ten_dich_vu_en) || s.ten_dich_vu || s.title;
+                                const isSelected = service === title;
+                                return (
+                                  <div
+                                    key={s.id}
+                                    onClick={() => {
+                                      setService(title);
+                                      setIsServiceDropdownOpen(false);
+                                    }}
+                                    className={`px-3.5 py-2 cursor-pointer hover:bg-emerald-50 transition flex items-center justify-between ${
+                                      isSelected ? 'bg-emerald-50 font-semibold text-[#2D5A27]' : 'text-slate-700'
+                                    }`}
+                                  >
+                                    <span className="truncate">{title}</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Danh mục: Chăm Sóc & Spa */}
+                            <div>
+                              <div className="px-3.5 py-1.5 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                {isEn ? 'Pet Care & Spa' : 'Chăm Sóc & Spa'}
+                              </div>
+                              {(dbServices.length > 0
+                                ? dbServices.filter((s) => s.nhom_dich_vu === 'care')
+                                : servicesData.filter((s) => s.category === 'care')
+                              ).map((s: any) => {
+                                const title = (isEn && s.ten_dich_vu_en) || s.ten_dich_vu || s.title;
+                                const isSelected = service === title;
+                                return (
+                                  <div
+                                    key={s.id}
+                                    onClick={() => {
+                                      setService(title);
+                                      setIsServiceDropdownOpen(false);
+                                    }}
+                                    className={`px-3.5 py-2 cursor-pointer hover:bg-emerald-50 transition flex items-center justify-between ${
+                                      isSelected ? 'bg-emerald-50 font-semibold text-[#2D5A27]' : 'text-slate-700'
+                                    }`}
+                                  >
+                                    <span className="truncate">{title}</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Ngày hẹn & Khung giờ */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  {/* HÀNG 3: Ngày hẹn (mặc định hôm nay) & Khung giờ hẹn (Không bắt buộc - droplist web) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Appointment Date' : 'Ngày hẹn'} <span className="text-rose-500">*</span>
+                        {isEn ? 'Appointment Date' : 'Ngày hẹn'}
                       </label>
                       <div className="relative">
                         <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -761,62 +714,155 @@ const getTodayDateVN = () => {
                           value={date}
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => setDate(e.target.value)}
-                          required
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900 cursor-pointer"
                         />
                       </div>
                     </div>
 
+                    {/* Droplist Khung giờ của Web gọn gàng */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Time Slot' : 'Khung giờ hẹn'} <span className="text-rose-500">*</span>
+                        {isEn ? 'Time Slot (Optional)' : 'Khung giờ hẹn (Không bắt buộc)'}
                       </label>
-                      <div className="relative">
-                        <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <select
-                          value={timeSlot}
-                          onChange={(e) => setTimeSlot(e.target.value)}
-                          required
-                          className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900 cursor-pointer"
+                      <div className="relative" ref={timeDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsTimeDropdownOpen(!isTimeDropdownOpen);
+                            setIsServiceDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between pl-3.5 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-left text-slate-900 cursor-pointer"
                         >
-                          <optgroup label={isEn ? 'Morning (08:00 - 11:30)' : 'Buổi Sáng (08:00 - 11:30)'}>
-                            {TIME_SLOTS.slice(0, 7).map((slot) => (
-                              <option key={slot} value={slot}>
-                                {slot}
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label={isEn ? 'Afternoon (13:30 - 17:00)' : 'Buổi Chiều (13:30 - 17:00)'}>
-                            {TIME_SLOTS.slice(7, 14).map((slot) => (
-                              <option key={slot} value={slot}>
-                                {slot}
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label={isEn ? 'Evening (17:00 - 20:00)' : 'Buổi Tối (17:00 - 20:00)'}>
-                            {TIME_SLOTS.slice(14).map((slot) => (
-                              <option key={slot} value={slot}>
-                                {slot}
-                              </option>
-                            ))}
-                          </optgroup>
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <div className="flex items-center gap-2 truncate">
+                            <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className={timeSlot ? 'text-slate-900 font-medium truncate' : 'text-slate-400 truncate'}>
+                              {timeSlot || (isEn ? '-- Select Time (Optional) --' : '-- Chọn khung giờ (Tùy chọn) --')}
+                            </span>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isTimeDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+                        </button>
+
+                        {isTimeDropdownOpen && (
+                          <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden max-h-64 overflow-y-auto text-xs sm:text-sm divide-y divide-slate-100 p-2">
+                            <div
+                              onClick={() => {
+                                setTimeSlot('');
+                                setIsTimeDropdownOpen(false);
+                              }}
+                              className={`px-3 py-2 rounded-xl cursor-pointer hover:bg-emerald-50 transition flex items-center justify-between ${
+                                !timeSlot ? 'bg-emerald-50/80 font-semibold text-[#2D5A27]' : 'text-slate-600'
+                              }`}
+                            >
+                              <span>{isEn ? '-- Flexible / Any time --' : '-- Linh hoạt (Đến giờ nào cũng được) --'}</span>
+                              {!timeSlot && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                            </div>
+
+                            {/* Buổi Sáng */}
+                            <div className="pt-2">
+                              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                {isEn ? 'Morning (08:00 - 11:30)' : 'Buổi Sáng (08:00 - 11:30)'}
+                              </div>
+                              <div className="grid grid-cols-2 gap-1 mt-1">
+                                {TIME_SLOTS.slice(0, 7).map((slot) => {
+                                  const isSelected = timeSlot === slot;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={slot}
+                                      onClick={() => {
+                                        setTimeSlot(slot);
+                                        setIsTimeDropdownOpen(false);
+                                      }}
+                                      className={`py-1.5 px-2.5 rounded-lg text-left text-xs font-medium transition flex items-center justify-between ${
+                                        isSelected
+                                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700'
+                                      }`}
+                                    >
+                                      <span>{slot}</span>
+                                      {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Buổi Chiều */}
+                            <div className="pt-2">
+                              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                {isEn ? 'Afternoon (13:30 - 17:00)' : 'Buổi Chiều (13:30 - 17:00)'}
+                              </div>
+                              <div className="grid grid-cols-2 gap-1 mt-1">
+                                {TIME_SLOTS.slice(7, 14).map((slot) => {
+                                  const isSelected = timeSlot === slot;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={slot}
+                                      onClick={() => {
+                                        setTimeSlot(slot);
+                                        setIsTimeDropdownOpen(false);
+                                      }}
+                                      className={`py-1.5 px-2.5 rounded-lg text-left text-xs font-medium transition flex items-center justify-between ${
+                                        isSelected
+                                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700'
+                                      }`}
+                                    >
+                                      <span>{slot}</span>
+                                      {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Buổi Tối */}
+                            <div className="pt-2">
+                              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                {isEn ? 'Evening (17:00 - 20:00)' : 'Buổi Tối (17:00 - 20:00)'}
+                              </div>
+                              <div className="grid grid-cols-2 gap-1 mt-1">
+                                {TIME_SLOTS.slice(14).map((slot) => {
+                                  const isSelected = timeSlot === slot;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={slot}
+                                      onClick={() => {
+                                        setTimeSlot(slot);
+                                        setIsTimeDropdownOpen(false);
+                                      }}
+                                      className={`py-1.5 px-2.5 rounded-lg text-left text-xs font-medium transition flex items-center justify-between ${
+                                        isSelected
+                                          ? 'bg-[#2D5A27] text-white shadow-xs'
+                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700'
+                                      }`}
+                                    >
+                                      <span>{slot}</span>
+                                      {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Ghi chú */}
-                  <div className="pt-1">
+                  {/* HÀNG 4: Ghi chú / Triệu chứng (nếu có) */}
+                  <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      {isEn ? 'Notes / Special Requests' : 'Ghi chú / Triệu chứng (nếu có)'}
+                      {isEn ? 'Notes / Symptoms (Optional)' : 'Ghi chú / Triệu chứng (nếu có)'}
                     </label>
                     <textarea
                       rows={2}
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder=""
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition resize-none text-slate-900"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition resize-none text-slate-900"
                     />
                   </div>
 
@@ -824,14 +870,24 @@ const getTodayDateVN = () => {
                   <div className="pt-2">
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#2D5A27] via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-lg shadow-emerald-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                      disabled={isSubmitting || countdownSeconds > 0}
+                      className={`w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl font-bold text-sm text-white shadow-lg shadow-emerald-950/20 transition-all duration-200 cursor-pointer ${
+                        countdownSeconds > 0
+                          ? 'bg-amber-600/85 cursor-not-allowed opacity-90'
+                          : 'bg-gradient-to-r from-[#2D5A27] via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50'
+                      }`}
                     >
-                      <CalendarCheck className="w-4 h-4 text-[#FFB800]" />
+                      {countdownSeconds > 0 ? (
+                        <Clock className="w-4 h-4 text-amber-200 animate-spin" style={{ animationDuration: '4s' }} />
+                      ) : (
+                        <CalendarCheck className="w-4 h-4 text-[#FFB800]" />
+                      )}
                       <span className="tracking-wide">
                         {isSubmitting
                           ? (isEn ? 'Processing...' : 'Đang xử lý...')
-                          : (isEn ? 'Confirm' : 'Xác Nhận')}
+                          : countdownSeconds > 0
+                          ? (isEn ? `Please try again in ${countdownSeconds}s` : `Vui lòng gửi lại sau ${countdownSeconds}s`)
+                          : (isEn ? 'Confirm Appointment & Consultation' : 'Xác Nhận Đặt Lịch & Tư Vấn')}
                       </span>
                     </button>
 

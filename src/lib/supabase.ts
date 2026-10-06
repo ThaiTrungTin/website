@@ -129,6 +129,24 @@ export interface CauHinhRecord {
   thong_ke_khach_hang_nhan_en?: string;
   slogan_cuoi_trang_tieu_de_en?: string;
   slogan_cuoi_trang_noi_dung_en?: string;
+  hero_nut_1_text?: string;
+  hero_nut_1_text_en?: string;
+  hero_nut_1_link?: string;
+  hero_nut_1_hien_thi?: boolean;
+  hero_nut_2_text?: string;
+  hero_nut_2_text_en?: string;
+  hero_nut_2_link?: string;
+  hero_nut_2_hien_thi?: boolean;
+  section_chi_nhanh_tieu_de?: string;
+  section_chi_nhanh_mo_ta?: string;
+  section_chi_nhanh_tieu_de_en?: string;
+  section_chi_nhanh_mo_ta_en?: string;
+  hero_slogan_x_desktop?: number;
+  hero_slogan_y_desktop?: number;
+  hero_slogan_align_desktop?: 'left' | 'center' | 'right';
+  hero_slogan_x_mobile?: number;
+  hero_slogan_y_mobile?: number;
+  hero_slogan_align_mobile?: 'left' | 'center' | 'right';
   ngay_cap_nhat?: string;
 }
 
@@ -227,6 +245,10 @@ export interface LichHenRecord {
   gio_hen: string;
   ghi_chu?: string | null;
   trang_thai: 'cho_xac_nhan' | 'da_xac_nhan' | 'da_kham' | 'da_huy';
+  so_lan_gui_zalo?: number | null;
+  trang_thai_zalo?: 'thanh_cong' | 'that_bai' | null;
+  so_lan_gui_email?: number | null;
+  trang_thai_email?: 'thanh_cong' | 'that_bai' | null;
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }
@@ -266,6 +288,8 @@ export interface YeuCauDanhGiaRecord {
   trang_thai: 'cho_danh_gia' | 'da_danh_gia';
   ngay_danh_gia?: string | null;
   nguoi_tao?: string | null;
+  so_lan_gui_zalo?: number | null;
+  trang_thai_zalo?: 'thanh_cong' | 'that_bai' | null;
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }
@@ -357,6 +381,8 @@ export interface HoSoTuyenDungRecord {
   gioi_thieu?: string | null;
   ip_address?: string | null;
   trang_thai?: string | null;
+  so_lan_gui_email?: number | null;
+  trang_thai_email?: 'thanh_cong' | 'that_bai' | null;
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }

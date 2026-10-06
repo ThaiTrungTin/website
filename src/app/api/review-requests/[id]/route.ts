@@ -55,6 +55,26 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const body = await req.json().catch(() => ({}));
+
+    // Hỗ trợ duyệt viên Zalo test gửi form đánh giá thử
+    const isDemoId = cleanId.toLowerCase() === 'demo' || cleanId.toLowerCase() === 'test' || cleanId === '<demo>' || cleanId === '<review_code>' || cleanId.toLowerCase() === 'review_code' || cleanId.startsWith('demo-');
+    if (isDemoId) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: 'demo-sample-id',
+          ma_danh_gia: cleanId,
+          ten_khach_hang: 'Khách hàng Trải nghiệm (Bản xem trước Zalo)',
+          so_sao: body.so_sao || 5,
+          noi_dung_danh_gia: body.noi_dung_danh_gia || 'Dịch vụ rất tốt!',
+          trang_thai: 'da_danh_gia',
+          ngay_danh_gia: new Date().toISOString(),
+        },
+        message: 'Đánh giá thử nghiệm thành công!',
+      });
+    }
+
     // 1. Kiểm tra mã đánh giá có tồn tại trong hệ thống không
     const { data: existing, error: fetchErr } = await supabaseAdmin
       .from('yeu_cau_danh_gia')
@@ -86,7 +106,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     // 3. Nhận dữ liệu đánh giá từ body
-    const body = await req.json().catch(() => ({}));
     const so_sao = Number(body.so_sao);
     if (!so_sao || so_sao < 1 || so_sao > 5) {
       return NextResponse.json(

@@ -36,14 +36,16 @@ export async function GET(req: NextRequest) {
     }
 
     const mapped = (data || []).map((item) => {
-      let nguoi_tao = 'Nhân viên';
+      let nguoi_tao = item.nguoi_tao || 'Nhân viên';
       let cleanHinhAnh = item.hinh_anh;
       if (item.hinh_anh && item.hinh_anh.startsWith('{')) {
         try {
           const parsed = JSON.parse(item.hinh_anh);
           if (parsed?.nguoi_tao) nguoi_tao = parsed.nguoi_tao;
           cleanHinhAnh = parsed?.img || null;
-        } catch {}
+        } catch {
+          cleanHinhAnh = null;
+        }
       }
       return {
         ...item,
@@ -120,7 +122,8 @@ export async function POST(req: NextRequest) {
       email: typeof email === 'string' ? email.trim() || null : null,
       co_so: typeof co_so === 'string' ? co_so.trim() || null : null,
       trang_thai: 'cho_danh_gia',
-      hinh_anh: JSON.stringify({ nguoi_tao: cleanNguoiTao }),
+      nguoi_tao: cleanNguoiTao,
+      hinh_anh: null,
       ngay_tao: new Date().toISOString(),
       ngay_cap_nhat: new Date().toISOString(),
     };
@@ -149,3 +152,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+// Cập nhật thông tin yêu cầu đánh giá (chỉ cho phép khi còn ở trạng thái cho_danh_gia)
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, ten_khach_hang, so_dien_thoai, email, co_so, ma_hoa_don } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Thiếu ID yêu cầu đánh giá' }, { status: 400 });
+    }
+
+    const { data: current, error: checkError } = await supabaseAdmin
+      .from('yeu_cau_danh_gia')
+      .select('id, trang_thai')
+      .eq('id', id)
+      .single();
+
+    if (checkError || !current) {
+      return NextResponse.json({ success: false, error: 'Không tìm thấy yêu cầu đánh giá' }, { status: 404 });
+    }
+
+    if (current.trang_thai === 'da_danh_gia') {
+      return NextResponse.json(
+        { success: false, error: 'Khách hàng đã gửi đánh giá, không thể sửa thông tin!' },
+        { status: 400 }
+      );
+    }
+
+    const updatePayload: any = {
+      ten_khach_hang: (ten_khach_hang || '').trim(),
+      so_dien_thoai: so_dien_thoai ? String(so_dien_thoai).trim() : null,
+      email: email ? String(email).trim() : null,
+      co_so: co_so ? String(co_so).trim() : null,
+      ma_hoa_don: ma_hoa_don ? String(ma_hoa_don).trim() : null,
+      ngay_cap_nhat: new Date().toISOString(),
+    };
+
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from('yeu_cau_danh_gia')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+      message: 'Cập nhật yêu cầu đánh giá thành công',
+    });
+  } catch (err: any) {
+    console.error('[API Review Requests PUT] Exception:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+

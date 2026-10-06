@@ -33,8 +33,22 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
 
   const [rating, setRating] = useState<number>(record.so_sao || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
+  const isInitialValidImage = (url?: string | null) => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    if (trimmed.startsWith('{') || trimmed.endsWith('}')) return false;
+    return (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('data:image/') ||
+      trimmed.startsWith('/')
+    );
+  };
+
   const [feedback, setFeedback] = useState<string>(record.noi_dung_danh_gia || '');
-  const [hinhAnh, setHinhAnh] = useState<string>(record.hinh_anh || '');
+  const [hinhAnh, setHinhAnh] = useState<string>(
+    isInitialValidImage(record.hinh_anh) ? record.hinh_anh! : ''
+  );
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -251,7 +265,12 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
                 {hinhAnh ? (
                   <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={hinhAnh} alt="Ảnh đánh giá" className="w-full h-44 object-cover" />
+                    <img
+                      src={hinhAnh}
+                      alt="Ảnh đánh giá"
+                      className="w-full h-44 object-cover"
+                      onError={() => setHinhAnh('')}
+                    />
                     <button
                       type="button"
                       onClick={() => setHinhAnh('')}

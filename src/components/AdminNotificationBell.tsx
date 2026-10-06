@@ -8,7 +8,6 @@ import {
   Star,
   Check,
   CheckCheck,
-  X,
   Clock,
   ExternalLink,
 } from 'lucide-react';
@@ -36,6 +35,10 @@ export interface NotificationItem {
   timestamp: string;
   targetTab: AdminTab;
   isRead: boolean;
+  statusBadge?: {
+    label: string;
+    color: string;
+  };
   meta?: string;
 }
 
@@ -43,13 +46,20 @@ interface AdminNotificationBellProps {
   appointments: LichHenRecord[];
   applications: HoSoTuyenDungRecord[];
   reviews: DanhGiaRecord[];
+  currentUser?: {
+    id?: string;
+    username?: string;
+    ho_ten?: string;
+    email?: string;
+    vai_tro?: string;
+  } | null;
   onNavigateTab: (tab: AdminTab, itemId?: string) => void;
 }
 
 /**
- * Định dạng thời gian theo đúng yêu cầu:
- * - Trong ngày: báo giờ (ví dụ: "09:30" hoặc "14:15")
- * - Qua ngày: báo "Hôm qua, 15:20"
+ * Định dạng thời gian theo phong cách mạng xã hội:
+ * - Trong ngày: giờ phút (ví dụ "09:30" hoặc "14:15")
+ * - Qua ngày: "Hôm qua lúc 15:20"
  * - 2-6 ngày: "2 ngày trước", "3 ngày trước"...
  * - Lâu hơn: Ngày/tháng/năm
  */
@@ -97,12 +107,13 @@ export function formatFbStyleTime(isoStr?: string | null): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-const STORAGE_KEY = 'petmm_read_notification_ids';
+const BASE_STORAGE_KEY = 'petmm_read_notification_ids';
 
 export default function AdminNotificationBell({
   appointments,
   applications,
   reviews,
+  currentUser,
   onNavigateTab,
 }: AdminNotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,26 +121,44 @@ export default function AdminNotificationBell({
   const [filterMode, setFilterMode] = useState<'all' | 'unread'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Tải danh sách ID đã đọc từ localStorage
+  // Khóa lưu trữ theo từng tài khoản (nếu đổi tài khoản hoặc chuyển trình duyệt)
+  const userStorageKey = useMemo(() => {
+    const acc = currentUser?.username || currentUser?.email || currentUser?.id || 'shared';
+    return `${BASE_STORAGE_KEY}_${acc}`;
+  }, [currentUser]);
+
+  // Tải danh sách ID đã đọc theo tài khoản hiện tại
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(userStorageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           setReadIds(new Set(parsed));
+          return;
         }
       }
+      // Fallback về key chung cũ nếu tài khoản chưa có dữ liệu riêng
+      const fallback = localStorage.getItem(BASE_STORAGE_KEY);
+      if (fallback) {
+        const parsed = JSON.parse(fallback);
+        if (Array.isArray(parsed)) {
+          setReadIds(new Set(parsed));
+          return;
+        }
+      }
+      setReadIds(new Set());
     } catch (e) {
       console.error('Error reading notifications localStorage:', e);
+      setReadIds(new Set());
     }
-  }, []);
+  }, [userStorageKey]);
 
-  // Lưu danh sách ID đã đọc
+  // Lưu danh sách ID đã đọc theo tài khoản
   const saveReadIds = (newSet: Set<string>) => {
     setReadIds(newSet);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+      localStorage.setItem(userStorageKey, JSON.stringify(Array.from(newSet)));
     } catch (e) {
       console.error('Error saving notifications localStorage:', e);
     }
@@ -154,25 +183,97 @@ export default function AdminNotificationBell({
   const allNotifications = useMemo<NotificationItem[]>(() => {
     const list: NotificationItem[] = [];
 
-    // 1. Lịch hẹn đặt khám
+    // 1. LỊCH HẸN ĐẶT KHÁM
+    // QUY TẮC ĐỒNG BỘ ĐÃ XỬ LÝ TOÀN HỆ THỐNG:
+    // - Nếu app.trang_thai !== 'cho_xac_nhan' (nghĩa là đã xác nhận, đã khám/hoàn thành, hoặc đã hủy):
+    //   -> Lịch hẹn này ĐÃ ĐƯỢC XỬ LÝ trong CSDL!
+    //   -> Trên MỌI TRÌNH DUYỆT và MỌI TÀI KHOẢN, mục này TỰ ĐỘNG ĐƯỢC COI LÀ ĐÃ XỬ LÝ (isRead = true).
+    //   -> Tuyệt đối không tính vào số badge chưa đọc nữa!
     appointments.forEach((app) => {
       const id = `app_${app.id}`;
+      const cleanPet = (app.ten_thu_cung || '').trim();
+      const hasRealPet = Boolean(
+        cleanPet &&
+        !['pet', 'bé cưng', 'be cung', 'beloved pet'].includes(cleanPet.toLowerCase())
+      );
+      const petInfo = hasRealPet ? ` (Bé ${cleanPet})` : '';
+
+      // Kiểm tra trạng thái xử lý thực tế trong CSDL
+      const isHandledInDatabase = app.trang_thai !== 'cho_xac_nhan';
+      const isMarkedReadByAccount = readIds.has(id);
+      const isRead = isHandledInDatabase || isMarkedReadByAccount;
+
+      let statusBadge = {
+        label: 'Chờ xác nhận',
+        color: 'bg-amber-100 text-amber-800 border-amber-200',
+      };
+      if (app.trang_thai === 'da_xac_nhan') {
+        statusBadge = {
+          label: 'Đã xác nhận',
+          color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        };
+      } else if (app.trang_thai === 'da_kham') {
+        statusBadge = {
+          label: 'Đã hoàn thành',
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+        };
+      } else if (app.trang_thai === 'da_huy') {
+        statusBadge = {
+          label: 'Đã hủy',
+          color: 'bg-slate-100 text-slate-600 border-slate-200',
+        };
+      }
+
       list.push({
         id,
         itemId: app.id,
         type: 'appointment',
         title: `${app.ho_ten_chu} đặt lịch khám`,
-        description: `${app.dich_vu} · ${app.ten_chi_nhanh || 'Cơ sở chính'} (${app.ten_thu_cung || 'Thú cưng'})`,
+        description: `${app.dich_vu} · ${app.ten_chi_nhanh || 'Cơ sở chính'}${petInfo}`,
         timestamp: app.ngay_tao || `${app.ngay_hen}T${app.gio_hen || '08:00'}:00Z`,
         targetTab: 'appointments',
-        isRead: readIds.has(id),
+        isRead,
+        statusBadge,
         meta: app.so_dien_thoai,
       });
     });
 
-    // 2. Hồ sơ ứng viên tuyển dụng
+    // 2. HỒ SƠ ỨNG VIÊN TUYỂN DỤNG
     applications.forEach((job) => {
       const id = `job_${job.id}`;
+      // Đã xử lý nếu: Đã hẹn PV, Đã liên hệ, Từ chối / Bỏ qua, Đã trúng tuyển, Đã xem
+      const isHandled = Boolean(
+        job.trang_thai &&
+        ['hen_phong_van', 'da_lien_he', 'bo_qua', 'tu_choi', 'da_tuyen'].includes(job.trang_thai)
+      );
+      const isRead = isHandled || readIds.has(id);
+
+      let statusBadge = {
+        label: 'Mới nộp',
+        color: 'bg-amber-100 text-amber-800 border-amber-200',
+      };
+      if (job.trang_thai === 'hen_phong_van') {
+        statusBadge = {
+          label: 'Đã hẹn PV',
+          color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        };
+      } else if (job.trang_thai === 'da_lien_he') {
+        statusBadge = {
+          label: 'Đã liên hệ',
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+        };
+      } else if (job.trang_thai === 'bo_qua' || job.trang_thai === 'tu_choi') {
+        statusBadge = {
+          label: 'Từ chối',
+          color: 'bg-slate-100 text-slate-600 border-slate-200',
+        };
+      } else if (job.trang_thai === 'da_tuyen') {
+        statusBadge = {
+          label: 'Đã trúng tuyển',
+          color: 'bg-purple-100 text-purple-800 border-purple-200',
+        };
+      }
+
       list.push({
         id,
         itemId: job.id,
@@ -180,15 +281,26 @@ export default function AdminNotificationBell({
         title: `${job.ho_ten} nộp hồ sơ ứng tuyển`,
         description: `Vị trí: ${job.tieu_de_vi_tri || 'Ứng viên'} · SĐT: ${job.so_dien_thoai}`,
         timestamp: job.ngay_tao || new Date().toISOString(),
-        targetTab: 'dashboard',
-        isRead: readIds.has(id),
+        targetTab: 'team',
+        isRead,
+        statusBadge,
         meta: job.ten_file_cv || 'CV đính kèm',
       });
     });
 
-    // 3. Đánh giá từ khách hàng
+    // 3. ĐÁNH GIÁ TỪ KHÁCH HÀNG
+    // Những đánh giá đã kích hoạt/xác thực lâu ngày không tính là chưa đọc
+    const nowMs = Date.now();
     reviews.forEach((rev) => {
       const id = `rev_${rev.id}`;
+      const revTime = rev.ngay_tao || rev.ngay_danh_gia || '';
+      const revTimeMs = revTime ? new Date(revTime).getTime() : 0;
+      const isOlderThan3Days = revTimeMs ? nowMs - revTimeMs > 3 * 24 * 60 * 60 * 1000 : true;
+
+      // Nếu đã kích hoạt hiển thị và quá 3 ngày -> Tự động coi là đã xử lý
+      const isHandled = rev.kich_hoat !== false && isOlderThan3Days;
+      const isRead = isHandled || readIds.has(id);
+
       list.push({
         id,
         itemId: rev.id,
@@ -197,7 +309,7 @@ export default function AdminNotificationBell({
         description: rev.noi_dung ? `"${rev.noi_dung}"` : `Chấm điểm dịch vụ ${rev.dich_vu_su_dung || ''}`,
         timestamp: rev.ngay_tao || rev.ngay_danh_gia || new Date().toISOString(),
         targetTab: 'reviews',
-        isRead: readIds.has(id),
+        isRead,
         meta: `${rev.so_sao || 5} sao`,
       });
     });
@@ -208,12 +320,12 @@ export default function AdminNotificationBell({
     return list;
   }, [appointments, applications, reviews, readIds]);
 
-  // Đếm số thông báo chưa đọc
+  // Đếm số thông báo CHƯA ĐỌC / CHƯA XỬ LÝ THỰC TẾ
   const unreadCount = useMemo(() => {
     return allNotifications.filter((n) => !n.isRead).length;
   }, [allNotifications]);
 
-  // Danh sách hiển thị theo filter
+  // Danh sách hiển thị theo filter (Tất cả / Chưa đọc)
   const displayedNotifications = useMemo(() => {
     if (filterMode === 'unread') {
       return allNotifications.filter((n) => !n.isRead);
@@ -289,7 +401,7 @@ export default function AdminNotificationBell({
         )}
       </button>
 
-      {/* ── PANEL DROPDOWN PHONG CÁCH FACEBOOK ── */}
+      {/* ── PANEL DROPDOWN THÔNG BÁO ── */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-[360px] sm:w-[420px] max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header Panel */}
@@ -299,7 +411,7 @@ export default function AdminNotificationBell({
                 <h3 className="text-base font-bold text-slate-900">Thông báo</h3>
                 {unreadCount > 0 && (
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
-                    {unreadCount} mới
+                    {unreadCount} cần xử lý
                   </span>
                 )}
               </div>
@@ -337,7 +449,7 @@ export default function AdminNotificationBell({
                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 }`}
               >
-                Chưa đọc ({unreadCount})
+                Chưa xử lý ({unreadCount})
               </button>
             </div>
           </div>
@@ -347,7 +459,7 @@ export default function AdminNotificationBell({
             {displayedNotifications.length === 0 ? (
               <div className="py-12 text-center text-xs font-medium text-slate-500">
                 {filterMode === 'unread'
-                  ? 'Bạn đã đọc hết tất cả thông báo!'
+                  ? 'Tuyệt vời! Không còn lịch hẹn hoặc việc nào đang chờ xử lý.'
                   : 'Hiện chưa có thông báo nào trong hệ thống.'}
               </div>
             ) : (
@@ -363,13 +475,22 @@ export default function AdminNotificationBell({
                 >
                   {getIcon(item.type)}
                   <div className="flex-1 min-w-0">
-                    <p
-                      className={`text-xs leading-snug truncate ${
-                        item.isRead ? 'font-medium text-slate-800' : 'font-bold text-slate-950'
-                      }`}
-                    >
-                      {item.title}
-                    </p>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <p
+                        className={`text-xs leading-snug truncate ${
+                          item.isRead ? 'font-medium text-slate-800' : 'font-bold text-slate-950'
+                        }`}
+                      >
+                        {item.title}
+                      </p>
+                      {item.statusBadge && (
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${item.statusBadge.color}`}
+                        >
+                          {item.statusBadge.label}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] font-medium text-slate-600 line-clamp-2 mt-0.5 leading-relaxed">
                       {item.description}
                     </p>
@@ -390,7 +511,7 @@ export default function AdminNotificationBell({
                     type="button"
                     onClick={(e) => handleToggleRead(e, item.id)}
                     className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0 opacity-0 group-hover:opacity-100 transition"
-                    title={item.isRead ? 'Đánh dấu là chưa đọc' : 'Đánh dấu đã đọc'}
+                    title={item.isRead ? 'Đánh dấu là chưa xử lý' : 'Đánh dấu đã xử lý / đã đọc'}
                   >
                     <Check className="w-3.5 h-3.5" />
                   </button>

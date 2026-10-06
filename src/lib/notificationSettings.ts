@@ -10,6 +10,13 @@ export interface NotificationSettings {
   zalo_access_token?: string;
   zalo_refresh_token?: string;
   zalo_test_phone?: string;
+  // Cài đặt chống spam đặt lịch (IP, SĐT, Email)
+  spam_limit_enabled?: boolean;
+  spam_limit_ip?: boolean;
+  spam_limit_phone?: boolean;
+  spam_limit_email?: boolean;
+  spam_max_bookings_per_day?: number;
+  spam_cooldown_seconds?: number;
 }
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -22,6 +29,12 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   zalo_access_token: '',
   zalo_refresh_token: '',
   zalo_test_phone: '',
+  spam_limit_enabled: true,
+  spam_limit_ip: true,
+  spam_limit_phone: true,
+  spam_limit_email: true,
+  spam_max_bookings_per_day: 3,
+  spam_cooldown_seconds: 15,
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {

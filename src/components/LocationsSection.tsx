@@ -7,6 +7,7 @@ import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { branchesData, BranchItem } from '@/data/branchesData';
 import { supabase, ChiNhanhRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
+import { useSystemConfig } from '@/context/SystemConfigContext';
 import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
 import {
   MapPin,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function LocationsSection() {
+  const { config } = useSystemConfig();
   const { t, language } = useLanguage();
   const isEn = language === 'en';
   const [branches, setBranches] = useState<BranchItem[]>(branchesData);
@@ -142,6 +144,10 @@ export default function LocationsSection() {
   const currentVNHour = (now.getUTCHours() + 7) % 24;
   const isOpenNow = currentVNHour >= 8 && currentVNHour < 20;
 
+  // Tiêu đề & chú thích mục Chi nhánh theo ngôn ngữ hiện tại
+  const branchTitleHtml = (isEn ? config.section_chi_nhanh_tieu_de_en : config.section_chi_nhanh_tieu_de) || '';
+  const branchDescHtml = (isEn ? config.section_chi_nhanh_mo_ta_en : config.section_chi_nhanh_mo_ta) || '';
+
   return (
     <section id="branches" className="relative py-20 sm:py-28 text-slate-900 overflow-hidden bg-[#F8FAF7]">
       {/* 1. ARCHITECTURAL BACKGROUND WITH BRIGHT OVERLAY */}
@@ -159,12 +165,26 @@ export default function LocationsSection() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         {/* Section Header with Title-Only Entrance Animation */}
         <ScrollRevealTitle className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
-          <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
-            {isEn ? 'Clinic Network &' : 'Hệ Thống Cơ Sở &'} <br />
-            <span className="italic font-light text-[#2D5A27]">
-              {isEn ? 'Interactive Direction Maps' : 'Bản Đồ Chỉ Đường Trực Quan'}
-            </span>
-          </h2>
+          {branchTitleHtml ? (
+            <div
+              className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
+              dangerouslySetInnerHTML={{ __html: branchTitleHtml }}
+            />
+          ) : (
+            <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
+              {isEn ? 'Clinic Network &' : 'Hệ Thống Cơ Sở &'} <br />
+              <span className="italic font-light text-[#2D5A27]">
+                {isEn ? 'Interactive Direction Maps' : 'Bản Đồ Chỉ Đường Trực Quan'}
+              </span>
+            </h2>
+          )}
+
+          {branchDescHtml && (
+            <div
+              className="mt-3.5 text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed font-light [&_p]:m-0"
+              dangerouslySetInnerHTML={{ __html: branchDescHtml }}
+            />
+          )}
         </ScrollRevealTitle>
 
         {/* KHUNG HIỂN THỊ 2 CỘT: CHI NHÁNH BÊN TRÁI & BẢN ĐỒ BÊN PHẢI (TRÊN LAPTOP) */}

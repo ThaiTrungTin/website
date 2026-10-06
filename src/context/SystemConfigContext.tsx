@@ -51,7 +51,36 @@ const DEFAULT_CONFIG: CauHinhRecord = {
   thong_ke_khach_hang: '30k+',
   thong_ke_khach_hang_nhan: 'Khách hàng',
   thong_ke_khach_hang_nhan_en: 'Happy Clients',
+  hero_nut_1_text: 'Đặt Lịch Thăm Khám',
+  hero_nut_1_text_en: 'Book Appointment',
+  hero_nut_1_link: '#booking',
+  hero_nut_1_hien_thi: true,
+  hero_nut_2_text: 'Xem Dịch Vụ',
+  hero_nut_2_text_en: 'Our Services',
+  hero_nut_2_link: '#services',
+  hero_nut_2_hien_thi: true,
+  section_chi_nhanh_tieu_de: '',
+  section_chi_nhanh_mo_ta: '',
+  section_chi_nhanh_tieu_de_en: '',
+  section_chi_nhanh_mo_ta_en: '',
+  hero_slogan_x_desktop: 0,
+  hero_slogan_y_desktop: 0,
+  hero_slogan_align_desktop: 'center',
+  hero_slogan_x_mobile: 0,
+  hero_slogan_y_mobile: 0,
+  hero_slogan_align_mobile: 'center',
 };
+
+export function applyHeroCssVariables(data: Partial<CauHinhRecord>) {
+  if (typeof window === 'undefined') return;
+  try {
+    const r = document.documentElement;
+    if (data.hero_slogan_x_desktop !== undefined) r.style.setProperty('--hero-x-desktop', `${data.hero_slogan_x_desktop}px`);
+    if (data.hero_slogan_y_desktop !== undefined) r.style.setProperty('--hero-y-desktop', `${data.hero_slogan_y_desktop}px`);
+    if (data.hero_slogan_x_mobile !== undefined) r.style.setProperty('--hero-x-mobile', `${data.hero_slogan_x_mobile}px`);
+    if (data.hero_slogan_y_mobile !== undefined) r.style.setProperty('--hero-y-mobile', `${data.hero_slogan_y_mobile}px`);
+  } catch {}
+}
 
 interface SystemConfigContextType {
   config: CauHinhRecord;
@@ -78,6 +107,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
         const parsed = JSON.parse(cached);
         if (parsed && typeof parsed === 'object') {
           delete parsed.smtp_password;
+          applyHeroCssVariables(parsed);
           setConfig((prev) => ({ ...prev, ...parsed }));
         }
       }
@@ -108,6 +138,12 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
         'gioi_thieu_bac_si_chuc_danh', 'gioi_thieu_bac_si_chuc_danh_en',
         'thong_ke_nam_thanh_lap', 'thong_ke_nam_thanh_lap_nhan', 'thong_ke_nam_thanh_lap_nhan_en',
         'thong_ke_khach_hang', 'thong_ke_khach_hang_nhan', 'thong_ke_khach_hang_nhan_en',
+        'hero_nut_1_text', 'hero_nut_1_text_en', 'hero_nut_1_link', 'hero_nut_1_hien_thi',
+        'hero_nut_2_text', 'hero_nut_2_text_en', 'hero_nut_2_link', 'hero_nut_2_hien_thi',
+        'section_chi_nhanh_tieu_de', 'section_chi_nhanh_mo_ta',
+        'section_chi_nhanh_tieu_de_en', 'section_chi_nhanh_mo_ta_en',
+        'hero_slogan_x_desktop', 'hero_slogan_y_desktop', 'hero_slogan_align_desktop',
+        'hero_slogan_x_mobile', 'hero_slogan_y_mobile', 'hero_slogan_align_mobile',
       ].join(', ');
 
       const { data, error } = await supabase
@@ -130,6 +166,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
             const safeData = { ...merged };
             delete (safeData as any).smtp_password;
             localStorage.setItem('petmm_system_config_cache', JSON.stringify(safeData));
+            applyHeroCssVariables(safeData);
           } catch {}
           return merged;
         });

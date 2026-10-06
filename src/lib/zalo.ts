@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabaseAdmin';
+import { logNotification } from './notificationLogger';
 
 export interface ZaloOaConfig {
   zalo_oa_id: string;
@@ -164,7 +165,7 @@ export const ZALO_TEMPLATES = {
       order_id: 'Mã đơn / Mã hồ sơ (VD: PET-241005)',
       review_code: 'Mã đánh giá để chèn vào URL nút bấm',
     },
-    action_button: 'Nút: Đánh giá kèm hình ảnh tại đây -> https://petsmm.vercel.app/danhgiadichvu/<review_code>',
+    action_button: 'Nút: Đánh giá kèm hình ảnh tại đây -> https://petmm.vn/danhgiadichvu/<review_code>',
   },
 } as const;
 
@@ -178,7 +179,7 @@ export interface ZaloReviewParams {
 /**
  * Gửi tin nhắn ZNS xác nhận lịch hẹn tới số điện thoại khách hàng
  */
-export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) {
+export async function sendZaloZnsBookingNotification(params: ZaloBookingParams, customTemplateId?: string) {
   const config = await getZaloConfig();
 
   if (!config.zalo_enabled) {
@@ -192,12 +193,13 @@ export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) 
   }
 
   const phone84 = formatPhoneForZalo(params.phone);
+  const activeTemplateId = (customTemplateId || config.zalo_template_id || '').trim();
 
   if (
     !config.zalo_oa_id ||
     !config.zalo_app_id ||
     !config.zalo_secret_key ||
-    !config.zalo_template_id
+    !activeTemplateId
   ) {
     console.log(
       `[Zalo ZNS Mock] Chưa đủ 4 thông số (ZALO_OA_ID, ZALO_APP_ID, ZALO_SECRET_KEY, ZALO_TEMPLATE_ID). ` +
@@ -233,7 +235,7 @@ export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) 
 
     const payload = {
       phone: phone84,
-      template_id: config.zalo_template_id,
+      template_id: activeTemplateId,
       template_data: templateData,
       tracking_id: params.bookingCode,
     };
@@ -297,6 +299,17 @@ export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) 
     }
 
     if (resData && resData.error === 0) {
+      await logNotification({
+        kenh: 'zalo',
+        loai_tin: 'dat_lich',
+        nguoi_nhan: phone84,
+        ten_nguoi_nhan: params.ownerName,
+        tieu_de: 'Xác nhận lịch hẹn khám',
+        trang_thai: 'thanh_cong',
+        du_lieu_gui: templateData,
+        phan_hoi: resData,
+      });
+
       return {
         success: true,
         message: `Đã gửi Zalo ZNS thành công tới ${phone84}`,
@@ -304,6 +317,19 @@ export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) 
       };
     } else {
       console.warn(`[Zalo ZNS Thất bại]: Mã lỗi ${resData?.error} - ${resData?.message || 'Không gửi được'}`);
+      await logNotification({
+        kenh: 'zalo',
+        loai_tin: 'dat_lich',
+        nguoi_nhan: phone84,
+        ten_nguoi_nhan: params.ownerName,
+        tieu_de: 'Xác nhận lịch hẹn khám',
+        trang_thai: 'that_bai',
+        ma_loi: resData?.error,
+        chi_tiet_loi: resData?.message || 'Zalo ZNS từ chối gửi tin nhắn.',
+        du_lieu_gui: templateData,
+        phan_hoi: resData,
+      });
+
       return {
         success: false,
         error: resData?.error,
@@ -313,6 +339,18 @@ export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) 
     }
   } catch (err: any) {
     console.error('[Zalo ZNS Booking Network Error]:', err);
+    await logNotification({
+      kenh: 'zalo',
+      loai_tin: 'dat_lich',
+      nguoi_nhan: phone84,
+      ten_nguoi_nhan: params.ownerName,
+      tieu_de: 'Xác nhận lịch hẹn khám',
+      trang_thai: 'that_bai',
+      ma_loi: 'NETWORK_ERROR',
+      chi_tiet_loi: err.message || 'Lỗi mạng khi kết nối Zalo OpenAPI',
+      du_lieu_gui: templateData,
+    });
+
     return {
       success: false,
       message: err.message || 'Lỗi mạng khi kết nối Zalo OpenAPI',
@@ -323,32 +361,158 @@ export async function sendZaloZnsBookingNotification(params: ZaloBookingParams) 
 /**
  * Gửi tin nhắn ZNS Khảo sát / Đánh giá dịch vụ có Nút mở Web
  */
-export async function sendZaloZnsReviewNotification(params: ZaloReviewParams) {
+export async function sendZaloZnsReviewNotification(params: ZaloReviewParams, customTemplateId?: string) {
   const config = await getZaloConfig();
 
   if (!config.zalo_enabled) {
-    return { success: false, message: 'Zalo ZNS đang tắt trong cài đặt.' };
+    return { success: false, message: 'Tính năng Zalo ZNS đang tắt trong cài đặt hệ thống.' };
   }
 
   if (config.zalo_review_enabled === false) {
-    return { success: false, message: 'Gửi đánh giá qua Zalo đang tắt trong cài đặt.' };
+    return { success: false, message: 'Gửi khảo sát/đánh giá qua Zalo đang tắt trong cài đặt.' };
+  }
+
+  const templateId = (customTemplateId || config.zalo_review_template_id || '').trim();
+  if (!templateId) {
+    return { success: false, message: 'Chưa cấu hình ID Mẫu ZNS Đánh giá dịch vụ trong Cài đặt Quản trị.' };
   }
 
   const phone84 = formatPhoneForZalo(params.phone);
+  if (!phone84) {
+    return { success: false, message: 'Số điện thoại không hợp lệ để gửi tin Zalo ZNS.' };
+  }
+
+  const safeCustomerName = (params.customerName || 'Quý khách').trim().slice(0, 30);
+  const safeOrderId = (params.orderId || params.reviewCode || 'PET-000000').trim().slice(0, 30);
+  const safeReviewCode = (params.reviewCode || '').trim().slice(0, 100);
 
   const templateData = {
-    customer_name: params.customerName,
-    order_id: params.orderId,
-    review_code: params.reviewCode,
+    customer_name: safeCustomerName,
+    order_id: safeOrderId,
+    review_code: safeReviewCode,
   };
 
-  console.log(`[Zalo ZNS Review] Chuẩn bị gửi ZNS Đánh giá tới ${phone84}:`, templateData);
-
-  return {
-    success: true,
-    message: `Đã gửi tin nhắn ZNS Đánh giá kèm link web tới ${phone84}`,
-    templateData,
+  const payload = {
+    phone: phone84,
+    template_id: templateId,
+    template_data: templateData,
+    tracking_id: `review_${safeReviewCode}_${Date.now()}`,
   };
+
+  try {
+    let token = config.zalo_access_token || config.zalo_secret_key;
+
+    let res = await fetch('https://business.openapi.zalo.me/message/template', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'access_token': token,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    let resData = await res.json().catch(() => null);
+    console.log('[Zalo ZNS Review Response]:', resData);
+
+    // Tự động làm mới access token nếu token hết hạn (-124)
+    if (resData?.error === -124 && config.zalo_refresh_token && config.zalo_app_id && config.zalo_secret_key) {
+      console.log('[Zalo ZNS Review] Token hết hạn, đang gọi refresh token...');
+      const { saveNotificationSettings } = await import('./notificationSettings');
+      try {
+        const refreshRes = await fetch('https://oauth.zaloapp.com/v4/oa/access_token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'secret_key': config.zalo_secret_key.trim(),
+          },
+          body: new URLSearchParams({
+            app_id: config.zalo_app_id.trim(),
+            grant_type: 'refresh_token',
+            refresh_token: config.zalo_refresh_token.trim(),
+          }),
+        });
+        const refreshData = await refreshRes.json();
+        if (refreshData?.access_token) {
+          token = refreshData.access_token;
+          await saveNotificationSettings({
+            zalo_access_token: refreshData.access_token,
+            zalo_refresh_token: refreshData.refresh_token || config.zalo_refresh_token,
+          });
+
+          res = await fetch('https://business.openapi.zalo.me/message/template', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'access_token': token,
+            },
+            body: JSON.stringify(payload),
+          });
+          resData = await res.json().catch(() => null);
+          console.log('[Zalo ZNS Review Retry Response]:', resData);
+        }
+      } catch (rErr) {
+        console.error('[Zalo Review Refresh Token Error]:', rErr);
+      }
+    }
+
+    if (resData && resData.error === 0) {
+      await logNotification({
+        kenh: 'zalo',
+        loai_tin: 'danh_gia',
+        nguoi_nhan: phone84,
+        ten_nguoi_nhan: params.customerName,
+        tieu_de: 'Khảo sát & Đánh giá chất lượng',
+        trang_thai: 'thanh_cong',
+        du_lieu_gui: templateData,
+        phan_hoi: resData,
+      });
+
+      return {
+        success: true,
+        message: `Đã gửi tin nhắn ZNS Đánh giá thành công tới ${phone84}`,
+        data: resData,
+      };
+    } else {
+      console.warn(`[Zalo ZNS Review Failed]: Mã ${resData?.error} - ${resData?.message}`);
+      await logNotification({
+        kenh: 'zalo',
+        loai_tin: 'danh_gia',
+        nguoi_nhan: phone84,
+        ten_nguoi_nhan: params.customerName,
+        tieu_de: 'Khảo sát & Đánh giá chất lượng',
+        trang_thai: 'that_bai',
+        ma_loi: resData?.error,
+        chi_tiet_loi: resData?.message || 'Zalo ZNS từ chối gửi tin nhắn.',
+        du_lieu_gui: templateData,
+        phan_hoi: resData,
+      });
+
+      return {
+        success: false,
+        error: resData?.error,
+        message: resData?.message || 'Zalo ZNS từ chối gửi tin nhắn.',
+        data: resData,
+      };
+    }
+  } catch (err: any) {
+    console.error('[Zalo ZNS Review Network Error]:', err);
+    await logNotification({
+      kenh: 'zalo',
+      loai_tin: 'danh_gia',
+      nguoi_nhan: phone84,
+      ten_nguoi_nhan: params.customerName,
+      tieu_de: 'Khảo sát & Đánh giá chất lượng',
+      trang_thai: 'that_bai',
+      ma_loi: 'NETWORK_ERROR',
+      chi_tiet_loi: err.message || 'Lỗi mạng khi kết nối Zalo OpenAPI',
+      du_lieu_gui: templateData,
+    });
+
+    return {
+      success: false,
+      message: err.message || 'Lỗi mạng khi kết nối Zalo OpenAPI',
+    };
+  }
 }
 
 

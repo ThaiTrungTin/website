@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Xác định link đăng nhập dựa theo vai trò
-    const origin = req.nextUrl.origin || 'https://petsmm.vercel.app';
+    const origin = req.nextUrl.origin || 'https://petmm.vn';
     const isUserRole = cleanRole === 'user';
     const loginUrl = isUserRole ? `${origin}/taodanhgia` : `${origin}/admin`;
     const roleDisplayName = isUserRole ? 'Nhân viên (Chỉ tạo đánh giá)' : 'Quản trị viên (Toàn quyền)';
