@@ -9298,6 +9298,145 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         )}
                       </div>
                     </div>
+
+                    {/* PHẦN 3: LOGO HIỂN THỊ TRÊN WEBSITE (3 VỊ TRÍ: HEADER NỀN TRẮNG, HEADER TRONG SUỐT, FOOTER NỀN XANH - DÙNG CHUNG 1 ẢNH) */}
+                    <div className="pt-5 border-t border-slate-200/90 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#2D5A27]" />
+                            <span>Logo Hiển Thị Trên Website (Header Cuộn, Header Đầu Trang &amp; Chân Trang Footer)</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Cài đặt 1 ảnh Logo chung hiển thị cho cả 3 vị trí trên website: Thanh Menu khi cuộn (nền trắng), Thanh Menu đầu trang (nền trong suốt), và Chân trang (Footer nền xanh).
+                          </p>
+                        </div>
+                        {configForm.logo_website && (
+                          <button
+                            type="button"
+                            onClick={() => setConfigForm((prev) => ({ ...prev, logo_website: '' }))}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition shrink-0 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Dùng lại logo mặc định</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* XEM TRƯỚC 3 VỊ TRÍ THỰC TẾ TRÊN GIAO DIỆN */}
+                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                          <Eye className="w-3 h-3 text-slate-400" />
+                          <span>Xem trước hiển thị thực tế tại 3 vị trí (chung 1 ảnh):</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {/* Vị trí 1: Header khi cuộn (nền trắng) */}
+                          <div className="bg-white rounded-xl p-3 border border-slate-200 flex flex-col items-center justify-center gap-2 shadow-2xs min-h-[95px]">
+                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">1. Menu khi cuộn (Nền trắng)</span>
+                            <div className="h-10 flex items-center justify-center">
+                              {configForm.logo_website ? (
+                                <img
+                                  src={configForm.logo_website}
+                                  alt="Preview Logo Scrolled"
+                                  className="max-h-8 max-w-[150px] object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/logo-favicon.png';
+                                  }}
+                                />
+                              ) : (
+                                <PetLogo size="sm" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Vị trí 2: Header đầu trang (nền trong suốt/banner) */}
+                          <div
+                            className="rounded-xl p-3 border border-slate-300 flex flex-col items-center justify-center gap-2 shadow-2xs min-h-[95px] relative overflow-hidden"
+                            style={{
+                              backgroundImage: 'radial-gradient(#94a3b8 0.75px, transparent 0.75px), radial-gradient(#94a3b8 0.75px, #f1f5f9 0.75px)',
+                              backgroundSize: '12px 12px',
+                              backgroundPosition: '0 0, 6px 6px',
+                            }}
+                          >
+                            <span className="text-[10px] font-bold text-slate-700 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded uppercase tracking-wider border border-slate-200 shadow-2xs">
+                              2. Menu đầu trang (Trong suốt)
+                            </span>
+                            <div className="h-10 flex items-center justify-center px-2">
+                              {configForm.logo_website ? (
+                                <img
+                                  src={configForm.logo_website}
+                                  alt="Preview Logo Transparent"
+                                  className="max-h-8 max-w-[150px] object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/logo-favicon.png';
+                                  }}
+                                />
+                              ) : (
+                                <PetLogo size="sm" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Vị trí 3: Chân trang (Footer nền xanh đậm) */}
+                          <div className="bg-[#173314] rounded-xl p-3 border border-[#2D5A27] flex flex-col items-center justify-center gap-2 shadow-2xs min-h-[95px]">
+                            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">3. Chân trang (Footer nền xanh)</span>
+                            <div className="h-10 flex items-center justify-center">
+                              {configForm.logo_website ? (
+                                <img
+                                  src={configForm.logo_website}
+                                  alt="Preview Logo Footer"
+                                  className="max-h-8 max-w-[150px] object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/logo-favicon.png';
+                                  }}
+                                />
+                              ) : (
+                                <PetLogo size="sm" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* KHU VỰC TẢI LÊN & ĐƯỜNG DẪN ẢNH */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+                        <div className="md:col-span-5">
+                          <input
+                            type="file"
+                            ref={websiteLogoFileInputRef}
+                            onChange={handleWebsiteLogoUpload}
+                            accept="image/png,image/svg+xml,image/webp,image/jpeg"
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => websiteLogoFileInputRef.current?.click()}
+                            disabled={isWebsiteLogoUploading}
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#23471f] text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {isWebsiteLogoUploading ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                            <span>{isWebsiteLogoUploading ? 'Đang tải ảnh...' : 'Tải Logo Mới Lên'}</span>
+                          </button>
+                        </div>
+
+                        <div className="md:col-span-7">
+                          <input
+                            type="text"
+                            value={configForm.logo_website || ''}
+                            onChange={(e) => setConfigForm((prev) => ({ ...prev, logo_website: e.target.value }))}
+                            placeholder="Hoặc dán đường dẫn ảnh logo trực tiếp (PNG / SVG tách nền)..."
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-800 bg-white focus:border-[#2D5A27] focus:outline-none"
+                          />
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            Khuyên dùng ảnh định dạng PNG trong suốt hoặc SVG để hiển thị đẹp nhất trên cả nền trắng, trong suốt và nền xanh.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Slogan Đầu Trang */}

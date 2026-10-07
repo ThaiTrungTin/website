@@ -152,7 +152,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
       setLoading(true);
       // BẢO MẬT: Chỉ select các trường công khai cần thiết cho giao diện, TUYỆT ĐỐI không lấy smtp_password
       const publicFields = [
-        'id', 'logo_favicon', 'tieu_de_trang', 'tieu_de_trang_en',
+        'id', 'logo_favicon', 'logo_website', 'tieu_de_trang', 'tieu_de_trang_en',
         'hotline', 'hotline_hien_thi', 'link_zalo', 'link_facebook', 'link_messenger', 'link_tiktok',
         'email', 'dia_chi_chinh',
         'slogan_dau_trang_tieu_de', 'slogan_dau_trang_tieu_de_en',
