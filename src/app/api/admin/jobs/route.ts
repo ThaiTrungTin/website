@@ -61,6 +61,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Xóa trường anh_goc nếu table trong DB chưa có cột này để tránh lỗi Supabase
+    delete body.anh_goc;
+
     const { data, error } = await supabaseAdmin
       .from('tuyen_dung')
       .insert([body])
@@ -111,6 +114,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    delete updates.anh_goc;
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin

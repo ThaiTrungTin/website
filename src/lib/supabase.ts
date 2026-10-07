@@ -395,6 +395,7 @@ export interface TuyenDungRecord {
   quyen_loi?: string | null;
   quyen_loi_en?: string | null;
   hinh_anh?: string | null;
+  anh_goc?: string | null;
   thu_tu?: number | null;
   kich_hoat?: boolean | null;
   created_at?: string;

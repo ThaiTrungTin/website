@@ -24,7 +24,7 @@ interface AdminInteractiveCropperProps {
   onChange: (url: string) => void; // Cập nhật ảnh hiển thị
   onOriginalChange?: (url: string) => void; // Cập nhật ảnh gốc
   onPreviewChange?: (previewUrl: string) => void;
-  folder: 'banners' | 'branches' | 'services' | 'general' | 'articles';
+  folder: 'banners' | 'branches' | 'services' | 'general' | 'articles' | 'careers';
   aspectRatio?: number; // e.g. 16/10 for about slides
   onNotification?: (type: 'success' | 'error', message: string) => void;
   className?: string;
