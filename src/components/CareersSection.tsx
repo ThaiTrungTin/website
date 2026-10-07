@@ -19,80 +19,11 @@ import PetMMBrand from '@/components/PetMMBrand';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { getAssetUrl } from '@/lib/assets';
 
-// Dữ liệu dự phòng nếu chưa có mạng hoặc đang tải
-const FALLBACK_JOBS: TuyenDungRecord[] = [
-  {
-    id: 'bac-si-thu-y-dieu-tri',
-    tieu_de: 'Bác Sĩ Thú Y Khám Lâm Sàng & Phẫu Thuật',
-    tieu_de_en: 'Veterinary Clinical Care & Surgical Specialist',
-    phong_ban: 'Y Khoa & Điều Trị',
-    phong_ban_en: 'Medical & Clinical Care',
-    dia_diem: 'Trụ sở TP. Thủ Đức, TP. Hồ Chí Minh',
-    dia_diem_en: 'Thu Duc City Headquarters, Ho Chi Minh City',
-    hinh_thuc: 'Toàn thời gian',
-    hinh_thuc_en: 'Full-time',
-    muc_luong: '20 – 35 Triệu / Tháng',
-    muc_luong_en: '20 – 35 Million VND / Month',
-    kinh_nghiem: 'Tối thiểu 2 năm kinh nghiệm',
-    kinh_nghiem_en: 'Minimum 2 years experience',
-    so_luong: 2,
-    han_nop: '30/11/2026',
-    mo_ta: 'Thăm khám, chẩn đoán, phẫu thuật và điều trị nội trú chuẩn Fear-Free.',
-    mo_ta_en: 'Examination, diagnostics, surgery, and inpatient treatment under Fear-Free standards.',
-    hinh_anh: '/about_consultation.jpg',
-    thu_tu: 1,
-    kich_hoat: true,
-  },
-  {
-    id: 'ky-thuat-vien-spa-grooming',
-    tieu_de: 'Kỹ Thuật Viên Spa Grooming & Cắt Tỉa Tạo Kiểu 5 Sao',
-    tieu_de_en: '5-Star Pet Spa Stylist & Groomer',
-    phong_ban: 'Chăm Sóc & Spa',
-    phong_ban_en: 'Grooming & Pet Resort',
-    dia_diem: 'Trụ sở TP. Thủ Đức, TP. Hồ Chí Minh',
-    dia_diem_en: 'Thu Duc City Headquarters, Ho Chi Minh City',
-    hinh_thuc: 'Toàn thời gian',
-    hinh_thuc_en: 'Full-time',
-    muc_luong: '12 – 22 Triệu / Tháng',
-    muc_luong_en: '12 – 22 Million VND / Month',
-    kinh_nghiem: 'Từ 1 năm kinh nghiệm',
-    kinh_nghiem_en: '1+ years experience',
-    so_luong: 3,
-    han_nop: '30/11/2026',
-    mo_ta: 'Tắm thảo mộc, bồn sục ozone, cắt tỉa thẩm mỹ chuẩn giống không gây stress.',
-    mo_ta_en: 'Herbal hydrotherapy, ozone spa, aesthetic breed-standard styling without stress.',
-    hinh_anh: '/about_grooming.jpg',
-    thu_tu: 2,
-    kich_hoat: true,
-  },
-  {
-    id: 'dieu-duong-thu-y-noi-tru',
-    tieu_de: 'Điều Dưỡng Thú Y & Chăm Sóc Hồi Sức Nội Trú',
-    tieu_de_en: 'Veterinary Nurse & Inpatient ICU Care',
-    phong_ban: 'Điều Dưỡng & Nội Trú',
-    phong_ban_en: 'Veterinary Nursing & ICU',
-    dia_diem: 'Trụ sở TP. Thủ Đức, TP. Hồ Chí Minh',
-    dia_diem_en: 'Thu Duc City Headquarters, Ho Chi Minh City',
-    hinh_thuc: 'Theo ca / Toàn thời gian',
-    hinh_thuc_en: 'Shift-based / Full-time',
-    muc_luong: '9 – 15 Triệu / Tháng',
-    muc_luong_en: '9 – 15 Million VND / Month',
-    kinh_nghiem: 'Ưu tiên có kinh nghiệm',
-    kinh_nghiem_en: 'Experience preferred',
-    so_luong: 2,
-    han_nop: '30/11/2026',
-    mo_ta: 'Theo dõi chỉ số sinh tồn, hỗ trợ bác sĩ trong ca mổ và chăm sóc nội trú 24/7.',
-    mo_ta_en: 'Monitor vital signs, assist in surgeries, and deliver 24/7 ICU recovery care.',
-    hinh_anh: '/about_hospital.jpg',
-    thu_tu: 3,
-    kich_hoat: true,
-  },
-];
-
 export default function CareersSection() {
   const { language, isEn } = useLanguage();
   const { config } = useSystemConfig();
-  const [jobs, setJobs] = useState<TuyenDungRecord[]>(FALLBACK_JOBS);
+  const [jobs, setJobs] = useState<TuyenDungRecord[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -137,13 +68,17 @@ export default function CareersSection() {
         .order('thu_tu', { ascending: true })
         .limit(12);
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         setJobs(data as TuyenDungRecord[]);
+      } else {
+        setJobs([]);
       }
     } catch (err) {
       console.warn('Lỗi tải danh sách tuyển dụng trang chủ:', err);
+      setJobs([]);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }, []);
 
@@ -177,6 +112,11 @@ export default function CareersSection() {
       window.removeEventListener('resize', checkScroll);
     };
   }, [checkScroll, jobs]);
+
+  // Nếu chưa tải xong hoặc không có vị trí nào đang mở tuyển dụng (tất cả bị xóa hoặc ẩn)
+  if (!hasLoaded || jobs.length === 0) {
+    return null;
+  }
 
   return (
     <section id="careers" className="relative py-20 sm:py-28 text-slate-900 overflow-hidden bg-white border-t border-slate-200/80">

@@ -168,7 +168,19 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
               )}
             </div>
 
-            {filteredJobs.length === 0 ? (
+            {initialJobs.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 p-8 max-w-xl mx-auto shadow-xs">
+                <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-slate-700">
+                  {isEn ? 'No job openings at this time' : 'Hiện tại chưa có vị trí tuyển dụng mới'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
+                  {isEn
+                    ? `PetM&M is not actively recruiting at the moment. You can still submit an open CV to ${emailContact}.`
+                    : `PetM&M hiện chưa mở thêm vị trí tuyển dụng mới. Quý ứng viên có thể gửi hồ sơ ứng tuyển về ${emailContact} để được ưu tiên liên hệ khi có vị trí phù hợp.`}
+                </p>
+              </div>
+            ) : filteredJobs.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 p-8">
                 <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <h3 className="text-base font-bold text-slate-700">
