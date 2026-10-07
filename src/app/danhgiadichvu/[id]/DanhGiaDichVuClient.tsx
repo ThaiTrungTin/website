@@ -33,21 +33,24 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
 
   const [rating, setRating] = useState<number>(record.so_sao || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const isInitialValidImage = (url?: string | null) => {
-    if (!url || typeof url !== 'string') return false;
+  const getDisplayImageUrl = (url?: string | null): string => {
+    if (!url || typeof url !== 'string') return '';
     const trimmed = url.trim();
-    if (trimmed.startsWith('{') || trimmed.endsWith('}')) return false;
-    return (
-      trimmed.startsWith('http://') ||
-      trimmed.startsWith('https://') ||
-      trimmed.startsWith('data:image/') ||
-      trimmed.startsWith('/')
-    );
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed?.img && typeof parsed.img === 'string') {
+          return parsed.img.trim();
+        }
+      } catch {}
+      return '';
+    }
+    return trimmed;
   };
 
   const [feedback, setFeedback] = useState<string>(record.noi_dung_danh_gia || '');
   const [hinhAnh, setHinhAnh] = useState<string>(
-    isInitialValidImage(record.hinh_anh) ? record.hinh_anh! : ''
+    getDisplayImageUrl(record.hinh_anh)
   );
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -63,18 +66,31 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
     if (!file) return;
     setIsUploadingImage(true);
     setErrorMessage('');
+
+    // Xem trước ảnh ngay lập tức bằng Base64 để không bị chậm trễ
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setHinhAnh(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const filePath = `danh_gia/review_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('hinh_anh').upload(filePath, file, { cacheControl: '3600', upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
-      setHinhAnh(urlData.publicUrl);
-    } catch {
-      // Fallback: base64
-      const reader = new FileReader();
-      reader.onload = (e) => { if (e.target?.result) setHinhAnh(e.target.result as string); };
-      reader.readAsDataURL(file);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('hinh_anh')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+        if (urlData?.publicUrl) {
+          setHinhAnh(urlData.publicUrl);
+        }
+      }
+    } catch (err) {
+      console.warn('Storage upload fallback to base64 preview:', err);
     } finally {
       setIsUploadingImage(false);
     }
@@ -85,46 +101,76 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
     if (file) handleImageFile(file);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 1. Bấm cái gửi luôn và chạy ngầm, không để khách hàng đợi
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     if (!rating || rating < 1 || rating > 5) {
       setErrorMessage('Vui lòng chọn số sao đánh giá');
       return;
     }
-    try {
-      setIsSubmitting(true);
-      const res = await fetch(`/api/review-requests/${encodeURIComponent(record.ma_danh_gia)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ so_sao: rating, noi_dung_danh_gia: feedback, hinh_anh: hinhAnh || null }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Có lỗi xảy ra khi gửi đánh giá');
-      setRecord(json.data || { ...record, trang_thai: 'da_danh_gia', so_sao: rating, noi_dung_danh_gia: feedback, hinh_anh: hinhAnh });
-      setIsSuccess(true);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Không thể gửi đánh giá, vui lòng thử lại.');
-    } finally {
-      setIsSubmitting(false);
+
+    const currentImg = hinhAnh || getDisplayImageUrl(record.hinh_anh);
+
+    // Chuyển sang màn hình thành công NGAY LẬP TỨC (Optimistic UI)
+    const optimisticRecord: YeuCauDanhGiaRecord = {
+      ...record,
+      trang_thai: 'da_danh_gia',
+      so_sao: rating,
+      noi_dung_danh_gia: feedback,
+      hinh_anh: currentImg || null,
+    };
+    setRecord(optimisticRecord);
+    setIsSuccess(true);
+    setIsSubmitting(false);
+
+    // Cuộn mượt lên đầu
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // Chạy ngầm gửi API trong background
+    fetch(`/api/review-requests/${encodeURIComponent(record.ma_danh_gia)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        so_sao: rating,
+        noi_dung_danh_gia: feedback,
+        hinh_anh: currentImg || null,
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          const finalServerImg = getDisplayImageUrl(json.data.hinh_anh) || currentImg;
+          setRecord({
+            ...json.data,
+            hinh_anh: finalServerImg,
+          });
+        }
+      })
+      .catch((err: any) => {
+        console.error('[Background Submit Review Error]:', err);
+      });
   };
 
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900">
 
-      {/* Header — giống Google Maps style */}
-      <header className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-80 transition-opacity">
-            <PetLogo size="sm" showSubline={false} />
-          </Link>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-600">
-            <MapPin className="w-3 h-3 text-emerald-600" />
-            <span className="font-medium">PetM&M Veterinary</span>
+      {/* 3. Ẩn thanh ngang trên đầu khi đã đánh giá thành công */}
+      {!isSuccess && (
+        <header className="sticky top-0 z-10 bg-white border-b border-slate-200">
+          <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <PetLogo size="sm" showSubline={false} />
+            </Link>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-600">
+              <MapPin className="w-3 h-3 text-emerald-600" />
+              <span className="font-medium">PetM&M Veterinary</span>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <main className="max-w-lg mx-auto px-4 py-6 sm:py-8">
         {isSuccess ? (
@@ -140,7 +186,7 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
               PetM&M cảm ơn <strong className="text-slate-700">{record.ten_khach_hang}</strong> đã dành thời gian chia sẻ trải nghiệm. Ý kiến của bạn giúp chúng tôi phục vụ tốt hơn.
             </p>
 
-            {/* Rating summary card — Google style */}
+            {/* Rating summary card */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
@@ -163,26 +209,30 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
                 </p>
               )}
 
-              {(record.hinh_anh || hinhAnh) && (
-                <div className="rounded-xl overflow-hidden border border-slate-200">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={record.hinh_anh || hinhAnh} alt="Ảnh đính kèm" className="w-full h-36 object-cover" />
-                </div>
-              )}
+              {/* 2. Hiển thị ảnh đính kèm không bị vỡ/lỗi */}
+              {(() => {
+                const displayImg = getDisplayImageUrl(record.hinh_anh) || hinhAnh;
+                if (!displayImg) return null;
+                return (
+                  <div className="rounded-xl overflow-hidden border border-slate-200 mt-3 bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={displayImg}
+                      alt="Ảnh đính kèm"
+                      className="w-full max-h-56 object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).parentElement?.classList.add('hidden');
+                      }}
+                    />
+                  </div>
+                );
+              })()}
             </div>
 
-            <div className="flex items-center justify-center gap-2 mb-6 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
               <ThumbsUp className="w-4 h-4 text-blue-500" />
               <span>Đánh giá của bạn đã được ghi nhận</span>
             </div>
-
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors shadow-sm"
-            >
-              <span>Trang chủ PetM&M</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
         ) : (
           /* REVIEW FORM */

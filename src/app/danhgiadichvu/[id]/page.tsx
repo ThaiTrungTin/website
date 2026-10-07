@@ -63,16 +63,17 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     notFound();
   }
 
-  // Làm sạch hinh_anh nếu không phải là URL hợp lệ
+  // Làm sạch hinh_anh nếu là chuỗi JSON chứa nguoi_tao và img
   let safeHinhAnh = record.hinh_anh;
-  if (safeHinhAnh) {
-    const isUrl =
-      safeHinhAnh.startsWith('http://') ||
-      safeHinhAnh.startsWith('https://') ||
-      safeHinhAnh.startsWith('data:image/') ||
-      safeHinhAnh.startsWith('/');
-    if (!isUrl || safeHinhAnh.startsWith('{')) {
-      safeHinhAnh = null;
+  if (safeHinhAnh && typeof safeHinhAnh === 'string') {
+    const trimmed = safeHinhAnh.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        safeHinhAnh = parsed.img || null;
+      } catch {
+        safeHinhAnh = null;
+      }
     }
   }
 

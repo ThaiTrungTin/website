@@ -36,7 +36,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    let cleanHinhAnh = data.hinh_anh;
+    if (cleanHinhAnh && typeof cleanHinhAnh === 'string' && cleanHinhAnh.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(cleanHinhAnh);
+        cleanHinhAnh = parsed?.img || null;
+      } catch {
+        cleanHinhAnh = null;
+      }
+    }
+
+    return NextResponse.json({ success: true, data: { ...data, hinh_anh: cleanHinhAnh } });
   } catch (err: any) {
     console.error('[API Review Detail GET] Exception:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -171,9 +181,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       console.warn('[API Review Detail POST] Sync public review warning:', syncErr);
     }
 
+    const sanitizedUpdated = {
+      ...updated,
+      hinh_anh: cleanHinhAnh,
+    };
+
     return NextResponse.json({
       success: true,
-      data: updated,
+      data: sanitizedUpdated,
       message: 'Gửi đánh giá thành công',
     });
   } catch (err: any) {
