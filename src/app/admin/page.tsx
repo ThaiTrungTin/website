@@ -1833,9 +1833,6 @@ export default function AdminDashboardPage() {
   const [isServicesTitleModalOpen, setIsServicesTitleModalOpen] = useState(false);
   const [isArticlesTitleModalOpen, setIsArticlesTitleModalOpen] = useState(false);
   const [isFaqTitleModalOpen, setIsFaqTitleModalOpen] = useState(false);
-  const [isReviewsTitleModalOpen, setIsReviewsTitleModalOpen] = useState(false);
-  const [isCareersTitleModalOpen, setIsCareersTitleModalOpen] = useState(false);
-  const [isBookingTitleModalOpen, setIsBookingTitleModalOpen] = useState(false);
 
   // Cấu hình Slogan & 2 Nút Đầu Trang (Hero Banner)
   const [isSavingHeroControls, setIsSavingHeroControls] = useState(false);
@@ -2163,9 +2160,6 @@ export default function AdminDashboardPage() {
   const handleOpenServicesTitleModal = () => setIsServicesTitleModalOpen(true);
   const handleOpenArticlesTitleModal = () => setIsArticlesTitleModalOpen(true);
   const handleOpenFaqTitleModal = () => setIsFaqTitleModalOpen(true);
-  const handleOpenReviewsTitleModal = () => setIsReviewsTitleModalOpen(true);
-  const handleOpenCareersTitleModal = () => setIsCareersTitleModalOpen(true);
-  const handleOpenBookingTitleModal = () => setIsBookingTitleModalOpen(true);
 
   const handleSaveHeroControls = async () => {
     setIsSavingHeroControls(true);
@@ -13140,12 +13134,12 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         initialDescVi={configForm.section_dich_vu_mo_ta || globalConfig.section_dich_vu_mo_ta}
         initialTitleEn={configForm.section_dich_vu_tieu_de_en || globalConfig.section_dich_vu_tieu_de_en}
         initialDescEn={configForm.section_dich_vu_mo_ta_en || globalConfig.section_dich_vu_mo_ta_en}
-        defaultTitleVi='<h2>Dịch Vụ &amp; Giải Pháp Y Tế <br /><span style="color: #2D5A27; font-style: italic;">Chuẩn Mực Cao Cấp</span></h2>'
-        defaultDescVi='<p>Hệ sinh thái chăm sóc sức khỏe, phòng ngừa và điều trị chuyên sâu dành cho thú cưng với trang thiết bị tối tân và đội ngũ bác sĩ tận tâm.</p>'
-        defaultTitleEn='<h2>Medical Services &amp; Solutions <br /><span style="color: #2D5A27; font-style: italic;">Premium Care</span></h2>'
-        defaultDescEn='<p>Comprehensive health care, prevention and advanced veterinary treatment ecosystem with modern equipment and dedicated specialists.</p>'
-        badgeVi="CHUYÊN KHOA Y TẾ TOÀN DIỆN"
-        badgeEn="COMPREHENSIVE MEDICAL SERVICES"
+        defaultTitleVi='<h2>Chăm Sóc Y Khoa Chuyên Sâu <br /><span style="color: #2D5A27; font-style: italic;">&amp; Nuông Chiều Thú Cưng Đẳng Cấp</span></h2>'
+        defaultDescVi=""
+        defaultTitleEn='<h2>Advanced Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">&amp; Luxury Pet Hospitality &amp; Spa</span></h2>'
+        defaultDescEn=""
+        badgeVi=""
+        badgeEn=""
         previewAlign="center"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {
@@ -13173,13 +13167,13 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         initialDescVi={configForm.section_cam_nang_mo_ta || globalConfig.section_cam_nang_mo_ta}
         initialTitleEn={configForm.section_cam_nang_tieu_de_en || globalConfig.section_cam_nang_tieu_de_en}
         initialDescEn={configForm.section_cam_nang_mo_ta_en || globalConfig.section_cam_nang_mo_ta_en}
-        defaultTitleVi='<h2>Cẩm Nang &amp; Kiến Thức Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Dành Cho Sen &amp; Boss</span></h2>'
-        defaultDescVi='<p>Cập nhật những kiến thức y khoa chính xác, cẩm nang dinh dưỡng và kinh nghiệm thực tế giúp bạn chăm sóc thú cưng luôn khỏe mạnh.</p>'
-        defaultTitleEn='<h2>Pet Care &amp; Medical Knowledge <br /><span style="color: #2D5A27; font-style: italic;">For You and Your Pet</span></h2>'
-        defaultDescEn='<p>Stay updated with accurate veterinary guidance, nutrition advice, and practical tips to keep your beloved companions thriving.</p>'
-        badgeVi="CẨM NANG & KIẾN THỨC"
-        badgeEn="PET CARE HANDBOOK"
-        previewAlign="center"
+        defaultTitleVi='<h2>Kiến Thức &amp; <br /><span style="color: #2D5A27; font-style: italic;">Kinh Nghiệm Nuôi Thú Cưng</span></h2>'
+        defaultDescVi='<p>Các bài viết được biên soạn trực tiếp bởi hội đồng y khoa PetM&M nhằm hỗ trợ ba mẹ chăm sóc bé khoa học mỗi ngày.</p>'
+        defaultTitleEn='<h2>Pet Health, Wellness &amp; <br /><span style="color: #2D5A27; font-style: italic;">Practical Care Insights</span></h2>'
+        defaultDescEn='<p>Expert articles curated by PetM&M veterinary specialists to empower pet parents with evidence-based care.</p>'
+        badgeVi="CẨM NANG BÁC SĨ PETM&M"
+        badgeEn="VETERINARY MEDICAL GUIDE"
+        previewAlign="left"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {
           setConfigForm((prev) => ({
@@ -13206,13 +13200,13 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         initialDescVi={configForm.section_faq_mo_ta || globalConfig.section_faq_mo_ta}
         initialTitleEn={configForm.section_faq_tieu_de_en || globalConfig.section_faq_tieu_de_en}
         initialDescEn={configForm.section_faq_mo_ta_en || globalConfig.section_faq_mo_ta_en}
-        defaultTitleVi='<h2>Câu Hỏi &amp; Thắc Mắc <br /><span style="color: #2D5A27; font-style: italic;">Thường Gặp Tại PetM&M</span></h2>'
-        defaultDescVi='<p>Tổng hợp những câu hỏi phổ biến nhất của quý khách hàng về dịch vụ, quy trình khám chữa bệnh và lưu trú thú cưng.</p>'
-        defaultTitleEn='<h2>Frequently Asked Questions <br /><span style="color: #2D5A27; font-style: italic;">At PetM&M</span></h2>'
-        defaultDescEn='<p>Find quick answers to common questions about our veterinary services, medical examination process, and pet accommodation.</p>'
-        badgeVi="HỎI ĐÁP THƯỜNG GẶP"
-        badgeEn="FREQUENTLY ASKED QUESTIONS"
-        previewAlign="center"
+        defaultTitleVi='<h2>Câu Hỏi <span style="color: #2D5A27; font-style: italic;">Thường Gặp</span></h2>'
+        defaultDescVi='<p>PetM&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo chính thức của PetM&M.</p>'
+        defaultTitleEn='<h2>Frequently Asked <span style="color: #2D5A27; font-style: italic;">Questions</span></h2>'
+        defaultDescEn='<p>Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at PetM&M.</p>'
+        badgeVi=""
+        badgeEn=""
+        previewAlign="left"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {
           setConfigForm((prev) => ({
@@ -13221,105 +13215,6 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
             section_faq_mo_ta: saved.descVi,
             section_faq_tieu_de_en: saved.titleEn,
             section_faq_mo_ta_en: saved.descEn,
-          }));
-        }}
-      />
-
-      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC ĐÁNH GIÁ */}
-      <SectionTitleModal
-        isOpen={isReviewsTitleModalOpen}
-        onClose={() => setIsReviewsTitleModalOpen(false)}
-        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Đánh Giá Khách Hàng"
-        sectionLabel="Đánh Giá Khách Hàng"
-        titleFieldKey="section_danh_gia_tieu_de"
-        descFieldKey="section_danh_gia_mo_ta"
-        titleFieldKeyEn="section_danh_gia_tieu_de_en"
-        descFieldKeyEn="section_danh_gia_mo_ta_en"
-        initialTitleVi={configForm.section_danh_gia_tieu_de || globalConfig.section_danh_gia_tieu_de}
-        initialDescVi={configForm.section_danh_gia_mo_ta || globalConfig.section_danh_gia_mo_ta}
-        initialTitleEn={configForm.section_danh_gia_tieu_de_en || globalConfig.section_danh_gia_tieu_de_en}
-        initialDescEn={configForm.section_danh_gia_mo_ta_en || globalConfig.section_danh_gia_mo_ta_en}
-        defaultTitleVi='<h2>Khách Hàng Nói Gì Về <br /><span style="color: #2D5A27; font-style: italic;">Dịch Vụ PetM&M</span></h2>'
-        defaultDescVi='<p>Hàng ngàn lời yêu thương và sự hài lòng từ các chủ nuôi đã đồng hành và tin tưởng chúng tôi trong suốt hành trình chăm sóc thú cưng.</p>'
-        defaultTitleEn='<h2>What Pet Parents Say <br /><span style="color: #2D5A27; font-style: italic;">About PetM&M</span></h2>'
-        defaultDescEn='<p>Thousands of heartfelt compliments and satisfaction shared by pet parents who trust PetM&M for companion healthcare.</p>'
-        badgeVi="ĐÁNH GIÁ TỪ KHÁCH HÀNG"
-        badgeEn="CUSTOMER REVIEWS"
-        previewAlign="center"
-        showNotification={showNotification}
-        onSaveSuccess={(saved) => {
-          setConfigForm((prev) => ({
-            ...prev,
-            section_danh_gia_tieu_de: saved.titleVi,
-            section_danh_gia_mo_ta: saved.descVi,
-            section_danh_gia_tieu_de_en: saved.titleEn,
-            section_danh_gia_mo_ta_en: saved.descEn,
-          }));
-        }}
-      />
-
-      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC TUYỂN DỤNG */}
-      <SectionTitleModal
-        isOpen={isCareersTitleModalOpen}
-        onClose={() => setIsCareersTitleModalOpen(false)}
-        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Tuyển Dụng"
-        sectionLabel="Tuyển Dụng"
-        titleFieldKey="section_tuyen_dung_tieu_de"
-        descFieldKey="section_tuyen_dung_mo_ta"
-        titleFieldKeyEn="section_tuyen_dung_tieu_de_en"
-        descFieldKeyEn="section_tuyen_dung_mo_ta_en"
-        initialTitleVi={configForm.section_tuyen_dung_tieu_de || globalConfig.section_tuyen_dung_tieu_de}
-        initialDescVi={configForm.section_tuyen_dung_mo_ta || globalConfig.section_tuyen_dung_mo_ta}
-        initialTitleEn={configForm.section_tuyen_dung_tieu_de_en || globalConfig.section_tuyen_dung_tieu_de_en}
-        initialDescEn={configForm.section_tuyen_dung_mo_ta_en || globalConfig.section_tuyen_dung_mo_ta_en}
-        defaultTitleVi='<h2>Gia Nhập Đội Ngũ <br /><span style="color: #2D5A27; font-style: italic;">PetM&M Family</span></h2>'
-        defaultDescVi='<p>Cùng chúng tôi tạo dựng môi trường làm việc y khoa thú y chuẩn mực, chuyên nghiệp và giàu lòng nhân ái.</p>'
-        defaultTitleEn='<h2>Join Our Team <br /><span style="color: #2D5A27; font-style: italic;">PetM&M Family</span></h2>'
-        defaultDescEn='<p>Work with us in an inspiring, professional veterinary environment built upon care, compassion and high medical standards.</p>'
-        badgeVi="CƠ HỘI NGHỀ NGHIỆP"
-        badgeEn="CAREER OPPORTUNITIES"
-        previewAlign="center"
-        showNotification={showNotification}
-        onSaveSuccess={(saved) => {
-          setConfigForm((prev) => ({
-            ...prev,
-            section_tuyen_dung_tieu_de: saved.titleVi,
-            section_tuyen_dung_mo_ta: saved.descVi,
-            section_tuyen_dung_tieu_de_en: saved.titleEn,
-            section_tuyen_dung_mo_ta_en: saved.descEn,
-          }));
-        }}
-      />
-
-      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC ĐẶT LỊCH */}
-      <SectionTitleModal
-        isOpen={isBookingTitleModalOpen}
-        onClose={() => setIsBookingTitleModalOpen(false)}
-        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Đặt Lịch Hẹn"
-        sectionLabel="Đặt Lịch Hẹn"
-        titleFieldKey="section_dat_lich_tieu_de"
-        descFieldKey="section_dat_lich_mo_ta"
-        titleFieldKeyEn="section_dat_lich_tieu_de_en"
-        descFieldKeyEn="section_dat_lich_mo_ta_en"
-        initialTitleVi={configForm.section_dat_lich_tieu_de || globalConfig.section_dat_lich_tieu_de}
-        initialDescVi={configForm.section_dat_lich_mo_ta || globalConfig.section_dat_lich_mo_ta}
-        initialTitleEn={configForm.section_dat_lich_tieu_de_en || globalConfig.section_dat_lich_tieu_de_en}
-        initialDescEn={configForm.section_dat_lich_mo_ta_en || globalConfig.section_dat_lich_mo_ta_en}
-        defaultTitleVi='<h2>Đặt Lịch Hẹn Khám <br /><span style="color: #2D5A27; font-style: italic;">Nhanh Chóng &amp; Tiện Lợi</span></h2>'
-        defaultDescVi='<p>Đặt lịch trước để tiết kiệm thời gian chờ đợi và nhận sự tiếp đón chu đáo nhất từ đội ngũ bác sĩ chuyên khoa.</p>'
-        defaultTitleEn='<h2>Book An Appointment <br /><span style="color: #2D5A27; font-style: italic;">Fast &amp; Convenient</span></h2>'
-        defaultDescEn='<p>Reserve your consultation in advance to avoid waiting and ensure the best personalized medical care for your pet.</p>'
-        badgeVi="ĐẶT LỊCH HẸN TRỰC TUYẾN"
-        badgeEn="ONLINE APPOINTMENT"
-        previewAlign="center"
-        showNotification={showNotification}
-        onSaveSuccess={(saved) => {
-          setConfigForm((prev) => ({
-            ...prev,
-            section_dat_lich_tieu_de: saved.titleVi,
-            section_dat_lich_mo_ta: saved.descVi,
-            section_dat_lich_tieu_de_en: saved.titleEn,
-            section_dat_lich_mo_ta_en: saved.descEn,
           }));
         }}
       />

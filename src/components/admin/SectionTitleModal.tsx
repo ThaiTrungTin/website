@@ -178,6 +178,28 @@ export default function SectionTitleModal({
         }
       }
 
+      // Cập nhật ngay tức thì localStorage cache trên client để đồng bộ không bị delay
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('petmm_system_config_cache');
+          const prevCache = cached ? JSON.parse(cached) : {};
+          const newCache = {
+            ...prevCache,
+            [titleFieldKey]: titleVi,
+            [descFieldKey]: descVi,
+            [titleFieldKeyEn]: titleEn,
+            [descFieldKeyEn]: descEn,
+          };
+          localStorage.setItem('petmm_system_config_cache', JSON.stringify(newCache));
+          window.dispatchEvent(
+            new StorageEvent('storage', {
+              key: 'petmm_system_config_cache',
+              newValue: JSON.stringify(newCache),
+            })
+          );
+        } catch {}
+      }
+
       await refreshConfig();
 
       if (onSaveSuccess) {
