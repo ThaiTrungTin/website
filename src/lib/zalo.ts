@@ -180,6 +180,8 @@ export interface ZaloReviewParams {
   customerName: string;
   orderId: string;
   reviewCode: string;
+  shopName?: string;
+  address?: string;
 }
 
 /**
@@ -391,11 +393,16 @@ export async function sendZaloZnsReviewNotification(params: ZaloReviewParams, cu
   const safeCustomerName = (params.customerName || 'Quý khách').trim().slice(0, 30);
   const safeOrderId = (params.orderId || params.reviewCode || 'PET-000000').trim().slice(0, 30);
   const safeReviewCode = (params.reviewCode || '').trim().slice(0, 100);
+  const safeAddress = (params.address || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức').trim().slice(0, 80);
+  const safeShopName = (params.shopName || safeAddress).trim().slice(0, 80);
 
   const templateData = {
     customer_name: safeCustomerName,
     order_id: safeOrderId,
     review_code: safeReviewCode,
+    shop_name: safeShopName,
+    shop_address: safeAddress,
+    address: safeAddress,
   };
 
   const payload = {

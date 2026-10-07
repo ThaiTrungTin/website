@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
       customerName: (customerName || 'Quý khách').trim(),
       orderId: (orderId || reviewCode).trim(),
       reviewCode: reviewCode.trim(),
+      shopName: (body.shopName || body.shop_name || body.address || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức').trim(),
+      address: (body.address || body.shop_address || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức').trim(),
     });
 
     if (result.success) {
