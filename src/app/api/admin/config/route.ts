@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
       'section_cam_nang_tieu_de_en', 'section_cam_nang_mo_ta_en',
       'section_faq_tieu_de', 'section_faq_mo_ta',
       'section_faq_tieu_de_en', 'section_faq_mo_ta_en',
+      'section_ho_tro_tieu_de', 'section_ho_tro_mo_ta',
+      'section_ho_tro_tieu_de_en', 'section_ho_tro_mo_ta_en',
       'section_danh_gia_tieu_de', 'section_danh_gia_mo_ta',
       'section_danh_gia_tieu_de_en', 'section_danh_gia_mo_ta_en',
       'section_tuyen_dung_tieu_de', 'section_tuyen_dung_mo_ta',

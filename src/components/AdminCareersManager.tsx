@@ -35,6 +35,8 @@ import {
   Send,
   Maximize2,
   Minimize2,
+  Settings,
+  Filter,
 } from 'lucide-react';
 import { supabase, TuyenDungRecord, HoSoTuyenDungRecord } from '@/lib/supabase';
 import AdminImageInput from '@/components/AdminImageInput';
@@ -47,6 +49,8 @@ interface Props {
   applications?: HoSoTuyenDungRecord[];
   onUpdateApplicantStatus?: (appId: string, newStatus: string) => Promise<void>;
   highlightedId?: string | null;
+  onOpenTitleModal?: () => void;
+  defaultView?: 'jobs' | 'applicants';
 }
 
 function generateSlug(text: string): string {
@@ -66,12 +70,17 @@ export default function AdminCareersManager({
   applications: propApplications,
   onUpdateApplicantStatus,
   highlightedId,
+  onOpenTitleModal,
+  defaultView,
 }: Props) {
   const [jobs, setJobs] = useState<TuyenDungRecord[]>([]);
   const [localApplications, setLocalApplications] = useState<HoSoTuyenDungRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
+  const [mainView, setMainView] = useState<'jobs' | 'applicants'>(defaultView || 'jobs');
+  const [applicantStatusFilter, setApplicantStatusFilter] = useState<string>('all');
+  const [applicantJobFilter, setApplicantJobFilter] = useState<string>('all');
 
   // Accordion state
   const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
@@ -314,6 +323,24 @@ export default function AdminCareersManager({
       }, 350);
     }
   }, [highlightedId, currentApplications]);
+
+  useEffect(() => {
+    if (defaultView) {
+      setMainView(defaultView);
+    }
+  }, [defaultView]);
+
+  const handleToggleExpandAll = () => {
+    if (expandedJobIds.size > 0) {
+      setExpandedJobIds(new Set());
+    } else {
+      const allIds = new Set(jobs.map((j) => j.id));
+      if (appsGroupedByJob['other'] && appsGroupedByJob['other'].length > 0) {
+        allIds.add('other');
+      }
+      setExpandedJobIds(allIds);
+    }
+  };
 
   const handleActionClick = async (appId: string, newStatus: string) => {
     setUpdatingAppId(appId);
@@ -710,6 +737,41 @@ export default function AdminCareersManager({
     );
   });
 
+  const getJobTitle = useCallback(
+    (jobId?: string | null) => {
+      if (!jobId || jobId === 'other') return 'Ứng tuyển tự do / Khác';
+      const found = jobs.find((j) => j.id === jobId);
+      return found ? found.tieu_de : 'Vị trí khác';
+    },
+    [jobs]
+  );
+
+  // Filtered applications cho chế độ xem phẳng toàn bộ ứng viên
+  const filteredApplications = useMemo(() => {
+    return currentApplications.filter((app) => {
+      if (applicantStatusFilter !== 'all') {
+        const appStatus = app.trang_thai || 'moi';
+        if (applicantStatusFilter === 'moi' && appStatus !== 'moi') return false;
+        if (applicantStatusFilter === 'hen_phong_van' && appStatus !== 'hen_phong_van') return false;
+        if (applicantStatusFilter === 'da_lien_he' && appStatus !== 'da_lien_he') return false;
+        if (applicantStatusFilter === 'bo_qua' && appStatus !== 'bo_qua' && appStatus !== 'tu_choi') return false;
+      }
+      if (applicantJobFilter !== 'all') {
+        const jId = app.tuyen_dung_id || 'other';
+        if (jId !== applicantJobFilter) return false;
+      }
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const matchName = (app.ho_ten || '').toLowerCase().includes(term);
+        const matchPhone = (app.so_dien_thoai || '').toLowerCase().includes(term);
+        const matchEmail = (app.email || '').toLowerCase().includes(term);
+        const matchIntro = (app.gioi_thieu || '').toLowerCase().includes(term);
+        if (!matchName && !matchPhone && !matchEmail && !matchIntro) return false;
+      }
+      return true;
+    });
+  }, [currentApplications, applicantStatusFilter, applicantJobFilter, searchTerm]);
+
   return (
     <div className="space-y-6">
       {/* ── KHỐI DUY NHẤT: VỊ TRÍ TUYỂN DỤNG & ỨNG VIÊN NỘP CV ── */}
@@ -722,18 +784,74 @@ export default function AdminCareersManager({
                 <Briefcase className="w-4 h-4" />
               </div>
               <h2 className="text-base font-bold text-slate-900">
-                Vị Trí Tuyển Dụng &amp; Ứng Viên Nộp CV
+                Quản Lý Tuyển Dụng &amp; Ứng Viên Nộp CV
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
                 {totalActiveAppsCount} hồ sơ cần xử lý
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1 sm:ml-10.5">
-              Bấm vào từng vị trí để đổ thẳng danh sách ứng viên, xem CV và thực hiện thao tác duyệt hồ sơ.
-            </p>
+
+            {/* 2 Tab chuyển đổi chế độ xem rõ ràng: Vị Trí Tuyển Dụng & Danh Sách Ứng Viên Nộp CV */}
+            <div className="flex items-center gap-2 mt-3 sm:ml-10.5">
+              <div className="inline-flex p-1 bg-slate-200/70 rounded-xl border border-slate-300/80 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setMainView('jobs')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    mainView === 'jobs'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Vị Trí Tuyển Dụng ({jobs.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMainView('applicants')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    mainView === 'applicants'
+                      ? 'bg-[#2D5A27] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Danh Sách Ứng Viên ({currentApplications.length})</span>
+                  {totalActiveAppsCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
+                      {totalActiveAppsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 sm:ml-10.5 md:ml-0">
+          <div className="flex items-center gap-2.5 shrink-0 sm:ml-10.5 md:ml-0 flex-wrap">
+            {onOpenTitleModal && (
+              <button
+                type="button"
+                onClick={onOpenTitleModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+                title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ"
+              >
+                <Settings className="w-4 h-4 text-amber-700" />
+                <span>Cài Đặt Tiêu Đề Mục</span>
+              </button>
+            )}
+
+            {mainView === 'jobs' && (
+              <button
+                type="button"
+                onClick={handleToggleExpandAll}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold shadow-2xs transition shrink-0 cursor-pointer"
+                title={expandedJobIds.size > 0 ? 'Thu gọn tất cả hồ sơ' : 'Mở rộng hiển thị tất cả hồ sơ ứng viên'}
+              >
+                <Users className="w-3.5 h-3.5 text-slate-500" />
+                <span>{expandedJobIds.size > 0 ? 'Thu Gọn Tất Cả' : 'Mở Rộng Tất Cả'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleAddNewJob}
@@ -746,7 +864,9 @@ export default function AdminCareersManager({
         </div>
 
         {/* Filter Tabs & Search Bar */}
-        <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {mainView === 'jobs' ? (
+          <>
+            <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
             {[
               { id: 'all', label: 'Tất Cả', count: jobs.length },
@@ -1324,7 +1444,205 @@ export default function AdminCareersManager({
             </table>
           </div>
         )}
+      </>
+    ) : (
+      /* ========================================================= */
+      /* CHẾ ĐỘ XEM 2: DANH SÁCH TẤT CẢ ỨNG VIÊN NỘP CV (PHẲNG)   */
+      /* ========================================================= */
+      <div className="p-4 sm:p-5 space-y-4">
+        {/* Thanh bộ lọc trạng thái, vị trí & tìm kiếm */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          {/* Lọc trạng thái nhanh */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { id: 'all', label: 'Tất Cả', count: currentApplications.length },
+              { id: 'moi', label: 'Mới Nộp', count: currentApplications.filter((a) => a.trang_thai === 'moi' || !a.trang_thai).length },
+              { id: 'hen_phong_van', label: 'Đã Hẹn PV', count: currentApplications.filter((a) => a.trang_thai === 'hen_phong_van').length },
+              { id: 'da_lien_he', label: 'Đã Liên Hệ', count: currentApplications.filter((a) => a.trang_thai === 'da_lien_he').length },
+              { id: 'bo_qua', label: 'Từ Chối / Bỏ Qua', count: currentApplications.filter((a) => a.trang_thai === 'bo_qua' || a.trang_thai === 'tu_choi').length },
+            ].map((st) => (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => setApplicantStatusFilter(st.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  applicantStatusFilter === st.id
+                    ? 'bg-[#2D5A27] text-white shadow-2xs font-bold'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                }`}
+              >
+                <span>{st.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    applicantStatusFilter === st.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {st.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Lọc vị trí & Tìm kiếm */}
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            <select
+              value={applicantJobFilter}
+              onChange={(e) => setApplicantJobFilter(e.target.value)}
+              className="text-xs font-medium px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#2D5A27] cursor-pointer shadow-2xs"
+            >
+              <option value="all">Tất cả vị trí ({jobs.length})</option>
+              {jobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.tieu_de}
+                </option>
+              ))}
+              <option value="other">Hồ sơ tự do / Vị trí khác</option>
+            </select>
+
+            <div className="relative min-w-[200px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm tên, SĐT, email..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Danh sách thẻ ứng viên nộp CV */}
+        {filteredApplications.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 text-xs space-y-2">
+            <Users className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="font-semibold text-slate-600">Không tìm thấy hồ sơ ứng viên nào phù hợp.</p>
+            <p className="text-[11px] text-slate-400">Thử thay đổi bộ lọc trạng thái, chọn vị trí hoặc xóa từ khóa tìm kiếm.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredApplications.map((app) => {
+              const jobTitle = getJobTitle(app.tuyen_dung_id);
+              const isHighlighted = app.id === highlightedId;
+              const isUpdating = updatingAppId === app.id;
+              const isIgnored = app.trang_thai === 'bo_qua' || app.trang_thai === 'tu_choi';
+
+              return (
+                <div
+                  key={app.id}
+                  id={`applicant-flat-${app.id}`}
+                  className={`bg-white rounded-xl border p-4 transition-all duration-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-2xs hover:shadow-xs ${
+                    isIgnored
+                      ? 'opacity-60 bg-slate-100/70 border-slate-300'
+                      : isHighlighted
+                      ? 'border-emerald-400 bg-emerald-50/80 ring-2 ring-emerald-500 shadow-md'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className={`text-sm font-bold ${isIgnored ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                        {app.ho_ten}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-[#2D5A27] border border-emerald-200">
+                        {jobTitle}
+                      </span>
+                      {renderAppStatusBadge(app.trang_thai)}
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        {formatAppDate(app.ngay_tao)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs font-medium text-slate-600 flex-wrap">
+                      <a
+                        href={`tel:${app.so_dien_thoai}`}
+                        className="font-mono font-bold text-emerald-800 hover:underline inline-flex items-center gap-1"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{app.so_dien_thoai}</span>
+                      </a>
+                      <a
+                        href={`mailto:${app.email}`}
+                        className="text-blue-800 hover:underline inline-flex items-center gap-1 truncate"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-blue-600" />
+                        <span>{app.email}</span>
+                      </a>
+                    </div>
+
+                    {app.gioi_thieu && (
+                      <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 italic mt-1 leading-relaxed">
+                        &ldquo;{app.gioi_thieu}&rdquo;
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                    {app.link_cv ? (
+                      <a
+                        href={app.link_cv}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs border border-blue-200 transition"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Xem CV</span>
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic px-2">Không CV</span>
+                    )}
+
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        disabled={isUpdating}
+                        value={app.trang_thai === 'tu_choi' ? 'bo_qua' : (app.trang_thai || 'moi')}
+                        onChange={(e) => handleActionClick(app.id, e.target.value)}
+                        aria-label="Cập nhật trạng thái ứng viên"
+                        className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#2D5A27] cursor-pointer shadow-2xs"
+                      >
+                        <option value="moi">🟠 Mới nộp</option>
+                        <option value="hen_phong_van">🟢 Đã hẹn PV</option>
+                        <option value="da_lien_he">🔵 Đã liên hệ</option>
+                        <option value="bo_qua">⚪ Từ chối (Bỏ qua)</option>
+                      </select>
+                    </div>
+
+                    <div className="relative inline-block">
+                      <button
+                        type="button"
+                        disabled={isUpdating}
+                        onClick={() => handleOpenInterviewModal(app, jobTitle)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border shadow-2xs bg-[#2D5A27] hover:bg-[#234A1E] text-white border-[#2D5A27]"
+                        title={`Soạn thư mời phỏng vấn và gửi qua Gmail${app.so_lan_gui_email ? ` - Đã gửi ${app.so_lan_gui_email} lần` : ''}`}
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Thư mời PV</span>
+                      </button>
+                      {app.trang_thai_email === 'that_bai' ? (
+                        <span
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-xs ring-2 ring-white animate-pulse pointer-events-none"
+                          title="Lần gửi thư mời gần nhất bị lỗi"
+                        >
+                          !
+                        </span>
+                      ) : (app.so_lan_gui_email || 0) > 0 ? (
+                        <span
+                          className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs ring-2 ring-white pointer-events-none"
+                          title={`Đã gửi thư mời phỏng vấn ${app.so_lan_gui_email} lần`}
+                        >
+                          {app.so_lan_gui_email}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+    )}
+  </div>
 
       {/* ========================================================= */}
       {/* MODAL SOẠN THƯ MỜI PHỎNG VẤN & GỬI QUA GMAIL              */}

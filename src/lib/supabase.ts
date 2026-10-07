@@ -157,6 +157,10 @@ export interface CauHinhRecord {
   section_faq_mo_ta?: string;
   section_faq_tieu_de_en?: string;
   section_faq_mo_ta_en?: string;
+  section_ho_tro_tieu_de?: string;
+  section_ho_tro_mo_ta?: string;
+  section_ho_tro_tieu_de_en?: string;
+  section_ho_tro_mo_ta_en?: string;
   section_danh_gia_tieu_de?: string;
   section_danh_gia_mo_ta?: string;
   section_danh_gia_tieu_de_en?: string;

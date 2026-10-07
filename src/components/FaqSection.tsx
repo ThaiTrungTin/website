@@ -47,6 +47,16 @@ export default function FaqSection() {
   const [loading, setLoading] = useState(false);
   const [supportConfig, setSupportConfig] = useState<SupportPanelConfig>(DEFAULT_SUPPORT_CONFIG);
 
+  // Lấy tiêu đề & mô tả cấu hình phong cách Rich Text Editor cho mục Bạn cần hỗ trợ
+  const rawSupportTitleHtml = isEn
+    ? (config.section_ho_tro_tieu_de_en || config.section_ho_tro_tieu_de)
+    : config.section_ho_tro_tieu_de;
+  const rawSupportDescHtml = isEn
+    ? (config.section_ho_tro_mo_ta_en || config.section_ho_tro_mo_ta)
+    : config.section_ho_tro_mo_ta;
+  const supportTitleHtml = rawSupportTitleHtml ? sanitizeHtml(rawSupportTitleHtml) : '';
+  const supportDescHtml = rawSupportDescHtml ? sanitizeHtml(rawSupportDescHtml) : '';
+
   // Tải danh sách FAQ từ Supabase
   const fetchFaqs = useCallback(async () => {
     try {
@@ -247,26 +257,41 @@ export default function FaqSection() {
               {/* Vệt sáng trang trí thương hiệu Emerald */}
               <div className="absolute -top-24 -right-24 w-52 h-52 bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" />
 
-              <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mb-2">
-                {isEn ? (
-                  <>
-                    {renderBrandText((supportConfig.tieu_de_en || 'Need PetM&M support?').replace(/support\?$/i, '').trim())}{' '}
-                    <span className="italic font-light text-[#2D5A27]">
-                      {/support\?$/i.test(supportConfig.tieu_de_en || '') ? 'support?' : ''}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    {renderBrandText((supportConfig.tieu_de_vi || 'Bạn cần PetM&M hỗ trợ?').replace(/hỗ trợ\?$/i, '').trim())}{' '}
-                    <span className="italic font-light text-[#2D5A27]">
-                      {/hỗ trợ\?$/i.test(supportConfig.tieu_de_vi || '') ? 'hỗ trợ?' : ''}
-                    </span>
-                  </>
-                )}
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 mb-6 font-light">
-                {isEn ? (supportConfig.mo_ta_en || 'Choose the contact method that suits your needs.') : (supportConfig.mo_ta_vi || 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.')}
-              </p>
+              {supportTitleHtml ? (
+                <div
+                  className="rich-text-preview font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mb-2 leading-snug [&_p]:m-0 [&_h1]:m-0 [&_h2]:m-0 [&_h3]:m-0 [&_h3]:font-editorial [&_h3]:text-2xl [&_h3]:sm:text-3xl [&_h3]:font-normal"
+                  dangerouslySetInnerHTML={{ __html: supportTitleHtml }}
+                />
+              ) : (
+                <h3 className="font-editorial text-2xl sm:text-3xl font-normal text-slate-900 mb-2">
+                  {isEn ? (
+                    <>
+                      {renderBrandText((supportConfig.tieu_de_en || 'Need PetM&M support?').replace(/support\?$/i, '').trim())}{' '}
+                      <span className="italic font-light text-[#2D5A27]">
+                        {/support\?$/i.test(supportConfig.tieu_de_en || '') ? 'support?' : ''}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {renderBrandText((supportConfig.tieu_de_vi || 'Bạn cần PetM&M hỗ trợ?').replace(/hỗ trợ\?$/i, '').trim())}{' '}
+                      <span className="italic font-light text-[#2D5A27]">
+                        {/hỗ trợ\?$/i.test(supportConfig.tieu_de_vi || '') ? 'hỗ trợ?' : ''}
+                      </span>
+                    </>
+                  )}
+                </h3>
+              )}
+
+              {supportDescHtml ? (
+                <div
+                  className="text-xs sm:text-sm text-slate-600 mb-6 font-light leading-relaxed rich-text-preview"
+                  dangerouslySetInnerHTML={{ __html: supportDescHtml }}
+                />
+              ) : (
+                <p className="text-xs sm:text-sm text-slate-600 mb-6 font-light">
+                  {isEn ? (supportConfig.mo_ta_en || 'Choose the contact method that suits your needs.') : (supportConfig.mo_ta_vi || 'Chọn cách liên hệ phù hợp với nhu cầu của bạn.')}
+                </p>
+              )}
 
               {/* 3 Thẻ liên hệ trực tiếp */}
               <div className="space-y-3.5 relative z-10">

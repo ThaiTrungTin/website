@@ -1833,6 +1833,10 @@ export default function AdminDashboardPage() {
   const [isServicesTitleModalOpen, setIsServicesTitleModalOpen] = useState(false);
   const [isArticlesTitleModalOpen, setIsArticlesTitleModalOpen] = useState(false);
   const [isFaqTitleModalOpen, setIsFaqTitleModalOpen] = useState(false);
+  const [isSupportTitleModalOpen, setIsSupportTitleModalOpen] = useState(false);
+  const [isCareersTitleModalOpen, setIsCareersTitleModalOpen] = useState(false);
+  const [isBookingTitleModalOpen, setIsBookingTitleModalOpen] = useState(false);
+  const [careersDefaultView, setCareersDefaultView] = useState<'jobs' | 'applicants'>('jobs');
 
   // Cấu hình Slogan & 2 Nút Đầu Trang (Hero Banner)
   const [isSavingHeroControls, setIsSavingHeroControls] = useState(false);
@@ -2160,6 +2164,9 @@ export default function AdminDashboardPage() {
   const handleOpenServicesTitleModal = () => setIsServicesTitleModalOpen(true);
   const handleOpenArticlesTitleModal = () => setIsArticlesTitleModalOpen(true);
   const handleOpenFaqTitleModal = () => setIsFaqTitleModalOpen(true);
+  const handleOpenSupportTitleModal = () => setIsSupportTitleModalOpen(true);
+  const handleOpenCareersTitleModal = () => setIsCareersTitleModalOpen(true);
+  const handleOpenBookingTitleModal = () => setIsBookingTitleModalOpen(true);
 
   const handleSaveHeroControls = async () => {
     setIsSavingHeroControls(true);
@@ -6278,7 +6285,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   </span>
                 </button>
 
-                {/* Luôn hiển thị đổ xuống 2 mục con theo yêu cầu */}
+                {/* Luôn hiển thị đổ xuống các mục con theo yêu cầu */}
                 <div className="mt-1 ml-4 pl-3 border-l-2 border-emerald-700/60 space-y-1">
                   <button
                     type="button"
@@ -6287,29 +6294,54 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       setTeamSubTab('members');
                       setIsMobileSidebarOpen(false);
                     }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center justify-between ${
                       activeTab === 'team' && teamSubTab === 'members'
                         ? 'bg-emerald-800/80 text-amber-300 font-bold'
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <span>• Danh sách bác sĩ ({teamMembers.length})</span>
+                    <span>• Danh sách bác sĩ</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 font-bold">{teamMembers.length}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       setActiveTab('team');
                       setTeamSubTab('careers');
+                      setCareersDefaultView('jobs');
                       setIsMobileSidebarOpen(false);
                     }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                      activeTab === 'team' && teamSubTab === 'careers'
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center justify-between ${
+                      activeTab === 'team' && teamSubTab === 'careers' && careersDefaultView === 'jobs'
                         ? 'bg-emerald-800/80 text-amber-300 font-bold'
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <Briefcase className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span>Tuyển dụng &amp; Vị trí mở</span>
+                    <span className="flex items-center gap-1">
+                      <Briefcase className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span>Vị trí tuyển dụng</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 font-bold">{jobs.length}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('team');
+                      setTeamSubTab('careers');
+                      setCareersDefaultView('applicants');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center justify-between ${
+                      activeTab === 'team' && teamSubTab === 'careers' && careersDefaultView === 'applicants'
+                        ? 'bg-emerald-800/80 text-amber-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span>Ứng viên nộp CV</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/50 font-bold">{jobApplications.length}</span>
                   </button>
                 </div>
               </div>
@@ -10648,6 +10680,16 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                   <button
                     type="button"
+                    onClick={handleOpenBookingTitleModal}
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#2D5A27] bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition cursor-pointer whitespace-nowrap shrink-0 shadow-2xs"
+                    title="Cài đặt Tiêu đề & Chú thích mục Đặt Lịch Khám hiển thị trên Trang Chủ"
+                  >
+                    <Settings className="w-4 h-4 text-emerald-700" />
+                    <span>Cài Đặt Tiêu Đề Mục</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => {
                       setBookingDesignLangTab('vi');
                       setBookingDesignPreviewLang('vi');
@@ -11075,6 +11117,16 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     </div>
 
                     <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleOpenSupportTitleModal}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition shrink-0 cursor-pointer"
+                        title="Cài đặt Tiêu đề & Chú thích Rich Text đa ngôn ngữ hiển thị ngoài Trang Chủ"
+                      >
+                        <Settings className="w-4 h-4 text-amber-700" />
+                        <span>Cài Đặt Tiêu Đề Mục</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={handleSaveSupportPanel}
