@@ -2149,6 +2149,47 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const [isWebsiteLogoUploading, setIsWebsiteLogoUploading] = useState(false);
+  const websiteLogoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleWebsiteLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('error', 'Dung lượng ảnh logo không được vượt quá 5MB!');
+      return;
+    }
+
+    setIsWebsiteLogoUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const cleanFileName = `website_logo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+      const filePath = `logos/${cleanFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('hinh_anh')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+
+      setConfigForm((prev) => ({
+        ...prev,
+        logo_website: publicUrlData.publicUrl,
+      }));
+
+      showNotification('success', 'Đã tải Logo Website lên thành công! Bấm "Lưu Cài Đặt" để áp dụng cho cả Header, Hero và Footer.');
+    } catch (err: any) {
+      console.error('Upload website logo error:', err);
+      showNotification('error', `Lỗi tải ảnh logo: ${err.message}`);
+    } finally {
+      setIsWebsiteLogoUploading(false);
+      if (websiteLogoFileInputRef.current) websiteLogoFileInputRef.current.value = '';
+    }
+  };
+
   const handleAutoTranslateSlogans = async () => {
     setIsTranslatingSlogans(true);
     try {
@@ -2291,6 +2332,7 @@ export default function AdminDashboardPage() {
         'thong_ke_khach_hang_nhan',
         'link_tiktok',
         'logo_favicon',
+        'logo_website',
         'gioi_thieu_huy_hieu_en',
         'gioi_thieu_tieu_de_1_en',
         'gioi_thieu_tieu_de_2_en',

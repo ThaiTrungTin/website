@@ -56,11 +56,13 @@ export async function POST(req: NextRequest) {
       'hero_slogan_x_desktop', 'hero_slogan_y_desktop', 'hero_slogan_align_desktop',
       'hero_slogan_x_mobile', 'hero_slogan_y_mobile', 'hero_slogan_align_mobile',
       'smtp_email', 'smtp_sender_name', 'smtp_notify_email', 'smtp_notify_recruitment_email',
-      'smtp_notify_contact_email', 'zalo_oa_id', 'zalo_app_id', 'zalo_template_id', 'zalo_enabled'
+      'smtp_notify_contact_email', 'zalo_oa_id', 'zalo_app_id', 'zalo_template_id', 'zalo_enabled',
+      'logo_website'
     ]);
 
     // Các trường tiêu đề động không nằm trong các cột gốc của bảng cau_hinh row 'system'
     const EXTRA_SECTION_FIELDS = new Set([
+      'logo_website',
       'section_tuyen_dung_tieu_de', 'section_tuyen_dung_mo_ta',
       'section_tuyen_dung_tieu_de_en', 'section_tuyen_dung_mo_ta_en',
       'section_dat_lich_tieu_de', 'section_dat_lich_mo_ta',

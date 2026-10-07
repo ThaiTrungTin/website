@@ -8,6 +8,7 @@ const SUPABASE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const DEFAULT_CONFIG: CauHinhRecord = {
   id: 'system',
   logo_favicon: SUPABASE_BASE ? `${SUPABASE_BASE}/storage/v1/object/public/hinh_anh/favicons/favicons_1790778595096_y4asw.png` : '',
+  logo_website: '',
   tieu_de_trang: 'PetM&M - Trang Chủ',
   tieu_de_trang_en: 'PetM&M - Homepage',
   hotline: '0364605544',

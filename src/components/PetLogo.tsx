@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 
 interface PetLogoProps {
@@ -17,9 +17,37 @@ export default function PetLogo({
   customLogoUrl,
 }: PetLogoProps) {
   const { config } = useSystemConfig();
+  const [imageError, setImageError] = useState(false);
+
   const isSm = size === 'sm';
   const isLg = size === 'lg';
-  const logoUrl = (customLogoUrl || config?.logo_favicon)?.trim() || '/logo-favicon.svg';
+
+  // 1. Nếu có logo_website được cài đặt (dùng chung cho Header, Hero, Footer), hiển thị ảnh logo này
+  const websiteLogo = (customLogoUrl || config?.logo_website)?.trim();
+
+  // Reset imageError nếu websiteLogo thay đổi
+  useEffect(() => {
+    setImageError(false);
+  }, [websiteLogo]);
+
+  if (websiteLogo && !imageError) {
+    return (
+      <div className={`flex items-center select-none group cursor-pointer ${className}`}>
+        <img
+          src={websiteLogo}
+          alt="PetM&M Logo"
+          suppressHydrationWarning
+          className={`w-auto object-contain transition-transform duration-300 group-hover:scale-105 ${
+            isSm ? 'h-7 sm:h-8 max-h-8 max-w-[150px]' : isLg ? 'h-12 sm:h-14 max-h-14 max-w-[260px]' : 'h-9 sm:h-11 max-h-11 max-w-[210px]'
+          }`}
+          onError={() => setImageError(true)}
+        />
+      </div>
+    );
+  }
+
+  // 2. Mặc định: Logo kết hợp biểu tượng Favicon + Typography ánh kim PetM&M
+  const emblemUrl = config?.logo_favicon?.trim() || '/logo-favicon.svg';
 
   return (
     <div className={`flex items-center gap-3 select-none group cursor-pointer ${className}`}>
@@ -30,7 +58,7 @@ export default function PetLogo({
         }`}
       >
         <img
-          src={logoUrl}
+          src={emblemUrl}
           alt="PetM&M Logo"
           suppressHydrationWarning
           className="w-full h-full object-contain relative z-10"

@@ -86,6 +86,7 @@ export interface ChiNhanhRecord {
 export interface CauHinhRecord {
   id: string;
   logo_favicon?: string;
+  logo_website?: string;
   tieu_de_trang?: string;
   tieu_de_trang_en?: string;
   hotline: string;
