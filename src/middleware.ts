@@ -9,9 +9,9 @@ export function middleware(request: NextRequest) {
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${isDev ? "'unsafe-eval'" : ""};
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
     img-src 'self' blob: data: https://*.supabase.co https://*.supabase.in https://images.unsplash.com https://*.google.com https://*.googleapis.com;
-    font-src 'self' data: https://fonts.gstatic.com;
+    font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net;
     connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.supabase.com https://*.vercel.app https://*.google.com https://*.googleapis.com;
     frame-src 'self' https://www.google.com https://maps.google.com https://*.google.com;
     frame-ancestors 'self';
