@@ -39,21 +39,32 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
   try {
-    const { data } = await supabaseAdmin
-      .from('cau_hinh')
-      .select('slogan_cuoi_trang_noi_dung')
-      .eq('id', 'notification_settings')
-      .maybeSingle();
+    const [configRes, secretRes] = await Promise.all([
+      supabaseAdmin
+        .from('cau_hinh')
+        .select('slogan_cuoi_trang_noi_dung')
+        .eq('id', 'notification_settings')
+        .maybeSingle(),
+      supabaseAdmin
+        .from('cau_hinh_bi_mat')
+        .select('zalo_access_token, zalo_refresh_token')
+        .eq('id', 'system')
+        .maybeSingle(),
+    ]);
 
-    if (data?.slogan_cuoi_trang_noi_dung) {
+    let parsed: any = {};
+    if (configRes.data?.slogan_cuoi_trang_noi_dung) {
       try {
-        const parsed = JSON.parse(data.slogan_cuoi_trang_noi_dung);
-        return {
-          ...DEFAULT_NOTIFICATION_SETTINGS,
-          ...parsed,
-        };
+        parsed = JSON.parse(configRes.data.slogan_cuoi_trang_noi_dung);
       } catch {}
     }
+
+    return {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...parsed,
+      zalo_access_token: secretRes.data?.zalo_access_token || parsed?.zalo_access_token || '',
+      zalo_refresh_token: secretRes.data?.zalo_refresh_token || parsed?.zalo_refresh_token || '',
+    };
   } catch (err) {
     console.warn('Lỗi lấy notification_settings từ DB:', err);
   }
@@ -63,11 +74,25 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
 export async function saveNotificationSettings(settings: Partial<NotificationSettings>): Promise<void> {
   const current = await getNotificationSettings();
   const merged = { ...current, ...settings };
+
+  // Lưu token bảo mật vào bảng cau_hinh_bi_mat (chỉ server truy cập)
+  if (settings.zalo_access_token !== undefined || settings.zalo_refresh_token !== undefined) {
+    const secretUpdates: Record<string, any> = { id: 'system', ngay_cap_nhat: new Date().toISOString() };
+    if (settings.zalo_access_token !== undefined) secretUpdates.zalo_access_token = settings.zalo_access_token;
+    if (settings.zalo_refresh_token !== undefined) secretUpdates.zalo_refresh_token = settings.zalo_refresh_token;
+    await supabaseAdmin.from('cau_hinh_bi_mat').upsert(secretUpdates);
+  }
+
+  // Loại bỏ token khỏi JSON public trong cau_hinh
+  const safeMerged = { ...merged };
+  delete safeMerged.zalo_access_token;
+  delete safeMerged.zalo_refresh_token;
+
   const { error } = await supabaseAdmin
     .from('cau_hinh')
     .upsert({
       id: 'notification_settings',
-      slogan_cuoi_trang_noi_dung: JSON.stringify(merged),
+      slogan_cuoi_trang_noi_dung: JSON.stringify(safeMerged),
       ngay_cap_nhat: new Date().toISOString(),
     });
 

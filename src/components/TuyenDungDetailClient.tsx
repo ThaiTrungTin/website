@@ -170,26 +170,24 @@ export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
     setPdfUploadError('');
 
     try {
-      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const uniqueFileName = `${Date.now()}_${cleanName}`;
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const { error } = await supabase.storage
-        .from('cv_files')
-        .upload(uniqueFileName, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      const res = await fetch('/api/recruitment/upload-cv', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (error) throw error;
+      const data = await res.json().catch(() => null);
 
-      const { data: publicUrlData } = supabase.storage
-        .from('cv_files')
-        .getPublicUrl(uniqueFileName);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || (isEn ? 'Failed to upload CV file.' : 'Không thể tải file CV lên hệ thống.'));
+      }
 
-      setPdfUrl(publicUrlData.publicUrl);
+      setPdfUrl(data.url);
     } catch (err: any) {
       console.error('Lỗi tải file CV:', err);
-      setPdfUploadError(err.message || 'Lỗi khi tải file');
+      setPdfUploadError(err.message || (isEn ? 'Error uploading CV file.' : 'Lỗi khi tải file CV.'));
     } finally {
       setIsUploadingPdf(false);
     }
@@ -241,8 +239,8 @@ export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
     }
 
     const cleanPhone = (phoneNumber || '').replace(/\D/g, '');
-    if (cleanPhone.length < 9 || cleanPhone.length > 11) {
-      setSubmitError(isEn ? 'Please enter a valid phone number (9-11 digits).' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số).');
+    if (cleanPhone.length < 8 || cleanPhone.length > 15) {
+      setSubmitError(isEn ? 'Please enter a valid phone number (8-15 digits).' : 'Vui lòng nhập số điện thoại hợp lệ (8 - 15 chữ số).');
       return;
     }
 
@@ -616,18 +614,6 @@ export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmitApplication} className="mt-6 space-y-4">
-                    {/* Bẫy Honeypot chống Bot spam tự động */}
-                    <input
-                      type="text"
-                      name="hp_website"
-                      value={hpWebsite}
-                      onChange={(e) => setHpWebsite(e.target.value)}
-                      tabIndex={-1}
-                      autoComplete="off"
-                      aria-hidden="true"
-                      className="hidden opacity-0 absolute -z-10 w-0 h-0 pointer-events-none"
-                    />
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">

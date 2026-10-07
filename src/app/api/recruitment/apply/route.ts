@@ -89,47 +89,25 @@ export async function POST(req: NextRequest) {
       hp_website, // Honeypot field bẫy bot
     } = body;
 
-    // 1. Bẫy Honeypot chống Bot spam
-    if (hp_website && hp_website.trim().length > 0) {
-      console.warn('[Anti-Spam] Phát hiện Bot tự điền Honeypot recruitment field:', hp_website);
+    const clientIp = getClientIp(req);
+
+    // Bẫy bot: honeypot field
+    if (hp_website && String(hp_website).trim().length > 0) {
       return NextResponse.json({
         success: true,
-        message: isEn ? 'Application submitted successfully!' : 'Hồ sơ đã được gửi thành công!',
+        message: isEn ? 'Application submitted successfully!' : 'Nộp hồ sơ ứng tuyển thành công!',
       });
     }
 
-    // Xác định IP ứng viên
-    const clientIp = getClientIp(req);
-
-    // ========================================================
-    // TỐI ƯU 1: 1 IP KHÔNG QUÁ 3 LẦN ỨNG TUYỂN
-    // ========================================================
-    let currentIpCount = ipApplicationCountMap.get(clientIp) || 0;
-
-    if (clientIp !== '127.0.0.1' && clientIp !== 'unknown') {
-      try {
-        const { count, error } = await supabaseAdmin
-          .from('ho_so_tuyen_dung')
-          .select('id', { count: 'exact', head: true })
-          .eq('ip_address', clientIp);
-
-        if (!error && typeof count === 'number') {
-          currentIpCount = Math.max(currentIpCount, count);
-          ipApplicationCountMap.set(clientIp, currentIpCount);
-        }
-      } catch (countErr) {
-        console.warn('Lỗi kiểm tra số lượt IP từ Supabase:', countErr);
-      }
-    }
-
-    if (currentIpCount >= 3) {
+    // Rate limit IP (tối đa 5 lần nộp hồ sơ / IP / ngày)
+    const ipCount = ipApplicationCountMap.get(clientIp) || 0;
+    if (ipCount >= 5) {
       return NextResponse.json(
         {
           success: false,
-          code: 'IP_LIMIT_REACHED',
           message: isEn
-            ? 'Maximum of 3 applications allowed from this device / IP network. Please contact HR directly via Hotline if you need further assistance.'
-            : 'Bạn đã gửi tối đa 3 lần ứng tuyển từ thiết bị/mạng này. Vui lòng liên hệ trực tiếp phòng Nhân sự qua Hotline hoặc Zalo nếu cần hỗ trợ thêm!',
+            ? 'You have submitted too many applications today. Please try again tomorrow!'
+            : 'Bạn đã gửi hồ sơ quá nhiều lần hôm nay. Vui lòng quay lại vào ngày mai!',
         },
         { status: 429 }
       );
@@ -155,16 +133,9 @@ export async function POST(req: NextRequest) {
     const cleanPhone = (phoneNumber || '').replace(/\s+/g, '');
     const numOnly = cleanPhone.replace(/\D/g, '');
 
-    if (numOnly.length < 9 || numOnly.length > 11) {
+    if (numOnly.length < 8 || numOnly.length > 15) {
       return NextResponse.json(
-        { success: false, message: isEn ? 'Please enter a valid phone number (9-11 digits).' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số).' },
-        { status: 400 }
-      );
-    }
-
-    if (/^(.)\1+$/.test(numOnly) || numOnly === '123456789' || numOnly === '0123456789') {
-      return NextResponse.json(
-        { success: false, message: isEn ? 'Invalid phone number format.' : 'Số điện thoại không hợp lệ, vui lòng kiểm tra lại.' },
+        { success: false, message: isEn ? 'Please enter a valid phone number (8-15 digits).' : 'Vui lòng nhập số điện thoại hợp lệ (8 - 15 chữ số).' },
         { status: 400 }
       );
     }
@@ -240,8 +211,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Cập nhật bộ đếm IP
-    ipApplicationCountMap.set(clientIp, currentIpCount + 1);
+    // Ghi nhận lượt nộp thành công
+    ipApplicationCountMap.set(clientIp, ipCount + 1);
 
     // ========================================================
     // 4. TỰ ĐỘNG GỬI EMAIL VỀ NHÀ TUYỂN DỤNG & XÁC NHẬN CHO ỨNG VIÊN

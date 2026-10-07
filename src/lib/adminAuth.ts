@@ -1,17 +1,22 @@
 import crypto from 'crypto';
 
+let runtimeMemorySecret = '';
+
 function getAuthSecret(): string {
   const secret = process.env.ADMIN_JWT_SECRET;
   if (secret && secret.trim().length > 0) {
     return secret.trim();
   }
-  // Fallback an toàn: Dùng Supabase Service Role Key (đã cấu hình sẵn trên server Vercel)
-  // để không bị sập 500 khi chưa thêm biến ADMIN_JWT_SECRET trên Vercel Dashboard
-  const fallbackKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (fallbackKey && fallbackKey.trim().length > 0) {
-    return crypto.createHash('sha256').update(fallbackKey + ':petmm_admin_auth_fallback_salt').digest('hex');
+  // Dùng Supabase Service Role Key (chỉ có trên server, tuyệt đối không lộ ra client)
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceKey && serviceKey.trim().length > 0) {
+    return crypto.createHash('sha256').update(serviceKey + ':petmm_admin_auth_salt_server_only').digest('hex');
   }
-  return crypto.createHash('sha256').update('petmm_clinic_secure_jwt_fallback_key_2026').digest('hex');
+  // Nếu cả 2 đều thiếu, tạo secret ngẫu nhiên trong bộ nhớ (attacker tuyệt đối không thể đoán)
+  if (!runtimeMemorySecret) {
+    runtimeMemorySecret = crypto.randomBytes(32).toString('hex');
+  }
+  return runtimeMemorySecret;
 }
 
 export interface AdminUser {

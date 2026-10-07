@@ -39,7 +39,7 @@ export async function getZaloConfig(): Promise<ZaloOaConfig> {
         .maybeSingle(),
       supabaseAdmin
         .from('cau_hinh_bi_mat')
-        .select('zalo_secret_key')
+        .select('zalo_secret_key, zalo_access_token, zalo_refresh_token')
         .eq('id', 'system')
         .maybeSingle(),
       getNotificationSettings().catch(() => null),
@@ -57,8 +57,8 @@ export async function getZaloConfig(): Promise<ZaloOaConfig> {
       zalo_enabled: Boolean(data?.zalo_enabled ?? (process.env.ZALO_ENABLED === 'true')),
       zalo_booking_enabled: notifySettings?.zalo_booking_enabled !== undefined ? Boolean(notifySettings.zalo_booking_enabled) : true,
       zalo_review_enabled: notifySettings?.zalo_review_enabled !== undefined ? Boolean(notifySettings.zalo_review_enabled) : true,
-      zalo_access_token: (notifySettings?.zalo_access_token || process.env.ZALO_ACCESS_TOKEN || '').trim(),
-      zalo_refresh_token: (notifySettings?.zalo_refresh_token || process.env.ZALO_REFRESH_TOKEN || '').trim(),
+      zalo_access_token: (secretData?.zalo_access_token || notifySettings?.zalo_access_token || process.env.ZALO_ACCESS_TOKEN || '').trim(),
+      zalo_refresh_token: (secretData?.zalo_refresh_token || notifySettings?.zalo_refresh_token || process.env.ZALO_REFRESH_TOKEN || '').trim(),
       zalo_test_phone: (notifySettings?.zalo_test_phone || '').trim(),
     };
   } catch (err) {

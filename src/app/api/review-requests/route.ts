@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verifyToken } from '@/lib/adminAuth';
 
 // Tạo mã đánh giá ngẫu nhiên 6 chữ số không trùng lặp
 async function generateUniqueReviewCode(): Promise<string> {
@@ -21,6 +22,16 @@ async function generateUniqueReviewCode(): Promise<string> {
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Bạn cần đăng nhập để xem danh sách yêu cầu đánh giá!' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '100', 10);
 
@@ -63,6 +74,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Bạn cần đăng nhập để tạo yêu cầu đánh giá!' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const {
       ten_khach_hang,
@@ -156,6 +177,16 @@ export async function POST(req: NextRequest) {
 // Cập nhật thông tin yêu cầu đánh giá (chỉ cho phép khi còn ở trạng thái cho_danh_gia)
 export async function PUT(req: NextRequest) {
   try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Bạn cần đăng nhập để sửa yêu cầu đánh giá!' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { id, ten_khach_hang, so_dien_thoai, email, co_so, ma_hoa_don } = body;
 
