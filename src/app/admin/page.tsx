@@ -2339,14 +2339,14 @@ export default function AdminDashboardPage() {
       }
 
       delete (payload as any).id;
-      const { error } = await supabase.from('cau_hinh').update(payload).eq('id', 'system');
-      if (error) {
-        const res = await fetch('/api/admin/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw error;
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || 'Lỗi lưu cấu hình');
       }
 
       await refreshConfig();

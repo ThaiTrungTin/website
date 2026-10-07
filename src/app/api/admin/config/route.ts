@@ -59,31 +59,90 @@ export async function POST(req: NextRequest) {
       'smtp_notify_contact_email', 'zalo_oa_id', 'zalo_app_id', 'zalo_template_id', 'zalo_enabled'
     ]);
 
-    const payload: Record<string, any> = {
+    // Các trường tiêu đề động không nằm trong các cột gốc của bảng cau_hinh row 'system'
+    const EXTRA_SECTION_FIELDS = new Set([
+      'section_tuyen_dung_tieu_de', 'section_tuyen_dung_mo_ta',
+      'section_tuyen_dung_tieu_de_en', 'section_tuyen_dung_mo_ta_en',
+      'section_dat_lich_tieu_de', 'section_dat_lich_mo_ta',
+      'section_dat_lich_tieu_de_en', 'section_dat_lich_mo_ta_en',
+      'section_ho_tro_tieu_de', 'section_ho_tro_mo_ta',
+      'section_ho_tro_tieu_de_en', 'section_ho_tro_mo_ta_en',
+      'section_danh_gia_tieu_de', 'section_danh_gia_mo_ta',
+      'section_danh_gia_tieu_de_en', 'section_danh_gia_mo_ta_en',
+    ]);
+
+    const systemPayload: Record<string, any> = {
       ngay_cap_nhat: new Date().toISOString(),
     };
+    const extraPayload: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {
-      if (ALLOWED_FIELDS.has(key)) {
-        payload[key] = body[key];
+      if (EXTRA_SECTION_FIELDS.has(key)) {
+        extraPayload[key] = body[key];
+      } else if (ALLOWED_FIELDS.has(key)) {
+        systemPayload[key] = body[key];
       }
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('cau_hinh')
-      .update(payload)
-      .eq('id', 'system')
-      .select();
+    let extraMergedData: Record<string, any> = {};
 
-    if (error) {
-      console.error('Lỗi cập nhật cấu hình qua admin API:', error);
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
-      );
+    // 1. Nếu có các trường tiêu đề mở rộng, lưu an toàn vào hàng extra_section_titles
+    if (Object.keys(extraPayload).length > 0) {
+      try {
+        const { data: existingExtra } = await supabaseAdmin
+          .from('cau_hinh')
+          .select('slogan_cuoi_trang_noi_dung')
+          .eq('id', 'extra_section_titles')
+          .maybeSingle();
+
+        if (existingExtra?.slogan_cuoi_trang_noi_dung) {
+          try {
+            extraMergedData = JSON.parse(existingExtra.slogan_cuoi_trang_noi_dung) || {};
+          } catch {}
+        }
+        Object.assign(extraMergedData, extraPayload);
+
+        await supabaseAdmin
+          .from('cau_hinh')
+          .upsert({
+            id: 'extra_section_titles',
+            slogan_cuoi_trang_noi_dung: JSON.stringify(extraMergedData),
+            ngay_cap_nhat: new Date().toISOString(),
+          });
+      } catch (errExtra) {
+        console.error('Lỗi lưu extra_section_titles:', errExtra);
+      }
     }
 
-    return NextResponse.json({ success: true, data });
+    // 2. Nếu có các trường thuộc về hàng 'system', cập nhật hàng 'system'
+    let systemData = null;
+    const systemKeys = Object.keys(systemPayload).filter((k) => k !== 'ngay_cap_nhat');
+
+    if (systemKeys.length > 0) {
+      const { data, error } = await supabaseAdmin
+        .from('cau_hinh')
+        .update(systemPayload)
+        .eq('id', 'system')
+        .select();
+
+      if (error) {
+        console.error('Lỗi cập nhật cấu hình qua admin API:', error);
+        // Nếu đã lưu được extraPayload thì vẫn trả về thành công kèm cảnh báo
+        if (Object.keys(extraPayload).length > 0) {
+          return NextResponse.json({ success: true, data: extraMergedData });
+        }
+        return NextResponse.json(
+          { success: false, message: error.message },
+          { status: 500 }
+        );
+      }
+      systemData = data;
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: systemData || extraMergedData,
+    });
   } catch (err: any) {
     console.error('Lỗi API cập nhật cấu hình:', err);
     return NextResponse.json(

@@ -168,14 +168,7 @@ export default function SectionTitleModal({
       });
       const resData = await res.json().catch(() => ({}));
       if (!res.ok || !resData.success) {
-        // Dự phòng: cập nhật trực tiếp qua Supabase client
-        const { error: updateError } = await supabase
-          .from('cau_hinh')
-          .update(payload)
-          .eq('id', 'system');
-        if (updateError) {
-          throw new Error(resData.message || updateError.message);
-        }
+        throw new Error(resData.message || 'Lỗi lưu cấu hình');
       }
 
       // Cập nhật ngay tức thì localStorage cache trên client để đồng bộ không bị delay

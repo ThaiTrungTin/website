@@ -182,14 +182,6 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
         'section_cam_nang_tieu_de_en', 'section_cam_nang_mo_ta_en',
         'section_faq_tieu_de', 'section_faq_mo_ta',
         'section_faq_tieu_de_en', 'section_faq_mo_ta_en',
-        'section_ho_tro_tieu_de', 'section_ho_tro_mo_ta',
-        'section_ho_tro_tieu_de_en', 'section_ho_tro_mo_ta_en',
-        'section_danh_gia_tieu_de', 'section_danh_gia_mo_ta',
-        'section_danh_gia_tieu_de_en', 'section_danh_gia_mo_ta_en',
-        'section_tuyen_dung_tieu_de', 'section_tuyen_dung_mo_ta',
-        'section_tuyen_dung_tieu_de_en', 'section_tuyen_dung_mo_ta_en',
-        'section_dat_lich_tieu_de', 'section_dat_lich_mo_ta',
-        'section_dat_lich_tieu_de_en', 'section_dat_lich_mo_ta_en',
         'hero_slogan_x_desktop', 'hero_slogan_y_desktop', 'hero_slogan_align_desktop',
         'hero_slogan_x_mobile', 'hero_slogan_y_mobile', 'hero_slogan_align_mobile',
       ].join(', ');
@@ -205,8 +197,27 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
         return;
       }
 
+      // Tải bổ sung tiêu đề phụ từ hàng extra_section_titles (dành cho các mục như Tuyển Dụng, Đặt Lịch, Hỗ Trợ, Đánh Giá)
+      let extraTitles: Partial<CauHinhRecord> = {};
+      try {
+        const { data: extraData } = await supabase
+          .from('cau_hinh')
+          .select('slogan_cuoi_trang_noi_dung')
+          .eq('id', 'extra_section_titles')
+          .maybeSingle();
+
+        if (extraData?.slogan_cuoi_trang_noi_dung) {
+          const parsed = JSON.parse(extraData.slogan_cuoi_trang_noi_dung);
+          if (parsed && typeof parsed === 'object') {
+            extraTitles = parsed;
+          }
+        }
+      } catch (errExtra) {
+        console.warn('Không thể tải extra_section_titles:', errExtra);
+      }
+
       if (data) {
-        const configData = data as unknown as Partial<CauHinhRecord>;
+        const configData = { ...(data as Record<string, any>), ...extraTitles } as unknown as Partial<CauHinhRecord>;
         setConfig((prev) => {
           const merged = { ...prev, ...configData };
           try {
