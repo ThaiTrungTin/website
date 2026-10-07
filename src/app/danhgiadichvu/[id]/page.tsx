@@ -11,7 +11,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
-    title: 'Đánh Giá Dịch Vụ — Bệnh Viện Thú Y 5 Sao PetM&M',
+    title: 'PetM&M - Đánh giá dịch vụ',
     description: 'Khảo sát và đánh giá chất lượng dịch vụ Bệnh Viện Đa Khoa Thú Y PetM&M.',
     robots: {
       index: false,
@@ -47,7 +47,12 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
       trang_thai: 'cho_danh_gia',
       ngay_tao: new Date().toISOString(),
     };
-    return <DanhGiaDichVuClient initialRecord={demoRecord} />;
+    return (
+      <DanhGiaDichVuClient
+        initialRecord={demoRecord}
+        branchAddress="19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh"
+      />
+    );
   }
 
   // Truy vấn kiểm tra mã đánh giá từ cơ sở dữ liệu
@@ -61,6 +66,21 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
   // Nếu người dùng cố tình bịa ra mã đánh giá không trùng khớp -> 404
   if (error || !record) {
     notFound();
+  }
+
+  // Tra cứu địa chỉ thực tế của cơ sở tương ứng
+  let branchAddress = '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
+  if (record.co_so) {
+    try {
+      const { data: branchData } = await supabaseAdmin
+        .from('chi_nhanh')
+        .select('dia_chi, ten_chi_nhanh')
+        .ilike('ten_chi_nhanh', `%${record.co_so}%`)
+        .maybeSingle();
+      if (branchData?.dia_chi) {
+        branchAddress = branchData.dia_chi;
+      }
+    } catch {}
   }
 
   // Làm sạch hinh_anh nếu là chuỗi JSON chứa nguoi_tao và img
@@ -82,6 +102,6 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     hinh_anh: safeHinhAnh,
   };
 
-  return <DanhGiaDichVuClient initialRecord={safeRecord} />;
+  return <DanhGiaDichVuClient initialRecord={safeRecord} branchAddress={branchAddress} />;
 }
 

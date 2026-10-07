@@ -16,9 +16,9 @@ export default function DynamicFavicon() {
 
     const isEn = language === 'en';
 
-    // 1. Đối với trang chi tiết chi nhánh hoặc bài viết kiến thức:
-    // Để component chi tiết tự quản lý tiêu đề theo tên chi nhánh / tiêu đề bài viết
-    if (pathname?.startsWith('/chi-nhanh') || pathname?.startsWith('/kien-thuc')) {
+    // 1. Đối với trang chi tiết chi nhánh, bài viết kiến thức, hoặc trang đánh giá dịch vụ:
+    // Để component chi tiết tự quản lý tiêu đề
+    if (pathname?.startsWith('/chi-nhanh') || pathname?.startsWith('/kien-thuc') || pathname?.startsWith('/danhgiadichvu')) {
       return;
     }
 

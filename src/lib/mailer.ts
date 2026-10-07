@@ -335,6 +335,18 @@ export async function sendMail({
 
 // GỬI EMAIL MÃ OTP ĐẶT LẠI MẬT KHẨU
 export async function sendOtpEmail(toEmail: string, otpCode: string) {
+  let hotline = '0364 605 566';
+  try {
+    const { data: config } = await supabaseAdmin
+      .from('cau_hinh')
+      .select('hotline, hotline_hien_thi')
+      .eq('id', 'system')
+      .maybeSingle();
+    if (config?.hotline_hien_thi || config?.hotline) {
+      hotline = (config.hotline_hien_thi || config.hotline).trim();
+    }
+  } catch {}
+
   const subject = `[PetM&M] Mã xác thực OTP đặt lại mật khẩu: ${otpCode}`;
 
   const html = `
@@ -395,14 +407,10 @@ export async function sendOtpEmail(toEmail: string, otpCode: string) {
             <tr>
               <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 20px; text-align: center;">
                 <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">
-                  Bệnh Viện Thú Y PetM&amp;M • Hotline: 0364 605 544
+                  Bệnh Viện Thú Y PetM&amp;M • Hotline: ${hotline}
                 </p>
               </td>
             </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
           </table>
         </td>
       </tr>

@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Star,
   CheckCircle2,
-  ArrowRight,
   Upload,
   Camera,
   X,
@@ -13,10 +12,10 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { supabase, YeuCauDanhGiaRecord } from '@/lib/supabase';
-import PetLogo from '@/components/PetLogo';
 
 interface Props {
   initialRecord: YeuCauDanhGiaRecord;
+  branchAddress?: string;
 }
 
 const STAR_LABELS: Record<number, { text: string; emoji: string; color: string }> = {
@@ -27,12 +26,13 @@ const STAR_LABELS: Record<number, { text: string; emoji: string; color: string }
   5: { text: 'Rất hài lòng!', emoji: '😄', color: 'text-green-600' },
 };
 
-export default function DanhGiaDichVuClient({ initialRecord }: Props) {
+export default function DanhGiaDichVuClient({ initialRecord, branchAddress }: Props) {
   const [record, setRecord] = useState<YeuCauDanhGiaRecord>(initialRecord);
   const isAlreadySubmitted = record.trang_thai === 'da_danh_gia';
 
   const [rating, setRating] = useState<number>(record.so_sao || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
+
   const getDisplayImageUrl = (url?: string | null): string => {
     if (!url || typeof url !== 'string') return '';
     const trimmed = url.trim();
@@ -56,6 +56,13 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isSuccess, setIsSuccess] = useState<boolean>(isAlreadySubmitted);
+
+  // Cập nhật tiêu đề tab trình duyệt theo trạng thái: Đánh giá dịch vụ -> Xin cảm ơn
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = isSuccess ? 'PetM&M - Xin cảm ơn' : 'PetM&M - Đánh giá dịch vụ';
+    }
+  }, [isSuccess]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -156,22 +163,6 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
 
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900">
-
-      {/* 3. Ẩn thanh ngang trên đầu khi đã đánh giá thành công */}
-      {!isSuccess && (
-        <header className="sticky top-0 z-10 bg-white border-b border-slate-200">
-          <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="hover:opacity-80 transition-opacity">
-              <PetLogo size="sm" showSubline={false} />
-            </Link>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-600">
-              <MapPin className="w-3 h-3 text-emerald-600" />
-              <span className="font-medium">PetM&M Veterinary</span>
-            </div>
-          </div>
-        </header>
-      )}
-
       <main className="max-w-lg mx-auto px-4 py-6 sm:py-8">
         {isSuccess ? (
           /* THANK YOU SCREEN */
@@ -237,17 +228,19 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
         ) : (
           /* REVIEW FORM */
           <div>
-            {/* Location header — Google Maps style */}
+            {/* Location header */}
             <div className="flex items-start gap-3 mb-6 pb-5 border-b border-slate-100">
               <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="font-bold text-slate-900 text-base leading-tight">
-                  {record.co_so || 'PetM&M Veterinary Clinic'}
+                  {record.co_so || 'Bệnh Viện Thú Y PetM&M'}
                 </h1>
-                <p className="text-sm text-slate-500 mt-0.5">Bệnh Viện & Resort Thú Y 5 Sao</p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {branchAddress || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1.5">
                   Khách hàng: <strong className="text-slate-600">{record.ten_khach_hang}</strong>
                 </p>
               </div>
@@ -391,11 +384,6 @@ export default function DanhGiaDichVuClient({ initialRecord }: Props) {
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="mt-10 border-t border-slate-100 py-4 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} PetM&M — Bệnh Viện Thú Y 5 Sao
-      </footer>
     </div>
   );
 }
