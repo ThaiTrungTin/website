@@ -7,6 +7,7 @@ import { branchesData } from '@/data/branchesData';
 import { servicesData } from '@/data/servicesData';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSystemConfig } from '@/context/SystemConfigContext';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { getAssetUrl } from '@/lib/assets';
 import {
   CalendarCheck,
@@ -82,6 +83,16 @@ export default function BookingSection({
   const { language } = useLanguage();
   const { config } = useSystemConfig();
   const isEn = language === 'en';
+
+  // Lấy tiêu đề & mô tả cấu hình phong cách Rich Text Editor
+  const rawTitleHtml = isEn
+    ? (config.section_dat_lich_tieu_de_en || config.section_dat_lich_tieu_de)
+    : config.section_dat_lich_tieu_de;
+  const rawDescHtml = isEn
+    ? (config.section_dat_lich_mo_ta_en || config.section_dat_lich_mo_ta)
+    : config.section_dat_lich_mo_ta;
+  const titleHtml = rawTitleHtml ? sanitizeHtml(rawTitleHtml) : '';
+  const descHtml = rawDescHtml ? sanitizeHtml(rawDescHtml) : '';
 
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
   const hotlineRaw = (config.hotline || config.hotline_hien_thi || '0903599339').replace(/\s+/g, '');
@@ -417,17 +428,31 @@ export default function BookingSection({
               <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
               <span>{isEn ? 'PRIORITY CLINIC BOOKING' : 'ĐẶT LỊCH KHÁM ƯU TIÊN'}</span>
             </div>
-            <h2 className="font-editorial text-3xl sm:text-5xl font-normal tracking-tight text-slate-900 mb-3">
-              {isEn ? 'Book Your ' : 'Đặt Lịch Hẹn '}
-              <span className="italic font-light text-[#2D5A27]">
-                {isEn ? 'Online Appointment' : 'Trực Tuyến'}
-              </span>
-            </h2>
-            <p className="text-sm text-slate-600 font-light">
-              {isEn
-                ? 'Register in advance for priority consultation, Fear-Free space and zero waiting time.'
-                : 'Đăng ký trước để được tiếp đón theo khung giờ, không cần chờ đợi bốc số.'}
-            </p>
+            {titleHtml ? (
+              <div
+                className="rich-text-preview font-editorial text-3xl sm:text-5xl font-normal tracking-tight text-slate-900 mb-3 [&_p]:m-0 [&_h1]:m-0 [&_h2]:m-0 [&_h3]:m-0 [&_h2]:font-editorial [&_h2]:text-3xl [&_h2]:sm:text-5xl [&_h2]:font-normal [&_h2]:tracking-tight"
+                dangerouslySetInnerHTML={{ __html: titleHtml }}
+              />
+            ) : (
+              <h2 className="font-editorial text-3xl sm:text-5xl font-normal tracking-tight text-slate-900 mb-3">
+                {isEn ? 'Book Your ' : 'Đặt Lịch Hẹn '}
+                <span className="italic font-light text-[#2D5A27]">
+                  {isEn ? 'Online Appointment' : 'Trực Tuyến'}
+                </span>
+              </h2>
+            )}
+            {descHtml ? (
+              <div
+                className="text-sm text-slate-600 font-light rich-text-preview"
+                dangerouslySetInnerHTML={{ __html: descHtml }}
+              />
+            ) : (
+              <p className="text-sm text-slate-600 font-light">
+                {isEn
+                  ? 'Register in advance for priority consultation, Fear-Free space and zero waiting time.'
+                  : 'Đăng ký trước để được tiếp đón theo khung giờ, không cần chờ đợi bốc số.'}
+              </p>
+            )}
           </div>
         )}
 

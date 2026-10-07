@@ -90,6 +90,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 import AdminResizableModal from '@/components/AdminResizableModal';
+import SectionTitleModal from '@/components/admin/SectionTitleModal';
 import AdminDashboardTab from '@/components/AdminDashboardTab';
 import AdminNotificationBell from '@/components/AdminNotificationBell';
 import AdminFloatingNotification, {
@@ -1826,25 +1827,15 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Cài đặt Tiêu đề & Chú thích mục Chi nhánh ngoài trang chủ
+  // Cài đặt Tiêu đề & Chú thích các mục ngoài trang chủ
   const [isBranchTitleModalOpen, setIsBranchTitleModalOpen] = useState(false);
-  const [branchTitleInput, setBranchTitleInput] = useState('');
-  const [branchDescInput, setBranchDescInput] = useState('');
-  const [isSavingBranchTitle, setIsSavingBranchTitle] = useState(false);
-  const [branchTitleEnInput, setBranchTitleEnInput] = useState('');
-  const [branchDescEnInput, setBranchDescEnInput] = useState('');
-  const [branchTitleLang, setBranchTitleLang] = useState<'vi' | 'en'>('vi');
-  const [isTranslatingBranchTitle, setIsTranslatingBranchTitle] = useState(false);
-
-  // Cài đặt Tiêu đề & Chú thích mục Sứ Mệnh & Triết Lý (Giới Thiệu) ngoài trang chủ
   const [isAboutTitleModalOpen, setIsAboutTitleModalOpen] = useState(false);
-  const [aboutTitleInput, setAboutTitleInput] = useState('');
-  const [aboutDescInput, setAboutDescInput] = useState('');
-  const [isSavingAboutTitle, setIsSavingAboutTitle] = useState(false);
-  const [aboutTitleEnInput, setAboutTitleEnInput] = useState('');
-  const [aboutDescEnInput, setAboutDescEnInput] = useState('');
-  const [aboutTitleLang, setAboutTitleLang] = useState<'vi' | 'en'>('vi');
-  const [isTranslatingAboutTitle, setIsTranslatingAboutTitle] = useState(false);
+  const [isServicesTitleModalOpen, setIsServicesTitleModalOpen] = useState(false);
+  const [isArticlesTitleModalOpen, setIsArticlesTitleModalOpen] = useState(false);
+  const [isFaqTitleModalOpen, setIsFaqTitleModalOpen] = useState(false);
+  const [isReviewsTitleModalOpen, setIsReviewsTitleModalOpen] = useState(false);
+  const [isCareersTitleModalOpen, setIsCareersTitleModalOpen] = useState(false);
+  const [isBookingTitleModalOpen, setIsBookingTitleModalOpen] = useState(false);
 
   // Cấu hình Slogan & 2 Nút Đầu Trang (Hero Banner)
   const [isSavingHeroControls, setIsSavingHeroControls] = useState(false);
@@ -2167,181 +2158,14 @@ export default function AdminDashboardPage() {
     setConfigForm(globalConfig);
   }, [globalConfig]);
 
-  const handleOpenBranchTitleModal = () => {
-    setBranchTitleInput(
-      configForm.section_chi_nhanh_tieu_de ||
-      globalConfig.section_chi_nhanh_tieu_de ||
-      '<h2>Hệ Thống Cơ Sở &amp; <br /><span style="color: #2D5A27; font-style: italic;">Bản Đồ Chỉ Đường Trực Quan</span></h2>'
-    );
-    setBranchDescInput(
-      configForm.section_chi_nhanh_mo_ta ||
-      globalConfig.section_chi_nhanh_mo_ta ||
-      ''
-    );
-    setBranchTitleEnInput(
-      configForm.section_chi_nhanh_tieu_de_en ||
-      globalConfig.section_chi_nhanh_tieu_de_en ||
-      '<h2>Clinic Network &amp; <br /><span style="color: #2D5A27; font-style: italic;">Interactive Direction Maps</span></h2>'
-    );
-    setBranchDescEnInput(
-      configForm.section_chi_nhanh_mo_ta_en ||
-      globalConfig.section_chi_nhanh_mo_ta_en ||
-      ''
-    );
-    setBranchTitleLang('vi');
-    setIsBranchTitleModalOpen(true);
-  };
-
-  const handleAutoTranslateBranchTitle = async () => {
-    setIsTranslatingBranchTitle(true);
-    try {
-      const res = await fetch('/api/admin/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            section_chi_nhanh_tieu_de: branchTitleInput || '',
-            section_chi_nhanh_mo_ta: branchDescInput || '',
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.translations) {
-        if (data.translations.section_chi_nhanh_tieu_de !== undefined) {
-          setBranchTitleEnInput(data.translations.section_chi_nhanh_tieu_de);
-        }
-        if (data.translations.section_chi_nhanh_mo_ta !== undefined) {
-          setBranchDescEnInput(data.translations.section_chi_nhanh_mo_ta);
-        }
-        setBranchTitleLang('en');
-        showNotification('success', 'Đã chuyển đổi tiêu đề & chú thích sang Tiếng Anh thành công!');
-      } else throw new Error(data.error || 'Dịch thất bại');
-    } catch (err: any) {
-      showNotification('error', `Lỗi dịch: ${err.message}`);
-    } finally {
-      setIsTranslatingBranchTitle(false);
-    }
-  };
-
-  const handleSaveBranchTitle = async () => {
-    setIsSavingBranchTitle(true);
-    try {
-      const payload = {
-        id: 'system',
-        section_chi_nhanh_tieu_de: branchTitleInput,
-        section_chi_nhanh_mo_ta: branchDescInput,
-        section_chi_nhanh_tieu_de_en: branchTitleEnInput,
-        section_chi_nhanh_mo_ta_en: branchDescEnInput,
-        ngay_cap_nhat: new Date().toISOString(),
-      };
-      const { error } = await supabase.from('cau_hinh').upsert([payload]);
-      if (error) throw error;
-
-      setConfigForm((prev) => ({
-        ...prev,
-        section_chi_nhanh_tieu_de: branchTitleInput,
-        section_chi_nhanh_mo_ta: branchDescInput,
-        section_chi_nhanh_tieu_de_en: branchTitleEnInput,
-        section_chi_nhanh_mo_ta_en: branchDescEnInput,
-      }));
-      await refreshConfig();
-      showNotification('success', 'Đã lưu tiêu đề & chú thích mục Chi Nhánh thành công!');
-      setIsBranchTitleModalOpen(false);
-    } catch (err: any) {
-      console.error('Lỗi lưu tiêu đề chi nhánh:', err);
-      showNotification('error', `Lỗi lưu tiêu đề: ${err.message}`);
-    } finally {
-      setIsSavingBranchTitle(false);
-    }
-  };
-
-  const handleOpenAboutTitleModal = () => {
-    setAboutTitleInput(
-      configForm.section_gioi_thieu_tieu_de ||
-      globalConfig.section_gioi_thieu_tieu_de ||
-      '<h2>Nâng Tầm Chăm Sóc Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Bằng Trái Tim &amp; Y Đức</span></h2>'
-    );
-    setAboutDescInput(
-      configForm.section_gioi_thieu_mo_ta ||
-      globalConfig.section_gioi_thieu_mo_ta ||
-      (configForm.gioi_thieu_mo_ta || globalConfig.gioi_thieu_mo_ta || '<p>Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.</p>')
-    );
-    setAboutTitleEnInput(
-      configForm.section_gioi_thieu_tieu_de_en ||
-      globalConfig.section_gioi_thieu_tieu_de_en ||
-      '<h2>Elevating Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">With Integrity &amp; Compassion</span></h2>'
-    );
-    setAboutDescEnInput(
-      configForm.section_gioi_thieu_mo_ta_en ||
-      globalConfig.section_gioi_thieu_mo_ta_en ||
-      (configForm.gioi_thieu_mo_ta_en || globalConfig.gioi_thieu_mo_ta_en || '<p>Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.</p>')
-    );
-    setAboutTitleLang('vi');
-    setIsAboutTitleModalOpen(true);
-  };
-
-  const handleAutoTranslateAboutTitle = async () => {
-    setIsTranslatingAboutTitle(true);
-    try {
-      const res = await fetch('/api/admin/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            section_gioi_thieu_tieu_de: aboutTitleInput || '',
-            section_gioi_thieu_mo_ta: aboutDescInput || '',
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.translations) {
-        if (data.translations.section_gioi_thieu_tieu_de !== undefined) {
-          setAboutTitleEnInput(data.translations.section_gioi_thieu_tieu_de);
-        }
-        if (data.translations.section_gioi_thieu_mo_ta !== undefined) {
-          setAboutDescEnInput(data.translations.section_gioi_thieu_mo_ta);
-        }
-        setAboutTitleLang('en');
-        showNotification('success', 'Đã chuyển đổi tiêu đề & chú thích mục Sứ Mệnh sang Tiếng Anh thành công!');
-      } else throw new Error(data.error || 'Dịch thất bại');
-    } catch (err: any) {
-      showNotification('error', `Lỗi dịch: ${err.message}`);
-    } finally {
-      setIsTranslatingAboutTitle(false);
-    }
-  };
-
-  const handleSaveAboutTitle = async () => {
-    setIsSavingAboutTitle(true);
-    try {
-      const payload = {
-        id: 'system',
-        section_gioi_thieu_tieu_de: aboutTitleInput,
-        section_gioi_thieu_mo_ta: aboutDescInput,
-        section_gioi_thieu_tieu_de_en: aboutTitleEnInput,
-        section_gioi_thieu_mo_ta_en: aboutDescEnInput,
-        ngay_cap_nhat: new Date().toISOString(),
-      };
-      const { error } = await supabase.from('cau_hinh').upsert([payload]);
-      if (error) throw error;
-
-      setConfigForm((prev) => ({
-        ...prev,
-        section_gioi_thieu_tieu_de: aboutTitleInput,
-        section_gioi_thieu_mo_ta: aboutDescInput,
-        section_gioi_thieu_tieu_de_en: aboutTitleEnInput,
-        section_gioi_thieu_mo_ta_en: aboutDescEnInput,
-      }));
-      await refreshConfig();
-      showNotification('success', 'Đã lưu tiêu đề & chú thích mục Sứ Mệnh & Triết Lý thành công!');
-      setIsAboutTitleModalOpen(false);
-    } catch (err: any) {
-      console.error('Lỗi lưu tiêu đề sứ mệnh & triết lý:', err);
-      showNotification('error', `Lỗi lưu tiêu đề: ${err.message}`);
-    } finally {
-      setIsSavingAboutTitle(false);
-    }
-  };
+  const handleOpenBranchTitleModal = () => setIsBranchTitleModalOpen(true);
+  const handleOpenAboutTitleModal = () => setIsAboutTitleModalOpen(true);
+  const handleOpenServicesTitleModal = () => setIsServicesTitleModalOpen(true);
+  const handleOpenArticlesTitleModal = () => setIsArticlesTitleModalOpen(true);
+  const handleOpenFaqTitleModal = () => setIsFaqTitleModalOpen(true);
+  const handleOpenReviewsTitleModal = () => setIsReviewsTitleModalOpen(true);
+  const handleOpenCareersTitleModal = () => setIsCareersTitleModalOpen(true);
+  const handleOpenBookingTitleModal = () => setIsBookingTitleModalOpen(true);
 
   const handleSaveHeroControls = async () => {
     setIsSavingHeroControls(true);
@@ -2367,8 +2191,16 @@ export default function AdminDashboardPage() {
         ngay_cap_nhat: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from('cau_hinh').upsert([payload]);
-      if (error) throw error;
+      delete (payload as any).id;
+      const { error } = await supabase.from('cau_hinh').update(payload).eq('id', 'system');
+      if (error) {
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw error;
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -2462,6 +2294,30 @@ export default function AdminDashboardPage() {
         'section_gioi_thieu_mo_ta',
         'section_gioi_thieu_tieu_de_en',
         'section_gioi_thieu_mo_ta_en',
+        'section_dich_vu_tieu_de',
+        'section_dich_vu_mo_ta',
+        'section_dich_vu_tieu_de_en',
+        'section_dich_vu_mo_ta_en',
+        'section_cam_nang_tieu_de',
+        'section_cam_nang_mo_ta',
+        'section_cam_nang_tieu_de_en',
+        'section_cam_nang_mo_ta_en',
+        'section_faq_tieu_de',
+        'section_faq_mo_ta',
+        'section_faq_tieu_de_en',
+        'section_faq_mo_ta_en',
+        'section_danh_gia_tieu_de',
+        'section_danh_gia_mo_ta',
+        'section_danh_gia_tieu_de_en',
+        'section_danh_gia_mo_ta_en',
+        'section_tuyen_dung_tieu_de',
+        'section_tuyen_dung_mo_ta',
+        'section_tuyen_dung_tieu_de_en',
+        'section_tuyen_dung_mo_ta_en',
+        'section_dat_lich_tieu_de',
+        'section_dat_lich_mo_ta',
+        'section_dat_lich_tieu_de_en',
+        'section_dat_lich_mo_ta_en',
         'hero_slogan_x_desktop',
         'hero_slogan_y_desktop',
         'hero_slogan_align_desktop',
@@ -2481,8 +2337,16 @@ export default function AdminDashboardPage() {
         }
       }
 
-      const { error } = await supabase.from('cau_hinh').upsert([payload]);
-      if (error) throw error;
+      delete (payload as any).id;
+      const { error } = await supabase.from('cau_hinh').update(payload).eq('id', 'system');
+      if (error) {
+        const res = await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw error;
+      }
 
       await refreshConfig();
       const tabNames: Record<ConfigSubTab, string> = {
@@ -4547,25 +4411,39 @@ export default function AdminDashboardPage() {
       // Chuyển sang 'da_xac_nhan' nếu đang ở 'cho_xac_nhan'
       const nextStatus = editAppForm.status === 'cho_xac_nhan' ? 'da_xac_nhan' : editAppForm.status;
 
-      const { error } = await supabase
-        .from('lich_hen')
-        .update({
-          ho_ten_chu: editAppForm.ownerName.trim(),
-          so_dien_thoai: editAppForm.phone.trim(),
-          ten_thu_cung: editAppForm.petName.trim() || '',
-          loai_thu_cung: editAppForm.petType || '',
-          chi_nhanh_id: editAppForm.branchId || null,
-          ten_chi_nhanh: editAppForm.branchName || 'Bệnh Viện Thú Y PetM&M',
-          dich_vu: finalServicesStr,
-          ngay_hen: editAppForm.date,
-          gio_hen: editAppForm.timeSlot || 'Linh hoạt',
-          ghi_chu: finalGhiChu,
-          trang_thai: nextStatus,
-          ngay_cap_nhat: new Date().toISOString(),
-        })
-        .eq('id', selectedAppointment.id);
+      const updatePayload = {
+        ho_ten_chu: editAppForm.ownerName.trim(),
+        so_dien_thoai: editAppForm.phone.trim(),
+        ten_thu_cung: editAppForm.petName.trim() || '',
+        loai_thu_cung: editAppForm.petType || '',
+        chi_nhanh_id: editAppForm.branchId || null,
+        ten_chi_nhanh: editAppForm.branchName || 'Bệnh Viện Thú Y PetM&M',
+        dich_vu: finalServicesStr,
+        ngay_hen: editAppForm.date,
+        gio_hen: editAppForm.timeSlot || 'Linh hoạt',
+        ghi_chu: finalGhiChu,
+        trang_thai: nextStatus,
+        ngay_cap_nhat: new Date().toISOString(),
+      };
 
-      if (error) throw error;
+      let patchOk = false;
+      try {
+        const res = await fetch('/api/admin/appointments', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: selectedAppointment.id, ...updatePayload }),
+        });
+        const resData = await res.json();
+        if (res.ok && resData.success) patchOk = true;
+      } catch {}
+
+      if (!patchOk) {
+        const { error } = await supabase
+          .from('lich_hen')
+          .update(updatePayload)
+          .eq('id', selectedAppointment.id);
+        if (error) throw error;
+      }
 
       setEditAppForm((prev) => ({ ...prev, status: nextStatus }));
 
@@ -4939,13 +4817,26 @@ export default function AdminDashboardPage() {
   const loadAppointments = useCallback(async () => {
     setAppointmentsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('lich_hen')
-        .select('*')
-        .order('ngay_tao', { ascending: false });
+      let incoming: LichHenRecord[] = [];
+      try {
+        const res = await fetch('/api/admin/appointments');
+        const apiData = await res.json();
+        if (res.ok && apiData.success && Array.isArray(apiData.data)) {
+          incoming = apiData.data as LichHenRecord[];
+        }
+      } catch (e) {
+        console.warn('Lỗi lấy lịch hẹn qua API, chuyển sang Supabase client:', e);
+      }
 
-      if (error) throw error;
-      const incoming = (data as LichHenRecord[]) || [];
+      if (incoming.length === 0) {
+        const { data, error } = await supabase
+          .from('lich_hen')
+          .select('*')
+          .order('ngay_tao', { ascending: false });
+        if (!error && data && data.length > 0) {
+          incoming = (data as LichHenRecord[]) || [];
+        }
+      }
 
       if (!isInitialAppointmentsLoadedRef.current || knownAppointmentIdsRef.current.size === 0) {
         // Lần đầu vào trang Admin: ghi nhớ toàn bộ ID hiện tại, không kích hoạt thông báo cũ
@@ -4988,12 +4879,25 @@ export default function AdminDashboardPage() {
   ) => {
     setIsUpdatingStatus(true);
     try {
-      const { error } = await supabase
-        .from('lich_hen')
-        .update({ trang_thai: newStatus, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', id);
+      let updateOk = false;
+      try {
+        const res = await fetch('/api/admin/appointments', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, trang_thai: newStatus }),
+        });
+        const resData = await res.json();
+        if (res.ok && resData.success) updateOk = true;
+      } catch {}
 
-      if (error) throw error;
+      if (!updateOk) {
+        const { error } = await supabase
+          .from('lich_hen')
+          .update({ trang_thai: newStatus, ngay_cap_nhat: new Date().toISOString() })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
       setAppointments((prev) =>
         prev.map((app) => (app.id === id ? { ...app, trang_thai: newStatus } : app))
       );
@@ -5013,8 +4917,17 @@ export default function AdminDashboardPage() {
     if (!window.confirm(`Bạn có chắc muốn xóa lịch hẹn [${app.ma_lich_hen}] của ${app.ho_ten_chu}?`)) return;
 
     try {
-      const { error } = await supabase.from('lich_hen').delete().eq('id', app.id);
-      if (error) throw error;
+      let deleteOk = false;
+      try {
+        const res = await fetch(`/api/admin/appointments?id=${app.id}`, { method: 'DELETE' });
+        const resData = await res.json();
+        if (res.ok && resData.success) deleteOk = true;
+      } catch {}
+
+      if (!deleteOk) {
+        const { error } = await supabase.from('lich_hen').delete().eq('id', app.id);
+        if (error) throw error;
+      }
       showNotification('success', 'Đã xóa lịch hẹn thành công!');
       setAppointments((prev) => prev.filter((a) => a.id !== app.id));
       if (selectedAppointment?.id === app.id) setSelectedAppointment(null);
@@ -10551,6 +10464,17 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     />
                   </div>
 
+                  {/* Nút Cài đặt tiêu đề mục */}
+                  <button
+                    type="button"
+                    onClick={handleOpenServicesTitleModal}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+                    title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ"
+                  >
+                    <Settings className="w-4 h-4 text-amber-700" />
+                    <span>Cài Đặt Tiêu Đề Mục</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleAddNewService}
@@ -10993,6 +10917,17 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#2D5A27] focus:ring-1 focus:ring-[#2D5A27]"
                         />
                       </div>
+
+                      {/* Nút Cài đặt tiêu đề mục */}
+                      <button
+                        type="button"
+                        onClick={handleOpenFaqTitleModal}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+                        title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ"
+                      >
+                        <Settings className="w-4 h-4 text-amber-700" />
+                        <span>Cài Đặt Tiêu Đề Mục</span>
+                      </button>
 
                       <button
                         type="button"
@@ -12018,6 +11953,17 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  {/* Nút Cài đặt tiêu đề mục */}
+                  <button
+                    type="button"
+                    onClick={handleOpenArticlesTitleModal}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+                    title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ"
+                  >
+                    <Settings className="w-4 h-4 text-amber-700" />
+                    <span>Cài Đặt Tiêu Đề Mục</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleAddNewArticle}
@@ -13115,404 +13061,268 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       {/* ========================================================= */}
       {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC CHI NHÁNH (TRANG CHỦ) */}
       {/* ========================================================= */}
-      {isBranchTitleModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-amber-50/80 via-white to-emerald-50/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700">
-                  <Settings className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide">
-                    Cài Đặt Tiêu Đề &amp; Chú Thích Mục Chi Nhánh
-                  </h3>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsBranchTitleModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6">
-              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
-              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setBranchTitleLang('vi')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      branchTitleLang === 'vi' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                    <span>Bản Tiếng Việt</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBranchTitleLang('en')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      branchTitleLang === 'en' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <UKFlag className="w-4 h-3 rounded-[2px]" />
-                    <span>Bản English</span>
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAutoTranslateBranchTitle}
-                  disabled={isTranslatingBranchTitle}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
-                  title="Dịch tự động tiêu đề & chú thích Tiếng Việt sang Tiếng Anh bằng AI"
-                >
-                  {isTranslatingBranchTitle ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isTranslatingBranchTitle ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
-                </button>
-              </div>
-
-              {(() => {
-                const isVi = branchTitleLang === 'vi';
-                const titleVal = isVi ? branchTitleInput : branchTitleEnInput;
-                const setTitleVal = isVi ? setBranchTitleInput : setBranchTitleEnInput;
-                const descVal = isVi ? branchDescInput : branchDescEnInput;
-                const setDescVal = isVi ? setBranchDescInput : setBranchDescEnInput;
-                const defaultTitle = isVi
-                  ? '<h2>Hệ Thống Cơ Sở &amp; <br /><span style="color: #2D5A27; font-style: italic;">Bản Đồ Chỉ Đường Trực Quan</span></h2>'
-                  : '<h2>Clinic Network &amp; <br /><span style="color: #2D5A27; font-style: italic;">Interactive Direction Maps</span></h2>';
-                const defaultDesc = isVi
-                  ? '<p>Hệ thống phòng khám thú y chuẩn y khoa 5 sao với đầy đủ trang thiết bị hiện đại, phục vụ ba mẹ và các bé tận tâm 24/7.</p>'
-                  : '<p>A 5-star standard veterinary clinic network with fully modern equipment, caring for pet parents and their furry friends wholeheartedly 24/7.</p>';
-                const langLabel = isVi ? 'Tiếng Việt' : 'English';
-
-                return (
-                  <>
-                    {/* Tiêu đề chính */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Tiêu Đề Mục Chi Nhánh ({langLabel}):</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setTitleVal(defaultTitle)}
-                          className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold underline cursor-pointer"
-                        >
-                          Khôi phục mẫu tiêu đề mặc định
-                        </button>
-                      </div>
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                        <RichTextEditor
-                          key={`branch-title-${branchTitleLang}`}
-                          value={titleVal}
-                          onChange={(html) => setTitleVal(html)}
-                          minHeight={150}
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        💡 Bạn có thể chọn bôi đen chữ để đổi màu sang màu xanh rêu thương hiệu <code>#2D5A27</code>, in nghiêng, in đậm hoặc chèn icon/xuống dòng.
-                      </p>
-                    </div>
-
-                    {/* Chú thích / Mô tả phụ */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Edit3 className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Chú Thích / Mô Tả Phụ ({langLabel}):</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setDescVal(defaultDesc)}
-                          className="text-[11px] text-slate-500 hover:text-slate-700 font-medium underline cursor-pointer"
-                        >
-                          Dùng gợi ý chú thích mẫu
-                        </button>
-                      </div>
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                        <RichTextEditor
-                          key={`branch-desc-${branchTitleLang}`}
-                          value={descVal}
-                          onChange={(html) => setDescVal(html)}
-                          minHeight={120}
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        💡 Để trống nếu không muốn hiển thị chú thích bên dưới tiêu đề chi nhánh.
-                      </p>
-                    </div>
-
-                    {/* Khung Xem Trước Giao Diện Thực Tế */}
-                    <div className="p-5 rounded-2xl bg-[#F8FAF7] border border-slate-200 shadow-2xs">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 mb-3">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Eye className="w-3.5 h-3.5 text-[#2D5A27]" />
-                          <span>Xem trước thực tế ngoài Trang Chủ ({langLabel}):</span>
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">Hiển thị trực quan theo thời gian thực</span>
-                      </div>
-                      <div className="text-center max-w-2xl mx-auto py-4">
-                        <div
-                          className="font-editorial text-2xl sm:text-4xl text-slate-900 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleVal || defaultTitle) }}
-                        />
-                        {descVal && (
-                          <div
-                            className="mt-3 text-xs sm:text-sm text-slate-600 font-light [&_p]:m-0"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(descVal) }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50/50">
-              <button
-                type="button"
-                onClick={() => setIsBranchTitleModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveBranchTitle}
-                disabled={isSavingBranchTitle}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md hover:shadow-lg transition disabled:opacity-50 cursor-pointer"
-              >
-                {isSavingBranchTitle ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                <span>{isSavingBranchTitle ? 'Đang lưu...' : 'Lưu Tiêu Đề Mục'}</span>
-              </button>
-            </div>
-          </AdminResizableModal>
-        </div>
-      )}
+      <SectionTitleModal
+        isOpen={isBranchTitleModalOpen}
+        onClose={() => setIsBranchTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Chi Nhánh"
+        sectionLabel="Chi Nhánh"
+        titleFieldKey="section_chi_nhanh_tieu_de"
+        descFieldKey="section_chi_nhanh_mo_ta"
+        titleFieldKeyEn="section_chi_nhanh_tieu_de_en"
+        descFieldKeyEn="section_chi_nhanh_mo_ta_en"
+        initialTitleVi={configForm.section_chi_nhanh_tieu_de || globalConfig.section_chi_nhanh_tieu_de}
+        initialDescVi={configForm.section_chi_nhanh_mo_ta || globalConfig.section_chi_nhanh_mo_ta}
+        initialTitleEn={configForm.section_chi_nhanh_tieu_de_en || globalConfig.section_chi_nhanh_tieu_de_en}
+        initialDescEn={configForm.section_chi_nhanh_mo_ta_en || globalConfig.section_chi_nhanh_mo_ta_en}
+        defaultTitleVi='<h2>Hệ Thống Cơ Sở &amp; <br /><span style="color: #2D5A27; font-style: italic;">Bản Đồ Chỉ Đường Trực Quan</span></h2>'
+        defaultDescVi='<p>Hệ thống phòng khám thú y chuẩn y khoa 5 sao với đầy đủ trang thiết bị hiện đại, phục vụ ba mẹ và các bé tận tâm 24/7.</p>'
+        defaultTitleEn='<h2>Clinic Network &amp; <br /><span style="color: #2D5A27; font-style: italic;">Interactive Direction Maps</span></h2>'
+        defaultDescEn='<p>A 5-star standard veterinary clinic network with fully modern equipment, caring for pet parents and their furry friends wholeheartedly 24/7.</p>'
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_chi_nhanh_tieu_de: saved.titleVi,
+            section_chi_nhanh_mo_ta: saved.descVi,
+            section_chi_nhanh_tieu_de_en: saved.titleEn,
+            section_chi_nhanh_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
       {/* ========================================================= */}
       {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC SỨ MỆNH & TRIẾT LÝ (TRANG CHỦ) */}
       {/* ========================================================= */}
-      {isAboutTitleModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-amber-50/80 via-white to-emerald-50/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700">
-                  <Settings className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide">
-                    Cài Đặt Tiêu Đề &amp; Chú Thích Mục Sứ Mệnh &amp; Triết Lý
-                  </h3>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAboutTitleModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <SectionTitleModal
+        isOpen={isAboutTitleModalOpen}
+        onClose={() => setIsAboutTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Sứ Mệnh & Triết Lý"
+        sectionLabel="Sứ Mệnh & Triết Lý"
+        titleFieldKey="section_gioi_thieu_tieu_de"
+        descFieldKey="section_gioi_thieu_mo_ta"
+        titleFieldKeyEn="section_gioi_thieu_tieu_de_en"
+        descFieldKeyEn="section_gioi_thieu_mo_ta_en"
+        initialTitleVi={configForm.section_gioi_thieu_tieu_de || globalConfig.section_gioi_thieu_tieu_de}
+        initialDescVi={configForm.section_gioi_thieu_mo_ta || globalConfig.section_gioi_thieu_mo_ta || configForm.gioi_thieu_mo_ta || globalConfig.gioi_thieu_mo_ta}
+        initialTitleEn={configForm.section_gioi_thieu_tieu_de_en || globalConfig.section_gioi_thieu_tieu_de_en}
+        initialDescEn={configForm.section_gioi_thieu_mo_ta_en || globalConfig.section_gioi_thieu_mo_ta_en || configForm.gioi_thieu_mo_ta_en || globalConfig.gioi_thieu_mo_ta_en}
+        defaultTitleVi='<h2>Nâng Tầm Chăm Sóc Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Bằng Trái Tim &amp; Y Đức</span></h2>'
+        defaultDescVi='<p>Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.</p>'
+        defaultTitleEn='<h2>Elevating Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">With Integrity &amp; Compassion</span></h2>'
+        defaultDescEn='<p>Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.</p>'
+        badgeVi={configForm.gioi_thieu_huy_hieu || 'SỨ MỆNH & TRIẾT LÝ PETM&M'}
+        badgeEn={configForm.gioi_thieu_huy_hieu_en || 'MISSION & PHILOSOPHY'}
+        previewAlign="left"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_gioi_thieu_tieu_de: saved.titleVi,
+            section_gioi_thieu_mo_ta: saved.descVi,
+            section_gioi_thieu_tieu_de_en: saved.titleEn,
+            section_gioi_thieu_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6">
-              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
-              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setAboutTitleLang('vi')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      aboutTitleLang === 'vi' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
-                    <span>Bản Tiếng Việt</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAboutTitleLang('en')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      aboutTitleLang === 'en' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <UKFlag className="w-4 h-3 rounded-[2px]" />
-                    <span>Bản English</span>
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAutoTranslateAboutTitle}
-                  disabled={isTranslatingAboutTitle}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
-                  title="Dịch tự động tiêu đề & chú thích Tiếng Việt sang Tiếng Anh bằng AI"
-                >
-                  {isTranslatingAboutTitle ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isTranslatingAboutTitle ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
-                </button>
-              </div>
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC DỊCH VỤ */}
+      <SectionTitleModal
+        isOpen={isServicesTitleModalOpen}
+        onClose={() => setIsServicesTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Dịch Vụ"
+        sectionLabel="Dịch Vụ"
+        titleFieldKey="section_dich_vu_tieu_de"
+        descFieldKey="section_dich_vu_mo_ta"
+        titleFieldKeyEn="section_dich_vu_tieu_de_en"
+        descFieldKeyEn="section_dich_vu_mo_ta_en"
+        initialTitleVi={configForm.section_dich_vu_tieu_de || globalConfig.section_dich_vu_tieu_de}
+        initialDescVi={configForm.section_dich_vu_mo_ta || globalConfig.section_dich_vu_mo_ta}
+        initialTitleEn={configForm.section_dich_vu_tieu_de_en || globalConfig.section_dich_vu_tieu_de_en}
+        initialDescEn={configForm.section_dich_vu_mo_ta_en || globalConfig.section_dich_vu_mo_ta_en}
+        defaultTitleVi='<h2>Dịch Vụ &amp; Giải Pháp Y Tế <br /><span style="color: #2D5A27; font-style: italic;">Chuẩn Mực Cao Cấp</span></h2>'
+        defaultDescVi='<p>Hệ sinh thái chăm sóc sức khỏe, phòng ngừa và điều trị chuyên sâu dành cho thú cưng với trang thiết bị tối tân và đội ngũ bác sĩ tận tâm.</p>'
+        defaultTitleEn='<h2>Medical Services &amp; Solutions <br /><span style="color: #2D5A27; font-style: italic;">Premium Care</span></h2>'
+        defaultDescEn='<p>Comprehensive health care, prevention and advanced veterinary treatment ecosystem with modern equipment and dedicated specialists.</p>'
+        badgeVi="CHUYÊN KHOA Y TẾ TOÀN DIỆN"
+        badgeEn="COMPREHENSIVE MEDICAL SERVICES"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_dich_vu_tieu_de: saved.titleVi,
+            section_dich_vu_mo_ta: saved.descVi,
+            section_dich_vu_tieu_de_en: saved.titleEn,
+            section_dich_vu_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
-              {(() => {
-                const isVi = aboutTitleLang === 'vi';
-                const titleVal = isVi ? aboutTitleInput : aboutTitleEnInput;
-                const setTitleVal = isVi ? setAboutTitleInput : setAboutTitleEnInput;
-                const descVal = isVi ? aboutDescInput : aboutDescEnInput;
-                const setDescVal = isVi ? setAboutDescInput : setAboutDescEnInput;
-                const defaultTitle = isVi
-                  ? '<h2>Nâng Tầm Chăm Sóc Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Bằng Trái Tim &amp; Y Đức</span></h2>'
-                  : '<h2>Elevating Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">With Integrity &amp; Compassion</span></h2>';
-                const defaultDesc = isVi
-                  ? '<p>Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.</p>'
-                  : '<p>Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.</p>';
-                const badgeText = isVi
-                  ? (configForm.gioi_thieu_huy_hieu || 'SỨ MỆNH & TRIẾT LÝ PETM&M')
-                  : (configForm.gioi_thieu_huy_hieu_en || 'MISSION & PHILOSOPHY');
-                const langLabel = isVi ? 'Tiếng Việt' : 'English';
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC CẨM NANG */}
+      <SectionTitleModal
+        isOpen={isArticlesTitleModalOpen}
+        onClose={() => setIsArticlesTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Cẩm Nang & Kiến Thức"
+        sectionLabel="Cẩm Nang"
+        titleFieldKey="section_cam_nang_tieu_de"
+        descFieldKey="section_cam_nang_mo_ta"
+        titleFieldKeyEn="section_cam_nang_tieu_de_en"
+        descFieldKeyEn="section_cam_nang_mo_ta_en"
+        initialTitleVi={configForm.section_cam_nang_tieu_de || globalConfig.section_cam_nang_tieu_de}
+        initialDescVi={configForm.section_cam_nang_mo_ta || globalConfig.section_cam_nang_mo_ta}
+        initialTitleEn={configForm.section_cam_nang_tieu_de_en || globalConfig.section_cam_nang_tieu_de_en}
+        initialDescEn={configForm.section_cam_nang_mo_ta_en || globalConfig.section_cam_nang_mo_ta_en}
+        defaultTitleVi='<h2>Cẩm Nang &amp; Kiến Thức Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Dành Cho Sen &amp; Boss</span></h2>'
+        defaultDescVi='<p>Cập nhật những kiến thức y khoa chính xác, cẩm nang dinh dưỡng và kinh nghiệm thực tế giúp bạn chăm sóc thú cưng luôn khỏe mạnh.</p>'
+        defaultTitleEn='<h2>Pet Care &amp; Medical Knowledge <br /><span style="color: #2D5A27; font-style: italic;">For You and Your Pet</span></h2>'
+        defaultDescEn='<p>Stay updated with accurate veterinary guidance, nutrition advice, and practical tips to keep your beloved companions thriving.</p>'
+        badgeVi="CẨM NANG & KIẾN THỨC"
+        badgeEn="PET CARE HANDBOOK"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_cam_nang_tieu_de: saved.titleVi,
+            section_cam_nang_mo_ta: saved.descVi,
+            section_cam_nang_tieu_de_en: saved.titleEn,
+            section_cam_nang_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
-                return (
-                  <>
-                    {/* Tiêu đề chính */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Tiêu Đề Mục Sứ Mệnh &amp; Triết Lý ({langLabel}):</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setTitleVal(defaultTitle)}
-                          className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold underline cursor-pointer"
-                        >
-                          Khôi phục mẫu tiêu đề mặc định
-                        </button>
-                      </div>
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                        <RichTextEditor
-                          key={`about-title-${aboutTitleLang}`}
-                          value={titleVal}
-                          onChange={(html) => setTitleVal(html)}
-                          minHeight={150}
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        💡 Bạn có thể chọn bôi đen chữ để đổi màu sang màu xanh rêu thương hiệu <code>#2D5A27</code>, in nghiêng, in đậm hoặc chèn icon/xuống dòng.
-                      </p>
-                    </div>
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC HỎI ĐÁP FAQ */}
+      <SectionTitleModal
+        isOpen={isFaqTitleModalOpen}
+        onClose={() => setIsFaqTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Hỏi Đáp (FAQ)"
+        sectionLabel="Hỏi Đáp FAQ"
+        titleFieldKey="section_faq_tieu_de"
+        descFieldKey="section_faq_mo_ta"
+        titleFieldKeyEn="section_faq_tieu_de_en"
+        descFieldKeyEn="section_faq_mo_ta_en"
+        initialTitleVi={configForm.section_faq_tieu_de || globalConfig.section_faq_tieu_de}
+        initialDescVi={configForm.section_faq_mo_ta || globalConfig.section_faq_mo_ta}
+        initialTitleEn={configForm.section_faq_tieu_de_en || globalConfig.section_faq_tieu_de_en}
+        initialDescEn={configForm.section_faq_mo_ta_en || globalConfig.section_faq_mo_ta_en}
+        defaultTitleVi='<h2>Câu Hỏi &amp; Thắc Mắc <br /><span style="color: #2D5A27; font-style: italic;">Thường Gặp Tại PetM&M</span></h2>'
+        defaultDescVi='<p>Tổng hợp những câu hỏi phổ biến nhất của quý khách hàng về dịch vụ, quy trình khám chữa bệnh và lưu trú thú cưng.</p>'
+        defaultTitleEn='<h2>Frequently Asked Questions <br /><span style="color: #2D5A27; font-style: italic;">At PetM&M</span></h2>'
+        defaultDescEn='<p>Find quick answers to common questions about our veterinary services, medical examination process, and pet accommodation.</p>'
+        badgeVi="HỎI ĐÁP THƯỜNG GẶP"
+        badgeEn="FREQUENTLY ASKED QUESTIONS"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_faq_tieu_de: saved.titleVi,
+            section_faq_mo_ta: saved.descVi,
+            section_faq_tieu_de_en: saved.titleEn,
+            section_faq_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
-                    {/* Chú thích / Mô tả phụ */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Edit3 className="w-4 h-4 text-[#2D5A27]" />
-                          <span>Chú Thích / Mô Tả Phụ ({langLabel}):</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setDescVal(defaultDesc)}
-                          className="text-[11px] text-slate-500 hover:text-slate-700 font-medium underline cursor-pointer"
-                        >
-                          Dùng gợi ý chú thích mẫu
-                        </button>
-                      </div>
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                        <RichTextEditor
-                          key={`about-desc-${aboutTitleLang}`}
-                          value={descVal}
-                          onChange={(html) => setDescVal(html)}
-                          minHeight={120}
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        💡 Để trống nếu không muốn hiển thị chú thích bên dưới tiêu đề sứ mệnh.
-                      </p>
-                    </div>
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC ĐÁNH GIÁ */}
+      <SectionTitleModal
+        isOpen={isReviewsTitleModalOpen}
+        onClose={() => setIsReviewsTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Đánh Giá Khách Hàng"
+        sectionLabel="Đánh Giá Khách Hàng"
+        titleFieldKey="section_danh_gia_tieu_de"
+        descFieldKey="section_danh_gia_mo_ta"
+        titleFieldKeyEn="section_danh_gia_tieu_de_en"
+        descFieldKeyEn="section_danh_gia_mo_ta_en"
+        initialTitleVi={configForm.section_danh_gia_tieu_de || globalConfig.section_danh_gia_tieu_de}
+        initialDescVi={configForm.section_danh_gia_mo_ta || globalConfig.section_danh_gia_mo_ta}
+        initialTitleEn={configForm.section_danh_gia_tieu_de_en || globalConfig.section_danh_gia_tieu_de_en}
+        initialDescEn={configForm.section_danh_gia_mo_ta_en || globalConfig.section_danh_gia_mo_ta_en}
+        defaultTitleVi='<h2>Khách Hàng Nói Gì Về <br /><span style="color: #2D5A27; font-style: italic;">Dịch Vụ PetM&M</span></h2>'
+        defaultDescVi='<p>Hàng ngàn lời yêu thương và sự hài lòng từ các chủ nuôi đã đồng hành và tin tưởng chúng tôi trong suốt hành trình chăm sóc thú cưng.</p>'
+        defaultTitleEn='<h2>What Pet Parents Say <br /><span style="color: #2D5A27; font-style: italic;">About PetM&M</span></h2>'
+        defaultDescEn='<p>Thousands of heartfelt compliments and satisfaction shared by pet parents who trust PetM&M for companion healthcare.</p>'
+        badgeVi="ĐÁNH GIÁ TỪ KHÁCH HÀNG"
+        badgeEn="CUSTOMER REVIEWS"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_danh_gia_tieu_de: saved.titleVi,
+            section_danh_gia_mo_ta: saved.descVi,
+            section_danh_gia_tieu_de_en: saved.titleEn,
+            section_danh_gia_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
-                    {/* Khung Xem Trước Giao Diện Thực Tế */}
-                    <div className="p-5 rounded-2xl bg-[#F8FAF7] border border-slate-200 shadow-2xs">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 mb-3">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Eye className="w-3.5 h-3.5 text-[#2D5A27]" />
-                          <span>Xem trước thực tế ngoài Trang Chủ ({langLabel}):</span>
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">Hiển thị trực quan theo thời gian thực</span>
-                      </div>
-                      <div className="text-left max-w-2xl mx-auto py-4 space-y-3">
-                        {/* Huy hiệu */}
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase shadow-xs">
-                          <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-                          <span>{badgeText}</span>
-                        </div>
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC TUYỂN DỤNG */}
+      <SectionTitleModal
+        isOpen={isCareersTitleModalOpen}
+        onClose={() => setIsCareersTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Tuyển Dụng"
+        sectionLabel="Tuyển Dụng"
+        titleFieldKey="section_tuyen_dung_tieu_de"
+        descFieldKey="section_tuyen_dung_mo_ta"
+        titleFieldKeyEn="section_tuyen_dung_tieu_de_en"
+        descFieldKeyEn="section_tuyen_dung_mo_ta_en"
+        initialTitleVi={configForm.section_tuyen_dung_tieu_de || globalConfig.section_tuyen_dung_tieu_de}
+        initialDescVi={configForm.section_tuyen_dung_mo_ta || globalConfig.section_tuyen_dung_mo_ta}
+        initialTitleEn={configForm.section_tuyen_dung_tieu_de_en || globalConfig.section_tuyen_dung_tieu_de_en}
+        initialDescEn={configForm.section_tuyen_dung_mo_ta_en || globalConfig.section_tuyen_dung_mo_ta_en}
+        defaultTitleVi='<h2>Gia Nhập Đội Ngũ <br /><span style="color: #2D5A27; font-style: italic;">PetM&M Family</span></h2>'
+        defaultDescVi='<p>Cùng chúng tôi tạo dựng môi trường làm việc y khoa thú y chuẩn mực, chuyên nghiệp và giàu lòng nhân ái.</p>'
+        defaultTitleEn='<h2>Join Our Team <br /><span style="color: #2D5A27; font-style: italic;">PetM&M Family</span></h2>'
+        defaultDescEn='<p>Work with us in an inspiring, professional veterinary environment built upon care, compassion and high medical standards.</p>'
+        badgeVi="CƠ HỘI NGHỀ NGHIỆP"
+        badgeEn="CAREER OPPORTUNITIES"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_tuyen_dung_tieu_de: saved.titleVi,
+            section_tuyen_dung_mo_ta: saved.descVi,
+            section_tuyen_dung_tieu_de_en: saved.titleEn,
+            section_tuyen_dung_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
-                        {/* Tiêu đề */}
-                        <div
-                          className="font-editorial text-2xl sm:text-4xl text-slate-900 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleVal || defaultTitle) }}
-                        />
-
-                        {/* Chú thích / Mô tả */}
-                        {descVal && (
-                          <div
-                            className="mt-3 text-xs sm:text-sm text-slate-600 font-light leading-relaxed [&_p]:m-0"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(descVal) }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50/50">
-              <button
-                type="button"
-                onClick={() => setIsAboutTitleModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAboutTitle}
-                disabled={isSavingAboutTitle}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md hover:shadow-lg transition disabled:opacity-50 cursor-pointer"
-              >
-                {isSavingAboutTitle ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                <span>{isSavingAboutTitle ? 'Đang lưu...' : 'Lưu Tiêu Đề Mục'}</span>
-              </button>
-            </div>
-          </AdminResizableModal>
-        </div>
-      )}
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC ĐẶT LỊCH */}
+      <SectionTitleModal
+        isOpen={isBookingTitleModalOpen}
+        onClose={() => setIsBookingTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Đặt Lịch Hẹn"
+        sectionLabel="Đặt Lịch Hẹn"
+        titleFieldKey="section_dat_lich_tieu_de"
+        descFieldKey="section_dat_lich_mo_ta"
+        titleFieldKeyEn="section_dat_lich_tieu_de_en"
+        descFieldKeyEn="section_dat_lich_mo_ta_en"
+        initialTitleVi={configForm.section_dat_lich_tieu_de || globalConfig.section_dat_lich_tieu_de}
+        initialDescVi={configForm.section_dat_lich_mo_ta || globalConfig.section_dat_lich_mo_ta}
+        initialTitleEn={configForm.section_dat_lich_tieu_de_en || globalConfig.section_dat_lich_tieu_de_en}
+        initialDescEn={configForm.section_dat_lich_mo_ta_en || globalConfig.section_dat_lich_mo_ta_en}
+        defaultTitleVi='<h2>Đặt Lịch Hẹn Khám <br /><span style="color: #2D5A27; font-style: italic;">Nhanh Chóng &amp; Tiện Lợi</span></h2>'
+        defaultDescVi='<p>Đặt lịch trước để tiết kiệm thời gian chờ đợi và nhận sự tiếp đón chu đáo nhất từ đội ngũ bác sĩ chuyên khoa.</p>'
+        defaultTitleEn='<h2>Book An Appointment <br /><span style="color: #2D5A27; font-style: italic;">Fast &amp; Convenient</span></h2>'
+        defaultDescEn='<p>Reserve your consultation in advance to avoid waiting and ensure the best personalized medical care for your pet.</p>'
+        badgeVi="ĐẶT LỊCH HẸN TRỰC TUYẾN"
+        badgeEn="ONLINE APPOINTMENT"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_dat_lich_tieu_de: saved.titleVi,
+            section_dat_lich_mo_ta: saved.descVi,
+            section_dat_lich_tieu_de_en: saved.titleEn,
+            section_dat_lich_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
 
 {editingService && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">

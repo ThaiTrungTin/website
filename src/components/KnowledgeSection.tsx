@@ -7,8 +7,16 @@ import { Sparkles, ArrowRight, Calendar, ChevronLeft, ChevronRight, ChevronDown,
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import CustomFilterDropdown from '@/components/CustomFilterDropdown';
 import { supabase, BaiVietRecord } from '@/lib/supabase';
+import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { getAssetUrl } from '@/lib/assets';
+
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+}
 
 const DEFAULT_ARTICLES: BaiVietRecord[] = [
   {
@@ -53,6 +61,7 @@ const DEFAULT_ARTICLES: BaiVietRecord[] = [
 ];
 
 export default function KnowledgeSection() {
+  const { config } = useSystemConfig();
   const { language } = useLanguage();
   const isEn = language === 'en';
   const [articles, setArticles] = useState<BaiVietRecord[]>(DEFAULT_ARTICLES);
@@ -170,26 +179,49 @@ export default function KnowledgeSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Tiêu đề mục Kiến thức */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10">
-          <ScrollRevealTitle>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase mb-4 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-              <span>{isEn ? 'VETERINARY MEDICAL GUIDE' : 'CẨM NANG BÁC SĨ PETM&M'}</span>
-            </div>
-            <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
-              {isEn ? 'Pet Health, Wellness &' : 'Kiến Thức &'} <br />
-              <span className="italic font-light text-[#2D5A27]">
-                {isEn ? 'Practical Care Insights' : 'Kinh Nghiệm Nuôi Thú Cưng'}
-              </span>
-            </h2>
-          </ScrollRevealTitle>
+        {(() => {
+          const rawCamNangTitleHtml = (isEn ? config.section_cam_nang_tieu_de_en : config.section_cam_nang_tieu_de) || '';
+          const rawCamNangDescHtml = (isEn ? config.section_cam_nang_mo_ta_en : config.section_cam_nang_mo_ta) || '';
+          const camNangTitleHtml = sanitizeHtml(rawCamNangTitleHtml);
+          const camNangDescHtml = sanitizeHtml(rawCamNangDescHtml);
 
-          <p className="text-xs sm:text-sm text-slate-600 max-w-md font-light text-left md:text-right mt-4 md:mt-0">
-            {isEn
-              ? 'Expert articles curated by PetM&M veterinary specialists to empower pet parents with evidence-based care.'
-              : 'Các bài viết được biên soạn trực tiếp bởi hội đồng y khoa PetM&M nhằm hỗ trợ ba mẹ chăm sóc bé khoa học mỗi ngày.'}
-          </p>
-        </div>
+          return (
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10">
+              <ScrollRevealTitle>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase mb-4 shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
+                  <span>{isEn ? 'VETERINARY MEDICAL GUIDE' : 'CẨM NANG BÁC SĨ PETM&M'}</span>
+                </div>
+                {camNangTitleHtml ? (
+                  <div
+                    className="rich-section-title font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight [&>h1]:m-0 [&>h2]:m-0 [&>h3]:m-0 [&>p]:m-0"
+                    dangerouslySetInnerHTML={{ __html: camNangTitleHtml }}
+                  />
+                ) : (
+                  <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
+                    {isEn ? 'Pet Health, Wellness &' : 'Kiến Thức &'} <br />
+                    <span className="italic font-light text-[#2D5A27]">
+                      {isEn ? 'Practical Care Insights' : 'Kinh Nghiệm Nuôi Thú Cưng'}
+                    </span>
+                  </h2>
+                )}
+              </ScrollRevealTitle>
+
+              {camNangDescHtml ? (
+                <div
+                  className="text-xs sm:text-sm text-slate-600 max-w-md font-light text-left md:text-right mt-4 md:mt-0 leading-relaxed [&>p]:m-0"
+                  dangerouslySetInnerHTML={{ __html: camNangDescHtml }}
+                />
+              ) : (
+                <p className="text-xs sm:text-sm text-slate-600 max-w-md font-light text-left md:text-right mt-4 md:mt-0">
+                  {isEn
+                    ? 'Expert articles curated by PetM&M veterinary specialists to empower pet parents with evidence-based care.'
+                    : 'Các bài viết được biên soạn trực tiếp bởi hội đồng y khoa PetM&M nhằm hỗ trợ ba mẹ chăm sóc bé khoa học mỗi ngày.'}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Thanh công cụ: Bộ lọc chuyên mục dạng Droplist đổ xuống */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 pb-3 border-b border-slate-100">

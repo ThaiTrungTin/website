@@ -19,6 +19,13 @@ import {
 } from 'lucide-react';
 import { renderBrandText } from '@/components/PetMMBrand';
 
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+}
+
 const FALLBACK_FAQS: CauHoiThuongGapRecord[] = faqData.map((f, i) => ({
   id: f.id,
   cau_hoi: f.question,
@@ -140,20 +147,43 @@ export default function FaqSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header chuẩn typography font-editorial & màu xanh emerald của web PetM&M */}
-        <ScrollRevealTitle className="text-left mb-10 sm:mb-14">
-          <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4">
-            {isEn ? 'Frequently Asked ' : 'Câu Hỏi '}
-            <span className="italic font-light text-[#2D5A27]">
-              {isEn ? 'Questions' : 'Thường Gặp'}
-            </span>
-          </h2>
+        {(() => {
+          const rawFaqTitleHtml = (isEn ? config.section_faq_tieu_de_en : config.section_faq_tieu_de) || '';
+          const rawFaqDescHtml = (isEn ? config.section_faq_mo_ta_en : config.section_faq_mo_ta) || '';
+          const faqTitleHtml = sanitizeHtml(rawFaqTitleHtml);
+          const faqDescHtml = sanitizeHtml(rawFaqDescHtml);
 
-          <p className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed font-light">
-            {isEn
-              ? 'Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at PetM&M.'
-              : 'PetM&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo chính thức của PetM&M.'}
-          </p>
-        </ScrollRevealTitle>
+          return (
+            <ScrollRevealTitle className="text-left mb-10 sm:mb-14">
+              {faqTitleHtml ? (
+                <div
+                  className="rich-section-title font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4 [&>h1]:m-0 [&>h2]:m-0 [&>h3]:m-0 [&>p]:m-0"
+                  dangerouslySetInnerHTML={{ __html: faqTitleHtml }}
+                />
+              ) : (
+                <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 mb-4">
+                  {isEn ? 'Frequently Asked ' : 'Câu Hỏi '}
+                  <span className="italic font-light text-[#2D5A27]">
+                    {isEn ? 'Questions' : 'Thường Gặp'}
+                  </span>
+                </h2>
+              )}
+
+              {faqDescHtml ? (
+                <div
+                  className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed font-light [&>p]:m-0"
+                  dangerouslySetInnerHTML={{ __html: faqDescHtml }}
+                />
+              ) : (
+                <p className="text-sm sm:text-base text-slate-600 max-w-3xl leading-relaxed font-light">
+                  {isEn
+                    ? 'Answers to the most common questions from pet parents regarding veterinary examinations, surgery, and luxury hotel boarding at PetM&M.'
+                    : 'PetM&M tổng hợp những câu hỏi thường gặp để giúp chủ nuôi chuẩn bị tốt hơn trước khi đặt lịch và sử dụng các dịch vụ. Để được tư vấn và xác nhận lịch phù hợp, vui lòng liên hệ qua Zalo chính thức của PetM&M.'}
+                </p>
+              )}
+            </ScrollRevealTitle>
+          );
+        })()}
 
         {/* BỐ CỤC 2 TRƯỜNG */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">

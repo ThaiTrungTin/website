@@ -26,6 +26,13 @@ interface ServicesSectionProps {
   onSelectService: (serviceTitle: string) => void;
 }
 
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+}
+
 const FALLBACK_SERVICES: DichVuRecord[] = [
   {
     id: 'kham-tong-quat',
@@ -519,6 +526,11 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
   const medicalCount = services.filter((s) => s.nhom_dich_vu === 'medical').length;
   const careCount = services.filter((s) => s.nhom_dich_vu === 'care').length;
 
+  const rawServiceTitleHtml = (isEn ? config.section_dich_vu_tieu_de_en : config.section_dich_vu_tieu_de) || '';
+  const rawServiceDescHtml = (isEn ? config.section_dich_vu_mo_ta_en : config.section_dich_vu_mo_ta) || '';
+  const serviceTitleHtml = sanitizeHtml(rawServiceTitleHtml);
+  const serviceDescHtml = sanitizeHtml(rawServiceDescHtml);
+
   return (
     <section id="services" className="relative py-16 sm:py-24 text-slate-900 overflow-hidden bg-white">
       {/* 1. ARCHITECTURAL BACKGROUND WITH SOFT LIGHT & GENTLE TOP BLEND */}
@@ -542,30 +554,43 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
           ref={titleRef}
           className="text-center max-w-4xl mx-auto mb-8 sm:mb-12"
         >
-          {/* Tiêu đề CHUẨN 3 DÒNG: Hiệu ứng xuất hiện mượt mà khi cuộn tới cả 2 chiều */}
-          <h2 className="font-editorial text-2xl sm:text-4xl md:text-5xl lg:text-[3.25rem] tracking-tight text-slate-900 leading-tight sm:leading-snug">
-            <span
-              className={`block font-normal whitespace-nowrap transition-all duration-700 ${
-                isTitleVisible ? 'animate-service-title-1' : 'opacity-0 translate-y-8 blur-[4px]'
-              }`}
-            >
-              {isEn ? 'Advanced Veterinary Medicine' : 'Chăm Sóc Y Khoa Chuyên Sâu'}
-            </span>
-            <span
-              className={`block my-0.5 sm:my-1 text-xl sm:text-3xl md:text-4xl font-light italic text-[#2D5A27] transition-all duration-700 ${
-                isTitleVisible ? 'animate-service-title-2' : 'opacity-0 translate-y-8 blur-[4px]'
-              }`}
-            >
-              &amp;
-            </span>
-            <span
-              className={`block font-light italic text-[#2D5A27] whitespace-nowrap transition-all duration-700 ${
-                isTitleVisible ? 'animate-service-title-3' : 'opacity-0 translate-y-8 blur-[4px]'
-              }`}
-            >
-              {isEn ? 'Luxury Pet Hospitality & Spa' : 'Nuông Chiều Thú Cưng Đẳng Cấp'}
-            </span>
-          </h2>
+          {serviceTitleHtml ? (
+            <div
+              className="rich-section-title font-editorial text-2xl sm:text-4xl md:text-5xl lg:text-[3.25rem] tracking-tight text-slate-900 leading-tight sm:leading-snug [&>h1]:m-0 [&>h2]:m-0 [&>h3]:m-0 [&>p]:m-0"
+              dangerouslySetInnerHTML={{ __html: serviceTitleHtml }}
+            />
+          ) : (
+            <h2 className="font-editorial text-2xl sm:text-4xl md:text-5xl lg:text-[3.25rem] tracking-tight text-slate-900 leading-tight sm:leading-snug">
+              <span
+                className={`block font-normal whitespace-nowrap transition-all duration-700 ${
+                  isTitleVisible ? 'animate-service-title-1' : 'opacity-0 translate-y-8 blur-[4px]'
+                }`}
+              >
+                {isEn ? 'Advanced Veterinary Medicine' : 'Chăm Sóc Y Khoa Chuyên Sâu'}
+              </span>
+              <span
+                className={`block my-0.5 sm:my-1 text-xl sm:text-3xl md:text-4xl font-light italic text-[#2D5A27] transition-all duration-700 ${
+                  isTitleVisible ? 'animate-service-title-2' : 'opacity-0 translate-y-8 blur-[4px]'
+                }`}
+              >
+                &amp;
+              </span>
+              <span
+                className={`block font-light italic text-[#2D5A27] whitespace-nowrap transition-all duration-700 ${
+                  isTitleVisible ? 'animate-service-title-3' : 'opacity-0 translate-y-8 blur-[4px]'
+                }`}
+              >
+                {isEn ? 'Luxury Pet Hospitality & Spa' : 'Nuông Chiều Thú Cưng Đẳng Cấp'}
+              </span>
+            </h2>
+          )}
+
+          {serviceDescHtml && (
+            <p
+              className="text-slate-600 text-sm sm:text-base font-light max-w-2xl mx-auto mt-3 sm:mt-4 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: serviceDescHtml }}
+            />
+          )}
 
           {/* ── TIÊU ĐỀ 2 NHÓM DỊCH VỤ TĨNH: BỎ CHỮ NHÓM 1, NHÓM 2 THEO YÊU CẦU ── */}
           <div className="w-full max-w-xl mx-auto grid grid-cols-2 p-1 sm:p-1.5 rounded-full bg-slate-100 border border-slate-200 mt-6 sm:mt-8 shadow-inner">

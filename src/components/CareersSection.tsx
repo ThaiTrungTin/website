@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { supabase, TuyenDungRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
+import { useSystemConfig } from '@/context/SystemConfigContext';
+import { sanitizeHtml } from '@/lib/sanitize';
 import PetMMBrand from '@/components/PetMMBrand';
 import ScrollRevealTitle from '@/components/ScrollRevealTitle';
 import { getAssetUrl } from '@/lib/assets';
@@ -89,11 +91,22 @@ const FALLBACK_JOBS: TuyenDungRecord[] = [
 
 export default function CareersSection() {
   const { language, isEn } = useLanguage();
+  const { config } = useSystemConfig();
   const [jobs, setJobs] = useState<TuyenDungRecord[]>(FALLBACK_JOBS);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Lấy tiêu đề & mô tả cấu hình phong cách Rich Text Editor
+  const rawTitleHtml = isEn
+    ? (config.section_tuyen_dung_tieu_de_en || config.section_tuyen_dung_tieu_de)
+    : config.section_tuyen_dung_tieu_de;
+  const rawDescHtml = isEn
+    ? (config.section_tuyen_dung_mo_ta_en || config.section_tuyen_dung_mo_ta)
+    : config.section_tuyen_dung_mo_ta;
+  const titleHtml = rawTitleHtml ? sanitizeHtml(rawTitleHtml) : '';
+  const descHtml = rawDescHtml ? sanitizeHtml(rawDescHtml) : '';
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -178,13 +191,27 @@ export default function CareersSection() {
             <span>{isEn ? 'CAREERS & OPPORTUNITIES' : 'CƠ HỘI NGHỀ NGHIỆP'}</span>
           </div>
 
-          <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
-            {isEn ? 'Join The ' : 'Gia Nhập Đại Gia Đình '}
-            <br className="hidden sm:inline" />
-            <span className="italic font-light text-[#2D5A27]">
-              <PetMMBrand />
-            </span>
-          </h2>
+          {titleHtml ? (
+            <div
+              className="rich-text-preview font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight [&_p]:m-0 [&_h1]:m-0 [&_h2]:m-0 [&_h3]:m-0 [&_h2]:font-editorial [&_h2]:text-3xl [&_h2]:sm:text-5xl [&_h2]:lg:text-6xl [&_h2]:font-normal [&_h2]:tracking-tight [&_h2]:leading-tight"
+              dangerouslySetInnerHTML={{ __html: titleHtml }}
+            />
+          ) : (
+            <h2 className="font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight">
+              {isEn ? 'Join The ' : 'Gia Nhập Đại Gia Đình '}
+              <br className="hidden sm:inline" />
+              <span className="italic font-light text-[#2D5A27]">
+                <PetMMBrand />
+              </span>
+            </h2>
+          )}
+
+          {descHtml && (
+            <div
+              className="mt-4 text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto font-light leading-relaxed rich-text-preview"
+              dangerouslySetInnerHTML={{ __html: descHtml }}
+            />
+          )}
         </ScrollRevealTitle>
 
         {/* Danh sách thẻ vị trí tuyển dụng trượt ngang (Horizontal Slider) */}
