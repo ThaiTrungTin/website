@@ -10681,10 +10681,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   <button
                     type="button"
                     onClick={handleOpenBookingTitleModal}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#2D5A27] bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition cursor-pointer whitespace-nowrap shrink-0 shadow-2xs"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 shadow-xs transition cursor-pointer whitespace-nowrap shrink-0"
                     title="Cài đặt Tiêu đề & Chú thích mục Đặt Lịch Khám hiển thị trên Trang Chủ"
                   >
-                    <Settings className="w-4 h-4 text-emerald-700" />
+                    <Settings className="w-4 h-4 text-amber-700" />
                     <span>Cài Đặt Tiêu Đề Mục</span>
                   </button>
 

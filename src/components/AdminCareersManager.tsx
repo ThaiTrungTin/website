@@ -832,10 +832,10 @@ export default function AdminCareersManager({
               <button
                 type="button"
                 onClick={onOpenTitleModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2D5A27] border border-emerald-300 text-xs font-bold shadow-2xs transition shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
                 title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ"
               >
-                <Settings className="w-4 h-4 text-emerald-700" />
+                <Settings className="w-4 h-4 text-amber-700" />
                 <span>Cài Đặt Tiêu Đề Mục</span>
               </button>
             )}
