@@ -65,6 +65,24 @@ export default function TaoDanhGiaPage() {
   // Gửi heartbeat theo dõi trạng thái online / chuyển tab của nhân viên
   usePresenceHeartbeat(Boolean(currentUser));
 
+  // Cố định tiêu đề tab trình duyệt cho trang Tạo Liên Kết Đánh Giá
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const targetTitle = 'PetM&M - Tạo liên kết đánh giá';
+    const apply = () => {
+      if (document.title !== targetTitle) {
+        document.title = targetTitle;
+      }
+    };
+    apply();
+    const timers = [
+      setTimeout(apply, 100),
+      setTimeout(apply, 500),
+      setTimeout(apply, 1000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   // Kiểm tra phiên đăng nhập & URL params khi tải trang
   useEffect(() => {
     let isMounted = true;

@@ -179,6 +179,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
               currentPath.startsWith('/chi-nhanh') ||
               currentPath.startsWith('/kien-thuc') ||
               currentPath.startsWith('/danhgiadichvu') ||
+              currentPath.startsWith('/taodanhgia') ||
               currentPath.startsWith('/admin') ||
               currentPath.startsWith('/doi-ngu') ||
               currentPath.startsWith('/tuyen-dung');
