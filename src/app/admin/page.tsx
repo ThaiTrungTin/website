@@ -1187,12 +1187,10 @@ export default function AdminDashboardPage() {
 
   const loadJobApplications = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('ho_so_tuyen_dung')
-        .select('*')
-        .order('ngay_tao', { ascending: false });
-      if (!error && data) {
-        setJobApplications(data as HoSoTuyenDungRecord[]);
+      const res = await fetch('/api/admin/applications');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setJobApplications(json.data as HoSoTuyenDungRecord[]);
       }
     } catch (e) {
       console.error('Error loading job applications:', e);
@@ -1280,13 +1278,15 @@ export default function AdminDashboardPage() {
 
   const handleUpdateApplicantStatus = useCallback(async (appId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('ho_so_tuyen_dung')
-        .update({ trang_thai: newStatus, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', appId);
+      const res = await fetch('/api/admin/applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: appId, trang_thai: newStatus }),
+      });
+      const json = await res.json();
 
-      if (error) {
-        showNotification('error', `Lỗi khi cập nhật trạng thái: ${error.message}`);
+      if (!res.ok || !json.success) {
+        showNotification('error', `Lỗi khi cập nhật trạng thái: ${json.message || 'Lỗi hệ thống'}`);
         return;
       }
 

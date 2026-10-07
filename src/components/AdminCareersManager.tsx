@@ -244,12 +244,12 @@ export default function AdminCareersManager({
 
   const loadLocalApplications = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('ho_so_tuyen_dung')
-        .select('*')
-        .order('ngay_tao', { ascending: false });
-      if (!error && data) {
-        setLocalApplications(data as HoSoTuyenDungRecord[]);
+      const res = await fetch('/api/admin/applications');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setLocalApplications(json.data as HoSoTuyenDungRecord[]);
+        }
       }
     } catch (e) {
       console.error('Error loading job applications:', e);
@@ -352,13 +352,15 @@ export default function AdminCareersManager({
       if (onUpdateApplicantStatus) {
         await onUpdateApplicantStatus(appId, newStatus);
       } else {
-        const { error } = await supabase
-          .from('ho_so_tuyen_dung')
-          .update({ trang_thai: newStatus, ngay_cap_nhat: new Date().toISOString() })
-          .eq('id', appId);
-
-        if (error) throw error;
+        const res = await fetch('/api/admin/applications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: appId, trang_thai: newStatus }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Lỗi hệ thống');
         notify('success', 'Đã cập nhật trạng thái ứng viên thành công!');
+        loadLocalApplications();
       }
     } catch (err: any) {
       notify('error', `Lỗi khi cập nhật trạng thái: ${err?.message || 'Lỗi hệ thống'}`);
