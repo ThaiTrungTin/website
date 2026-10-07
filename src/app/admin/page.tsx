@@ -1199,6 +1199,14 @@ export default function AdminDashboardPage() {
 
   const loadJobsList = useCallback(async () => {
     try {
+      const res = await fetch('/api/admin/jobs');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setJobs(json.data as TuyenDungRecord[]);
+          return;
+        }
+      }
       const { data, error } = await supabase
         .from('tuyen_dung')
         .select('*')

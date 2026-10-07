@@ -205,6 +205,16 @@ export default function AdminCareersManager({
   const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
+      const res = await fetch('/api/admin/jobs');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setJobs(json.data as TuyenDungRecord[]);
+          return;
+        }
+      }
+
+      // Fallback
       const { data, error } = await supabase
         .from('tuyen_dung')
         .select('*')
@@ -569,12 +579,14 @@ export default function AdminCareersManager({
   const handleToggleJobActive = async (job: TuyenDungRecord) => {
     const newStatus = !job.kich_hoat;
     try {
-      const { error } = await supabase
-        .from('tuyen_dung')
-        .update({ kich_hoat: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', job.id);
+      const res = await fetch('/api/admin/jobs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: job.id, kich_hoat: newStatus }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Lỗi cập nhật');
 
-      if (error) throw error;
       setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, kich_hoat: newStatus } : j)));
       notify('success', `Đã ${newStatus ? 'kích hoạt' : 'tạm ẩn'} vị trí tuyển dụng`);
     } catch (err: any) {
@@ -586,8 +598,12 @@ export default function AdminCareersManager({
     if (!window.confirm(`Bạn có chắc muốn xóa vị trí tuyển dụng "${job.tieu_de}" không?`)) return;
 
     try {
-      const { error } = await supabase.from('tuyen_dung').delete().eq('id', job.id);
-      if (error) throw error;
+      const res = await fetch(`/api/admin/jobs?id=${encodeURIComponent(job.id)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Lỗi xóa');
+
       notify('success', 'Đã xóa vị trí tuyển dụng thành công!');
       setJobs((prev) => prev.filter((j) => j.id !== job.id));
       if (editingJob?.id === job.id) setEditingJob(null);
@@ -703,12 +719,22 @@ export default function AdminCareersManager({
       };
 
       if (isCreatingNew) {
-        const { error } = await supabase.from('tuyen_dung').insert([payload]);
-        if (error) throw error;
+        const res = await fetch('/api/admin/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Lỗi thêm bài tuyển dụng');
         notify('success', 'Đã thêm vị trí tuyển dụng mới thành công!');
       } else {
-        const { error } = await supabase.from('tuyen_dung').update(payload).eq('id', editingJob.id);
-        if (error) throw error;
+        const res = await fetch('/api/admin/jobs', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingJob.id, ...payload }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Lỗi cập nhật');
         notify('success', 'Đã cập nhật vị trí tuyển dụng thành công!');
       }
 
