@@ -202,6 +202,23 @@ function formatReviewTime(time: string | null | undefined, timeEn: string | null
   return raw;
 }
 
+function getReviewContent(rev: DanhGiaRecord, isEn: boolean): string {
+  let enText = (rev.noi_dung_en || '').trim();
+  if (enText.includes('Được tạo bởi:') || enText.includes('User:')) {
+    enText = '';
+  }
+
+  let text = isEn && enText ? enText : (rev.noi_dung || '').trim();
+
+  if (!text || text.startsWith('Khách hàng đánh giá dịch vụ') || text.includes('dịch vụ 5 sao tại PetM&M')) {
+    return isEn
+      ? `Customer rated ${rev.so_sao || 5} stars ⭐`
+      : `Khách hàng đánh giá ${rev.so_sao || 5} sao ⭐`;
+  }
+
+  return text;
+}
+
 export default function ReviewsSection() {
   const { language } = useLanguage();
   const isEn = language === 'en';
@@ -549,8 +566,7 @@ export default function ReviewsSection() {
               {filteredReviews.map((rev) => {
                 const clientName =
                   isEn && rev.ten_khach_hang_en ? rev.ten_khach_hang_en : rev.ten_khach_hang;
-                const contentText =
-                  isEn && rev.noi_dung_en ? rev.noi_dung_en : rev.noi_dung;
+                const contentText = getReviewContent(rev, isEn);
                 const isLongText = (contentText || '').length > 85;
                 const isExpanded = !!expandedMap[rev.id];
                 const hasImage = Boolean(

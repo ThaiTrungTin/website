@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Link as LinkIcon,
@@ -393,21 +393,37 @@ export default function TaoDanhGiaPage() {
     loadBranches();
   }, []);
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async (isSilent = false) => {
     try {
-      setIsLoadingHistory(true);
+      if (!isSilent) setIsLoadingHistory(true);
       const res = await fetch('/api/review-requests?limit=50');
       const json = await res.json();
       if (res.ok && json.success) setHistoryList(json.data || []);
     } catch {}
-    finally { setIsLoadingHistory(false); }
-  };
+    finally {
+      if (!isSilent) setIsLoadingHistory(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (currentUser) {
-      fetchHistory();
-    }
-  }, [currentUser]);
+    if (!currentUser) return;
+    fetchHistory(false);
+
+    const channel = supabase
+      .channel('taodanhgia_yeu_cau_danh_gia_rt')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'yeu_cau_danh_gia' },
+        () => {
+          fetchHistory(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser, fetchHistory]);
 
   const handleCreateReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1086,7 +1102,7 @@ export default function TaoDanhGiaPage() {
                   {/* Nút Làm mới */}
                   <button
                     type="button"
-                    onClick={fetchHistory}
+                    onClick={() => fetchHistory()}
                     disabled={isLoadingHistory}
                     className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 transition cursor-pointer px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 shrink-0"
                     title="Làm mới danh sách"

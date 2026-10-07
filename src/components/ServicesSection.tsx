@@ -445,6 +445,21 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
 
   useEffect(() => {
     fetchServicesFromDb();
+
+    const channel = supabase
+      .channel('client_services_rt')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dich_vu' },
+        () => {
+          fetchServicesFromDb();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchServicesFromDb]);
 
   // Lắng nghe sự kiện chọn dịch vụ từ Menu Navigation (chuyển tab & mở chi tiết)

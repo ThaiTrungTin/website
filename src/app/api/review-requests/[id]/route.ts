@@ -162,12 +162,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       const pad = (n: number) => String(n).padStart(2, '0');
       const timeStr = `${pad(createdDate.getDate())}/${pad(createdDate.getMonth() + 1)}/${createdDate.getFullYear()} ${pad(createdDate.getHours())}:${pad(createdDate.getMinutes())}:${pad(createdDate.getSeconds())}`;
 
+      const fallbackVi = `Khách hàng đánh giá ${so_sao} sao ⭐`;
+      const fallbackEn = `Customer rated ${so_sao} stars ⭐`;
+
       const publicReview = {
         ten_khach_hang: existing.ten_khach_hang || 'Khách hàng PetM&M',
         so_dien_thoai: existing.so_dien_thoai || '0903 *** ***',
         so_sao: so_sao,
-        noi_dung: cleanNoiDung || `Khách hàng đánh giá dịch vụ ${so_sao} sao tại PetM&M.`,
-        noi_dung_en: `Được tạo bởi: ${creatorName} ; ${timeStr}`,
+        noi_dung: cleanNoiDung || fallbackVi,
+        noi_dung_en: cleanNoiDung || fallbackEn,
         chi_nhanh: existing.co_so || 'Hệ Thống Thú Y PetM&M',
         hinh_anh_thu_cung: cleanHinhAnh || null,
         ngay_danh_gia: new Date().toISOString().split('T')[0],
