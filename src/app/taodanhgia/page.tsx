@@ -293,6 +293,7 @@ export default function TaoDanhGiaPage() {
           customerName: targetRecord.ten_khach_hang,
           orderId: targetRecord.ma_hoa_don || targetRecord.ma_danh_gia,
           reviewCode: targetRecord.ma_danh_gia,
+          coSo: targetRecord.co_so,
         }),
       });
       const data = await res.json();

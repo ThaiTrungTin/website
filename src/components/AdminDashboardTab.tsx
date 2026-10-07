@@ -210,6 +210,7 @@ export default function AdminDashboardTab({
           customerName: item.ten_khach_hang,
           orderId: item.ma_hoa_don || item.ma_danh_gia,
           reviewCode: item.ma_danh_gia,
+          coSo: item.co_so,
         }),
       });
       const data = await res.json();

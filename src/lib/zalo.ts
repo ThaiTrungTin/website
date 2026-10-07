@@ -409,6 +409,7 @@ export async function sendZaloZnsReviewNotification(params: ZaloReviewParams, cu
   const templateData = {
     customer_name: safeCustomerName,
     order_id: safeOrderId,
+    order_code: safeOrderId,
     review_code: safeReviewCode,
     shop_name: safeShopName,
     shop_address: safeAddress,

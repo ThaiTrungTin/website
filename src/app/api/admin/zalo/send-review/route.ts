@@ -32,13 +32,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let branchAddress = (body.address || body.shop_address || '').trim();
+    let branchName = (body.shopName || body.shop_name || body.coSo || '').trim();
+
+    // Nếu chưa có địa chỉ cụ thể, tìm kiếm theo cơ sở trong yêu cầu đánh giá hoặc chi_nhanh
+    if (!branchAddress || !branchName) {
+      try {
+        let coSoName = branchName;
+        if (!coSoName) {
+          const { data: revRec } = await supabaseAdmin
+            .from('yeu_cau_danh_gia')
+            .select('co_so')
+            .eq('ma_danh_gia', reviewCode.trim())
+            .maybeSingle();
+          if (revRec?.co_so) coSoName = revRec.co_so;
+        }
+
+        if (coSoName) {
+          branchName = branchName || coSoName;
+          const { data: cnRec } = await supabaseAdmin
+            .from('chi_nhanh')
+            .select('dia_chi, ten_chi_nhanh')
+            .ilike('ten_chi_nhanh', `%${coSoName}%`)
+            .maybeSingle();
+          if (cnRec?.dia_chi) {
+            branchAddress = cnRec.dia_chi;
+          }
+        }
+      } catch (err) {
+        console.warn('[send-review] Lookup branch address error:', err);
+      }
+    }
+
+    if (!branchAddress) {
+      branchAddress = '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức';
+    }
+    if (!branchName) {
+      branchName = 'Bệnh viện Thú y PetM&M';
+    }
+
     const result = await sendZaloZnsReviewNotification({
       phone: phone.trim(),
       customerName: (customerName || 'Quý khách').trim(),
       orderId: (orderId || reviewCode).trim(),
       reviewCode: reviewCode.trim(),
-      shopName: (body.shopName || body.shop_name || body.address || '19 Đường Số 1, TP. Thủ Đức').trim(),
-      address: (body.address || body.shop_address || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức').trim(),
+      shopName: branchName,
+      address: branchAddress,
     });
 
     if (result.success) {
