@@ -171,15 +171,26 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
           return merged;
         });
 
-        // Cập nhật document.title trực tiếp ngay tức thì từ dữ liệu DB
+        // Cập nhật document.title trực tiếp ngay tức thì từ dữ liệu DB (chỉ áp dụng cho trang chủ)
         if (typeof window !== 'undefined') {
           try {
-            const lang = (localStorage.getItem('petmm_language') as string) || 'vi';
-            const pageTitle = lang === 'en'
-              ? (configData.tieu_de_trang_en?.trim() || 'PetM&M - Homepage')
-              : (configData.tieu_de_trang?.trim() || 'PetM&M - Trang Chủ');
-            if (pageTitle) {
-              document.title = pageTitle;
+            const currentPath = window.location.pathname;
+            const isSubRoute =
+              currentPath.startsWith('/chi-nhanh') ||
+              currentPath.startsWith('/kien-thuc') ||
+              currentPath.startsWith('/danhgiadichvu') ||
+              currentPath.startsWith('/admin') ||
+              currentPath.startsWith('/doi-ngu') ||
+              currentPath.startsWith('/tuyen-dung');
+
+            if (!isSubRoute) {
+              const lang = (localStorage.getItem('petmm_language') as string) || 'vi';
+              const pageTitle = lang === 'en'
+                ? (configData.tieu_de_trang_en?.trim() || 'PetM&M - Homepage')
+                : (configData.tieu_de_trang?.trim() || 'PetM&M - Trang Chủ');
+              if (pageTitle) {
+                document.title = pageTitle;
+              }
             }
           } catch {}
         }

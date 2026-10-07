@@ -59,9 +59,20 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress }: Pr
 
   // Cập nhật tiêu đề tab trình duyệt theo trạng thái: Đánh giá dịch vụ -> Xin cảm ơn
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.title = isSuccess ? 'PetM&M - Xin cảm ơn' : 'PetM&M - Đánh giá dịch vụ';
-    }
+    if (typeof document === 'undefined') return;
+    const targetTitle = isSuccess ? 'PetM&M - Xin cảm ơn' : 'PetM&M - Đánh giá dịch vụ';
+    const apply = () => {
+      if (document.title !== targetTitle) {
+        document.title = targetTitle;
+      }
+    };
+    apply();
+    const timers = [
+      setTimeout(apply, 100),
+      setTimeout(apply, 500),
+      setTimeout(apply, 1000),
+    ];
+    return () => timers.forEach(clearTimeout);
   }, [isSuccess]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
