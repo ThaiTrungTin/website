@@ -1836,6 +1836,16 @@ export default function AdminDashboardPage() {
   const [branchTitleLang, setBranchTitleLang] = useState<'vi' | 'en'>('vi');
   const [isTranslatingBranchTitle, setIsTranslatingBranchTitle] = useState(false);
 
+  // Cài đặt Tiêu đề & Chú thích mục Sứ Mệnh & Triết Lý (Giới Thiệu) ngoài trang chủ
+  const [isAboutTitleModalOpen, setIsAboutTitleModalOpen] = useState(false);
+  const [aboutTitleInput, setAboutTitleInput] = useState('');
+  const [aboutDescInput, setAboutDescInput] = useState('');
+  const [isSavingAboutTitle, setIsSavingAboutTitle] = useState(false);
+  const [aboutTitleEnInput, setAboutTitleEnInput] = useState('');
+  const [aboutDescEnInput, setAboutDescEnInput] = useState('');
+  const [aboutTitleLang, setAboutTitleLang] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingAboutTitle, setIsTranslatingAboutTitle] = useState(false);
+
   // Cấu hình Slogan & 2 Nút Đầu Trang (Hero Banner)
   const [isSavingHeroControls, setIsSavingHeroControls] = useState(false);
   const [heroPosDevice, setHeroPosDevice] = useState<'desktop' | 'mobile'>('desktop');
@@ -2245,6 +2255,94 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleOpenAboutTitleModal = () => {
+    setAboutTitleInput(
+      configForm.section_gioi_thieu_tieu_de ||
+      globalConfig.section_gioi_thieu_tieu_de ||
+      '<h2>Nâng Tầm Chăm Sóc Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Bằng Trái Tim &amp; Y Đức</span></h2>'
+    );
+    setAboutDescInput(
+      configForm.section_gioi_thieu_mo_ta ||
+      globalConfig.section_gioi_thieu_mo_ta ||
+      (configForm.gioi_thieu_mo_ta || globalConfig.gioi_thieu_mo_ta || '<p>Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.</p>')
+    );
+    setAboutTitleEnInput(
+      configForm.section_gioi_thieu_tieu_de_en ||
+      globalConfig.section_gioi_thieu_tieu_de_en ||
+      '<h2>Elevating Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">With Integrity &amp; Compassion</span></h2>'
+    );
+    setAboutDescEnInput(
+      configForm.section_gioi_thieu_mo_ta_en ||
+      globalConfig.section_gioi_thieu_mo_ta_en ||
+      (configForm.gioi_thieu_mo_ta_en || globalConfig.gioi_thieu_mo_ta_en || '<p>Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.</p>')
+    );
+    setAboutTitleLang('vi');
+    setIsAboutTitleModalOpen(true);
+  };
+
+  const handleAutoTranslateAboutTitle = async () => {
+    setIsTranslatingAboutTitle(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            section_gioi_thieu_tieu_de: aboutTitleInput || '',
+            section_gioi_thieu_mo_ta: aboutDescInput || '',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.translations) {
+        if (data.translations.section_gioi_thieu_tieu_de !== undefined) {
+          setAboutTitleEnInput(data.translations.section_gioi_thieu_tieu_de);
+        }
+        if (data.translations.section_gioi_thieu_mo_ta !== undefined) {
+          setAboutDescEnInput(data.translations.section_gioi_thieu_mo_ta);
+        }
+        setAboutTitleLang('en');
+        showNotification('success', 'Đã chuyển đổi tiêu đề & chú thích mục Sứ Mệnh sang Tiếng Anh thành công!');
+      } else throw new Error(data.error || 'Dịch thất bại');
+    } catch (err: any) {
+      showNotification('error', `Lỗi dịch: ${err.message}`);
+    } finally {
+      setIsTranslatingAboutTitle(false);
+    }
+  };
+
+  const handleSaveAboutTitle = async () => {
+    setIsSavingAboutTitle(true);
+    try {
+      const payload = {
+        id: 'system',
+        section_gioi_thieu_tieu_de: aboutTitleInput,
+        section_gioi_thieu_mo_ta: aboutDescInput,
+        section_gioi_thieu_tieu_de_en: aboutTitleEnInput,
+        section_gioi_thieu_mo_ta_en: aboutDescEnInput,
+        ngay_cap_nhat: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('cau_hinh').upsert([payload]);
+      if (error) throw error;
+
+      setConfigForm((prev) => ({
+        ...prev,
+        section_gioi_thieu_tieu_de: aboutTitleInput,
+        section_gioi_thieu_mo_ta: aboutDescInput,
+        section_gioi_thieu_tieu_de_en: aboutTitleEnInput,
+        section_gioi_thieu_mo_ta_en: aboutDescEnInput,
+      }));
+      await refreshConfig();
+      showNotification('success', 'Đã lưu tiêu đề & chú thích mục Sứ Mệnh & Triết Lý thành công!');
+      setIsAboutTitleModalOpen(false);
+    } catch (err: any) {
+      console.error('Lỗi lưu tiêu đề sứ mệnh & triết lý:', err);
+      showNotification('error', `Lỗi lưu tiêu đề: ${err.message}`);
+    } finally {
+      setIsSavingAboutTitle(false);
+    }
+  };
+
   const handleSaveHeroControls = async () => {
     setIsSavingHeroControls(true);
     try {
@@ -2360,6 +2458,10 @@ export default function AdminDashboardPage() {
         'section_chi_nhanh_mo_ta',
         'section_chi_nhanh_tieu_de_en',
         'section_chi_nhanh_mo_ta_en',
+        'section_gioi_thieu_tieu_de',
+        'section_gioi_thieu_mo_ta',
+        'section_gioi_thieu_tieu_de_en',
+        'section_gioi_thieu_mo_ta_en',
         'hero_slogan_x_desktop',
         'hero_slogan_y_desktop',
         'hero_slogan_align_desktop',
@@ -8494,6 +8596,17 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           </button>
                         </div>
 
+                        {/* Nút Cài đặt tiêu đề mục */}
+                        <button
+                          type="button"
+                          onClick={handleOpenAboutTitleModal}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-xs hover:shadow transition shrink-0 cursor-pointer"
+                          title="Cài đặt Tiêu đề & Chú thích hiển thị trên Trang chủ (Rich Text Editor)"
+                        >
+                          <Settings className="w-4 h-4 text-amber-700" />
+                          <span>Cài Đặt Tiêu Đề Mục</span>
+                        </button>
+
                         {/* Nút Chuyển đổi ENG */}
                         <button
                           type="button"
@@ -13188,6 +13301,213 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   <Check className="w-4 h-4" />
                 )}
                 <span>{isSavingBranchTitle ? 'Đang lưu...' : 'Lưu Tiêu Đề Mục'}</span>
+              </button>
+            </div>
+          </AdminResizableModal>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC SỨ MỆNH & TRIẾT LÝ (TRANG CHỦ) */}
+      {/* ========================================================= */}
+      {isAboutTitleModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <AdminResizableModal className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-amber-50/80 via-white to-emerald-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-wide">
+                    Cài Đặt Tiêu Đề &amp; Chú Thích Mục Sứ Mệnh &amp; Triết Lý
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAboutTitleModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Thanh Chuyển Ngôn Ngữ & Nút Dịch AI */}
+              <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setAboutTitleLang('vi')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      aboutTitleLang === 'vi' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản Tiếng Việt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAboutTitleLang('en')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      aboutTitleLang === 'en' ? 'bg-[#2D5A27] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <UKFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản English</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateAboutTitle}
+                  disabled={isTranslatingAboutTitle}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động tiêu đề & chú thích Tiếng Việt sang Tiếng Anh bằng AI"
+                >
+                  {isTranslatingAboutTitle ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingAboutTitle ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
+              </div>
+
+              {(() => {
+                const isVi = aboutTitleLang === 'vi';
+                const titleVal = isVi ? aboutTitleInput : aboutTitleEnInput;
+                const setTitleVal = isVi ? setAboutTitleInput : setAboutTitleEnInput;
+                const descVal = isVi ? aboutDescInput : aboutDescEnInput;
+                const setDescVal = isVi ? setAboutDescInput : setAboutDescEnInput;
+                const defaultTitle = isVi
+                  ? '<h2>Nâng Tầm Chăm Sóc Y Khoa <br /><span style="color: #2D5A27; font-style: italic;">Bằng Trái Tim &amp; Y Đức</span></h2>'
+                  : '<h2>Elevating Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">With Integrity &amp; Compassion</span></h2>';
+                const defaultDesc = isVi
+                  ? '<p>Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.</p>'
+                  : '<p>Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.</p>';
+                const badgeText = isVi
+                  ? (configForm.gioi_thieu_huy_hieu || 'SỨ MỆNH & TRIẾT LÝ PETM&M')
+                  : (configForm.gioi_thieu_huy_hieu_en || 'MISSION & PHILOSOPHY');
+                const langLabel = isVi ? 'Tiếng Việt' : 'English';
+
+                return (
+                  <>
+                    {/* Tiêu đề chính */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Tiêu Đề Mục Sứ Mệnh &amp; Triết Lý ({langLabel}):</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setTitleVal(defaultTitle)}
+                          className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold underline cursor-pointer"
+                        >
+                          Khôi phục mẫu tiêu đề mặc định
+                        </button>
+                      </div>
+                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                        <RichTextEditor
+                          key={`about-title-${aboutTitleLang}`}
+                          value={titleVal}
+                          onChange={(html) => setTitleVal(html)}
+                          minHeight={150}
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        💡 Bạn có thể chọn bôi đen chữ để đổi màu sang màu xanh rêu thương hiệu <code>#2D5A27</code>, in nghiêng, in đậm hoặc chèn icon/xuống dòng.
+                      </p>
+                    </div>
+
+                    {/* Chú thích / Mô tả phụ */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Edit3 className="w-4 h-4 text-[#2D5A27]" />
+                          <span>Chú Thích / Mô Tả Phụ ({langLabel}):</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setDescVal(defaultDesc)}
+                          className="text-[11px] text-slate-500 hover:text-slate-700 font-medium underline cursor-pointer"
+                        >
+                          Dùng gợi ý chú thích mẫu
+                        </button>
+                      </div>
+                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                        <RichTextEditor
+                          key={`about-desc-${aboutTitleLang}`}
+                          value={descVal}
+                          onChange={(html) => setDescVal(html)}
+                          minHeight={120}
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        💡 Để trống nếu không muốn hiển thị chú thích bên dưới tiêu đề sứ mệnh.
+                      </p>
+                    </div>
+
+                    {/* Khung Xem Trước Giao Diện Thực Tế */}
+                    <div className="p-5 rounded-2xl bg-[#F8FAF7] border border-slate-200 shadow-2xs">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 mb-3">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-[#2D5A27]" />
+                          <span>Xem trước thực tế ngoài Trang Chủ ({langLabel}):</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">Hiển thị trực quan theo thời gian thực</span>
+                      </div>
+                      <div className="text-left max-w-2xl mx-auto py-4 space-y-3">
+                        {/* Huy hiệu */}
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase shadow-xs">
+                          <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
+                          <span>{badgeText}</span>
+                        </div>
+
+                        {/* Tiêu đề */}
+                        <div
+                          className="font-editorial text-2xl sm:text-4xl text-slate-900 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleVal || defaultTitle) }}
+                        />
+
+                        {/* Chú thích / Mô tả */}
+                        {descVal && (
+                          <div
+                            className="mt-3 text-xs sm:text-sm text-slate-600 font-light leading-relaxed [&_p]:m-0"
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(descVal) }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50/50">
+              <button
+                type="button"
+                onClick={() => setIsAboutTitleModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAboutTitle}
+                disabled={isSavingAboutTitle}
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md hover:shadow-lg transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSavingAboutTitle ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>{isSavingAboutTitle ? 'Đang lưu...' : 'Lưu Tiêu Đề Mục'}</span>
               </button>
             </div>
           </AdminResizableModal>

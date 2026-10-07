@@ -141,6 +141,10 @@ export interface CauHinhRecord {
   section_chi_nhanh_mo_ta?: string;
   section_chi_nhanh_tieu_de_en?: string;
   section_chi_nhanh_mo_ta_en?: string;
+  section_gioi_thieu_tieu_de?: string;
+  section_gioi_thieu_mo_ta?: string;
+  section_gioi_thieu_tieu_de_en?: string;
+  section_gioi_thieu_mo_ta_en?: string;
   hero_slogan_x_desktop?: number;
   hero_slogan_y_desktop?: number;
   hero_slogan_align_desktop?: 'left' | 'center' | 'right';

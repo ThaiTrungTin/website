@@ -20,6 +20,7 @@ import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import { getAssetUrl } from '@/lib/assets';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 // Interface slide giới thiệu
 interface AboutSlideItem {
@@ -76,6 +77,12 @@ export default function AboutSection() {
       'Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.')
     : (config.gioi_thieu_mo_ta ||
       'Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.');
+
+  // Tiêu đề & chú thích mục Giới thiệu (Sứ mệnh & Triết lý) theo ngôn ngữ hiện tại
+  const rawAboutTitleHtml = (isEn ? config.section_gioi_thieu_tieu_de_en : config.section_gioi_thieu_tieu_de) || '';
+  const rawAboutDescHtml = (isEn ? config.section_gioi_thieu_mo_ta_en : config.section_gioi_thieu_mo_ta) || '';
+  const aboutTitleHtml = sanitizeHtml(rawAboutTitleHtml);
+  const aboutDescHtml = sanitizeHtml(rawAboutDescHtml);
   const trichDan = isEn
     ? (config.gioi_thieu_trich_dan_en ||
       '“We regard every breath and every heartbeat of our patients as our greatest pride and responsibility in our veterinary calling.”')
@@ -350,15 +357,29 @@ export default function AboutSection() {
                 <span>{huyHieu}</span>
               </div>
 
-              <h2 className="font-editorial text-2xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-slate-900 mb-4 leading-tight">
-                {tieuDe1} <br />
-                <span className="italic font-light text-[#2D5A27]">{tieuDe2}</span>
-              </h2>
+              {aboutTitleHtml ? (
+                <div
+                  className="font-editorial text-2xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-slate-900 mb-4 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
+                  dangerouslySetInnerHTML={{ __html: aboutTitleHtml }}
+                />
+              ) : (
+                <h2 className="font-editorial text-2xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-slate-900 mb-4 leading-tight">
+                  {tieuDe1} <br />
+                  <span className="italic font-light text-[#2D5A27]">{tieuDe2}</span>
+                </h2>
+              )}
             </ScrollRevealTitle>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-light">
-              {moTa}
-            </p>
+            {aboutDescHtml ? (
+              <div
+                className="text-xs sm:text-sm text-slate-600 leading-relaxed font-light [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
+                dangerouslySetInnerHTML={{ __html: aboutDescHtml }}
+              />
+            ) : (
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-light">
+                {moTa}
+              </p>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
               {pillars.map((item, idx) => {
