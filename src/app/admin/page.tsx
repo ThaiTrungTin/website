@@ -1314,6 +1314,27 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  const handleDeleteApplicant = useCallback(async (appId: string) => {
+    try {
+      const res = await fetch(`/api/admin/applications?id=${encodeURIComponent(appId)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        showNotification('error', `Lỗi khi xóa hồ sơ: ${json.message || 'Lỗi hệ thống'}`);
+        return false;
+      }
+
+      setJobApplications((prev) => prev.filter((item) => item.id !== appId));
+      showNotification('success', 'Đã xóa hồ sơ ứng viên thành công!');
+      return true;
+    } catch (err: any) {
+      showNotification('error', `Không thể xóa hồ sơ: ${err?.message || 'Lỗi hệ thống'}`);
+      return false;
+    }
+  }, []);
+
   // -------------------------------------------------------------
   // TAB 1: QUẢN LÝ ẢNH NỀN HERO BANNER
   // -------------------------------------------------------------
@@ -11744,6 +11765,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   showNotification={showNotification}
                   applications={jobApplications}
                   onUpdateApplicantStatus={handleUpdateApplicantStatus}
+                  onDeleteApplicant={handleDeleteApplicant}
                   highlightedId={highlightedId}
                   onOpenTitleModal={handleOpenCareersTitleModal}
                 />

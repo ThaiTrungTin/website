@@ -50,6 +50,7 @@ interface Props {
   showNotification?: (type: 'success' | 'error', message: string) => void;
   applications?: HoSoTuyenDungRecord[];
   onUpdateApplicantStatus?: (appId: string, newStatus: string) => Promise<void>;
+  onDeleteApplicant?: (appId: string) => Promise<boolean>;
   highlightedId?: string | null;
   onOpenTitleModal?: () => void;
   defaultView?: 'jobs' | 'applicants';
@@ -71,6 +72,7 @@ export default function AdminCareersManager({
   showNotification,
   applications: propApplications,
   onUpdateApplicantStatus,
+  onDeleteApplicant,
   highlightedId,
   onOpenTitleModal,
   defaultView,
@@ -378,6 +380,34 @@ export default function AdminCareersManager({
       }
     } catch (err: any) {
       notify('error', `Lỗi khi cập nhật trạng thái: ${err?.message || 'Lỗi hệ thống'}`);
+    } finally {
+      setUpdatingAppId(null);
+    }
+  };
+
+  const handleDeleteApplicant = async (appId: string, applicantName: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn hồ sơ ứng viên "${applicantName}" không?\nHành động này không thể hoàn tác.`)) {
+      return;
+    }
+
+    setUpdatingAppId(appId);
+    try {
+      if (onDeleteApplicant) {
+        const success = await onDeleteApplicant(appId);
+        if (success) {
+          setLocalApplications((prev) => prev.filter((item) => item.id !== appId));
+        }
+      } else {
+        const res = await fetch(`/api/admin/applications?id=${encodeURIComponent(appId)}`, {
+          method: 'DELETE',
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Lỗi khi xóa hồ sơ');
+        notify('success', `Đã xóa hồ sơ ứng viên "${applicantName}" thành công!`);
+        setLocalApplications((prev) => prev.filter((item) => item.id !== appId));
+      }
+    } catch (err: any) {
+      notify('error', `Lỗi xóa ứng viên: ${err?.message || 'Lỗi hệ thống'}`);
     } finally {
       setUpdatingAppId(null);
     }
@@ -1269,6 +1299,16 @@ export default function AdminCareersManager({
                                                 {app.so_lan_gui_email}
                                               </span>
                                             ) : null}
+                                            {/* Nút xóa ứng viên */}
+                                            <button
+                                              type="button"
+                                              disabled={isUpdating}
+                                              onClick={() => handleDeleteApplicant(app.id, app.ho_ten)}
+                                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
+                                              title="Xóa vĩnh viễn hồ sơ ứng viên này"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                           </div>
                                         </div>
                                       </div>
@@ -1462,6 +1502,17 @@ export default function AdminCareersManager({
                                             >
                                               <Mail className="w-3.5 h-3.5" />
                                               <span>Thư mời PV</span>
+                                            </button>
+
+                                            {/* Nút xóa ứng viên */}
+                                            <button
+                                              type="button"
+                                              disabled={isUpdating}
+                                              onClick={() => handleDeleteApplicant(app.id, app.ho_ten)}
+                                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
+                                              title="Xóa vĩnh viễn hồ sơ ứng viên này"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
                                             </button>
                                           </div>
                                         </div>
@@ -1671,6 +1722,17 @@ export default function AdminCareersManager({
                         </span>
                       ) : null}
                     </div>
+
+                    {/* Nút xóa ứng viên */}
+                    <button
+                      type="button"
+                      disabled={isUpdating}
+                      onClick={() => handleDeleteApplicant(app.id, app.ho_ten)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer disabled:opacity-40"
+                      title="Xóa vĩnh viễn hồ sơ ứng viên này"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               );
