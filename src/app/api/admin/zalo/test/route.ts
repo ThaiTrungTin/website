@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         customerName: 'Nguyễn Văn An (Khách Thử Nghiệm)',
         orderId: 'HD-' + Math.floor(100000 + Math.random() * 900000),
         reviewCode: 'REV-' + Math.floor(100000 + Math.random() * 900000),
-        shopName: '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức',
+        shopName: '19 Đường Số 1, TP. Thủ Đức',
         address: '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức',
       };
       console.log(`[Zalo Test API] Gửi thử mẫu Đánh giá ZNS (Template ID: ${customTemplateId || 'mặc định'}) tới SĐT ${phone}...`);

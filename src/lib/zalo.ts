@@ -393,8 +393,18 @@ export async function sendZaloZnsReviewNotification(params: ZaloReviewParams, cu
   const safeCustomerName = (params.customerName || 'Quý khách').trim().slice(0, 30);
   const safeOrderId = (params.orderId || params.reviewCode || 'PET-000000').trim().slice(0, 30);
   const safeReviewCode = (params.reviewCode || '').trim().slice(0, 100);
+  let rawShop = (params.shopName || params.address || '').trim();
+  if (!rawShop || rawShop === 'Bệnh viện Thú y PetM&M') {
+    rawShop = '19 Đường Số 1, TP. Thủ Đức';
+  } else if (rawShop.length > 30) {
+    if (rawShop.includes('19') && rawShop.includes('Thủ Đức')) {
+      rawShop = '19 Đường Số 1, TP. Thủ Đức';
+    } else {
+      rawShop = rawShop.slice(0, 30).trim();
+    }
+  }
+  const safeShopName = rawShop.slice(0, 30);
   const safeAddress = (params.address || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức').trim().slice(0, 80);
-  const safeShopName = (params.shopName || safeAddress).trim().slice(0, 80);
 
   const templateData = {
     customer_name: safeCustomerName,
