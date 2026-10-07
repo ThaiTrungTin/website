@@ -4085,12 +4085,37 @@ export default function AdminDashboardPage() {
   const [isNotifSettingsModalOpen, setIsNotifSettingsModalOpen] = useState(false);
   const knownAppointmentIdsRef = useRef<Set<string>>(new Set());
   const isInitialAppointmentsLoadedRef = useRef<boolean>(false);
+  const dismissedAppointmentIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setBrowserNotifPermission(Notification.permission);
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem('petmm_dismissed_appointment_notifications');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            dismissedAppointmentIdsRef.current = new Set(parsed);
+          }
+        }
+      } catch {}
+      if ('Notification' in window) {
+        setBrowserNotifPermission(Notification.permission);
+      }
     }
     setAdminNotifSettings(getLocalAdminNotifSettings());
+  }, []);
+
+  const handleDismissFloatingNotification = useCallback((appointmentId?: string) => {
+    if (appointmentId) {
+      dismissedAppointmentIdsRef.current.add(appointmentId);
+      try {
+        sessionStorage.setItem(
+          'petmm_dismissed_appointment_notifications',
+          JSON.stringify(Array.from(dismissedAppointmentIdsRef.current))
+        );
+      } catch {}
+    }
+    setFloatingNotification(null);
   }, []);
 
   // Mở modal và nạp toàn bộ thông tin lịch hẹn vào form chỉnh sửa
@@ -4223,6 +4248,21 @@ export default function AdminDashboardPage() {
   // Hàm kích hoạt trọn bộ thông báo: Toast góc dưới phải + Chuông âm thanh + Windows notification
   const triggerNewAppointmentNotification = useCallback(
     (app: LichHenRecord) => {
+      if (!app || !app.id) return;
+      // 1. Không hiển thị lại nếu người dùng đã bấm tắt (X) lịch hẹn này trong phiên làm việc
+      if (dismissedAppointmentIdsRef.current.has(app.id)) return;
+
+      // 2. Chỉ thông báo nếu lịch hẹn đang ở trạng thái 'cho_xac_nhan'
+      if (app.trang_thai && app.trang_thai !== 'cho_xac_nhan') return;
+
+      // 3. Chỉ thông báo nếu lịch hẹn mới được tạo trong vòng 30 phút gần đây (tránh nhắc lại lịch cũ hôm trước)
+      if (app.ngay_tao) {
+        const createdMs = new Date(app.ngay_tao).getTime();
+        if (!isNaN(createdMs) && Date.now() - createdMs > 30 * 60 * 1000) {
+          return;
+        }
+      }
+
       const notifData: FloatingAppointmentNotification = {
         id: app.id,
         customerName: app.ho_ten_chu,
@@ -4805,18 +4845,29 @@ export default function AdminDashboardPage() {
       if (error) throw error;
       const incoming = (data as LichHenRecord[]) || [];
 
-      if (!isInitialAppointmentsLoadedRef.current) {
+      if (!isInitialAppointmentsLoadedRef.current || knownAppointmentIdsRef.current.size === 0) {
         // Lần đầu vào trang Admin: ghi nhớ toàn bộ ID hiện tại, không kích hoạt thông báo cũ
         knownAppointmentIdsRef.current = new Set(incoming.map((a) => a.id));
         isInitialAppointmentsLoadedRef.current = true;
       } else {
-        // Các lần cập nhật tiếp theo: kiểm tra nếu có lịch hẹn mới chưa từng ghi nhận
+        // Các lần cập nhật tiếp theo: kiểm tra nếu có lịch hẹn thực sự mới vừa được đặt
         for (const app of incoming) {
-          if (!knownAppointmentIdsRef.current.has(app.id)) {
-            knownAppointmentIdsRef.current.add(app.id);
-            triggerNewAppointmentNotification(app);
-            break;
+          if (
+            !knownAppointmentIdsRef.current.has(app.id) &&
+            !dismissedAppointmentIdsRef.current.has(app.id) &&
+            app.trang_thai === 'cho_xac_nhan'
+          ) {
+            const createdMs = app.ngay_tao ? new Date(app.ngay_tao).getTime() : NaN;
+            const isFresh = !isNaN(createdMs) && Date.now() - createdMs < 30 * 60 * 1000;
+            if (isFresh) {
+              triggerNewAppointmentNotification(app);
+              break;
+            }
           }
+        }
+        // Luôn cập nhật tất cả ID vào Set để không bị quét lặp lại ở các chu kỳ polling sau
+        for (const app of incoming) {
+          knownAppointmentIdsRef.current.add(app.id);
         }
       }
 
@@ -16404,10 +16455,18 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       <AdminFloatingNotification
         notification={floatingNotification}
         playSound={adminNotifSettings.webSound}
-        onClose={() => setFloatingNotification(null)}
+        onClose={() => {
+          if (floatingNotification) {
+            handleDismissFloatingNotification(floatingNotification.id);
+          } else {
+            setFloatingNotification(null);
+          }
+        }}
         onOpenDetail={(app) => {
+          if (floatingNotification) {
+            handleDismissFloatingNotification(floatingNotification.id);
+          }
           handleOpenAppointmentFromNotification(app);
-          setFloatingNotification(null);
         }}
       />
 
