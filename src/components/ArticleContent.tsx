@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface Props {
   html: string;
@@ -17,7 +18,8 @@ interface Props {
 export default function ArticleContent({ html, htmlEn, className = '' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const { language } = useLanguage();
-  const activeHtml = (language === 'en' && htmlEn?.trim()) ? htmlEn : html;
+  const rawHtml = (language === 'en' && htmlEn?.trim()) ? htmlEn : html;
+  const activeHtml = sanitizeHtml(rawHtml);
 
   useEffect(() => {
     if (!ref.current) return;

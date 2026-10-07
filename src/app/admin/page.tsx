@@ -86,6 +86,7 @@ import PetLogo from '@/components/PetLogo';
 import AdminCareersManager from '@/components/AdminCareersManager';
 import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announcement/route';
 import { SloganTickerItem, parseSloganList, isSloganActive, renderWithShakingIcons } from '@/lib/slogans';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 import AdminResizableModal from '@/components/AdminResizableModal';
@@ -1146,6 +1147,7 @@ export default function AdminDashboardPage() {
     setIsLoggingOut(true);
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
+      await supabase.auth.signOut();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
@@ -13099,12 +13101,12 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       <div className="text-center max-w-2xl mx-auto py-4">
                         <div
                           className="font-editorial text-2xl sm:text-4xl text-slate-900 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
-                          dangerouslySetInnerHTML={{ __html: titleVal || defaultTitle }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleVal || defaultTitle) }}
                         />
                         {descVal && (
                           <div
                             className="mt-3 text-xs sm:text-sm text-slate-600 font-light [&_p]:m-0"
-                            dangerouslySetInnerHTML={{ __html: descVal }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(descVal) }}
                           />
                         )}
                       </div>

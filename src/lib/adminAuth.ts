@@ -1,18 +1,14 @@
 import crypto from 'crypto';
 
 function getAuthSecret(): string {
-  const secret = process.env.ADMIN_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (secret && secret.trim().length > 0) {
-    return secret.trim();
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!secret || secret.trim().length === 0) {
+    throw new Error(
+      '[Security Error] Thiếu cấu hình ADMIN_JWT_SECRET trong biến môi trường! Hệ thống đã loại bỏ hoàn toàn fallback bí mật dự đoán được để đảm bảo an toàn.'
+    );
   }
-  // Khóa dẫn xuất động bảo mật cao, không dùng chuỗi tĩnh có thể đoán trước
-  return crypto
-    .createHash('sha256')
-    .update(`petmm_${process.env.NEXT_PUBLIC_SUPABASE_URL || 'petmm_secure_instance'}_entropy_seed_2026`)
-    .digest('hex');
+  return secret.trim();
 }
-
-const AUTH_SECRET = getAuthSecret();
 
 export interface AdminUser {
   username: string;
@@ -26,22 +22,24 @@ export function hashPassword(password: string, salt: string): string {
 }
 
 export function generateToken(user: AdminUser): string {
+  const authSecret = getAuthSecret();
   const payload = JSON.stringify({
     ...user,
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 ngày
   });
   const encodedPayload = Buffer.from(payload).toString('base64url');
-  const signature = crypto.createHmac('sha256', AUTH_SECRET).update(encodedPayload).digest('base64url');
+  const signature = crypto.createHmac('sha256', authSecret).update(encodedPayload).digest('base64url');
   return `${encodedPayload}.${signature}`;
 }
 
 export function verifyToken(token?: string | null): AdminUser | null {
   if (!token) return null;
+  const authSecret = getAuthSecret();
   const parts = token.split('.');
   if (parts.length !== 2) return null;
 
   const [encodedPayload, signature] = parts;
-  const expectedSignature = crypto.createHmac('sha256', AUTH_SECRET).update(encodedPayload).digest('base64url');
+  const expectedSignature = crypto.createHmac('sha256', authSecret).update(encodedPayload).digest('base64url');
 
   if (signature !== expectedSignature) return null;
 

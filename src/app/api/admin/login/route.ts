@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     let isLocked = false;
     let rawUserId = '';
     let userMeta: any = {};
+    let supabaseSession: any = null;
 
     // 1. Xác thực độc quyền qua Supabase Auth
     try {
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (!authError && authData.user) {
+        supabaseSession = authData.session;
         rawUserId = authData.user.id;
         userMeta = authData.user.user_metadata || {};
 
@@ -136,7 +138,7 @@ export async function POST(req: NextRequest) {
       message: 'Đăng nhập thành công!',
       user: authenticatedUser,
       redirectUrl,
-      token,
+      supabaseSession,
     });
 
     res.cookies.set('petmm_admin_session', token, {

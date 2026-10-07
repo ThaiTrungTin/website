@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -65,14 +66,14 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <head>
-        <script
+      <body className="antialiased min-h-screen bg-[#0B150A] text-slate-900" suppressHydrationWarning>
+        <Script
+          id="petmm-system-config-cache"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var c=localStorage.getItem('petmm_system_config_cache');if(c){var p=JSON.parse(c);var r=document.documentElement;if(p.hero_slogan_x_desktop!==undefined)r.style.setProperty('--hero-x-desktop',p.hero_slogan_x_desktop+'px');if(p.hero_slogan_y_desktop!==undefined)r.style.setProperty('--hero-y-desktop',p.hero_slogan_y_desktop+'px');if(p.hero_slogan_x_mobile!==undefined)r.style.setProperty('--hero-x-mobile',p.hero_slogan_x_mobile+'px');if(p.hero_slogan_y_mobile!==undefined)r.style.setProperty('--hero-y-mobile',p.hero_slogan_y_mobile+'px');}}catch(e){}})();`,
           }}
         />
-      </head>
-      <body className="antialiased min-h-screen bg-[#0B150A] text-slate-900" suppressHydrationWarning>
         <SystemConfigProvider>
           <LanguageProvider>
             <DynamicFavicon />

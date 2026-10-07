@@ -132,6 +132,12 @@ export default function AdminLoginPage({ onLoginSuccess }: AdminLoginPageProps) 
         return;
       }
 
+      if (data.supabaseSession) {
+        try {
+          await supabase.auth.setSession(data.supabaseSession);
+        } catch (_) {}
+      }
+
       onLoginSuccess(data.user);
     } catch {
       setErrorMessage('Không thể kết nối máy chủ xác thực. Vui lòng thử lại!');

@@ -177,20 +177,26 @@ export async function getRecruitmentEmailTemplateConfig(): Promise<RecruitmentEm
 export async function getSmtpConfig(): Promise<SmtpConfig> {
   try {
     const { getNotificationSettings } = await import('./notificationSettings');
-    const [dbRes, notifySettings] = await Promise.all([
+    const [dbRes, secretRes, notifySettings] = await Promise.all([
       supabaseAdmin
         .from('cau_hinh')
-        .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
+        .select('smtp_email, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email')
+        .eq('id', 'system')
+        .maybeSingle(),
+      supabaseAdmin
+        .from('cau_hinh_bi_mat')
+        .select('smtp_password, smtp_email')
         .eq('id', 'system')
         .maybeSingle(),
       getNotificationSettings().catch(() => null),
     ]);
 
     const data = dbRes.data;
+    const secretData = secretRes.data;
 
     return {
-      smtp_email: data?.smtp_email || 'thaitrtin@gmail.com',
-      smtp_password: data?.smtp_password || '',
+      smtp_email: secretData?.smtp_email || data?.smtp_email || 'thaitrtin@gmail.com',
+      smtp_password: secretData?.smtp_password || '',
       smtp_sender_name: data?.smtp_sender_name || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
       smtp_notify_email: data?.smtp_notify_email || 'thaitrtin@gmail.com',
       smtp_notify_recruitment_email: data?.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',

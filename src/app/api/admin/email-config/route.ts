@@ -17,10 +17,15 @@ export async function GET(req: NextRequest) {
     }
 
     const { getNotificationSettings, DEFAULT_NOTIFICATION_SETTINGS } = await import('@/lib/notificationSettings');
-    const [systemRes, notifySettings] = await Promise.all([
+    const [systemRes, secretRes, notifySettings] = await Promise.all([
       supabaseAdmin
         .from('cau_hinh')
-        .select('smtp_email, smtp_password, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email, zalo_oa_id, zalo_app_id, zalo_secret_key, zalo_template_id, zalo_enabled')
+        .select('smtp_email, smtp_sender_name, smtp_notify_email, smtp_notify_recruitment_email, smtp_notify_contact_email, zalo_oa_id, zalo_app_id, zalo_template_id, zalo_enabled')
+        .eq('id', 'system')
+        .maybeSingle(),
+      supabaseAdmin
+        .from('cau_hinh_bi_mat')
+        .select('smtp_password, zalo_secret_key')
         .eq('id', 'system')
         .maybeSingle(),
       getNotificationSettings().catch(() => DEFAULT_NOTIFICATION_SETTINGS),
@@ -28,6 +33,7 @@ export async function GET(req: NextRequest) {
 
     if (systemRes.error) throw systemRes.error;
     const data = systemRes.data;
+    const secretData = secretRes.data;
 
     const templateConfig = await getEmailTemplateConfig();
     const { getRecruitmentEmailTemplateConfig } = await import('@/lib/mailer');
@@ -41,7 +47,7 @@ export async function GET(req: NextRequest) {
         smtp_notify_email: data?.smtp_notify_email || 'thaitrtin@gmail.com',
         smtp_notify_recruitment_email: data?.smtp_notify_recruitment_email || 'tuyendung@petmm.vn',
         smtp_notify_contact_email: data?.smtp_notify_contact_email || data?.smtp_notify_email || 'thaitrtin@gmail.com',
-        hasPassword: Boolean(data?.smtp_password && data.smtp_password.trim().length > 0),
+        hasPassword: Boolean(secretData?.smtp_password && secretData.smtp_password.trim().length > 0),
         email_enabled: notifySettings.email_enabled,
         email_booking_mode: notifySettings.email_booking_mode,
         email_recruitment_enabled: notifySettings.email_recruitment_enabled,
@@ -49,7 +55,7 @@ export async function GET(req: NextRequest) {
       zalo: {
         zalo_oa_id: data?.zalo_oa_id || '',
         zalo_app_id: data?.zalo_app_id || '',
-        zalo_secret_key: data?.zalo_secret_key || '',
+        zalo_secret_key: secretData?.zalo_secret_key || '',
         zalo_template_id: data?.zalo_template_id || '',
         zalo_review_template_id: notifySettings.zalo_review_template_id || '',
         zalo_enabled: Boolean(data?.zalo_enabled),
@@ -126,7 +132,10 @@ export async function POST(req: NextRequest) {
       };
 
       if (typeof smtp_password === 'string' && smtp_password.trim().length > 0) {
-        updatePayload.smtp_password = smtp_password.trim();
+        // Lưu mật khẩu Gmail vào bảng bí mật độc quyền của server
+        await supabaseAdmin
+          .from('cau_hinh_bi_mat')
+          .upsert({ id: 'system', smtp_password: smtp_password.trim(), smtp_email: smtp_email.trim() });
       }
 
       const { error: smtpErr } = await supabaseAdmin
@@ -153,9 +162,15 @@ export async function POST(req: NextRequest) {
       const zaloPayload: Record<string, any> = {};
       if (zaloData.zalo_oa_id !== undefined) zaloPayload.zalo_oa_id = String(zaloData.zalo_oa_id || '').trim();
       if (zaloData.zalo_app_id !== undefined) zaloPayload.zalo_app_id = String(zaloData.zalo_app_id || '').trim();
-      if (zaloData.zalo_secret_key !== undefined) zaloPayload.zalo_secret_key = String(zaloData.zalo_secret_key || '').trim();
       if (zaloData.zalo_template_id !== undefined) zaloPayload.zalo_template_id = String(zaloData.zalo_template_id || '').trim();
       if (zaloData.zalo_enabled !== undefined) zaloPayload.zalo_enabled = Boolean(zaloData.zalo_enabled);
+
+      if (zaloData.zalo_secret_key !== undefined && String(zaloData.zalo_secret_key).trim().length > 0) {
+        // Lưu Zalo Secret Key vào bảng bí mật
+        await supabaseAdmin
+          .from('cau_hinh_bi_mat')
+          .upsert({ id: 'system', zalo_secret_key: String(zaloData.zalo_secret_key).trim() });
+      }
 
       if (Object.keys(zaloPayload).length > 0) {
         const { error: zaloErr } = await supabaseAdmin

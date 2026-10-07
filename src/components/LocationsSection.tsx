@@ -9,6 +9,7 @@ import { supabase, ChiNhanhRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
+import { sanitizeHtml } from '@/lib/sanitize';
 import {
   MapPin,
   PhoneCall,
@@ -145,8 +146,10 @@ export default function LocationsSection() {
   const isOpenNow = currentVNHour >= 8 && currentVNHour < 20;
 
   // Tiêu đề & chú thích mục Chi nhánh theo ngôn ngữ hiện tại
-  const branchTitleHtml = (isEn ? config.section_chi_nhanh_tieu_de_en : config.section_chi_nhanh_tieu_de) || '';
-  const branchDescHtml = (isEn ? config.section_chi_nhanh_mo_ta_en : config.section_chi_nhanh_mo_ta) || '';
+  const rawBranchTitleHtml = (isEn ? config.section_chi_nhanh_tieu_de_en : config.section_chi_nhanh_tieu_de) || '';
+  const rawBranchDescHtml = (isEn ? config.section_chi_nhanh_mo_ta_en : config.section_chi_nhanh_mo_ta) || '';
+  const branchTitleHtml = sanitizeHtml(rawBranchTitleHtml);
+  const branchDescHtml = sanitizeHtml(rawBranchDescHtml);
 
   return (
     <section id="branches" className="relative py-20 sm:py-28 text-slate-900 overflow-hidden bg-[#F8FAF7]">

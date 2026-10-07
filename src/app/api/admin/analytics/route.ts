@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWebAnalyticsData, createEmptyAnalyticsData, saveWebAnalyticsData } from '@/lib/analytics';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { verifyToken } from '@/lib/adminAuth';
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser || currentUser.vai_tro === 'user') {
+      return NextResponse.json(
+        { success: false, message: 'Bạn không có quyền truy cập analytics!' },
+        { status: 403 }
+      );
+    }
+
     const [analyticsData, bookingsRes] = await Promise.all([
       getWebAnalyticsData(),
       supabaseAdmin.from('lich_hen').select('id, so_dien_thoai, ngay_tao, trang_thai'),
@@ -44,6 +55,16 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionToken = req.cookies.get('petmm_admin_session')?.value;
+    const currentUser = verifyToken(sessionToken);
+
+    if (!currentUser || currentUser.vai_tro === 'user') {
+      return NextResponse.json(
+        { success: false, message: 'Bạn không có quyền truy cập analytics!' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const { action } = body;
 

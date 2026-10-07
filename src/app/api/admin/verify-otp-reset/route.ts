@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateToken, AdminUser } from '@/lib/adminAuth';
 
@@ -27,12 +28,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Kiểm tra mã OTP trong cơ sở dữ liệu Supabase
+    // 1. Kiểm tra mã OTP trong cơ sở dữ liệu Supabase (so khớp mã hash SHA-256 hoặc mã thô cũ)
+    const hashedOtp = crypto.createHash('sha256').update(cleanOtp).digest('hex');
     const { data: otpRecords, error: selectErr } = await supabaseAdmin
       .from('admin_otp_codes')
       .select('*')
       .eq('email', cleanEmail)
-      .eq('code', cleanOtp)
+      .in('code', [hashedOtp, cleanOtp])
       .gt('expires_at', new Date().toISOString())
       .limit(1);
 
@@ -122,7 +124,6 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Đặt lại mật khẩu thành công! Đang tự động đăng nhập vào bảng quản trị...',
       user: adminUser,
-      token,
     });
 
     res.cookies.set('petmm_admin_session', token, {

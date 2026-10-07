@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { sanitizeHtml } from '@/lib/sanitize';
 import {
   Briefcase,
   MapPin,
@@ -54,7 +55,7 @@ function FormattedLongText({ content }: { content: string }) {
     return (
       <div
         className="prose prose-sm sm:prose max-w-none text-slate-700 leading-relaxed space-y-3 font-normal prose-p:my-2 prose-ul:my-2 prose-li:my-1"
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
       />
     );
   }

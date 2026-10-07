@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendOtpEmail, getSmtpConfig } from '@/lib/mailer';
 
@@ -61,10 +62,13 @@ export async function POST(req: NextRequest) {
     // Xóa mã OTP cũ nếu có
     await supabaseAdmin.from('admin_otp_codes').delete().eq('email', cleanEmail);
 
+    // Băm mã OTP bằng SHA-256 trước khi lưu vào DB để chống lộ mã plaintext
+    const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
+
     // Lưu mã OTP mới vào cơ sở dữ liệu Supabase
     const { error: insertErr } = await supabaseAdmin.from('admin_otp_codes').insert({
       email: cleanEmail,
-      code: otpCode,
+      code: hashedOtp,
       expires_at: expiresAt,
     });
 

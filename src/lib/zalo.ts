@@ -31,21 +31,27 @@ export interface ZaloBookingParams {
 export async function getZaloConfig(): Promise<ZaloOaConfig> {
   try {
     const { getNotificationSettings } = await import('./notificationSettings');
-    const [dbRes, notifySettings] = await Promise.all([
+    const [dbRes, secretRes, notifySettings] = await Promise.all([
       supabaseAdmin
         .from('cau_hinh')
-        .select('zalo_oa_id, zalo_app_id, zalo_secret_key, zalo_template_id, zalo_enabled')
+        .select('zalo_oa_id, zalo_app_id, zalo_template_id, zalo_enabled')
+        .eq('id', 'system')
+        .maybeSingle(),
+      supabaseAdmin
+        .from('cau_hinh_bi_mat')
+        .select('zalo_secret_key')
         .eq('id', 'system')
         .maybeSingle(),
       getNotificationSettings().catch(() => null),
     ]);
 
     const data = dbRes.data;
+    const secretData = secretRes.data;
 
     return {
       zalo_oa_id: (data?.zalo_oa_id || process.env.ZALO_OA_ID || '').trim(),
       zalo_app_id: (data?.zalo_app_id || process.env.ZALO_APP_ID || '').trim(),
-      zalo_secret_key: (data?.zalo_secret_key || process.env.ZALO_SECRET_KEY || '').trim(),
+      zalo_secret_key: (secretData?.zalo_secret_key || process.env.ZALO_SECRET_KEY || '').trim(),
       zalo_template_id: (data?.zalo_template_id || process.env.ZALO_TEMPLATE_ID || '').trim(),
       zalo_review_template_id: (notifySettings?.zalo_review_template_id || process.env.ZALO_REVIEW_TEMPLATE_ID || '').trim(),
       zalo_enabled: Boolean(data?.zalo_enabled ?? (process.env.ZALO_ENABLED === 'true')),
