@@ -1,7 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
 import "./globals.css";
+import { SystemConfigProvider } from "@/context/SystemConfigContext";
+import { LanguageProvider } from "@/context/LanguageContext";
+import DynamicFavicon from "@/components/DynamicFavicon";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
+import WebAnalyticsTracker from "@/components/WebAnalyticsTracker";
 
 const playfair = Playfair_Display({
   subsets: ["vietnamese", "latin"],
@@ -48,17 +54,14 @@ export const metadata: Metadata = {
   },
 };
 
-import { SystemConfigProvider } from "@/context/SystemConfigContext";
-import { LanguageProvider } from "@/context/LanguageContext";
-import DynamicFavicon from "@/components/DynamicFavicon";
-import AnnouncementPopup from "@/components/AnnouncementPopup";
-import WebAnalyticsTracker from "@/components/WebAnalyticsTracker";
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="vi"
@@ -70,6 +73,7 @@ export default function RootLayout({
         <Script
           id="petmm-system-config-cache"
           strategy="beforeInteractive"
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var c=localStorage.getItem('petmm_system_config_cache');if(c){var p=JSON.parse(c);var r=document.documentElement;if(p.hero_slogan_x_desktop!==undefined)r.style.setProperty('--hero-x-desktop',p.hero_slogan_x_desktop+'px');if(p.hero_slogan_y_desktop!==undefined)r.style.setProperty('--hero-y-desktop',p.hero_slogan_y_desktop+'px');if(p.hero_slogan_x_mobile!==undefined)r.style.setProperty('--hero-x-mobile',p.hero_slogan_x_mobile+'px');if(p.hero_slogan_y_mobile!==undefined)r.style.setProperty('--hero-y-mobile',p.hero_slogan_y_mobile+'px');}}catch(e){}})();`,
           }}
