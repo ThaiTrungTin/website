@@ -59,29 +59,6 @@ export async function POST(req: NextRequest) {
       hp_website, // Honeypot field bẫy bot
     } = body;
 
-    // 1. TÍNH NĂNG CHỐNG SPAM 1: Bẫy Honeypot
-    // Nếu bot tự động điền trường ẩn này, im lặng trả về thành công giả lập mà không ghi vào DB/mail
-    if (hp_website && hp_website.trim().length > 0) {
-      console.warn('[Anti-Spam] Phát hiện Bot tự điền Honeypot field:', hp_website);
-      return NextResponse.json({
-        success: true,
-        booking: {
-          code: clientBookingCode || 'PMM-' + Math.floor(100000 + Math.random() * 900000),
-          ownerName: (ownerName || '').trim(),
-          petName: (petName || '').trim(),
-          branchName: branchName || 'Phòng Khám Thuộc Bệnh Viện Thú Cưng PetM&M',
-          service: service || 'Khám tổng quát',
-          dateTime: `${timeSlot || ''}, Ngày ${formatDateDMY(date || '')}`,
-          emailSent: false,
-        },
-      });
-    }
-
-    // Xác định IP và ngày theo giờ Việt Nam
-    const clientIp = getClientIp(req);
-    const todayVN = getTodayVN();
-    const dailyIpKey = `${todayVN}_${clientIp}`;
-
     // Validate bắt buộc
     if (!ownerName || !ownerName.trim()) {
       return NextResponse.json(
@@ -93,22 +70,20 @@ export async function POST(req: NextRequest) {
     const cleanPhone = (phone || '').replace(/\s+/g, '');
     const numOnly = cleanPhone.replace(/\D/g, '');
 
-    // 2. TÍNH NĂNG CHỐNG SPAM: Kiểm tra số điện thoại hợp lệ (9 - 15 chữ số cho cả Việt Nam và Quốc Tế)
-    if (numOnly.length < 9 || numOnly.length > 15) {
+    // Kiểm tra số điện thoại cơ bản (8 - 15 chữ số cho cả Việt Nam và Quốc Tế)
+    if (numOnly.length < 8 || numOnly.length > 15) {
       return NextResponse.json(
-        { success: false, message: isEn ? 'Please enter a valid phone number (9-15 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (9 - 15 chữ số)' },
-        { status: 400 }
-      );
-    }
-    // Chặn chuỗi lặp số như 000000000, 111111111, hoặc 123456789
-    if (/^(.)\1+$/.test(numOnly) || numOnly === '123456789' || numOnly === '0123456789') {
-      return NextResponse.json(
-        { success: false, message: isEn ? 'Invalid phone number pattern' : 'Số điện thoại không hợp lệ, vui lòng kiểm tra lại' },
+        { success: false, message: isEn ? 'Please enter a valid phone number (8-15 digits)' : 'Vui lòng nhập số điện thoại hợp lệ (8 - 15 chữ số)' },
         { status: 400 }
       );
     }
 
     const cleanEmail = (email || '').trim().toLowerCase();
+
+    // Xác định IP và ngày theo giờ Việt Nam
+    const clientIp = getClientIp(req);
+    const todayVN = getTodayVN();
+    const dailyIpKey = `${todayVN}_${clientIp}`;
 
     // ========================================================
     // TÍNH NĂNG CHỐNG SPAM: CẤU HÌNH TỰ ĐỘNG TỪ ADMIN (IP, SĐT, EMAIL & SỐ LẦN)
@@ -134,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     // 2.1. Kiểm tra giới hạn IP (chỉ áp dụng khi bật spamLimitEnabled và checkIp)
     let ipTodayCount = 0;
-    if (spamLimitEnabled && checkIp && !isLocalhost) {
+    if (spamLimitEnabled && checkIp) {
       ipTodayCount = dailyIpCountMap.get(dailyIpKey) || 0;
       if (ipTodayCount < maxBookingsPerDay) {
         try {
@@ -157,7 +132,7 @@ export async function POST(req: NextRequest) {
     // 2.2. Kiểm tra giới hạn Số Điện Thoại
     let phoneTodayCount = 0;
     const dailyPhoneKey = `${todayVN}_phone_${numOnly}`;
-    if (spamLimitEnabled && checkPhone && !isLocalhost) {
+    if (spamLimitEnabled && checkPhone) {
       phoneTodayCount = dailyIpCountMap.get(dailyPhoneKey) || 0;
       if (phoneTodayCount < maxBookingsPerDay) {
         try {
@@ -180,7 +155,7 @@ export async function POST(req: NextRequest) {
     // 2.3. Kiểm tra giới hạn Email (nếu khách có điền email)
     let emailTodayCount = 0;
     const dailyEmailKey = cleanEmail && cleanEmail.includes('@') ? `${todayVN}_email_${cleanEmail}` : '';
-    if (spamLimitEnabled && checkEmail && !isLocalhost && dailyEmailKey) {
+    if (spamLimitEnabled && checkEmail && dailyEmailKey) {
       emailTodayCount = dailyIpCountMap.get(dailyEmailKey) || 0;
       if (emailTodayCount < maxBookingsPerDay) {
         try {
@@ -202,26 +177,33 @@ export async function POST(req: NextRequest) {
 
     if (
       spamLimitEnabled &&
-      !isLocalhost &&
       ((checkIp && ipTodayCount >= maxBookingsPerDay) ||
         (checkPhone && phoneTodayCount >= maxBookingsPerDay) ||
         (checkEmail && emailTodayCount >= maxBookingsPerDay))
     ) {
       const waitSeconds = cooldownSeconds > 0 ? cooldownSeconds : 15;
+      let limitReason = 'Bạn đã đạt giới hạn tối đa số lần đặt lịch trong ngày';
+      if (checkPhone && phoneTodayCount >= maxBookingsPerDay) {
+        limitReason = `Số điện thoại này đã đạt giới hạn tối đa ${maxBookingsPerDay} lần đặt lịch trong ngày`;
+      } else if (checkEmail && emailTodayCount >= maxBookingsPerDay) {
+        limitReason = `Email này đã đạt giới hạn tối đa ${maxBookingsPerDay} lần đặt lịch trong ngày`;
+      } else if (checkIp && ipTodayCount >= maxBookingsPerDay) {
+        limitReason = `Địa chỉ mạng này đã đạt giới hạn tối đa ${maxBookingsPerDay} lần đặt lịch trong ngày`;
+      }
       return NextResponse.json(
         {
           success: false,
           cooldown: waitSeconds,
           message: isEn
-            ? `Please try again in ${waitSeconds}s`
-            : `Vui lòng gửi lại sau ${waitSeconds}s`,
+            ? `You have reached the maximum booking limit (${maxBookingsPerDay}/day). Please try again tomorrow or contact Hotline.`
+            : `${limitReason}. Vui lòng liên hệ Hotline hoặc thử lại vào ngày mai!`,
         },
         { status: 429 }
       );
     }
 
     // 3. TÍNH NĂNG CHỐNG SPAM: Rate Limiting theo Cooldown giữa 2 lần gửi liên tiếp
-    if (spamLimitEnabled && cooldownSeconds > 0 && !isLocalhost) {
+    if (spamLimitEnabled && cooldownSeconds > 0) {
       const rateLimitKey = `${numOnly}_${clientIp}`;
       const now = Date.now();
       const lastSubmitTime = rateLimitMap.get(rateLimitKey);
@@ -234,8 +216,8 @@ export async function POST(req: NextRequest) {
             success: false,
             cooldown: waitSeconds,
             message: isEn
-              ? `Please try again in ${waitSeconds}s`
-              : `Vui lòng gửi lại sau ${waitSeconds}s`,
+              ? `Please wait ${waitSeconds}s before submitting again`
+              : `Vui lòng đợi ${waitSeconds}s trước khi gửi tiếp yêu cầu đặt lịch`,
           },
           { status: 429 }
         );
@@ -276,13 +258,13 @@ export async function POST(req: NextRequest) {
         ma_lich_hen: finalBookingCode,
         ho_ten_chu: ownerName.trim(),
         so_dien_thoai: cleanPhone,
-        ten_thu_cung: finalPetName,
-        loai_thu_cung: finalPetType,
+        ten_thu_cung: (finalPetName || '').trim(),
+        loai_thu_cung: finalPetType || 'dog',
         chi_nhanh_id: branch || null,
-        ten_chi_nhanh: defaultBranchName,
-        dich_vu: displayService,
-        ngay_hen: finalDate,
-        gio_hen: finalTimeSlot,
+        ten_chi_nhanh: defaultBranchName || 'Bệnh Viện Thú Y PetM&M',
+        dich_vu: displayService || 'Khám tổng quát & Tư vấn trực tiếp',
+        ngay_hen: finalDate || todayVN,
+        gio_hen: finalTimeSlot || 'Linh hoạt',
         ghi_chu: finalGhiChu || null,
         trang_thai: 'cho_xac_nhan',
       },
@@ -297,12 +279,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Cập nhật số lần gửi thành công của IP, SĐT và Email trong ngày
-    if (!isLocalhost) {
-      dailyIpCountMap.set(dailyIpKey, ipTodayCount + 1);
-      dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount + 1);
-      if (dailyEmailKey) {
-        dailyIpCountMap.set(dailyEmailKey, emailTodayCount + 1);
-      }
+    dailyIpCountMap.set(dailyIpKey, ipTodayCount + 1);
+    dailyIpCountMap.set(dailyPhoneKey, phoneTodayCount + 1);
+    if (dailyEmailKey) {
+      dailyIpCountMap.set(dailyEmailKey, emailTodayCount + 1);
     }
 
     // 2. Lấy cấu hình email và zalo để kiểm tra luồng gửi

@@ -2122,21 +2122,23 @@ export default function AdminDashboardPage() {
 
     setIsFaviconUploading(true);
     try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const cleanFileName = `favicon_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-      const filePath = `logos/${cleanFileName}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'logos');
 
-      const { error: uploadError } = await supabase.storage
-        .from('hinh_anh')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || 'Lỗi tải ảnh lên');
+      }
 
       setConfigForm((prev) => ({
         ...prev,
-        logo_favicon: publicUrlData.publicUrl,
+        logo_favicon: resData.url,
       }));
 
       showNotification('success', 'Đã tải Logo Favicon lên thành công!');
@@ -2156,28 +2158,30 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      showNotification('error', 'Dung lượng ảnh logo không được vượt quá 5MB!');
+    if (file.size > 10 * 1024 * 1024) {
+      showNotification('error', 'Dung lượng ảnh logo không được vượt quá 10MB!');
       return;
     }
 
     setIsWebsiteLogoUploading(true);
     try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const cleanFileName = `website_logo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-      const filePath = `logos/${cleanFileName}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'logos');
 
-      const { error: uploadError } = await supabase.storage
-        .from('hinh_anh')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage.from('hinh_anh').getPublicUrl(filePath);
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || 'Lỗi tải ảnh lên');
+      }
 
       setConfigForm((prev) => ({
         ...prev,
-        logo_website: publicUrlData.publicUrl,
+        logo_website: resData.url,
       }));
 
       showNotification('success', 'Đã tải Logo Website lên thành công! Bấm "Lưu Cài Đặt" để áp dụng cho cả Header, Hero và Footer.');
