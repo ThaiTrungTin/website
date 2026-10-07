@@ -11737,6 +11737,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   applications={jobApplications}
                   onUpdateApplicantStatus={handleUpdateApplicantStatus}
                   highlightedId={highlightedId}
+                  onOpenTitleModal={handleOpenCareersTitleModal}
                 />
               )}
 
@@ -13266,7 +13267,111 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
             section_faq_tieu_de: saved.titleVi,
             section_faq_mo_ta: saved.descVi,
             section_faq_tieu_de_en: saved.titleEn,
-            section_faq_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
+
+      {/* ========================================================= */}
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC ĐẶT LỊCH HẸN (TRANG CHỦ) */}
+      {/* ========================================================= */}
+      <SectionTitleModal
+        isOpen={isBookingTitleModalOpen}
+        onClose={() => setIsBookingTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Đặt Lịch Hẹn"
+        sectionLabel="Đặt Lịch Hẹn"
+        titleFieldKey="section_dat_lich_tieu_de"
+        descFieldKey="section_dat_lich_mo_ta"
+        titleFieldKeyEn="section_dat_lich_tieu_de_en"
+        descFieldKeyEn="section_dat_lich_mo_ta_en"
+        initialTitleVi={configForm.section_dat_lich_tieu_de || globalConfig.section_dat_lich_tieu_de}
+        initialDescVi={configForm.section_dat_lich_mo_ta || globalConfig.section_dat_lich_mo_ta}
+        initialTitleEn={configForm.section_dat_lich_tieu_de_en || globalConfig.section_dat_lich_tieu_de_en}
+        initialDescEn={configForm.section_dat_lich_mo_ta_en || globalConfig.section_dat_lich_mo_ta_en}
+        defaultTitleVi='<h2>Đặt Lịch Hẹn <span style="color: #2D5A27; font-style: italic;">Trực Tuyến</span></h2>'
+        defaultDescVi='<p>Đăng ký trước để được tiếp đón theo khung giờ, không cần chờ đợi bốc số.</p>'
+        defaultTitleEn='<h2>Book Your <span style="color: #2D5A27; font-style: italic;">Online Appointment</span></h2>'
+        defaultDescEn='<p>Register in advance for priority consultation, Fear-Free space and zero waiting time.</p>'
+        badgeVi="ĐẶT LỊCH KHÁM ƯU TIÊN"
+        badgeEn="PRIORITY CLINIC BOOKING"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_dat_lich_tieu_de: saved.titleVi,
+            section_dat_lich_mo_ta: saved.descVi,
+            section_dat_lich_tieu_de_en: saved.titleEn,
+            section_dat_lich_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
+
+      {/* ========================================================= */}
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC HỖ TRỢ (FAQ) */}
+      {/* ========================================================= */}
+      <SectionTitleModal
+        isOpen={isSupportTitleModalOpen}
+        onClose={() => setIsSupportTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Hỗ Trợ"
+        sectionLabel="Hỗ Trợ"
+        titleFieldKey="section_ho_tro_tieu_de"
+        descFieldKey="section_ho_tro_mo_ta"
+        titleFieldKeyEn="section_ho_tro_tieu_de_en"
+        descFieldKeyEn="section_ho_tro_mo_ta_en"
+        initialTitleVi={configForm.section_ho_tro_tieu_de || globalConfig.section_ho_tro_tieu_de}
+        initialDescVi={configForm.section_ho_tro_mo_ta || globalConfig.section_ho_tro_mo_ta}
+        initialTitleEn={configForm.section_ho_tro_tieu_de_en || globalConfig.section_ho_tro_tieu_de_en}
+        initialDescEn={configForm.section_ho_tro_mo_ta_en || globalConfig.section_ho_tro_mo_ta_en}
+        defaultTitleVi='<h3>Bạn Cần PetM&amp;M <span style="color: #2D5A27; font-style: italic;">Hỗ Trợ?</span></h3>'
+        defaultDescVi='<p>Chọn cách liên hệ phù hợp với nhu cầu của bạn.</p>'
+        defaultTitleEn='<h3>Need PetM&amp;M <span style="color: #2D5A27; font-style: italic;">Support?</span></h3>'
+        defaultDescEn='<p>Choose the contact method that suits your needs.</p>'
+        badgeVi=""
+        badgeEn=""
+        previewAlign="left"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_ho_tro_tieu_de: saved.titleVi,
+            section_ho_tro_mo_ta: saved.descVi,
+            section_ho_tro_tieu_de_en: saved.titleEn,
+            section_ho_tro_mo_ta_en: saved.descEn,
+          }));
+        }}
+      />
+
+      {/* ========================================================= */}
+      {/* MODAL CÀI ĐẶT TIÊU ĐỀ & CHÚ THÍCH MỤC TUYỂN DỤNG NHÂN SỰ */}
+      {/* ========================================================= */}
+      <SectionTitleModal
+        isOpen={isCareersTitleModalOpen}
+        onClose={() => setIsCareersTitleModalOpen(false)}
+        modalTitle="Cài Đặt Tiêu Đề & Chú Thích Mục Tuyển Dụng"
+        sectionLabel="Tuyển Dụng"
+        titleFieldKey="section_tuyen_dung_tieu_de"
+        descFieldKey="section_tuyen_dung_mo_ta"
+        titleFieldKeyEn="section_tuyen_dung_tieu_de_en"
+        descFieldKeyEn="section_tuyen_dung_mo_ta_en"
+        initialTitleVi={configForm.section_tuyen_dung_tieu_de || globalConfig.section_tuyen_dung_tieu_de}
+        initialDescVi={configForm.section_tuyen_dung_mo_ta || globalConfig.section_tuyen_dung_mo_ta}
+        initialTitleEn={configForm.section_tuyen_dung_tieu_de_en || globalConfig.section_tuyen_dung_tieu_de_en}
+        initialDescEn={configForm.section_tuyen_dung_mo_ta_en || globalConfig.section_tuyen_dung_mo_ta_en}
+        defaultTitleVi='<h2>Gia Nhập Đại Gia Đình <br /><span style="color: #2D5A27; font-style: italic;">PetM&amp;M</span></h2>'
+        defaultDescVi='<p>Môi trường làm việc y khoa chuẩn mực, đãi ngộ tương xứng và cơ hội thăng tiến rộng mở cùng đội ngũ chuyên gia thú y hàng đầu.</p>'
+        defaultTitleEn='<h2>Join The <br /><span style="color: #2D5A27; font-style: italic;">PetM&amp;M Family</span></h2>'
+        defaultDescEn='<p>A professional Fear-Free veterinary environment with competitive benefits and endless growth opportunities alongside leading specialists.</p>'
+        badgeVi="CƠ HỘI NGHỀ NGHIỆP TẠI PETM&M"
+        badgeEn="CAREER OPPORTUNITIES AT PETM&M"
+        previewAlign="center"
+        showNotification={showNotification}
+        onSaveSuccess={(saved) => {
+          setConfigForm((prev) => ({
+            ...prev,
+            section_tuyen_dung_tieu_de: saved.titleVi,
+            section_tuyen_dung_mo_ta: saved.descVi,
+            section_tuyen_dung_tieu_de_en: saved.titleEn,
+            section_tuyen_dung_mo_ta_en: saved.descEn,
           }));
         }}
       />
