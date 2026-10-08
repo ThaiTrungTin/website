@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hợp Đồng Kinh Tế & Biên Bản Nghiệm Thu Bàn Giao Toàn Diện - PetM&M</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --primary-color: #2D5A27;
+      --word-color: #1e40af;
+      --text-color: #111827;
+      --border-color: #000000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 13pt;
+      line-height: 1.45;
+      color: var(--text-color);
+      background-color: #f1f5f9;
+      padding: 30px 15px;
+    }
+
+    .contract-actions {
+      max-width: 860px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-word {
+      background-color: var(--word-color);
+      color: #ffffff;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-word:hover {
+      background-color: #172554;
+      transform: translateY(-1px);
+    }
+
+    .btn-print {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-print:hover {
+      background-color: #1e3d1a;
+      transform: translateY(-1px);
+    }
+
+    .contract-container {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 55px 65px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+    }
+
+    /* HEADER QUỐC HIỆU */
+    .header-country {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .header-country .line-1 {
+      font-weight: bold;
+      font-size: 13.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-country .line-2 {
+      font-weight: bold;
+      font-size: 13.5pt;
+      margin-top: 3px;
+    }
+
+    .header-country .divider {
+      width: 170px;
+      height: 1px;
+      background-color: #000;
+      margin: 7px auto 6px auto;
+    }
+
+    .header-country .contract-number {
+      font-size: 11.5pt;
+      font-style: italic;
+    }
+
+    /* TIÊU ĐỀ HỢP ĐỒNG */
+    .contract-title {
+      text-align: center;
+      margin: 25px 0 20px 0;
+    }
+
+    .contract-title h1 {
+      font-size: 15pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      line-height: 1.35;
+      margin-bottom: 4px;
+    }
+
+    .contract-title h2 {
+      font-size: 13.5pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      line-height: 1.35;
+      margin-bottom: 4px;
+    }
+
+    .contract-title h3 {
+      font-size: 13pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .contract-title .contract-date {
+      font-size: 12pt;
+      font-style: italic;
+    }
+
+    /* CĂN CỨ PHÁP LÝ */
+    .legal-basis {
+      text-align: justify;
+      margin-bottom: 18px;
+      font-style: italic;
+      font-size: 12pt;
+      line-height: 1.4;
+    }
+
+    .legal-basis p {
+      margin-bottom: 3px;
+    }
+
+    /* THÔNG TIN HAI BÊN */
+    .party-title {
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 13pt;
+      margin: 14px 0 6px 0;
+      border-bottom: 1px solid #111;
+      padding-bottom: 3px;
+    }
+
+    .info-line {
+      margin-bottom: 4px;
+      text-align: justify;
+    }
+
+    .info-line strong {
+      font-weight: bold;
+    }
+
+    /* CÁC ĐIỀU KHOẢN */
+    .article {
+      margin-top: 18px;
+      text-align: justify;
+    }
+
+    .article-title {
+      font-weight: bold;
+      font-size: 13pt;
+      text-transform: uppercase;
+      margin: 14px 0 6px 0;
+      border-bottom: 1px solid #222;
+      padding-bottom: 2px;
+    }
+
+    .article p {
+      margin-bottom: 6px;
+      text-align: justify;
+    }
+
+    .article ul {
+      margin-left: 28px;
+      margin-bottom: 6px;
+    }
+
+    .article li {
+      margin-bottom: 4px;
+      text-align: justify;
+    }
+
+    /* BẢNG BIỂU */
+    .table-data {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 16px 0;
+      font-size: 11pt;
+      line-height: 1.35;
+    }
+
+    .table-data th, .table-data td {
+      border: 1px solid #000000;
+      padding: 6px 8px;
+      vertical-align: middle;
+    }
+
+    .table-data th {
+      background-color: #f8fafc;
+      font-weight: bold;
+      text-align: center;
+      font-size: 11.5pt;
+    }
+
+    .table-data td.center {
+      text-align: center;
+    }
+
+    .table-data td.bold {
+      font-weight: bold;
+    }
+
+    /* CHỮ KÝ */
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      page-break-inside: avoid;
+    }
+
+    .sig-block {
+      width: 46%;
+      text-align: center;
+    }
+
+    .sig-title {
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 13pt;
+    }
+
+    .sig-subtitle {
+      font-style: italic;
+      font-size: 11.5pt;
+      margin-bottom: 95px;
+    }
+
+    .sig-name {
+      font-weight: bold;
+      font-size: 13pt;
+      text-transform: uppercase;
+    }
+
+    /* CƠ CHẾ IN ẤN CHUẨN A4 */
+    @media print {
+      body {
+        background-color: #ffffff;
+        padding: 0;
+        font-size: 12pt;
+      }
+
+      .contract-actions {
+        display: none !important;
+      }
+
+      .contract-container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 18mm 15mm 18mm 15mm;
+      }
+
+      .page-break {
+        page-break-before: always;
+      }
+
+      .table-data {
+        page-break-inside: auto;
+      }
+
+      .table-data tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      .article-title {
+        page-break-after: avoid;
+      }
+    }
+  </style>
+
+  <script>
+    function exportToWord() {
+      try {
+        var container = document.getElementById('contract-content');
+        if (!container) {
+          alert('Không tìm thấy nội dung hợp đồng!');
+          return;
+        }
+
+        var styles = '\x3Cstyle\x3E' +
+          '@page { size: 21cm 29.7cm; margin: 2cm 1.5cm 2cm 1.5cm; mso-page-orientation: portrait; } ' +
+          'body { font-family: "Times New Roman", Times, serif; font-size: 13pt; line-height: 1.45; color: #000000; } ' +
+          '.header-country { text-align: center; margin-bottom: 20px; } ' +
+          '.header-country .line-1 { font-weight: bold; font-size: 13pt; text-transform: uppercase; } ' +
+          '.header-country .line-2 { font-weight: bold; font-size: 13pt; margin-top: 3px; } ' +
+          '.header-country .divider { width: 170px; height: 1px; background: #000; margin: 6px auto; } ' +
+          '.contract-title { text-align: center; margin: 25px 0 15px 0; } ' +
+          '.contract-title h1 { font-size: 15pt; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; } ' +
+          '.contract-title h2 { font-size: 13.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; } ' +
+          '.contract-title h3 { font-size: 13pt; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; } ' +
+          '.party-title { font-weight: bold; font-size: 13pt; text-transform: uppercase; margin-top: 15px; border-bottom: 1px solid #000; } ' +
+          '.article-title { font-weight: bold; font-size: 13pt; text-transform: uppercase; margin-top: 15px; border-bottom: 1px solid #000; } ' +
+          'table { border-collapse: collapse; width: 100%; font-size: 10.5pt; margin: 12px 0; } ' +
+          'th, td { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; } ' +
+          'th { background-color: #f2f2f2; font-weight: bold; text-align: center; } ' +
+          '.center { text-align: center; } ' +
+          '.bold { font-weight: bold; } ' +
+          '.signatures { margin-top: 40px; width: 100%; display: table; } ' +
+          '.sig-block { display: table-cell; width: 50%; text-align: center; vertical-align: top; } ' +
+          '.sig-title { font-weight: bold; font-size: 13pt; text-transform: uppercase; } ' +
+          '.sig-subtitle { font-style: italic; font-size: 11.5pt; margin-bottom: 90px; } ' +
+          '.sig-name { font-weight: bold; font-size: 13pt; text-transform: uppercase; } ' +
+          '\x3C\x2Fstyle\x3E';
+
+        var htmlHead = '\x3Chtml xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"\x3E' +
+          '\x3Chead\x3E\x3Cmeta charset="utf-8"\x3E\x3Ctitle\x3EHop Dong PetMM\x3C\x2Ftitle\x3E' + styles + '\x3C\x2Fhead\x3E\x3Cbody\x3E';
+        var htmlTail = '\x3C\x2Fbody\x3E\x3C\x2Fhtml\x3E';
+        var fullHtml = htmlHead + container.innerHTML + htmlTail;
+
+        var blob = new Blob(['\ufeff', fullHtml], {
+          type: 'application/msword;charset=utf-8'
+        });
+
+        var filename = 'Hop_Dong_Nghiem_Thu_PetMM_25Tr.doc';
+
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+          window.navigator.msSaveOrOpenBlob(blob, filename);
+        } else {
+          var a = document.createElement('a');
+          var url = URL.createObjectURL(blob);
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 400);
+        }
+      } catch (err) {
+        alert('Lỗi xuất file: ' + err.message);
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Nút Thao Tác Khi Xem Trên Trình Duyệt -->
+  <div class="contract-actions">
+    <!-- Nút Xuất Word -->
+    <button class="btn btn-word" onclick="exportToWord()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      Xuất Ra File Word (.doc)
+    </button>
+
+    <!-- Nút In / Xuất PDF -->
+    <button class="btn btn-print" onclick="window.print()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+        <rect x="6" y="14" width="12" height="8"></rect>
+      </svg>
+      In Hợp Đồng / Xuất PDF (A4)
+    </button>
+  </div>
+
+  <div class="contract-container" id="contract-content">
+
+    <!-- 1. QUỐC HIỆU & TIÊU NGỮ -->
+    <div class="header-country">
+      <div class="line-1">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+      <div class="line-2">Độc lập – Tự do – Hạnh phúc</div>
+      <div class="divider"></div>
+      <div class="contract-number">Số: 01/2026/HĐBG-PETMM</div>
+    </div>
+
+    <!-- 2. TIÊU ĐỀ VĂN BẢN -->
+    <div class="contract-title">
+      <h1>HỢP ĐỒNG KINH TẾ &amp; BIÊN BẢN NGHIỆM THU BÀN GIAO TOÀN DIỆN</h1>
+      <h2>HỆ THỐNG PHẦN MỀM WEBSITE ĐA NỀN TẢNG &amp; CỔNG QUẢN TRỊ VẬN HÀNH</h2>
+      <h3>BỆNH VIỆN THÚ Y PETM&amp;M (PETM&amp;M PET HOSPITAL)</h3>
+      <div class="contract-date">TP. Hồ Chí Minh, ngày 04 tháng 10 năm 2026</div>
+    </div>
+
+    <!-- 3. CĂN CỨ PHÁP LÝ -->
+    <div class="legal-basis">
+      <p>- Căn cứ Bộ luật Dân sự số 91/2015/QH13 của Quốc hội nước Cộng hòa Xã hội Chủ nghĩa Việt Nam;</p>
+      <p>- Căn cứ Luật Thương mại số 36/2005/QH11 ngày 14 tháng 06 năm 2005;</p>
+      <p>- Căn cứ Luật Công nghệ Thông tin số 67/2006/QH11 ngày 29 tháng 06 năm 2006;</p>
+      <p>- Căn cứ nhu cầu thực tế và thỏa thuận phát triển phần mềm giữa hai Bên.</p>
+    </div>
+
+    <p style="margin-bottom: 8px;">Hôm nay, ngày 04 tháng 10 năm 2026, tại Trụ sở Bệnh Viện Thú Y PetM&amp;M, hai bên gồm có:</p>
+
+    <!-- 4. THÔNG TIN BÊN A -->
+    <div class="party-title">BÊN A: BÊN ĐẶT HÀNG &amp; TIẾP NHẬN BÀN GIAO (KHÁCH HÀNG)</div>
+    <div class="info-line"><strong>Tên đơn vị:</strong> BỆNH VIỆN THÚ Y PETM&amp;M (PETM&amp;M PET HOSPITAL)</div>
+    <div class="info-line"><strong>Đại diện pháp luật:</strong> Ông/Bà ............................................................................ - <strong>Chức vụ:</strong> Giám đốc</div>
+    <div class="info-line"><strong>Địa chỉ:</strong> TP. Thủ Đức, TP. Hồ Chí Minh</div>
+    <div class="info-line"><strong>Hotline:</strong> 0364 605 544 / 0903 599 339 | <strong>Email:</strong> petmm.hospital@gmail.com</div>
+
+    <!-- 5. THÔNG TIN BÊN B -->
+    <div class="party-title">BÊN B: ĐƠN VỊ THIẾT KẾ, PHÁT TRIỂN &amp; BÀN GIAO CÔNG NGHỆ</div>
+    <div class="info-line"><strong>Đại diện kỹ thuật:</strong> <strong>THÁI TRUNG TÍN</strong></div>
+    <div class="info-line"><strong>Vai trò:</strong> Đại diện nhóm phát triển (Frontend, Backend, UI/UX &amp; Kiểm thử QA)</div>
+    <div class="info-line"><strong>Số CCCD:</strong> ................................................................................................................</div>
+    <div class="info-line"><strong>Điện thoại:</strong> 0903 599 339 | <strong>Email:</strong> thaitrtin1999@gmail.com</div>
+    <div class="info-line"><strong>Tài khoản ngân hàng:</strong> STK: ....................................... - Ngân hàng: ....................................... - <strong>Chủ TK:</strong> <strong>THÁI TRUNG TÍN</strong></div>
+
+    <!-- ĐIỀU 1 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 1: ĐỐI TƯỢNG VÀ MỤC ĐÍCH NGHIỆM THU BÀN GIAO</div>
+      <p>1.1. Bên B bàn giao toàn bộ bản quyền mã nguồn, dữ liệu đám mây, các phân hệ trang con (views) và quyền quản trị Hệ thống Phần mềm Website Bệnh Viện Thú Y PetM&amp;M cho Bên A đưa vào phục vụ vận hành kinh doanh thực tế.</p>
+      <p>1.2. Hệ thống hoạt động chính thức trên mạng Internet tại tên miền riêng do Bên A đã chủ động đăng ký sở hữu (địa chỉ triển khai hạ tầng: <strong>https://petsmm.vercel.app</strong>). Bên B có trách nhiệm hỗ trợ kỹ thuật cấu hình bản ghi DNS kết nối tên miền của Bên A vào website hoàn toàn miễn phí.</p>
+      <p>1.3. Hệ thống đáp ứng toàn bộ các tiêu chuẩn kỹ thuật hiện đại: tốc độ tải trang dưới 0.8 giây, cơ sở dữ liệu thời gian thực Cloud PostgreSQL (Supabase), mã hóa SSL/TLS HTTPS toàn trình, tương thích hoàn hảo 100% trên điện thoại di động (iOS/Android), máy tính bảng và máy tính để bàn.</p>
+    </div>
+
+    <!-- ĐIỀU 2 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 2: DANH MỤC CHI TIẾT 17 PHÂN HỆ, CÁC TRANG CON (VIEWS) &amp; TÍNH NĂNG TOÀN DIỆN ĐÃ BÀN GIAO</div>
+      <p style="margin-bottom: 8px;">Toàn bộ các phân hệ dưới đây đã được lập trình hoàn thiện, kiểm thử kỹ thuật và nghiệm thu đạt chuẩn:</p>
+
+      <table class="table-data">
+        <thead>
+          <tr>
+            <th style="width: 6%;">STT</th>
+            <th style="width: 48%;">Phân Hệ / Trang Con (Views) &amp; Tính Năng Đã Triển Khai</th>
+            <th style="width: 34%;">Mô Tả Nghiệp Vụ Vận Hành</th>
+            <th style="width: 12%;">Kết Quả</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="center bold">1</td>
+            <td>
+              <strong>Trang Chủ &amp; Bộ Nhận Diện Thương Hiệu (/)</strong><br>
+              • Hero 3D tương tác chuột (Three.js), Slogan Aura 3D, biểu phí 6 nhóm dịch vụ.<br>
+              • Bác sĩ tiêu biểu, cẩm nang y khoa, slider review, song ngữ Vi/En 1-chạm.<br>
+              • Tiện ích liên hệ nổi (Hotline 24/7, Zalo, Messenger) &amp; Search Modal thông minh.
+            </td>
+            <td>Định vị thương hiệu chuẩn bệnh viện thú y quốc tế cao cấp, thu hút khách hàng.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">2</td>
+            <td>
+              <strong>Hệ Thống Chi Nhánh &amp; Gán Cơ Sở Chính (/chi-nhanh/[id] &amp; Admin)</strong><br>
+              • View chi tiết từng cơ sở, hình ảnh phòng khám, bản đồ Google Maps, hotline riêng.<br>
+              • <strong>Gán Cơ Sở Chính 1-chạm:</strong> Tự động đồng bộ Footer chân trang &amp; bản đồ toàn web.<br>
+              • Dịch song ngữ chi nhánh (tên tiếng Anh, địa chỉ tiếng Anh, tag Main Branch).
+            </td>
+            <td>Khách hàng dễ dàng tìm kiếm cơ sở gần nhất và di chuyển nhanh chóng.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">3</td>
+            <td>
+              <strong>Hệ Thống Đặt Lịch Khám Tự Động Hóa (Smart Booking Engine)</strong><br>
+              • Droplist chọn chi nhánh động từ DB (web droplist cao cấp).<br>
+              • Khóa ngày quá khứ, khóa giờ đã qua trong ngày theo giờ Việt Nam.<br>
+              • Tùy chọn giờ cụ thể hoặc <em>-- Linh hoạt --</em> (<em>-- Flexible --</em>); mã PMM-XXXXXX duy nhất.<br>
+              • Tự động gửi Email tiếp nhận tức thì đến Gmail của khách và admin (0s chờ đợi).
+            </td>
+            <td>Giảm tải 80% công việc trực tổng đài xác nhận lịch hẹn của nhân viên lễ tân.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">4</td>
+            <td>
+              <strong>Hệ Thống Chống Spam Đa Tầng (Anti-Spam Engine)</strong><br>
+              • Cooldown đếm ngược thời gian thực giữa 2 lần đặt; bẫy bot Honeypot tự động.<br>
+              • Giới hạn số lượt gửi/ngày theo IP, SĐT và Email; cấu hình bật/tắt trực tiếp từ Admin.
+            </td>
+            <td>Bảo vệ hệ thống hoạt động ổn định 24/7, chặn triệt để tin rác và spam phá hoại.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">5</td>
+            <td>
+              <strong>Trang Đội Ngũ Bác Sĩ Chuyên Khoa (/doi-ngu &amp; Admin Bác Sĩ)</strong><br>
+              • Profile 12 bác sĩ chuyên khoa, học vị, bằng cấp, lịch trực &amp; tư vấn.<br>
+              • Thêm, sửa, xóa hồ sơ và cập nhật ảnh đại diện bác sĩ linh hoạt từ Admin.
+            </td>
+            <td>Xây dựng niềm tin chuyên môn y khoa vững chắc cho chủ nuôi thú cưng.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">6</td>
+            <td>
+              <strong>Trang Cẩm Nang Kiến Thức Y Khoa (/kien-thuc/[id] &amp; Admin CMS)</strong><br>
+              • Bài viết theo chủ đề (dinh dưỡng, tiêm phòng, phẫu thuật), gợi ý bài đọc liên quan.<br>
+              • Trình soạn thảo Rich Text Editor định dạng văn bản &amp; chèn ảnh trực quan.
+            </td>
+            <td>Cung cấp kiến thức y tế chuyên sâu, nâng cao uy tín chuyên môn của bệnh viện.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">7</td>
+            <td>
+              <strong>Cổng Tuyển Dụng &amp; Nộp CV Trực Tuyến (/tuyen-dung &amp; /tuyen-dung/[id])</strong><br>
+              • Danh mục tuyển dụng kèm mô tả JD, đãi ngộ; form nộp CV online đính kèm file.<br>
+              • Gửi email tự động cho ứng viên &amp; chuyển CV về HR; Admin duyệt hồ sơ ứng viên.
+            </td>
+            <td>Tự động hóa tuyển dụng, liên tục bổ sung nhân sự chất lượng cho bệnh viện.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">8</td>
+            <td>
+              <strong>Cổng Lễ Tân Tạo Đánh Giá Quầy (/taodanhgia)</strong><br>
+              • Cổng thao tác độc lập cho lễ tân; sinh mã QR độ nét cao trong 0.2s cho khách quét.<br>
+              • Tích hợp camera Barcode/QR Scanner trên điện thoại; vết kiểm toán nhân viên tạo.
+            </td>
+            <td>Quy trình chăm sóc khách hàng tại quầy cực kỳ mượt mà, chuyên nghiệp.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">9</td>
+            <td>
+              <strong>Trang Chấm Điểm &amp; Đánh Giá Dịch Vụ (/danhgiadichvu/[id])</strong><br>
+              • Khách quét QR chấm 1–5 sao, tải ảnh thú cưng trực tiếp lên Supabase Storage.<br>
+              • Bảo mật phiên: Mỗi hóa đơn chỉ đánh giá 1 lần, tự khóa cổng; Admin đóng dấu xác thực.
+            </td>
+            <td>Tăng trưởng uy tín Google Maps và nhận diện thương hiệu PetM&amp;M vượt bậc.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">10</td>
+            <td>
+              <strong>Tích Hợp Toàn Diện Hệ Sinh Thái Zalo</strong><br>
+              • Zalo Chat Widget nổi, Zalo Direct Link mở app tư vấn, mã QR Zalo.<br>
+              • Tích hợp Zalo OA ZNS (gửi xác nhận lịch &amp; mời review); nút gửi Zalo OA 1-chạm từ Admin.
+            </td>
+            <td>Tận dụng 75 triệu người dùng Zalo tại VN để chăm sóc khách hàng tức thời.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">11</td>
+            <td>
+              <strong>Dashboard Tổng Quan Hệ Thống (/admin/dashboard)</strong><br>
+              • 4 khối chỉ số vận hành (Chờ xử lý, Đã xác nhận, Hoàn thành, Đã hủy).<br>
+              • <strong>Thanh phân bổ chi nhánh 100%:</strong> Chuẩn hóa gộp chung cơ sở cả Tiếng Việt và Tiếng Anh.<br>
+              • <strong>Cờ ngôn ngữ:</strong> Gắn cờ 🇻🇳 / 🇬🇧 cạnh tên khách; danh sách review chờ gửi Zalo OA.
+            </td>
+            <td>Ban Giám đốc kiểm soát 100% hoạt động hệ thống từ xa 24/7 trên mọi thiết bị.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">12</td>
+            <td>
+              <strong>Quản Lý Lịch Hẹn Khách Hàng (Appointments Tab)</strong><br>
+              • Tiếp nhận, xử lý, hủy hẹn có lý do; tìm kiếm theo tên, mã lịch, số điện thoại.<br>
+              • Modal cập nhật lịch, gửi lại Email/Zalo; hiển thị cờ ngôn ngữ khách đặt trực quan.
+            </td>
+            <td>Xử lý lịch khám mượt mà, phân quyền theo dõi chặt chẽ, chống thất thoát lịch.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">13</td>
+            <td>
+              <strong>Hệ Thống Nhật Ký Hoạt Động (Audit Logs Manager)</strong><br>
+              • Ghi vết lịch sử thao tác của nhân viên (người làm, IP, thời gian, hành vi).<br>
+              • <strong>Database Trigger tự động xóa sau 30 ngày:</strong> Tự dọn dẹp sạch log cũ giúp hệ thống nhẹ.
+            </td>
+            <td>Kiểm soát minh bạch trách nhiệm nhân sự và an toàn vận hành hệ thống.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">14</td>
+            <td>
+              <strong>Quản Trị Hero Banner, FAQ, Hỗ Trợ 24/7 &amp; Poster</strong><br>
+              • Quản lý 10 slide Hero (tọa độ x/y desktop/mobile, 2 nút CTA); Slogan icon rung Zalo.<br>
+              • FAQ song ngữ &amp; popup "Bạn cần hỗ trợ?"; Poster thông báo nổi ưu đãi/lễ tết.
+            </td>
+            <td>Chủ động thay đổi toàn bộ nội dung marketing truyền thông không cần can thiệp code.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">15</td>
+            <td>
+              <strong>Cài Đặt Hệ Thống, Thông Báo &amp; Mạng Xã Hội</strong><br>
+              • Hotline cấp cứu 24/7, hotline tư vấn, link mạng xã hội, giờ làm việc.<br>
+              • Cấu hình thông số gửi Email, kết nối Zalo OA (ZNS token), nhật ký bộ đếm tin nhắn.<br>
+              • Quản trị nội dung giới thiệu thương hiệu và chính sách riêng tư song ngữ.
+            </td>
+            <td>Thiết lập trung tâm điều phối thông tin và cấu hình truyền thông toàn diện.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">16</td>
+            <td>
+              <strong>Quản Trị Nhân Sự, Bảo Mật OTP &amp; Tiện Ích Độc Quyền</strong><br>
+              • Phân quyền Admin/Staff, giám sát trạng thái nhân viên (Realtime Presence: Active, Tab, Off).<br>
+              • <strong>Quên mật khẩu nhận mã OTP qua Gmail:</strong> Khôi phục tài khoản bảo mật.<br>
+              • Chuông báo Realtime có âm thanh khi có khách đặt mới; bộ cắt ảnh tương tác.
+            </td>
+            <td>Bảo mật tài khoản tuyệt đối và tối ưu hóa năng suất làm việc của quản trị viên.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+
+          <tr>
+            <td class="center bold">17</td>
+            <td>
+              <strong>Hạ Tầng Cloud, Cơ Sở Dữ Liệu &amp; Bảo Mật Toàn Trình</strong><br>
+              • Next.js 16 + React 19 + Turbopack; Database Supabase PostgreSQL RLS bảo mật cấp CSDL.<br>
+              • Hosting Vercel Serverless Edge, SSL/TLS HTTPS toàn trình, Background Task ngầm.
+            </td>
+            <td>Đảm bảo hệ thống vận hành 99.99%, an toàn dữ liệu tuyệt đối trước mã độc.</td>
+            <td class="center bold">ĐẠT 100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ĐIỀU 3 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 3: TIÊU CHUẨN CÔNG NGHỆ VÀ TRẢI NGHIỆM GIAO DIỆN (UI/UX)</div>
+      <p>Hệ thống được phát triển trên nền tảng công nghệ hiện đại, đảm bảo tốc độ cao, giao diện trực quan và trải nghiệm mượt mà cho khách hàng và nhân viên:</p>
+      <p><strong>3.1. Nền tảng Next.js &amp; React hiện đại:</strong> Tối ưu tốc độ tải trang dưới 0.8 giây, chuyển trang tức thì không gián đoạn, mang lại trải nghiệm mượt mà cho khách hàng và quản trị viên.</p>
+      <p><strong>3.2. Đồ họa 3D tương tác (Three.js):</strong> Tích hợp mô hình 3D linh vật tương tác mượt mà theo cử chỉ chuột và thao tác cảm ứng trên điện thoại, tạo điểm nhấn thương hiệu hiện đại.</p>
+      <p><strong>3.3. Tối ưu di động (Mobile-First):</strong> Giao diện hiển thị chuẩn xác 100% trên mọi dòng smartphone và máy tính bảng, thao tác một chạm tiện lợi, không bị tràn viền hay che khuất chữ.</p>
+      <p><strong>3.4. Xử lý tác vụ ngầm (Background Processing):</strong> Thao tác gửi lịch hẹn, tạo mã đánh giá phản hồi ngay tức thì trong 0.2 giây; việc gửi email và sinh mã QR được xử lý ngầm, không gây đơ lag màn hình.</p>
+      <p><strong>3.5. Quét mã QR/Barcode bằng Camera:</strong> Tích hợp tính năng quét mã trực tiếp bằng camera thiết bị di động ngay trên trình duyệt mà không cần cài đặt thêm phần mềm.</p>
+      <p><strong>3.6. Thiết kế nhận diện thương hiệu:</strong> Màu sắc xanh y tế trang nhã, độ tương phản đạt chuẩn công thái học, bố cục rõ ràng, dễ sử dụng cho mọi lứa tuổi.</p>
+    </div>
+
+    <!-- ĐIỀU 4 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 4: TIÊU CHUẨN AN TOÀN THÔNG TIN VÀ BẢO MẬT HỆ THỐNG</div>
+      <p>Hệ thống áp dụng các tiêu chuẩn an toàn thông tin nhiều lớp, bảo vệ toàn diện dữ liệu vận hành của Bệnh viện:</p>
+      <p><strong>4.1. Phân quyền dữ liệu cấp cơ sở dữ liệu (RLS):</strong> Dữ liệu được kiểm soát quyền truy cập trực tiếp từ máy chủ database; nhân viên chỉ thao tác trong phạm vi được cấp phép, không thể xem các dữ liệu tài chính hoặc thông tin nội bộ nhạy cảm.</p>
+      <p><strong>4.2. Bảo mật phiên đăng nhập (JWT &amp; Secure Cookie):</strong> Mã hóa phiên làm việc của người dùng trong cookie bảo vệ, chống hoàn toàn nguy cơ can thiệp hoặc đánh cắp tài khoản qua trình duyệt (XSS/CSRF).</p>
+      <p><strong>4.3. Mã hóa mật khẩu một chiều:</strong> Toàn bộ mật khẩu quản trị và nhân viên được băm mã hóa một chiều, đảm bảo bí mật tuyệt đối và không thể dịch ngược.</p>
+      <p><strong>4.4. Cơ chế chống Spam và quá tải (Rate Limiting):</strong> Giới hạn tần suất gửi dữ liệu đặt lịch hẹn và nộp hồ sơ tuyển dụng, ngăn chặn robot tự động gửi tin rác phá hoại hệ thống.</p>
+      <p><strong>4.5. Xác thực OTP khôi phục tài khoản:</strong> Cung cấp mã OTP 6 số bảo mật gửi trực tiếp qua email chính chủ khi cần cấp lại mật khẩu.</p>
+      <p><strong>4.6. Mã hóa kênh truyền (SSL/TLS HTTPS):</strong> Toàn bộ thông tin trao đổi giữa người dùng và máy chủ được mã hóa bảo mật toàn trình theo tiêu chuẩn quốc tế.</p>
+      <p><strong>4.7. Nhật ký kiểm toán và giám sát trạng thái:</strong> Tự động lưu vết lịch sử các thao tác quan trọng (thời gian, người thực hiện) và giám sát trạng thái online của nhân sự theo thời gian thực.</p>
+    </div>
+
+    <!-- ĐIỀU 5 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 5: KẾT QUẢ KIỂM THỬ VÀ ĐÁNH GIÁ CHẤT LƯỢNG (UAT)</div>
+      <p>Hai Bên đã cùng tiến hành kiểm thử thực tế (User Acceptance Testing - UAT) trên các thiết bị: iPhone, Samsung Galaxy, iPad, Máy tính để bàn Windows và macOS. Kết quả ghi nhận như sau:</p>
+      <ul>
+        <li><strong>Tốc độ &amp; Hiệu năng:</strong> Thời gian phản hồi trang dưới 0.8 giây. Các tác vụ tạo tài khoản, đặt lịch gửi mail xử lý tức thì trong nền không gây đơ lag màn hình.</li>
+        <li><strong>Độ chính xác dữ liệu:</strong> 100% dữ liệu lịch hẹn, đánh giá khách hàng, tài khoản nhân viên được lưu trữ toàn vẹn, bảo mật trên Supabase.</li>
+        <li><strong>Tính tương thích giao diện:</strong> Hiển thị chuẩn xác, không bị tràn viền, chồng chéo chữ trên mọi kích thước màn hình điện thoại.</li>
+        <li><strong>Kết luận nghiệm thu:</strong> <strong>HỆ THỐNG ĐẠT CHUẨN CHẤT LƯỢNG 100%, ĐỦ ĐIỀU KIỆN ĐƯA VÀO VẬN HÀNH CHÍNH THỨC.</strong></li>
+      </ul>
+    </div>
+
+    <!-- ĐIỀU 6 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 6: DANH SÁCH BÀN GIAO TÀI SẢN CÔNG NGHỆ &amp; TÀI KHOẢN TRUY CẬP</div>
+      <p>Bên B thực hiện bàn giao đầy đủ cho Bên A các quyền truy cập tối cao sau:</p>
+      <table class="table-data">
+        <thead>
+          <tr>
+            <th style="width: 8%;">STT</th>
+            <th style="width: 32%;">Tài Sản / Tài Khoản Bàn Giao</th>
+            <th style="width: 45%;">Thông Tin Đăng Nhập / Địa Chỉ Truy Cập</th>
+            <th style="width: 15%;">Quyền Hạn</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="center bold">1</td>
+            <td><strong>Tài khoản Super Admin (Toàn quyền)</strong></td>
+            <td>
+              • Địa chỉ: https://petsmm.vercel.app/admin<br>
+              • Email: thaitrtin1999@gmail.com<br>
+              • Mật khẩu: (Đã bàn giao trực tiếp &amp; bảo mật)
+            </td>
+            <td class="center bold">Toàn quyền cao nhất</td>
+          </tr>
+          <tr>
+            <td class="center bold">2</td>
+            <td><strong>Cổng Lễ tân Tạo Đánh Giá</strong></td>
+            <td>
+              • Địa chỉ: https://petsmm.vercel.app/taodanhgia<br>
+              • Tài khoản: Cấp phát cho từng nhân sự lễ tân
+            </td>
+            <td class="center bold">Quyền nhân viên</td>
+          </tr>
+          <tr>
+            <td class="center bold">3</td>
+            <td><strong>Toàn bộ Mã nguồn Gốc (Source Code)</strong></td>
+            <td>
+              • GitHub Repository: ThaiTrungTin/website (nhánh main)<br>
+              • Trọn bộ mã nguồn Next.js 16, TypeScript, TailwindCSS
+            </td>
+            <td class="center bold">Sở hữu vĩnh viễn</td>
+          </tr>
+          <tr>
+            <td class="center bold">4</td>
+            <td><strong>Cơ sở Dữ liệu Đám mây (Supabase Cloud)</strong></td>
+            <td>
+              • Dự án: PetM&amp;M Production Database<br>
+              • Hệ quản trị: PostgreSQL Cloud
+            </td>
+            <td class="center bold">Chủ quyền dữ liệu</td>
+          </tr>
+          <tr>
+            <td class="center bold">5</td>
+            <td><strong>Hệ thống Hosting Vercel</strong></td>
+            <td>
+              • Vercel Production Project: petsmm<br>
+              • Chứng chỉ bảo mật: SSL/TLS tự động gia hạn
+            </td>
+            <td class="center bold">Toàn quyền quản lý</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ĐIỀU 7 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 7: QUY ĐỊNH VỀ DỮ LIỆU MẪU VÀ TRÁCH NHIỆM CẬP NHẬT NỘI DUNG THỰC TẾ</div>
+      <p><strong>7.1. Tính chất của dữ liệu hiện tại (Dữ liệu mẫu / Mock Data):</strong></p>
+      <p>Hai Bên xác nhận rằng toàn bộ hình ảnh, bài viết cẩm nang, thông tin đội ngũ bác sĩ, bảng giá dịch vụ khám chữa và đánh giá khách hàng hiện đang hiển thị trên website là <strong>dữ liệu mẫu (mock / placeholder data)</strong> do Bên B khởi tạo nhằm phục vụ mục đích kiểm thử hiển thị giao diện và nghiệm thu kỹ thuật tính năng.</p>
+      <p><strong>7.2. Trách nhiệm chuẩn hóa và cập nhật nội dung của Bên A:</strong></p>
+      <p>Sau khi tiếp nhận bàn giao hệ thống, Bên A có trách nhiệm chủ động rà soát, biên tập và thay thế toàn bộ dữ liệu mẫu bằng thông tin chính thức, bảng giá niêm yết chuẩn xác, hồ sơ nhân sự thực tế và quy chuẩn chuyên môn y tế của Bệnh Viện Thú Y PetM&amp;M thông qua Cổng quản trị hệ thống (/admin).</p>
+      <p><strong>7.3. Trách nhiệm đồng hành và hỗ trợ kỹ thuật của Bên B:</strong></p>
+      <p>Bên B có trách nhiệm bàn giao tài liệu hướng dẫn, tập huấn nhân sự của Bên A cách sử dụng cổng quản trị và cam kết đồng hành, hỗ trợ kỹ thuật miễn phí trong suốt quá trình Bên A cập nhật dữ liệu để đảm bảo hệ thống vận hành đúng quy chuẩn trước khi khai trương / truyền thông chính thức.</p>
+    </div>
+
+    <!-- ĐIỀU 8 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 8: GIÁ TRỊ HỢP ĐỒNG VÀ PHƯƠNG THỨC THANH TOÁN</div>
+      <p><strong>8.1. Tổng giá trị hợp đồng trọn gói:</strong> <strong>25.000.000 VNĐ</strong> <em>(Bằng chữ: Hai mươi lăm triệu đồng chẵn)</em>.</p>
+      <p><em>(Giá trị trên đã bao gồm toàn bộ chi phí thiết kế UX/UI, lập trình full-stack, tích hợp dịch vụ bên thứ ba, bàn giao 100% mã nguồn và chuyển giao công nghệ trọn gói. Phí duy trì tên miền hàng năm do Bên A trực tiếp chi trả cho nhà cung cấp tên miền).</em></p>
+      <p><strong>8.2. Tiến độ thanh toán:</strong> Bên A có trách nhiệm thanh toán số tiền còn lại cho Bên B trong vòng <strong>03 ngày làm việc</strong> kể từ ngày ký biên bản này vào tài khoản:</p>
+      <div style="margin: 8px 0 8px 25px;">
+        <p>• <strong>Tên chủ tài khoản:</strong> <strong>THÁI TRUNG TÍN</strong></p>
+        <p>• <strong>Số tài khoản:</strong> ........................................................................... tại <strong>Ngân hàng:</strong> ..................................................</p>
+        <p>• <strong>Nội dung:</strong> <strong>Thanh toan hop dong ban giao website PetMM</strong></p>
+      </div>
+    </div>
+
+    <!-- ĐIỀU 9 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 9: QUYỀN SỞ HỮU TRÍ TUỆ VÀ BẢO MẬT THÔNG TIN</div>
+      <p>9.1. Ngay sau khi Bên A hoàn tất nghĩa vụ thanh toán theo Điều 8, toàn bộ quyền sở hữu trí tuệ, quyền sử dụng thương mại và mã nguồn phần mềm thuộc về Bên A.</p>
+      <p>9.2. Bên B cam kết bảo mật tuyệt đối mọi thông tin khách hàng, số điện thoại, số liệu doanh thu và hồ sơ bệnh án thú cưng của Bên A, không chia sẻ cho bất kỳ bên thứ ba nào dưới mọi hình thức.</p>
+    </div>
+
+    <!-- ĐIỀU 10 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 10: QUY ĐỊNH VỀ KHÓA PHẠM VI DỰ ÁN, FIX LỖI VÀ CHI PHÍ PHÁT SINH (SCOPE FREEZE &amp; CHANGE REQUEST)</div>
+      <p><strong>10.1. Chốt và đóng phạm vi tính năng (Scope Freeze):</strong></p>
+      <p>Hai Bên xác nhận rằng toàn bộ danh mục phân hệ, các trang con (views) và chức năng được liệt kê chi tiết tại Điều 2 của Hợp đồng này là <strong>TOÀN BỘ</strong> phạm vi công việc mà Bên B có nghĩa vụ thiết kế, lập trình và bàn giao cho Bên A. Kể từ thời điểm ký biên bản nghiệm thu này, phạm vi công việc của Hợp đồng chính thức được <strong>ĐÓNG (Freeze Scope)</strong>.</p>
+      <p><strong>10.2. Phạm vi bảo hành miễn phí (Chỉ Fix Lỗi Kỹ Thuật):</strong></p>
+      <p>Trong suốt thời gian bảo hành (12 tháng), Bên B chỉ có trách nhiệm duy nhất là sửa chữa, khắc phục miễn phí các lỗi kỹ thuật (bug fixes) phát sinh trong phạm vi các tính năng <strong>ĐÃ BÀN GIAO</strong> theo Điều 2 nhằm đảm bảo hệ thống vận hành đúng chuẩn theo thiết kế ban đầu.</p>
+      <p><strong>10.3. Quy định về các yêu cầu phát sinh mới (Change Request):</strong></p>
+      <p>Mọi yêu cầu mới từ Bên A không nằm trong danh mục Điều 2, bao gồm: thay đổi luồng nghiệp vụ đã bàn giao, thiết kế thêm trang con mới, lập trình thêm tính năng mới, tích hợp thêm phần mềm thứ ba, hoặc dịch vụ quảng cáo tiếp thị / tối ưu từ khóa SEO Google leo top... đều được xác định là <strong>HẠNG MỤC PHÁT SINH NGOÀI HỢP ĐỒNG</strong>.</p>
+      <p><strong>10.4. Chi phí và tiến độ thực hiện hạng mục phát sinh:</strong></p>
+      <p>Các tính năng phát sinh chỉ được tiến hành lập trình sau khi hai Bên ký kết Phụ lục Hợp đồng bổ sung và Bên A đã thanh toán chi phí phát sinh tương ứng theo thỏa thuận. Việc phát sinh tính năng mới không được làm căn cứ để Bên A trì hoãn nghĩa vụ thanh toán khoản tiền nghiệm thu bàn giao của Hợp đồng chính theo quy định tại Điều 8.</p>
+    </div>
+
+    <!-- ĐIỀU 11 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 11: CHÍNH SÁCH BẢO HÀNH &amp; HỖ TRỢ KỸ THUẬT (SLA)</div>
+      <p>• <strong>Thời gian bảo hành:</strong> <strong>12 (mười hai) tháng</strong> kể từ ngày ký biên bản.</p>
+      <p>• <strong>Khắc phục sự cố kỹ thuật</strong> trong vòng <strong>02 – 04 giờ làm việc</strong> kể từ khi tiếp nhận thông báo.</p>
+      <p>• <strong>Hỗ trợ sao lưu dữ liệu</strong> và hướng dẫn nhân viên mới sử dụng hệ thống miễn phí.</p>
+    </div>
+
+    <!-- ĐIỀU 12 -->
+    <div class="article">
+      <div class="article-title">ĐIỀU 12: ĐIỀU KHOẢN CHUNG &amp; HIỆU LỰC HỢP ĐỒNG</div>
+      <p>12.1. Hợp đồng kiêm Biên bản Nghiệm thu này có hiệu lực kể từ ngày ký. Mọi sửa đổi, bổ sung phải được hai Bên thống nhất bằng văn bản.</p>
+      <p>12.2. Hợp đồng được lập thành 02 (hai) bản gốc có giá trị pháp lý như nhau, mỗi Bên giữ 01 (một) bản để làm căn cứ thực hiện và quyết toán.</p>
+    </div>
+
+    <!-- 6. CHỮ KÝ CÁC BÊN -->
+    <div class="signatures">
+      <div class="sig-block">
+        <div class="sig-title">ĐẠI DIỆN BÊN A (KHÁCH HÀNG)</div>
+        <div class="sig-subtitle">(Ký, ghi rõ họ tên và đóng dấu)</div>
+        <div class="sig-name">....................................................................</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-title">ĐẠI DIỆN BÊN B (ĐƠN VỊ PHÁT TRIỂN)</div>
+        <div class="sig-subtitle">(Ký và ghi rõ họ tên)</div>
+        <div class="sig-name">THÁI TRUNG TÍN</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
