@@ -67,6 +67,8 @@ const FONT_FAMILIES = [
 
 function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-top-6' }: ToolbarProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const savedSelectionRef = React.useRef<{ from: number; to: number } | null>(null);
+
   const addImage = useCallback(async (file?: File) => {
     if (!editor) return;
     if (file && onUploadImage) {
@@ -101,19 +103,30 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
     FONT_FAMILIES.find((f) => f.value && f.value.replace(/['"]/g, '').toLowerCase().trim() === normalizedFamily)?.value ?? '';
   const activeFontSize = FONT_SIZES.find((s) => s === rawFontSize) ?? '';
 
+  const saveSelection = () => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (!empty) {
+      savedSelectionRef.current = { from, to };
+    } else {
+      savedSelectionRef.current = null;
+    }
+  };
+
   const applyFontFamily = (family: string) => {
     if (!editor) return;
-    const { empty, $from } = editor.state.selection;
+    if (savedSelectionRef.current && savedSelectionRef.current.from < savedSelectionRef.current.to) {
+      editor.commands.setTextSelection(savedSelectionRef.current);
+    }
+    const { empty, from, to, $from } = editor.state.selection;
+    savedSelectionRef.current = null;
+
     if (!family) {
       if (empty) {
-        const text = $from.parent.textContent;
-        const offset = $from.parentOffset;
-        let start = offset;
-        let end = offset;
-        while (start > 0 && /\S/.test(text[start - 1])) start--;
-        while (end < text.length && /\S/.test(text[end])) end++;
+        const start = $from.start();
+        const end = $from.end();
         if (start < end) {
-          editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).unsetFontFamily().focus().run();
+          (editor.chain().setTextSelection({ from: start, to: end }) as any).unsetFontFamily().focus().run();
           return;
         }
       }
@@ -122,33 +135,33 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
     }
 
     if (empty) {
-      const text = $from.parent.textContent;
-      const offset = $from.parentOffset;
-      let start = offset;
-      let end = offset;
-      while (start > 0 && /\S/.test(text[start - 1])) start--;
-      while (end < text.length && /\S/.test(text[end])) end++;
+      const start = $from.start();
+      const end = $from.end();
       if (start < end) {
-        editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).setFontFamily(family).focus().run();
+        (editor.chain().setTextSelection({ from: start, to: end }) as any).setFontFamily(family).focus().run();
         return;
       }
+    } else {
+      (editor.chain().setTextSelection({ from, to }) as any).setFontFamily(family).focus().run();
+      return;
     }
     (editor.chain().focus() as any).setFontFamily(family).run();
   };
 
   const applyFontSize = (size: string) => {
     if (!editor) return;
-    const { empty, $from } = editor.state.selection;
+    if (savedSelectionRef.current && savedSelectionRef.current.from < savedSelectionRef.current.to) {
+      editor.commands.setTextSelection(savedSelectionRef.current);
+    }
+    const { empty, from, to, $from } = editor.state.selection;
+    savedSelectionRef.current = null;
+
     if (!size) {
       if (empty) {
-        const text = $from.parent.textContent;
-        const offset = $from.parentOffset;
-        let start = offset;
-        let end = offset;
-        while (start > 0 && /\S/.test(text[start - 1])) start--;
-        while (end < text.length && /\S/.test(text[end])) end++;
+        const start = $from.start();
+        const end = $from.end();
         if (start < end) {
-          editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).unsetFontSize().focus().run();
+          (editor.chain().setTextSelection({ from: start, to: end }) as any).unsetFontSize().focus().run();
           return;
         }
       }
@@ -157,16 +170,15 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
     }
 
     if (empty) {
-      const text = $from.parent.textContent;
-      const offset = $from.parentOffset;
-      let start = offset;
-      let end = offset;
-      while (start > 0 && /\S/.test(text[start - 1])) start--;
-      while (end < text.length && /\S/.test(text[end])) end++;
+      const start = $from.start();
+      const end = $from.end();
       if (start < end) {
-        editor.chain().setTextSelection({ from: $from.start() + start, to: $from.start() + end }).setFontSize(size).focus().run();
+        (editor.chain().setTextSelection({ from: start, to: end }) as any).setFontSize(size).focus().run();
         return;
       }
+    } else {
+      (editor.chain().setTextSelection({ from, to }) as any).setFontSize(size).focus().run();
+      return;
     }
     (editor.chain().focus() as any).setFontSize(size).run();
   };
@@ -204,6 +216,8 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
       {/* Phông chữ */}
       <select
         value={activeFontFamily}
+        onMouseDown={saveSelection}
+        onFocus={saveSelection}
         onChange={(e) => applyFontFamily(e.target.value)}
         title="Phông chữ"
         style={{ fontFamily: activeFontFamily || undefined }}
@@ -219,6 +233,8 @@ function Toolbar({ editor, onUploadImage, imgFileInputRef, stickyTopClass = '-to
       {/* Cỡ chữ */}
       <select
         value={activeFontSize}
+        onMouseDown={saveSelection}
+        onFocus={saveSelection}
         onChange={(e) => applyFontSize(e.target.value)}
         title="Cỡ chữ"
         className="h-7 text-xs rounded border border-slate-200 bg-white px-1.5 text-slate-700 focus:outline-none focus:border-[#2D5A27] cursor-pointer w-[68px]"

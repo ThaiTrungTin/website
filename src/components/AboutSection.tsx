@@ -168,6 +168,20 @@ export default function AboutSection() {
       }
     }
     fetchCounts();
+
+    const countsChannel = supabase
+      .channel('about_counts_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chi_nhanh' }, () => {
+        fetchCounts();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'doi_ngu_y_te' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(countsChannel);
+    };
   }, []);
 
   // 3. Quản lý chuyển slide ảnh xem lần lượt với dấu <, >, vuốt cảm ứng & kéo chuột

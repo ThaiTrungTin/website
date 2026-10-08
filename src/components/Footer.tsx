@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   PhoneCall,
@@ -16,9 +16,9 @@ import PetLogo from './PetLogo';
 import PetMMBrand from './PetMMBrand';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import { useLanguage } from '@/context/LanguageContext';
-import LanguageSwitcher from './LanguageSwitcher';
 import { getDirectionsUrl } from '@/lib/assets';
 import { useNavDatabase } from '@/hooks/useNavDatabase';
+import { supabase, ChiNhanhRecord } from '@/lib/supabase';
 
 function getFacebookEmbedUrl(rawUrl?: string): string {
   if (!rawUrl) return '';
@@ -39,16 +39,7 @@ function getFacebookEmbedUrl(rawUrl?: string): string {
 }
 
 interface FooterProps {
-  branch?: {
-    ten_chi_nhanh?: string;
-    ten_chi_nhanh_en?: string | null;
-    dia_chi?: string;
-    dia_chi_en?: string | null;
-    so_dien_thoai?: string | null;
-    gio_hoat_dong?: string | null;
-    link_ggmap_embed?: string | null;
-    link_ggmap_app?: string | null;
-  } | null;
+  branch?: Partial<ChiNhanhRecord> | null;
 }
 
 export default function Footer({ branch }: FooterProps) {
@@ -66,8 +57,48 @@ export default function Footer({ branch }: FooterProps) {
   const tiktokUrl = config.link_tiktok?.trim() || '';
   const email = config.email?.trim() || '';
 
-  const defaultBranchNameVi = 'Trụ Sở Chính TP. Thủ Đức';
-  const defaultBranchNameEn = 'Thu Duc City Main Headquarters';
+  // Nạp thông tin cơ sở chính được chọn trong Admin (chi_nhanh có la_co_so_chinh = true)
+  const [mainBranch, setMainBranch] = useState<ChiNhanhRecord | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMainBranch = async () => {
+      try {
+        const { data } = await supabase
+          .from('chi_nhanh')
+          .select('*')
+          .eq('la_co_so_chinh', true)
+          .eq('kich_hoat', true)
+          .maybeSingle();
+
+        if (isMounted && data) {
+          setMainBranch(data);
+        }
+      } catch (e) {
+        console.warn('Lỗi lấy cơ sở chính footer:', e);
+      }
+    };
+
+    fetchMainBranch();
+
+    // Lắng nghe thay đổi Realtime khi admin tick chọn cơ sở chính mới
+    const channel = supabase
+      .channel('footer_main_branch_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chi_nhanh' }, () => {
+        fetchMainBranch();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const activeBranch = branch || mainBranch;
+
+  const defaultBranchNameVi = 'Cơ Sở Chính TP. Thủ Đức';
+  const defaultBranchNameEn = 'Thu Duc City Main Facility';
   const defaultAddressVi = config.dia_chi_chinh || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
   const defaultAddressEn = '19, Street 1, Phuoc Long Ward, Thu Duc City, Ho Chi Minh City';
 
@@ -88,33 +119,56 @@ export default function Footer({ branch }: FooterProps) {
   const formatBranchNameForLanguage = (name: string, en: boolean) => {
     if (!en || !name) return name;
     return name
-      .replace(/Trụ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Thu Duc City Main Headquarters')
+      .replace(/Trụ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Thu Duc City Main Facility')
+      .replace(/Cơ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Thu Duc City Main Facility')
       .replace(/Phòng\s*Khám\s*Thuộc\s*Bệnh\s*Viện\s*Thú\s*Cưng\s*PetM&M/gi, 'PetM&M Pet Hospital Clinic')
       .replace(/Cơ\s*sở\s*TP\.\s*Thủ\s*Đức/gi, 'Thu Duc City Branch')
       .replace(/Cơ\s*sở/gi, 'Branch');
   };
 
-  // Map & location data (changes dynamically if a branch is passed, fully bilingual)
-  const branchName = isEn
-    ? (branch?.ten_chi_nhanh_en?.trim() ||
-        (branch?.ten_chi_nhanh
-          ? formatBranchNameForLanguage(branch.ten_chi_nhanh, true)
-          : defaultBranchNameEn))
-    : (branch?.ten_chi_nhanh?.trim() || defaultBranchNameVi);
+  // Định dạng tên cơ sở hiển thị: Đổi "Trụ Sở Chính" thành "Cơ Sở Chính"
+  const getBranchDisplayName = () => {
+    if (branch) {
+      // Đang xem chi nhánh cụ thể từ trang chi tiết
+      return isEn
+        ? (branch.ten_chi_nhanh_en?.trim() ||
+            (branch.ten_chi_nhanh
+              ? formatBranchNameForLanguage(branch.ten_chi_nhanh, true)
+              : defaultBranchNameEn))
+        : (branch.ten_chi_nhanh?.trim() || defaultBranchNameVi);
+    }
+
+    if (activeBranch) {
+      if (isEn) {
+        if (activeBranch.ten_chi_nhanh_en?.trim()) return activeBranch.ten_chi_nhanh_en;
+        const area = activeBranch.khu_vuc_en || activeBranch.khu_vuc || '';
+        return area ? `Main Facility (${area})` : defaultBranchNameEn;
+      }
+
+      // Tiếng Việt: Đảm bảo có chữ "Cơ Sở Chính"
+      const area = activeBranch.khu_vuc || activeBranch.ten_ngan || '';
+      const cleanArea = area.replace(/^Cơ\s*sở\s*/i, '').trim();
+      return cleanArea ? `Cơ Sở Chính ${cleanArea}` : `Cơ Sở Chính - ${activeBranch.ten_chi_nhanh}`;
+    }
+
+    return isEn ? defaultBranchNameEn : defaultBranchNameVi;
+  };
+
+  const branchName = getBranchDisplayName();
 
   const branchAddress = isEn
-    ? (branch?.dia_chi_en?.trim() ||
-        (branch?.dia_chi
-          ? formatAddressForLanguage(branch.dia_chi, true)
+    ? (activeBranch?.dia_chi_en?.trim() ||
+        (activeBranch?.dia_chi
+          ? formatAddressForLanguage(activeBranch.dia_chi, true)
           : defaultAddressEn))
-    : (branch?.dia_chi?.trim() || defaultAddressVi);
+    : (activeBranch?.dia_chi?.trim() || defaultAddressVi);
 
-  const branchPhone = branch?.so_dien_thoai || hotlineDisplay;
+  const branchPhone = activeBranch?.so_dien_thoai || hotlineDisplay;
   const mapEmbedUrl =
-    branch?.link_ggmap_embed ||
+    activeBranch?.link_ggmap_embed ||
     'https://maps.google.com/maps?q=Ph%C3%B2ng+kh%C3%A1m+Th%C3%BA+c%C6%B0ng+PetM%26M,+19+%C4%90.+S%E1%BB%91+1,+Ph%C6%B0%E1%BB%9Bc+Long,+H%E1%BB%93+Ch%C3%AD+Minh&t=&z=16&ie=UTF8&iwloc=&output=embed';
   const mapAppUrl =
-    branch?.link_ggmap_app ||
+    activeBranch?.link_ggmap_app ||
     'https://www.google.com/maps/place/Ph%C3%B2ng+kh%C3%A1m+Th%C3%BA+c%C6%B0ng+PetM%26M/@10.825,106.765,17z';
 
   return (
@@ -663,7 +717,13 @@ export default function Footer({ branch }: FooterProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <LanguageSwitcher variant="dark" />
+            <Link
+              href="/chinh-sach-bao-mat"
+              className="text-emerald-100/80 hover:text-white transition underline-offset-2 hover:underline"
+            >
+              {language === 'en' ? 'Privacy Policy' : 'Chính Sách Bảo Mật'}
+            </Link>
+            <span className="text-white/20">•</span>
 
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />

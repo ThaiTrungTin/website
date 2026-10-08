@@ -24,41 +24,53 @@ function getClientIp(req: NextRequest): string {
 const ipApplicationCountMap = new Map<string, number>();
 
 // ========================================================
-// 1. GET: KIỂM TRA EMAIL ĐÃ ỨNG TUYỂN VỊ TRÍ NÀY CHƯA (LIVE CHECK)
+// 1. GET: KIỂM TRA EMAIL / SỐ ĐIỆN THOẠI ĐÃ ỨNG TUYỂN VỊ TRÍ NÀY CHƯA (LIVE CHECK)
 // ========================================================
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get('email');
+    const phone = searchParams.get('phone');
     const jobId = searchParams.get('jobId');
     const isEn = searchParams.get('lang') === 'en';
 
-    if (!email || !email.trim() || !jobId || !jobId.trim()) {
+    if (!jobId || !jobId.trim() || (!email?.trim() && !phone?.trim())) {
       return NextResponse.json({ hasApplied: false });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
 
-    const { data: existingApp, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('ho_so_tuyen_dung')
-      .select('id, ngay_tao, tieu_de_vi_tri')
-      .ilike('email', cleanEmail)
-      .eq('tuyen_dung_id', jobId.trim())
-      .maybeSingle();
+      .select('id, ngay_tao, tieu_de_vi_tri, email, so_dien_thoai')
+      .eq('tuyen_dung_id', jobId.trim());
+
+    if (cleanEmail && cleanPhone && cleanPhone.length >= 8) {
+      query = query.or(`email.ilike.${cleanEmail},so_dien_thoai.eq.${cleanPhone}`);
+    } else if (cleanEmail) {
+      query = query.ilike('email', cleanEmail);
+    } else if (cleanPhone && cleanPhone.length >= 8) {
+      query = query.eq('so_dien_thoai', cleanPhone);
+    } else {
+      return NextResponse.json({ hasApplied: false });
+    }
+
+    const { data: existingApps, error } = await query.limit(1);
 
     if (error) {
-      console.warn('Lỗi kiểm tra email ứng tuyển:', error.message);
+      console.warn('Lỗi kiểm tra trùng ứng tuyển:', error.message);
       return NextResponse.json({ hasApplied: false });
     }
 
-    if (existingApp) {
+    if (existingApps && existingApps.length > 0) {
       return NextResponse.json({
         hasApplied: true,
         code: 'ALREADY_APPLIED',
         message: isEn
-          ? 'This email has already applied for this position. Our HR team is reviewing your profile!'
-          : 'Email này đã ứng tuyển vị trí này rồi. Ban nhân sự đang xét duyệt hồ sơ của bạn!',
-        appliedAt: existingApp.ngay_tao,
+          ? 'This email or phone number has already applied for this position. Our HR team is reviewing your profile!'
+          : 'Email hoặc số điện thoại này đã ứng tuyển vị trí này rồi. Ban nhân sự đang xét duyệt hồ sơ của bạn!',
+        appliedAt: existingApps[0].ngay_tao,
       });
     }
 
@@ -150,24 +162,23 @@ export async function POST(req: NextRequest) {
     const cleanEmail = email.trim().toLowerCase();
 
     // ========================================================
-    // TỐI ƯU 2: 1 EMAIL KHÔNG ĐƯỢC ỨNG TUYỂN NHIỀU HƠN 1 LẦN Ở 1 VỊ TRÍ
-    // NẾU ĐIỀN VÀO SẼ BÁO ĐÃ ỨNG TUYỂN VỊ TRÍ NÀY
+    // TỐI ƯU 2: CHỐNG SPAM / TRÙNG LẶP: 1 EMAIL HOẶC 1 SỐ ĐIỆN THOẠI KHÔNG ĐƯỢC ỨNG TUYỂN NHIỀU LẦN Ở CÙNG 1 VỊ TRÍ
     // ========================================================
-    const { data: existingApp, error: checkError } = await supabaseAdmin
+    const { data: existingApps } = await supabaseAdmin
       .from('ho_so_tuyen_dung')
-      .select('id, ngay_tao')
-      .ilike('email', cleanEmail)
+      .select('id, ngay_tao, email, so_dien_thoai')
       .eq('tuyen_dung_id', jobId)
-      .maybeSingle();
+      .or(`email.ilike.${cleanEmail},so_dien_thoai.eq.${numOnly}`)
+      .limit(1);
 
-    if (!checkError && existingApp) {
+    if (existingApps && existingApps.length > 0) {
       return NextResponse.json(
         {
           success: false,
           code: 'ALREADY_APPLIED',
           message: isEn
-            ? 'This email has already applied for this position. Our HR team is reviewing your profile!'
-            : 'Email này đã ứng tuyển vị trí này rồi. Ban nhân sự đang xét duyệt hồ sơ của bạn!',
+            ? 'This email or phone number has already applied for this position. Our HR team is reviewing your profile!'
+            : 'Email hoặc số điện thoại này đã ứng tuyển vị trí này rồi. Ban nhân sự đang xét duyệt hồ sơ của bạn!',
         },
         { status: 400 }
       );
@@ -215,32 +226,32 @@ export async function POST(req: NextRequest) {
     ipApplicationCountMap.set(clientIp, ipCount + 1);
 
     // ========================================================
-    // 4. TỰ ĐỘNG GỬI EMAIL VỀ NHÀ TUYỂN DỤNG & XÁC NHẬN CHO ỨNG VIÊN
+    // 4. TỰ ĐỘNG GỬI EMAIL VỀ NHÀ TUYỂN DỤNG & XÁC NHẬN CHO ỨNG VIÊN (BACKGROUND)
     // ========================================================
-    let emailSent = false;
-    try {
-      const { getSmtpConfig } = await import('@/lib/mailer');
-      const smtpConfig = await getSmtpConfig().catch(() => null);
-      const emailAllEnabled = smtpConfig?.email_enabled !== false;
-      const recruitmentEmailEnabled = smtpConfig?.email_recruitment_enabled !== false;
+    (async () => {
+      try {
+        const { getSmtpConfig } = await import('@/lib/mailer');
+        const smtpConfig = await getSmtpConfig().catch(() => null);
+        const emailAllEnabled = smtpConfig?.email_enabled !== false;
+        const recruitmentEmailEnabled = smtpConfig?.email_recruitment_enabled !== false;
 
-      if (emailAllEnabled && recruitmentEmailEnabled) {
-        await sendRecruitmentApplicationEmail({
-          candidateName: fullName.trim(),
-          phone: numOnly,
-          email: cleanEmail,
-          jobTitle,
-          cvLink: finalCvLink,
-          cvFileName: pdfFileName || (pdfUrl ? 'CV_Ung_Tuyen.pdf' : undefined),
-          notes: (notes || '').trim(),
-          isEn,
-          ip: clientIp,
-        });
-        emailSent = true;
+        if (emailAllEnabled && recruitmentEmailEnabled) {
+          await sendRecruitmentApplicationEmail({
+            candidateName: fullName.trim(),
+            phone: numOnly,
+            email: cleanEmail,
+            jobTitle,
+            cvLink: finalCvLink,
+            cvFileName: pdfFileName || (pdfUrl ? 'CV_Ung_Tuyen.pdf' : undefined),
+            notes: (notes || '').trim(),
+            isEn,
+            ip: clientIp,
+          });
+        }
+      } catch (mailErr: any) {
+        console.error('Lỗi gửi email tuyển dụng tự động:', mailErr);
       }
-    } catch (mailErr: any) {
-      console.error('Lỗi gửi email tuyển dụng tự động:', mailErr);
-    }
+    })();
 
     return NextResponse.json({
       success: true,
@@ -253,7 +264,7 @@ export async function POST(req: NextRequest) {
         jobTitle,
         email: cleanEmail,
         phone: numOnly,
-        emailSent,
+        emailSent: true,
       },
     });
   } catch (err: any) {

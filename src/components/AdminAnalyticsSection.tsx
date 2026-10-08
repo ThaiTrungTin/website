@@ -19,6 +19,7 @@ import {
   Languages,
 } from 'lucide-react';
 import { DayAnalytics, WebAnalyticsSummary, RecentVisitorSession } from '@/lib/analytics';
+import { supabase } from '@/lib/supabase';
 
 interface AdminAnalyticsSectionProps {
   className?: string;
@@ -110,7 +111,29 @@ export default function AdminAnalyticsSection({ className = '' }: AdminAnalytics
     const interval = setInterval(() => {
       fetchAnalytics(true);
     }, 45000);
-    return () => clearInterval(interval);
+
+    const channel = supabase
+      .channel('analytics_realtime_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lich_hen' },
+        () => {
+          fetchAnalytics(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cau_hinh', filter: 'id=eq.web_analytics' },
+        () => {
+          fetchAnalytics(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [fetchAnalytics]);
 
   // Lọc danh sách ngày theo filter timeRange (luôn tạo dải ngày thực tế liên tục kết thúc ở hôm nay)

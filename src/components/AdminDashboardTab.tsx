@@ -99,21 +99,14 @@ export default function AdminDashboardTab({
     zalo_that_bai: 0,
   });
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchNotifStats = async () => {
-      try {
-        const res = await fetch('/api/admin/notification-logs?limit=1');
-        const data = await res.json();
-        if (isMounted && data.success && data.stats) {
-          setNotifStats(data.stats);
-        }
-      } catch {}
-    };
-    fetchNotifStats();
-    return () => {
-      isMounted = false;
-    };
+  const fetchNotifStats = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/notification-logs?limit=1');
+      const data = await res.json();
+      if (data.success && data.stats) {
+        setNotifStats(data.stats);
+      }
+    } catch {}
   }, []);
 
   // ── Danh sách yêu cầu đánh giá NV đã tạo nhưng khách chưa vào đánh giá ──
@@ -135,10 +128,11 @@ export default function AdminDashboardTab({
   }, []);
 
   useEffect(() => {
+    fetchNotifStats();
     fetchPendingReviewRequests();
 
     const channel = supabase
-      .channel('dashboard_yeu_cau_danh_gia')
+      .channel('dashboard_realtime_sync')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'yeu_cau_danh_gia' },
@@ -146,12 +140,19 @@ export default function AdminDashboardTab({
           fetchPendingReviewRequests();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'nhat_ky_gui_tin' },
+        () => {
+          fetchNotifStats();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchPendingReviewRequests]);
+  }, [fetchNotifStats, fetchPendingReviewRequests]);
 
   const handleCopyReviewLink = async (code: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://petmm.vn';

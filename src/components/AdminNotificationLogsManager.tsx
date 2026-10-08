@@ -17,6 +17,7 @@ import {
   Info,
 } from 'lucide-react';
 import { NhatKyGuiTinRecord } from '@/lib/notificationLogger';
+import { supabase } from '@/lib/supabase';
 
 interface NotificationStats {
   email_thanh_cong: number;
@@ -74,6 +75,21 @@ export default function AdminNotificationLogsManager() {
 
   useEffect(() => {
     fetchLogs();
+
+    const channel = supabase
+      .channel('admin_notification_logs_rt')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'nhat_ky_gui_tin' },
+        () => {
+          fetchLogs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchLogs]);
 
   const handleClearAll = async () => {

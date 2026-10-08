@@ -93,9 +93,9 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
         return (
           <h3
             key={idx}
-            className="text-lg sm:text-xl font-bold text-[#2D5A27] mt-6 sm:mt-8 mb-3 flex items-center gap-2"
+            className="text-[15px] sm:text-xl font-bold text-[#2D5A27] mt-5 sm:mt-8 mb-2.5 sm:mb-3 flex items-center gap-2"
           >
-            <span className="w-1.5 h-5 rounded-full bg-[#2D5A27] inline-block shrink-0" />
+            <span className="w-1.5 h-4 sm:h-5 rounded-full bg-[#2D5A27] inline-block shrink-0" />
             <span>{trimmed.replace(/^###\s+/, '')}</span>
           </h3>
         );
@@ -104,7 +104,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
         return (
           <h2
             key={idx}
-            className="text-xl sm:text-2xl font-bold text-[#2D5A27] mt-8 sm:mt-10 mb-4 pb-2 border-b border-emerald-100"
+            className="text-[17px] sm:text-2xl font-bold text-[#2D5A27] mt-6 sm:mt-10 mb-3 sm:mb-4 pb-2 border-b border-emerald-100"
           >
             {trimmed.replace(/^##\s+/, '')}
           </h2>
@@ -114,7 +114,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
         return (
           <div
             key={idx}
-            className="my-5 p-4 sm:p-5 rounded-2xl bg-emerald-50/80 border-l-4 border-[#2D5A27] text-slate-700 text-xs sm:text-sm leading-relaxed italic shadow-xs"
+            className="my-4 sm:my-5 p-3.5 sm:p-5 rounded-2xl bg-emerald-50/80 border-l-4 border-[#2D5A27] text-slate-700 text-[12.5px] sm:text-sm leading-relaxed italic shadow-xs"
           >
             {parseInlineMarkdown(trimmed.replace(/^>\s+/, ''))}
           </div>
@@ -123,7 +123,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
       if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || /^\d+\.\s/.test(trimmed)) {
         const lines = trimmed.split('\n').filter(Boolean);
         return (
-          <ul key={idx} className="my-3 space-y-2 text-xs sm:text-sm text-slate-700 leading-relaxed pl-1">
+          <ul key={idx} className="my-3 space-y-2 text-[13.5px] sm:text-sm text-slate-700 leading-relaxed pl-1">
             {lines.map((line, lIdx) => {
               const cleanLine = line.replace(/^[\*\-]\s+/, '').replace(/^\d+\.\s+/, '');
               return (
@@ -137,7 +137,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
         );
       }
       return (
-        <p key={idx} className="text-xs sm:text-base text-slate-700 leading-relaxed mb-4 font-normal">
+        <p key={idx} className="text-[13.5px] sm:text-base text-slate-700 leading-relaxed mb-3.5 sm:mb-4 font-normal">
           {parseInlineMarkdown(trimmed)}
         </p>
       );
@@ -175,7 +175,7 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
               )}
             </div>
 
-            <h1 className="font-editorial text-2xl sm:text-4xl md:text-5xl font-semibold text-white drop-shadow-md leading-tight max-w-4xl">
+            <h1 className="font-editorial text-xl sm:text-3xl md:text-5xl font-semibold text-white drop-shadow-md leading-tight max-w-4xl">
               {title}
             </h1>
 
@@ -232,9 +232,9 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
           <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             {/* Box tóm tắt mở đầu */}
             {summary && (
-              <div className="p-5 sm:p-6 rounded-2xl bg-white border border-emerald-800/10 shadow-sm relative overflow-hidden">
+              <div className="p-4 sm:p-6 rounded-2xl bg-white border border-emerald-800/10 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#2D5A27]" />
-                <p className="text-xs sm:text-base text-slate-700 font-medium leading-relaxed italic">
+                <p className="text-[13.5px] sm:text-base text-slate-700 font-medium leading-relaxed italic">
                   &ldquo;{summary}&rdquo;
                 </p>
               </div>
@@ -252,26 +252,26 @@ export default function KienThucDetailClient({ article, relatedArticles }: Props
             )}
 
             {/* Nội dung chi tiết bài viết */}
-            <article className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-6 sm:p-9 shadow-xs">
+            <article className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-4 sm:p-8 md:p-9 shadow-xs">
               {isHtmlContent(rawActiveContent) ? (
                 /* HTML từ Tiptap WYSIWYG (hỗ trợ chuyển đổi song ngữ mượt mà) */
                 <ArticleContent
                   html={article.noi_dung || ''}
                   htmlEn={article.noi_dung_en}
-                  className="prose prose-slate prose-base sm:prose-lg max-w-none
+                  className="prose prose-slate prose-sm sm:prose-base md:prose-lg max-w-none
                     prose-headings:text-[#2D5A27] prose-headings:font-bold prose-headings:tracking-tight
-                    prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:border-b prose-h2:border-emerald-100/60 prose-h2:pb-2.5
-                    prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
-                    prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-4
-                    prose-ul:my-4 prose-ol:my-4 prose-li:my-1.5 prose-li:text-slate-700
+                    prose-h2:text-[17px] sm:prose-h2:text-2xl prose-h2:mt-6 sm:prose-h2:mt-8 prose-h2:mb-3 sm:prose-h2:mb-4 prose-h2:border-b prose-h2:border-emerald-100/60 prose-h2:pb-2 sm:prose-h2:pb-2.5
+                    prose-h3:text-[15px] sm:prose-h3:text-xl prose-h3:mt-5 sm:prose-h3:mt-6 prose-h3:mb-2.5 sm:prose-h3:mb-3
+                    prose-p:text-[13.5px] sm:prose-p:text-base prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-3.5 sm:prose-p:mb-4
+                    prose-ul:my-3 sm:prose-ul:my-4 prose-ol:my-3 sm:prose-ol:my-4 prose-li:my-1 sm:prose-li:my-1.5 prose-li:text-[13.5px] sm:prose-li:text-base prose-li:text-slate-700
                     prose-a:text-[#2D5A27] prose-a:font-semibold prose-a:underline hover:prose-a:text-emerald-700
                     prose-strong:text-slate-900 prose-strong:font-bold
-                    prose-img:rounded-2xl prose-img:shadow-md prose-img:my-6
-                    prose-blockquote:border-l-4 prose-blockquote:border-l-[#2D5A27] prose-blockquote:bg-emerald-50/50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:text-slate-700 prose-blockquote:not-italic"
+                    prose-img:rounded-2xl prose-img:shadow-md prose-img:my-4 sm:prose-img:my-6
+                    prose-blockquote:border-l-4 prose-blockquote:border-l-[#2D5A27] prose-blockquote:bg-emerald-50/50 prose-blockquote:py-2.5 sm:prose-blockquote:py-3 prose-blockquote:px-3.5 sm:prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:text-[12.5px] sm:prose-blockquote:text-sm prose-blockquote:text-slate-700 prose-blockquote:not-italic"
                 />
               ) : (
                 /* Fallback Markdown renderer */
-                <div className="prose prose-slate max-w-none text-slate-800">
+                <div className="prose prose-slate prose-sm sm:prose-base max-w-none text-slate-800">
                   {renderFormattedContent(rawActiveContent)}
                 </div>
               )}

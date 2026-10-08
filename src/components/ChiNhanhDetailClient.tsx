@@ -82,11 +82,11 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
                   {branchArea}
                 </span>
               )}
-              <h1 className="text-2xl sm:text-4xl font-bold text-white drop-shadow-lg leading-snug">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-white drop-shadow-lg leading-snug">
                 {branchName}
               </h1>
               {branchAddress && (
-                <p className="flex items-center gap-1.5 text-white/80 text-sm mt-2">
+                <p className="flex items-center gap-1.5 text-white/80 text-xs sm:text-sm mt-2">
                   <MapPin className="w-4 h-4 shrink-0" />
                   {branchAddress}
                 </p>
@@ -95,16 +95,16 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
           </div>
         </div>
       ) : (
-        <div className="bg-gradient-to-r from-[#2D5A27] to-emerald-700 py-12">
+        <div className="bg-gradient-to-r from-[#2D5A27] to-emerald-700 py-10 sm:py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {branchArea && (
               <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-white/20 text-white border border-white/30 mb-3">
                 {branchArea}
               </span>
             )}
-            <h1 className="text-2xl sm:text-4xl font-bold text-white leading-snug">{branchName}</h1>
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-white leading-snug">{branchName}</h1>
             {branchAddress && (
-              <p className="flex items-center gap-1.5 text-white/80 text-sm mt-2">
+              <p className="flex items-center gap-1.5 text-white/80 text-xs sm:text-sm mt-2">
                 <MapPin className="w-4 h-4 shrink-0" />
                 {branchAddress}
               </p>
@@ -256,20 +256,20 @@ export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) 
 
             {/* Rich-text article */}
             {(branch.bai_viet_chi_tiet && branch.bai_viet_chi_tiet.trim() !== '') || (branch.bai_viet_chi_tiet_en && branch.bai_viet_chi_tiet_en.trim() !== '') ? (
-              <article className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 sm:p-8 md:p-10">
+              <article className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-4 sm:p-8 md:p-10">
                 <ArticleContent
                   html={branch.bai_viet_chi_tiet || ''}
                   htmlEn={branch.bai_viet_chi_tiet_en || branch.bai_viet_chi_tiet}
-                  className="prose prose-slate prose-base sm:prose-lg max-w-none
+                  className="prose prose-slate prose-sm sm:prose-base md:prose-lg max-w-none
                     prose-headings:text-[#2D5A27] prose-headings:font-bold prose-headings:tracking-tight
-                    prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:border-b prose-h2:border-emerald-100/60 prose-h2:pb-2.5
-                    prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
-                    prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-4
-                    prose-ul:my-4 prose-ol:my-4 prose-li:my-1.5 prose-li:text-slate-700
+                    prose-h2:text-[17px] sm:prose-h2:text-2xl prose-h2:mt-6 sm:prose-h2:mt-8 prose-h2:mb-3 sm:prose-h2:mb-4 prose-h2:border-b prose-h2:border-emerald-100/60 prose-h2:pb-2 sm:prose-h2:pb-2.5
+                    prose-h3:text-[15px] sm:prose-h3:text-xl prose-h3:mt-5 sm:prose-h3:mt-6 prose-h3:mb-2.5 sm:prose-h3:mb-3
+                    prose-p:text-[13.5px] sm:prose-p:text-base prose-p:text-slate-700 prose-p:leading-relaxed prose-p:mb-3.5 sm:prose-p:mb-4
+                    prose-ul:my-3 sm:prose-ul:my-4 prose-ol:my-3 sm:prose-ol:my-4 prose-li:my-1 sm:prose-li:my-1.5 prose-li:text-[13.5px] sm:prose-li:text-base prose-li:text-slate-700
                     prose-a:text-[#2D5A27] prose-a:font-semibold prose-a:underline hover:prose-a:text-emerald-700
                     prose-strong:text-slate-900 prose-strong:font-bold
-                    prose-img:rounded-2xl prose-img:shadow-md prose-img:my-6
-                    prose-blockquote:border-l-4 prose-blockquote:border-l-[#2D5A27] prose-blockquote:bg-emerald-50/50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:text-slate-700 prose-blockquote:not-italic"
+                    prose-img:rounded-2xl prose-img:shadow-md prose-img:my-4 sm:prose-img:my-6
+                    prose-blockquote:border-l-4 prose-blockquote:border-l-[#2D5A27] prose-blockquote:bg-emerald-50/50 prose-blockquote:py-2.5 sm:prose-blockquote:py-3 prose-blockquote:px-3.5 sm:prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:text-[12.5px] sm:prose-blockquote:text-sm prose-blockquote:text-slate-700 prose-blockquote:not-italic"
                 />
               </article>
             ) : (

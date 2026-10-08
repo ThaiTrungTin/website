@@ -260,15 +260,28 @@ export default function AdminCareersManager({
 
   const loadLocalApplications = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/applications');
+      const res = await fetch('/api/admin/applications', { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setLocalApplications(json.data as HoSoTuyenDungRecord[]);
+          return;
         }
       }
     } catch (e) {
-      console.error('Error loading job applications:', e);
+      console.warn('Error loading job applications via API, fallback to Supabase:', e);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('ho_so_tuyen_dung')
+        .select('*')
+        .order('ngay_tao', { ascending: false });
+      if (!error && data) {
+        setLocalApplications(data as HoSoTuyenDungRecord[]);
+      }
+    } catch (e) {
+      console.error('Error loading job applications from Supabase:', e);
     }
   }, []);
 

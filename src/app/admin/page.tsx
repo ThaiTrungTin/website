@@ -76,6 +76,7 @@ import {
 } from 'lucide-react';
 import { usePresenceHeartbeat } from '@/lib/usePresenceHeartbeat';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG, HoSoTuyenDungRecord, TuyenDungRecord } from '@/lib/supabase';
+import { mutateAdminContent } from '@/lib/adminContentClient';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
 import AdminInteractiveCropper from '@/components/AdminInteractiveCropper';
@@ -84,6 +85,7 @@ import { VietnamFlag, UKFlag } from '@/components/FlagIcons';
 import AdminLoginPage from '@/components/AdminLoginPage';
 import PetLogo from '@/components/PetLogo';
 import AdminCareersManager from '@/components/AdminCareersManager';
+import AdminPrivacyPolicyManager from '@/components/AdminPrivacyPolicyManager';
 import { PopupAnnouncementConfig, DEFAULT_ANNOUNCEMENT } from '@/app/api/announcement/route';
 import { SloganTickerItem, parseSloganList, isSloganActive, renderWithShakingIcons } from '@/lib/slogans';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -252,7 +254,7 @@ function SloganInlineEditor({
 }
 
 type AdminTab = 'dashboard' | 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff';
-export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'spam' | 'notification-logs' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement';
+export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'spam' | 'notification-logs' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement' | 'privacy';
 
 // ── LOGOUT CONFIRMATION MODAL ──────────────────────────────────────────────
 function LogoutConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
@@ -1163,7 +1165,7 @@ export default function AdminDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [configSubTab, setConfigSubTab] = useState<ConfigSubTab>('contact');
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -1187,10 +1189,23 @@ export default function AdminDashboardPage() {
 
   const loadJobApplications = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/applications');
+      const res = await fetch('/api/admin/applications', { cache: 'no-store' });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setJobApplications(json.data as HoSoTuyenDungRecord[]);
+        return;
+      }
+    } catch (e) {
+      console.warn('Lỗi lấy hồ sơ tuyển dụng qua API, chuyển sang Supabase client:', e);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('ho_so_tuyen_dung')
+        .select('*')
+        .order('ngay_tao', { ascending: false });
+      if (!error && data) {
+        setJobApplications(data as HoSoTuyenDungRecord[]);
       }
     } catch (e) {
       console.error('Error loading job applications:', e);
@@ -1219,12 +1234,12 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  const showNotification = (type: 'success' | 'error', message: string) => {
+  const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     setNotification({ type, message });
     setTimeout(() => {
       setNotification(null);
     }, 4000);
-  };
+  }, []);
 
   // -------------------------------------------------------------
   // TRẠNG THÁI HIGHLIGHT HÀNG KHI CLICK CHUÔNG THÔNG BÁO
@@ -1362,8 +1377,8 @@ export default function AdminDashboardPage() {
   const branchImgFileInputRef = useRef<HTMLInputElement>(null);
   const [isBranchImgUploading, setIsBranchImgUploading] = useState(false);
 
-  const loadBanners = async () => {
-    setBannersLoading(true);
+  const loadBanners = useCallback(async (silent = false) => {
+    if (!silent) setBannersLoading(true);
     try {
       const { data, error } = await supabase
         .from('hinh_anh')
@@ -1375,11 +1390,11 @@ export default function AdminDashboardPage() {
       setBanners((data as HeroBannerItem[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải banner:', err);
-      showNotification('error', `Không thể tải ảnh: ${err.message || 'Lỗi kết nối'}`);
+      if (!silent) showNotification('error', `Không thể tải ảnh: ${err.message || 'Lỗi kết nối'}`);
     } finally {
-      setBannersLoading(false);
+      if (!silent) setBannersLoading(false);
     }
-  };
+  }, [showNotification]);
 
   const handleAddNewBanner = () => {
     const nextOrder = banners.length > 0 ? Math.max(...banners.map((b) => b.thu_tu || 0)) + 1 : 1;
@@ -1590,12 +1605,10 @@ export default function AdminDashboardPage() {
       };
 
       if (isCreatingNewBanner || !editingBanner.id) {
-        const { error } = await supabase.from('hinh_anh').insert([payload]);
-        if (error) throw error;
+        await mutateAdminContent('hinh_anh', 'insert', undefined, payload);
         showNotification('success', 'Đã thêm ảnh nền mới thành công!');
       } else {
-        const { error } = await supabase.from('hinh_anh').update(payload).eq('id', editingBanner.id);
-        if (error) throw error;
+        await mutateAdminContent('hinh_anh', 'update', editingBanner.id, payload);
         showNotification('success', 'Đã lưu vị trí ảnh nền thành công!');
       }
 
@@ -1612,12 +1625,10 @@ export default function AdminDashboardPage() {
 
   const handleToggleBannerActive = async (banner: HeroBannerItem) => {
     try {
-      const { error } = await supabase
-        .from('hinh_anh')
-        .update({ kich_hoat: !banner.kich_hoat, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', banner.id);
-
-      if (error) throw error;
+      await mutateAdminContent('hinh_anh', 'update', banner.id, {
+        kich_hoat: !banner.kich_hoat,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setBanners((prev) => prev.map((b) => (b.id === banner.id ? { ...b, kich_hoat: !b.kich_hoat } : b)));
       showNotification('success', `Đã ${!banner.kich_hoat ? 'bật' : 'tắt'} hiển thị ảnh này`);
     } catch (err: any) {
@@ -1628,8 +1639,7 @@ export default function AdminDashboardPage() {
   const handleDeleteBanner = async (banner: HeroBannerItem) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa ảnh nền này?')) return;
     try {
-      const { error } = await supabase.from('hinh_anh').delete().eq('id', banner.id);
-      if (error) throw error;
+      await mutateAdminContent('hinh_anh', 'delete', banner.id);
       showNotification('success', 'Đã xóa ảnh thành công!');
       setBanners((prev) => prev.filter((b) => b.id !== banner.id));
       if (editingBanner?.id === banner.id) setEditingBanner(null);
@@ -1651,8 +1661,8 @@ export default function AdminDashboardPage() {
   const [branchLangTab, setBranchLangTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingBranch, setIsTranslatingBranch] = useState(false);
 
-  const loadBranches = async () => {
-    setBranchesLoading(true);
+  const loadBranches = useCallback(async (silent = false) => {
+    if (!silent) setBranchesLoading(true);
     try {
       const { data, error } = await supabase
         .from('chi_nhanh')
@@ -1663,11 +1673,11 @@ export default function AdminDashboardPage() {
       setBranches((data as ChiNhanhRecord[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải chi nhánh:', err);
-      showNotification('error', `Lỗi tải chi nhánh: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải chi nhánh: ${err.message}`);
     } finally {
-      setBranchesLoading(false);
+      if (!silent) setBranchesLoading(false);
     }
-  };
+  }, [showNotification]);
 
   const handleAddNewBranch = () => {
     const nextOrder = branches.length > 0 ? Math.max(...branches.map((b) => b.thu_tu || 0)) + 1 : 1;
@@ -1687,6 +1697,7 @@ export default function AdminDashboardPage() {
       tien_ich: [],
       thu_tu: nextOrder,
       kich_hoat: true,
+      la_co_so_chinh: false,
     });
     setFeaturesInput('');
     setFeaturesEnInput('');
@@ -1695,7 +1706,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleEditBranch = (branch: ChiNhanhRecord) => {
-    setEditingBranch({ ...branch });
+    setEditingBranch({ ...branch, la_co_so_chinh: Boolean(branch.la_co_so_chinh) });
     setIsCreatingNewBranch(false);
     const feats = Array.isArray(branch.tien_ich)
       ? branch.tien_ich
@@ -1804,16 +1815,22 @@ export default function AdminDashboardPage() {
         can_chinh_anh: editingBranch.can_chinh_anh || '50% 50%',
         thu_tu: Number(editingBranch.thu_tu) || 1,
         kich_hoat: editingBranch.kich_hoat !== false,
+        la_co_so_chinh: Boolean((editingBranch as any).la_co_so_chinh),
         ngay_cap_nhat: new Date().toISOString(),
       };
 
       if (isCreatingNewBranch || !editingBranch.id) {
-        const { error } = await supabase.from('chi_nhanh').insert([payload]);
-        if (error) throw error;
+        const insertRes = await mutateAdminContent('chi_nhanh', 'insert', undefined, payload);
+        const newId = insertRes?.data?.[0]?.id;
+        if (payload.la_co_so_chinh && newId) {
+          await mutateAdminContent('chi_nhanh', 'set_main_branch', newId);
+        }
         showNotification('success', 'Đã thêm chi nhánh mới thành công!');
       } else {
-        const { error } = await supabase.from('chi_nhanh').update(payload).eq('id', editingBranch.id);
-        if (error) throw error;
+        await mutateAdminContent('chi_nhanh', 'update', editingBranch.id, payload);
+        if (payload.la_co_so_chinh) {
+          await mutateAdminContent('chi_nhanh', 'set_main_branch', editingBranch.id);
+        }
         showNotification('success', 'Đã cập nhật chi nhánh thành công!');
       }
 
@@ -1828,14 +1845,29 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Đặt nhanh cơ sở chính 1-chạm từ bảng danh sách
+  const handleSetMainBranch = async (branch: ChiNhanhRecord) => {
+    try {
+      await mutateAdminContent('chi_nhanh', 'set_main_branch', branch.id);
+      setBranches((prev) =>
+        prev.map((b) => ({
+          ...b,
+          la_co_so_chinh: b.id === branch.id,
+        }))
+      );
+      showNotification('success', `Đã chọn "${branch.ten_chi_nhanh}" làm Cơ Sở Chính!`);
+    } catch (err: any) {
+      console.error('Lỗi đặt cơ sở chính:', err);
+      showNotification('error', `Lỗi đặt cơ sở chính: ${err.message}`);
+    }
+  };
+
   const handleToggleBranchActive = async (branch: ChiNhanhRecord) => {
     try {
-      const { error } = await supabase
-        .from('chi_nhanh')
-        .update({ kich_hoat: !branch.kich_hoat, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', branch.id);
-
-      if (error) throw error;
+      await mutateAdminContent('chi_nhanh', 'update', branch.id, {
+        kich_hoat: !branch.kich_hoat,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setBranches((prev) => prev.map((b) => (b.id === branch.id ? { ...b, kich_hoat: !b.kich_hoat } : b)));
       showNotification('success', `Đã ${!branch.kich_hoat ? 'bật' : 'tắt'} chi nhánh này`);
     } catch (err: any) {
@@ -1846,8 +1878,7 @@ export default function AdminDashboardPage() {
   const handleDeleteBranch = async (branch: ChiNhanhRecord) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa chi nhánh "${branch.ten_chi_nhanh}"?`)) return;
     try {
-      const { error } = await supabase.from('chi_nhanh').delete().eq('id', branch.id);
-      if (error) throw error;
+      await mutateAdminContent('chi_nhanh', 'delete', branch.id);
       showNotification('success', 'Đã xóa chi nhánh thành công!');
       setBranches((prev) => prev.filter((b) => b.id !== branch.id));
       if (editingBranch?.id === branch.id) setEditingBranch(null);
@@ -2436,6 +2467,7 @@ export default function AdminDashboardPage() {
         stats: 'Thông số thống kê',
         slogans: 'Khẩu hiệu & Slogan',
         announcement: 'Poster',
+        privacy: 'Chính sách quyền riêng tư',
       };
       showNotification('success', `Đã lưu cài đặt ${tabNames[configSubTab] || 'hệ thống'} thành công!`);
     } catch (err: any) {
@@ -3256,8 +3288,8 @@ export default function AdminDashboardPage() {
   const [serviceLangTab, setServiceLangTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingService, setIsTranslatingService] = useState(false);
 
-  const loadServices = async () => {
-    setServicesLoading(true);
+  const loadServices = useCallback(async (silent = false) => {
+    if (!silent) setServicesLoading(true);
     try {
       const { data, error } = await supabase
         .from('dich_vu')
@@ -3268,11 +3300,11 @@ export default function AdminDashboardPage() {
       setServices((data as DichVuRecord[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải dịch vụ:', err);
-      showNotification('error', `Lỗi tải dịch vụ: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải dịch vụ: ${err.message}`);
     } finally {
-      setServicesLoading(false);
+      if (!silent) setServicesLoading(false);
     }
-  };
+  }, [showNotification]);
 
   const handleAddNewService = () => {
     const nextOrder = services.length > 0 ? Math.max(...services.map((s) => s.thu_tu || 0)) + 1 : 1;
@@ -3498,12 +3530,10 @@ export default function AdminDashboardPage() {
 
       if (isCreatingNewService) {
         const customId = editingService.id || `service-${Date.now()}`;
-        const { error } = await supabase.from('dich_vu').insert([{ ...payload, id: customId }]);
-        if (error) throw error;
+        await mutateAdminContent('dich_vu', 'insert', undefined, { ...payload, id: customId });
         showNotification('success', 'Đã thêm dịch vụ mới thành công!');
       } else {
-        const { error } = await supabase.from('dich_vu').update(payload).eq('id', editingService.id);
-        if (error) throw error;
+        await mutateAdminContent('dich_vu', 'update', editingService.id, payload);
         showNotification('success', 'Đã cập nhật dịch vụ thành công!');
       }
 
@@ -3520,12 +3550,10 @@ export default function AdminDashboardPage() {
 
   const handleToggleServiceActive = async (service: DichVuRecord) => {
     try {
-      const { error } = await supabase
-        .from('dich_vu')
-        .update({ kich_hoat: !service.kich_hoat, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', service.id);
-
-      if (error) throw error;
+      await mutateAdminContent('dich_vu', 'update', service.id, {
+        kich_hoat: !service.kich_hoat,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setServices((prev) => prev.map((s) => (s.id === service.id ? { ...s, kich_hoat: !s.kich_hoat } : s)));
       showNotification('success', `Đã ${!service.kich_hoat ? 'bật' : 'tắt'} dịch vụ này`);
     } catch (err: any) {
@@ -3536,8 +3564,7 @@ export default function AdminDashboardPage() {
   const handleDeleteService = async (service: DichVuRecord) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${service.ten_dich_vu}"?`)) return;
     try {
-      const { error } = await supabase.from('dich_vu').delete().eq('id', service.id);
-      if (error) throw error;
+      await mutateAdminContent('dich_vu', 'delete', service.id);
       showNotification('success', 'Đã xóa dịch vụ thành công!');
       setServices((prev) => prev.filter((s) => s.id !== service.id));
       if (editingService?.id === service.id) setEditingService(null);
@@ -3565,7 +3592,7 @@ export default function AdminDashboardPage() {
   const [isTranslatingSupport, setIsTranslatingSupport] = useState(false);
   const [supportPanelTab, setSupportPanelTab] = useState<'vi' | 'en'>('vi');
 
-  const loadSupportPanelConfig = async () => {
+  const loadSupportPanelConfig = useCallback(async () => {
     try {
       setSupportPanelLoading(true);
       const { data, error } = await supabase
@@ -3592,7 +3619,7 @@ export default function AdminDashboardPage() {
     } finally {
       setSupportPanelLoading(false);
     }
-  };
+  }, []);
 
   const handleAutoTranslateSupport = async () => {
     if (!supportPanelData.tieu_de_vi?.trim() && !supportPanelData.mo_ta_vi?.trim()) {
@@ -3672,9 +3699,9 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const loadFaqs = async () => {
+  const loadFaqs = useCallback(async (silent = false) => {
     try {
-      setFaqsLoading(true);
+      if (!silent) setFaqsLoading(true);
       loadSupportPanelConfig();
       const { data, error } = await supabase
         .from('cau_hoi_thuong_gap')
@@ -3685,11 +3712,11 @@ export default function AdminDashboardPage() {
       setFaqs((data as CauHoiThuongGapRecord[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải FAQ:', err);
-      showNotification('error', `Lỗi tải câu hỏi thường gặp: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải câu hỏi thường gặp: ${err.message}`);
     } finally {
-      setFaqsLoading(false);
+      if (!silent) setFaqsLoading(false);
     }
-  };
+  }, [loadSupportPanelConfig, showNotification]);
 
   const handleAddNewFaq = () => {
     const nextOrder = faqs.length > 0 ? Math.max(...faqs.map((f) => f.thu_tu || 0)) + 1 : 1;
@@ -3772,15 +3799,10 @@ export default function AdminDashboardPage() {
       };
 
       if (isCreatingNewFaq) {
-        const { error } = await supabase.from('cau_hoi_thuong_gap').insert([payload]);
-        if (error) throw error;
+        await mutateAdminContent('cau_hoi_thuong_gap', 'insert', undefined, payload);
         showNotification('success', 'Đã thêm câu hỏi mới thành công!');
       } else {
-        const { error } = await supabase
-          .from('cau_hoi_thuong_gap')
-          .update(payload)
-          .eq('id', editingFaq.id);
-        if (error) throw error;
+        await mutateAdminContent('cau_hoi_thuong_gap', 'update', editingFaq.id, payload);
         showNotification('success', 'Đã cập nhật câu hỏi thành công!');
       }
 
@@ -3798,12 +3820,10 @@ export default function AdminDashboardPage() {
   const handleToggleFaqActive = async (faq: CauHoiThuongGapRecord) => {
     try {
       const newStatus = !faq.kich_hoat;
-      const { error } = await supabase
-        .from('cau_hoi_thuong_gap')
-        .update({ kich_hoat: newStatus, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', faq.id);
-
-      if (error) throw error;
+      await mutateAdminContent('cau_hoi_thuong_gap', 'update', faq.id, {
+        kich_hoat: newStatus,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setFaqs((prev) => prev.map((f) => (f.id === faq.id ? { ...f, kich_hoat: newStatus } : f)));
       showNotification('success', `Đã ${newStatus ? 'bật' : 'tắt'} câu hỏi`);
     } catch (err: any) {
@@ -3815,8 +3835,7 @@ export default function AdminDashboardPage() {
     if (!window.confirm(`Bạn có chắc muốn xóa câu hỏi "${faq.cau_hoi}" không?`)) return;
 
     try {
-      const { error } = await supabase.from('cau_hoi_thuong_gap').delete().eq('id', faq.id);
-      if (error) throw error;
+      await mutateAdminContent('cau_hoi_thuong_gap', 'delete', faq.id);
       showNotification('success', 'Đã xóa câu hỏi thành công!');
       setFaqs((prev) => prev.filter((f) => f.id !== faq.id));
       if (editingFaq?.id === faq.id) setEditingFaq(null);
@@ -4637,12 +4656,16 @@ export default function AdminDashboardPage() {
 
       // Tự động chuyển sang 'da_kham' và cập nhật số lần gửi Zalo thành công (xóa lỗi)
       const updatedZaloCount = (selectedAppointment.so_lan_gui_zalo || 0) + 1;
-      await supabase.from('lich_hen').update({
-        trang_thai: 'da_kham',
-        so_lan_gui_zalo: updatedZaloCount,
-        trang_thai_zalo: 'thanh_cong',
-        ngay_cap_nhat: new Date().toISOString(),
-      }).eq('id', selectedAppointment.id);
+      await fetch('/api/admin/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedAppointment.id,
+          trang_thai: 'da_kham',
+          so_lan_gui_zalo: updatedZaloCount,
+          trang_thai_zalo: 'thanh_cong',
+        }),
+      });
 
       setEditAppForm((prev) => ({ ...prev, status: 'da_kham' }));
       setAppointments((prev) =>
@@ -4662,7 +4685,14 @@ export default function AdminDashboardPage() {
     } catch (err: any) {
       if (selectedAppointment) {
         try {
-          await supabase.from('lich_hen').update({ trang_thai_zalo: 'that_bai' }).eq('id', selectedAppointment.id);
+          await fetch('/api/admin/appointments', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: selectedAppointment.id,
+              trang_thai_zalo: 'that_bai',
+            }),
+          });
           setAppointments((prev) =>
             prev.map((a) => (a.id === selectedAppointment.id ? { ...a, trang_thai_zalo: 'that_bai' } : a))
           );
@@ -4740,12 +4770,16 @@ export default function AdminDashboardPage() {
 
       // Tự động chuyển sang 'da_kham' và cập nhật số lần gửi Email thành công (xóa lỗi)
       const updatedEmailCount = (selectedAppointment.so_lan_gui_email || 0) + 1;
-      await supabase.from('lich_hen').update({
-        trang_thai: 'da_kham',
-        so_lan_gui_email: updatedEmailCount,
-        trang_thai_email: 'thanh_cong',
-        ngay_cap_nhat: new Date().toISOString(),
-      }).eq('id', selectedAppointment.id);
+      await fetch('/api/admin/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedAppointment.id,
+          trang_thai: 'da_kham',
+          so_lan_gui_email: updatedEmailCount,
+          trang_thai_email: 'thanh_cong',
+        }),
+      });
 
       setEditAppForm((prev) => ({ ...prev, status: 'da_kham' }));
       setAppointments((prev) =>
@@ -4768,7 +4802,14 @@ export default function AdminDashboardPage() {
     } catch (err: any) {
       if (selectedAppointment) {
         try {
-          await supabase.from('lich_hen').update({ trang_thai_email: 'that_bai' }).eq('id', selectedAppointment.id);
+          await fetch('/api/admin/appointments', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: selectedAppointment.id,
+              trang_thai_email: 'that_bai',
+            }),
+          });
           setAppointments((prev) =>
             prev.map((a) => (a.id === selectedAppointment.id ? { ...a, trang_thai_email: 'that_bai' } : a))
           );
@@ -4794,15 +4835,17 @@ export default function AdminDashboardPage() {
       const updatedNote = `[Đã hủy: ${reason}] ${cleanPrevNote}`.trim();
       const finalGhiChu = `[Lang: ${editAppForm.lang}] ${editAppForm.email ? `[Email: ${editAppForm.email.trim()}] ` : ''}${updatedNote}`;
 
-      const { error } = await supabase
-        .from('lich_hen')
-        .update({
+      const res = await fetch('/api/admin/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedAppointment.id,
           trang_thai: 'da_huy',
           ghi_chu: finalGhiChu,
-        })
-        .eq('id', selectedAppointment.id);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Không thể hủy lịch qua API');
 
       setEditAppForm((prev) => ({ ...prev, status: 'da_huy', note: updatedNote }));
       setAppointments((prev) =>
@@ -4828,15 +4871,17 @@ export default function AdminDashboardPage() {
       const cleanNoteWithoutCancel = editAppForm.note.replace(/\[Đã hủy:[^\]]+\]/gi, '').trim();
       const finalGhiChu = `[Lang: ${editAppForm.lang}] ${editAppForm.email ? `[Email: ${editAppForm.email.trim()}] ` : ''}${cleanNoteWithoutCancel}`;
 
-      const { error } = await supabase
-        .from('lich_hen')
-        .update({
+      const res = await fetch('/api/admin/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedAppointment.id,
           trang_thai: 'cho_xac_nhan',
           ghi_chu: finalGhiChu,
-        })
-        .eq('id', selectedAppointment.id);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Không thể khôi phục lịch qua API');
 
       setEditAppForm((prev) => ({ ...prev, status: 'cho_xac_nhan', note: cleanNoteWithoutCancel }));
       setAppointments((prev) =>
@@ -4890,8 +4935,8 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const loadAppointments = useCallback(async () => {
-    setAppointmentsLoading(true);
+  const loadAppointments = useCallback(async (silent = false) => {
+    if (!silent) setAppointmentsLoading(true);
     try {
       let incoming: LichHenRecord[] = [];
       try {
@@ -4943,11 +4988,11 @@ export default function AdminDashboardPage() {
       setAppointments(incoming);
     } catch (err: any) {
       console.error('Lỗi tải lịch hẹn:', err);
-      showNotification('error', `Lỗi tải lịch hẹn: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải lịch hẹn: ${err.message}`);
     } finally {
-      setAppointmentsLoading(false);
+      if (!silent) setAppointmentsLoading(false);
     }
-  }, [triggerNewAppointmentNotification]);
+  }, [showNotification, triggerNewAppointmentNotification]);
 
   const handleUpdateAppointmentStatus = async (
     id: string,
@@ -4955,23 +5000,14 @@ export default function AdminDashboardPage() {
   ) => {
     setIsUpdatingStatus(true);
     try {
-      let updateOk = false;
-      try {
-        const res = await fetch('/api/admin/appointments', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, trang_thai: newStatus }),
-        });
-        const resData = await res.json();
-        if (res.ok && resData.success) updateOk = true;
-      } catch {}
-
-      if (!updateOk) {
-        const { error } = await supabase
-          .from('lich_hen')
-          .update({ trang_thai: newStatus, ngay_cap_nhat: new Date().toISOString() })
-          .eq('id', id);
-        if (error) throw error;
+      const res = await fetch('/api/admin/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, trang_thai: newStatus }),
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || 'Lỗi cập nhật trạng thái lịch hẹn qua API');
       }
 
       setAppointments((prev) =>
@@ -4993,16 +5029,10 @@ export default function AdminDashboardPage() {
     if (!window.confirm(`Bạn có chắc muốn xóa lịch hẹn [${app.ma_lich_hen}] của ${app.ho_ten_chu}?`)) return;
 
     try {
-      let deleteOk = false;
-      try {
-        const res = await fetch(`/api/admin/appointments?id=${app.id}`, { method: 'DELETE' });
-        const resData = await res.json();
-        if (res.ok && resData.success) deleteOk = true;
-      } catch {}
-
-      if (!deleteOk) {
-        const { error } = await supabase.from('lich_hen').delete().eq('id', app.id);
-        if (error) throw error;
+      const res = await fetch(`/api/admin/appointments?id=${app.id}`, { method: 'DELETE' });
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || 'Lỗi xóa lịch hẹn qua API');
       }
       showNotification('success', 'Đã xóa lịch hẹn thành công!');
       setAppointments((prev) => prev.filter((a) => a.id !== app.id));
@@ -5023,8 +5053,8 @@ export default function AdminDashboardPage() {
   const [reviewModalTab, setReviewModalTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingReview, setIsTranslatingReview] = useState(false);
 
-  const loadReviews = useCallback(async () => {
-    setReviewsLoading(true);
+  const loadReviews = useCallback(async (silent = false) => {
+    if (!silent) setReviewsLoading(true);
     try {
       const { data, error } = await supabase
         .from('danh_gia')
@@ -5035,11 +5065,11 @@ export default function AdminDashboardPage() {
       setReviews((data as DanhGiaRecord[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải đánh giá:', err);
-      showNotification('error', `Lỗi tải đánh giá: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải đánh giá: ${err.message}`);
     } finally {
-      setReviewsLoading(false);
+      if (!silent) setReviewsLoading(false);
     }
-  }, []);
+  }, [showNotification]);
 
 function toDateInputValue(val?: string | null): string {
   if (!val) return '';
@@ -5158,12 +5188,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const handleToggleReviewActive = async (review: DanhGiaRecord) => {
     const newStatus = !review.kich_hoat;
     try {
-      const { error } = await supabase
-        .from('danh_gia')
-        .update({ kich_hoat: newStatus, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', review.id);
-
-      if (error) throw error;
+      await mutateAdminContent('danh_gia', 'update', review.id, {
+        kich_hoat: newStatus,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setReviews((prev) => prev.map((r) => (r.id === review.id ? { ...r, kich_hoat: newStatus } : r)));
       showNotification('success', `Đã ${newStatus ? 'hiển thị' : 'ẩn'} đánh giá`);
     } catch (err: any) {
@@ -5175,8 +5203,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     if (!window.confirm(`Bạn có chắc muốn xóa đánh giá của "${review.ten_khach_hang}" không?`)) return;
 
     try {
-      const { error } = await supabase.from('danh_gia').delete().eq('id', review.id);
-      if (error) throw error;
+      await mutateAdminContent('danh_gia', 'delete', review.id);
       showNotification('success', 'Đã xóa đánh giá thành công!');
       setReviews((prev) => prev.filter((r) => r.id !== review.id));
       if (editingReview?.id === review.id) setEditingReview(null);
@@ -5219,12 +5246,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       };
 
       if (isCreatingNewReview || !editingReview.id) {
-        const { error } = await supabase.from('danh_gia').insert([payload]);
-        if (error) throw error;
+        await mutateAdminContent('danh_gia', 'insert', undefined, payload);
         showNotification('success', 'Đã thêm đánh giá mới thành công!');
       } else {
-        const { error } = await supabase.from('danh_gia').update(payload).eq('id', editingReview.id);
-        if (error) throw error;
+        await mutateAdminContent('danh_gia', 'update', editingReview.id, payload);
         showNotification('success', 'Đã cập nhật đánh giá thành công!');
       }
 
@@ -5252,8 +5277,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const [teamCategoryFilter, setTeamCategoryFilter] = useState<'all' | 'lanh_dao' | 'chuyen_gia' | 'bac_si' | 'dieu_duong'>('all');
   const [teamSubTab, setTeamSubTab] = useState<'members' | 'careers'>('members');
 
-  const loadTeamMembers = useCallback(async () => {
-    setTeamLoading(true);
+  const loadTeamMembers = useCallback(async (silent = false) => {
+    if (!silent) setTeamLoading(true);
     try {
       const { data, error } = await supabase
         .from('doi_ngu_y_te')
@@ -5264,11 +5289,11 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       setTeamMembers((data as DoiNguRecord[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải đội ngũ y tế:', err);
-      showNotification('error', `Lỗi tải đội ngũ: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải đội ngũ: ${err.message}`);
     } finally {
-      setTeamLoading(false);
+      if (!silent) setTeamLoading(false);
     }
-  }, []);
+  }, [showNotification]);
 
   const handleAddNewMember = () => {
     const nextOrder = teamMembers.length > 0 ? Math.max(...teamMembers.map((m) => m.thu_tu || 0)) + 1 : 1;
@@ -5299,12 +5324,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const handleToggleMemberActive = async (member: DoiNguRecord) => {
     const newStatus = !member.kich_hoat;
     try {
-      const { error } = await supabase
-        .from('doi_ngu_y_te')
-        .update({ kich_hoat: newStatus, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', member.id);
-
-      if (error) throw error;
+      await mutateAdminContent('doi_ngu_y_te', 'update', member.id, {
+        kich_hoat: newStatus,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setTeamMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, kich_hoat: newStatus } : m)));
       showNotification('success', `Đã ${newStatus ? 'kích hoạt' : 'tạm ẩn'} nhân sự`);
     } catch (err: any) {
@@ -5316,8 +5339,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     if (!window.confirm(`Bạn có chắc muốn xóa nhân sự "${member.ho_ten}" không?`)) return;
 
     try {
-      const { error } = await supabase.from('doi_ngu_y_te').delete().eq('id', member.id);
-      if (error) throw error;
+      await mutateAdminContent('doi_ngu_y_te', 'delete', member.id);
       showNotification('success', 'Đã xóa nhân sự thành công!');
       setTeamMembers((prev) => prev.filter((m) => m.id !== member.id));
       if (editingMember?.id === member.id) setEditingMember(null);
@@ -5396,12 +5418,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       };
 
       if (isCreatingNewMember || !editingMember.id) {
-        const { error } = await supabase.from('doi_ngu_y_te').insert([payload]);
-        if (error) throw error;
+        await mutateAdminContent('doi_ngu_y_te', 'insert', undefined, payload);
         showNotification('success', 'Đã thêm nhân sự mới thành công!');
       } else {
-        const { error } = await supabase.from('doi_ngu_y_te').update(payload).eq('id', editingMember.id);
-        if (error) throw error;
+        await mutateAdminContent('doi_ngu_y_te', 'update', editingMember.id, payload);
         showNotification('success', 'Đã cập nhật thông tin nhân sự!');
       }
 
@@ -5428,8 +5448,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const [articleLangTab, setArticleLangTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingArticle, setIsTranslatingArticle] = useState(false);
 
-  const loadArticles = useCallback(async () => {
-    setArticlesLoading(true);
+  const loadArticles = useCallback(async (silent = false) => {
+    if (!silent) setArticlesLoading(true);
     try {
       const { data, error } = await supabase
         .from('bai_viet')
@@ -5441,11 +5461,11 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       setArticles((data as BaiVietRecord[]) || []);
     } catch (err: any) {
       console.error('Lỗi tải danh sách bài viết:', err);
-      showNotification('error', `Lỗi tải bài viết: ${err.message}`);
+      if (!silent) showNotification('error', `Lỗi tải bài viết: ${err.message}`);
     } finally {
-      setArticlesLoading(false);
+      if (!silent) setArticlesLoading(false);
     }
-  }, []);
+  }, [showNotification]);
 
   const handleAddNewArticle = () => {
     const nextOrder = articles.length > 0 ? Math.max(...articles.map((a) => a.thu_tu || 0)) + 1 : 1;
@@ -5520,12 +5540,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const handleToggleArticleActive = async (article: BaiVietRecord) => {
     const newStatus = !article.kich_hoat;
     try {
-      const { error } = await supabase
-        .from('bai_viet')
-        .update({ kich_hoat: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', article.id);
-
-      if (error) throw error;
+      await mutateAdminContent('bai_viet', 'update', article.id, {
+        kich_hoat: newStatus,
+        updated_at: new Date().toISOString(),
+      });
       setArticles((prev) => prev.map((a) => (a.id === article.id ? { ...a, kich_hoat: newStatus } : a)));
       showNotification('success', `Đã ${newStatus ? 'hiển thị' : 'tạm ẩn'} bài viết`);
     } catch (err: any) {
@@ -5537,8 +5555,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     if (!window.confirm(`Bạn có chắc muốn xóa bài viết "${article.tieu_de}" không?`)) return;
 
     try {
-      const { error } = await supabase.from('bai_viet').delete().eq('id', article.id);
-      if (error) throw error;
+      await mutateAdminContent('bai_viet', 'delete', article.id);
       showNotification('success', 'Đã xóa bài viết thành công!');
       setArticles((prev) => prev.filter((a) => a.id !== article.id));
       if (editingArticle?.id === article.id) setEditingArticle(null);
@@ -5588,12 +5605,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       };
 
       if (isCreatingNewArticle || !editingArticle.id) {
-        const { error } = await supabase.from('bai_viet').insert([payload]);
-        if (error) throw error;
+        await mutateAdminContent('bai_viet', 'insert', undefined, payload);
         showNotification('success', 'Đã thêm bài viết mới thành công!');
       } else {
-        const { error } = await supabase.from('bai_viet').update(payload).eq('id', editingArticle.id);
-        if (error) throw error;
+        await mutateAdminContent('bai_viet', 'update', editingArticle.id, payload);
         showNotification('success', 'Đã cập nhật bài viết thành công!');
       }
 
@@ -5617,8 +5632,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const [isCreatingNewAboutSlide, setIsCreatingNewAboutSlide] = useState(false);
   const [isAboutSlideSaving, setIsAboutSlideSaving] = useState(false);
 
-  const loadAboutSlides = useCallback(async () => {
-    setAboutSlidesLoading(true);
+  const loadAboutSlides = useCallback(async (silent = false) => {
+    if (!silent) setAboutSlidesLoading(true);
     try {
       const { data, error } = await supabase
         .from('hinh_anh')
@@ -5631,7 +5646,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     } catch (err: any) {
       console.error('Lỗi tải slide giới thiệu:', err);
     } finally {
-      setAboutSlidesLoading(false);
+      if (!silent) setAboutSlidesLoading(false);
     }
   }, []);
 
@@ -5690,12 +5705,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const handleToggleAboutSlideActive = async (slide: HeroBannerItem) => {
     const newStatus = !slide.kich_hoat;
     try {
-      const { error } = await supabase
-        .from('hinh_anh')
-        .update({ kich_hoat: newStatus, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', slide.id);
-
-      if (error) throw error;
+      await mutateAdminContent('hinh_anh', 'update', slide.id, {
+        kich_hoat: newStatus,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
       setAboutSlides((prev) => prev.map((s) => (s.id === slide.id ? { ...s, kich_hoat: newStatus } : s)));
       showNotification('success', `Đã ${newStatus ? 'hiển thị' : 'ẩn'} slide ảnh`);
     } catch (err: any) {
@@ -5707,8 +5720,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     if (!window.confirm(`Bạn có chắc muốn xóa ảnh slide "${slide.tieu_de || 'này'}" không?`)) return;
 
     try {
-      const { error } = await supabase.from('hinh_anh').delete().eq('id', slide.id);
-      if (error) throw error;
+      await mutateAdminContent('hinh_anh', 'delete', slide.id);
       showNotification('success', 'Đã xóa slide ảnh thành công!');
       setAboutSlides((prev) => prev.filter((s) => s.id !== slide.id));
       if (editingAboutSlide?.id === slide.id) setEditingAboutSlide(null);
@@ -5741,12 +5753,10 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       };
 
       if (isCreatingNewAboutSlide || !editingAboutSlide.id) {
-        const { error } = await supabase.from('hinh_anh').insert([payload]);
-        if (error) throw error;
+        await mutateAdminContent('hinh_anh', 'insert', undefined, payload);
         showNotification('success', 'Đã thêm slide ảnh giới thiệu mới!');
       } else {
-        const { error } = await supabase.from('hinh_anh').update(payload).eq('id', editingAboutSlide.id);
-        if (error) throw error;
+        await mutateAdminContent('hinh_anh', 'update', editingAboutSlide.id, payload);
         showNotification('success', 'Đã cập nhật slide ảnh giới thiệu!');
       }
 
@@ -5790,7 +5800,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               triggerNewAppointmentNotification(newApp);
             }
           }
-          loadAppointments();
+          loadAppointments(true);
         }
       )
       .subscribe();
@@ -5801,8 +5811,94 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'ho_so_tuyen_dung' },
-        () => {
+        (payload) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newApp = payload.new as HoSoTuyenDungRecord;
+            showNotification('info', `📄 Hồ sơ ứng tuyển mới: ${newApp.ho_ten || 'Ứng viên'} (${newApp.tieu_de_vi_tri || 'Vị trí mới'})`);
+            const currentConfig = getLocalAdminNotifSettings();
+            if (currentConfig.browserSound) {
+              playNotificationSound();
+            }
+          }
           loadJobApplications();
+        }
+      )
+      .subscribe();
+
+    // Lắng nghe Realtime toàn bộ nội dung hệ thống: Đánh giá, Chi nhánh, Dịch vụ, FAQ, Bác sĩ, Bài viết, Tuyển dụng, Banner, Cấu hình
+    const contentChannel = supabase
+      .channel('admin_content_live_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'danh_gia' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newRev = payload.new as DanhGiaRecord;
+            showNotification('info', `⭐ Khách gửi đánh giá ${newRev.so_sao || 5}★: ${newRev.ten_khach_hang || 'Khách hàng'}`);
+            const currentConfig = getLocalAdminNotifSettings();
+            if (currentConfig.browserSound) {
+              playNotificationSound();
+            }
+          }
+          loadReviews(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chi_nhanh' },
+        () => {
+          loadBranches(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dich_vu' },
+        () => {
+          loadServices(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cau_hoi_thuong_gap' },
+        () => {
+          loadFaqs(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'doi_ngu_y_te' },
+        () => {
+          loadTeamMembers(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bai_viet' },
+        () => {
+          loadArticles(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tuyen_dung' },
+        () => {
+          loadJobsList();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hinh_anh' },
+        () => {
+          loadBanners(true);
+          loadAboutSlides(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cau_hinh' },
+        () => {
+          loadBookingCover();
+          loadSupportPanelConfig();
         }
       )
       .subscribe();
@@ -5832,18 +5928,36 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       )
       .subscribe();
 
-    // Polling định kỳ mỗi 20 giây để đảm bảo 100% không bỏ sót lịch hẹn mới
+    // Polling định kỳ mỗi 15 giây để đảm bảo 100% không bỏ sót lịch hẹn & hồ sơ CV mới
     const pollTimer = setInterval(() => {
-      loadAppointments();
-    }, 20000);
+      loadAppointments(true);
+      loadJobApplications();
+    }, 15000);
 
     return () => {
       clearInterval(pollTimer);
       supabase.removeChannel(channel);
       supabase.removeChannel(appChannel);
+      supabase.removeChannel(contentChannel);
       supabase.removeChannel(failureChannel);
     };
-  }, [loadAppointments, loadJobApplications, loadJobsList, triggerNewAppointmentNotification]);
+  }, [
+    loadAppointments,
+    loadJobApplications,
+    loadJobsList,
+    loadBanners,
+    loadBranches,
+    loadServices,
+    loadFaqs,
+    loadBookingCover,
+    loadReviews,
+    loadTeamMembers,
+    loadAboutSlides,
+    loadArticles,
+    loadSupportPanelConfig,
+    showNotification,
+    triggerNewAppointmentNotification,
+  ]);
 
   // Filtered data for tables
   const filteredBanners = banners.filter((b) => {
@@ -5974,6 +6088,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     stats: 'Giới Thiệu',
     slogans: 'Khẩu Hiệu & Slogan',
     announcement: 'Poster',
+    privacy: 'Chính Sách Quyền Riêng Tư',
   };
 
   // CHẶN THIẾT BỊ DI ĐỘNG / TABLET NGAY TỪ ĐẦU — TRƯỚC CẢ TRANG ĐĂNG NHẬP
@@ -6688,6 +6803,30 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Đang Bật trên website" />
                 )}
               </button>
+
+              {/* 7. Chính Sách Quyền Riêng Tư */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('config');
+                  setConfigSubTab('privacy');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition group ${
+                  activeTab === 'config' && configSubTab === 'privacy'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck
+                    className={`w-3.5 h-3.5 transition ${
+                      activeTab === 'config' && configSubTab === 'privacy' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span>Chính Sách Riêng Tư</span>
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -6833,11 +6972,15 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
             className={`fixed top-16 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs font-semibold animate-in slide-in-from-top-2 duration-200 ${
               notification.type === 'success'
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : notification.type === 'info'
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
                 : 'bg-rose-50 border-rose-200 text-rose-800'
             }`}
           >
             {notification.type === 'success' ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : notification.type === 'info' ? (
+              <Bell className="w-4 h-4 text-amber-600 shrink-0" />
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             )}
@@ -6920,7 +7063,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Data Table */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {bannersLoading ? (
+                {bannersLoading && banners.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span className="text-xs font-medium">Đang nạp danh sách ảnh nền từ Supabase...</span>
@@ -7095,7 +7238,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Data Table */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {branchesLoading ? (
+                {branchesLoading && branches.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span className="text-xs font-medium">Đang tải danh sách cơ sở từ Supabase...</span>
@@ -7115,8 +7258,9 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                           <th className="py-3 px-4 min-w-[200px]">Chi Nhánh</th>
                           <th className="py-3 px-4 min-w-[260px]">Địa Chỉ &amp; Hotline</th>
                           <th className="py-3 px-4 min-w-[160px]">Bác Sĩ Phụ Trách</th>
-                          <th className="py-3 px-4 min-w-[130px] text-center">Trạng Thái</th>
-                          <th className="py-3 px-4 min-w-[150px] text-center">Thao Tác</th>
+                          <th className="py-3 px-4 min-w-[140px] text-center">Cơ Sở Chính</th>
+                          <th className="py-3 px-4 min-w-[120px] text-center">Trạng Thái</th>
+                          <th className="py-3 px-4 min-w-[130px] text-center">Thao Tác</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -7144,7 +7288,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                     </div>
                                   )}
                                   <div>
-                                    <div className="font-bold text-slate-900">{branch.ten_chi_nhanh}</div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-slate-900">{branch.ten_chi_nhanh}</span>
+                                      {branch.la_co_so_chinh && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                          ⭐ Chính
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="flex items-center gap-2 mt-0.5">
                                       <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-slate-100 text-slate-700">
                                         {branch.khu_vuc || 'Khu vực'}
@@ -7176,6 +7327,27 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                     {branch.bang_cap_bac_si}
                                   </p>
                                 )}
+                              </td>
+
+                              {/* CỘT CƠ SỞ CHÍNH: Tick chọn trực tiếp 1-chạm */}
+                              <td className="py-3.5 px-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetMainBranch(branch)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer select-none ${
+                                    branch.la_co_so_chinh
+                                      ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-200'
+                                      : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-200'
+                                  }`}
+                                  title={
+                                    branch.la_co_so_chinh
+                                      ? 'Chi nhánh này đang được chọn làm Cơ Sở Chính (hiển thị ở chân trang web)'
+                                      : 'Bấm để chọn chi nhánh này làm Cơ Sở Chính'
+                                  }
+                                >
+                                  <span>{branch.la_co_so_chinh ? '⭐' : '○'}</span>
+                                  <span>{branch.la_co_so_chinh ? 'Cơ Sở Chính' : 'Đặt làm chính'}</span>
+                                </button>
                               </td>
 
                               <td className="py-3.5 px-4 text-center">
@@ -8995,7 +9167,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                         </button>
                       </div>
 
-                      {aboutSlidesLoading ? (
+                      {aboutSlidesLoading && aboutSlides.length === 0 ? (
                         <div className="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
                           <RefreshCw className="w-4 h-4 animate-spin text-[#2D5A27]" />
                           <span>Đang tải danh sách slide ảnh...</span>
@@ -10673,6 +10845,11 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                   </div>
                 </div>
               )}
+
+              {/* NHÁNH: CHÍNH SÁCH BẢO MẬT & QUYỀN RIÊNG TƯ (TÁCH COMPONENT RIÊNG TRÁNH NẶNG CODE) */}
+              {configSubTab === 'privacy' && (
+                <AdminPrivacyPolicyManager showNotification={showNotification} />
+              )}
             </div>
           )}
 
@@ -10728,7 +10905,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Bảng Dữ Liệu Dịch Vụ */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {servicesLoading ? (
+                {servicesLoading && services.length === 0 ? (
                   <div className="p-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span>Đang tải danh mục dịch vụ từ Supabase...</span>
@@ -10950,7 +11127,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Bảng Dữ Liệu Lịch Hẹn */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {appointmentsLoading ? (
+                {appointmentsLoading && appointments.length === 0 ? (
                   <div className="p-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
                     <RefreshCw className="w-5 h-5 animate-spin text-[#2D5A27]" />
                     <span>Đang tải danh sách lịch hẹn từ Supabase...</span>
@@ -11192,7 +11369,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                   {/* Table Card */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                    {faqsLoading ? (
+                    {faqsLoading && faqs.length === 0 ? (
                       <div className="p-12 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
                         <RefreshCw className="w-5 h-5 animate-spin text-[#2D5A27]" />
                         <span>Đang tải danh sách câu hỏi...</span>
@@ -11781,7 +11958,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Data Table */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {reviewsLoading ? (
+                {reviewsLoading && reviews.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span className="text-xs font-medium">Đang tải danh sách đánh giá từ Supabase...</span>
@@ -12030,7 +12207,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Data Table */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {teamLoading ? (
+                {teamLoading && teamMembers.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span className="text-xs font-medium">Đang tải danh sách đội ngũ từ Supabase...</span>
@@ -12285,7 +12462,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
               {/* Data Table */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                {articlesLoading ? (
+                {articlesLoading && articles.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span className="text-xs font-medium">Đang tải danh sách bài viết từ cơ sở dữ liệu...</span>
@@ -13293,6 +13470,29 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       <span className="text-xs font-semibold text-slate-700">Kích hoạt chi nhánh ngoài website</span>
                     </label>
                   </div>
+                </div>
+
+                {/* Ô tick chọn Cơ Sở Chính */}
+                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/90 shadow-2xs">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean((editingBranch as any).la_co_so_chinh)}
+                      onChange={(e) => setEditingBranch((prev) => ({ ...prev, la_co_so_chinh: e.target.checked } as any))}
+                      className="w-4 h-4 mt-0.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <span>⭐ Đặt làm Cơ Sở Chính</span>
+                        <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-amber-200/60 text-amber-900">
+                          Chân trang web (Footer)
+                        </span>
+                      </span>
+                      <p className="text-[11px] text-amber-800/80 mt-0.5 leading-relaxed">
+                        Khi chọn, cơ sở này sẽ được hiển thị tại mục &ldquo;Cơ Sở Chính&rdquo; kèm theo bản đồ Google Maps và hướng dẫn chỉ đường ở chân trang của toàn bộ website.
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>

@@ -18,6 +18,8 @@ const DEFAULT_CONFIG: CauHinhRecord = {
   link_messenger: 'https://m.me/petmm',
   link_tiktok: '',
   email: 'contact@petmm.vn',
+  smtp_email: '',
+  smtp_notify_recruitment_email: '',
   dia_chi_chinh: '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh',
   slogan_dau_trang_tieu_de: 'Nâng niu từng nhịp thở, an yên trọn một đời.',
   slogan_dau_trang_tieu_de_en: 'Cherishing Every Breath, Embracing Life with Peace.',
@@ -154,7 +156,7 @@ export function SystemConfigProvider({ children }: { children: React.ReactNode }
       const publicFields = [
         'id', 'logo_favicon', 'logo_website', 'tieu_de_trang', 'tieu_de_trang_en',
         'hotline', 'hotline_hien_thi', 'link_zalo', 'link_facebook', 'link_messenger', 'link_tiktok',
-        'email', 'dia_chi_chinh',
+        'email', 'smtp_email', 'smtp_notify_recruitment_email', 'dia_chi_chinh',
         'slogan_dau_trang_tieu_de', 'slogan_dau_trang_tieu_de_en',
         'slogan_dau_trang_noi_dung', 'slogan_dau_trang_noi_dung_en',
         'slogan_cuoi_trang_tieu_de', 'slogan_cuoi_trang_tieu_de_en',

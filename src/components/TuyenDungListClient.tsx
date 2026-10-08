@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Briefcase,
@@ -44,15 +44,49 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
   const zaloUrl = config.link_zalo || 'https://zalo.me/0903599339';
   const emailContact = config.email || 'tuyendung@petmm.vn';
 
+  // Trích xuất danh sách phòng ban động từ chính các vị trí đang tuyển dụng thực tế (loại bỏ trùng lặp)
+  const departments = useMemo(() => {
+    const list: { id: string; labelVi: string; labelEn: string }[] = [];
+    const seen = new Set<string>();
+
+    initialJobs.forEach((job) => {
+      const deptVi = (job.phong_ban || '').trim();
+      const deptEn = (job.phong_ban_en || '').trim() || deptVi;
+      if (deptVi && !seen.has(deptVi.toLowerCase())) {
+        seen.add(deptVi.toLowerCase());
+        list.push({
+          id: deptVi.toLowerCase(),
+          labelVi: deptVi,
+          labelEn: deptEn,
+        });
+      }
+    });
+
+    if (list.length > 0) {
+      return [
+        { id: 'all', labelVi: 'Tất cả vị trí', labelEn: 'All Positions' },
+        ...list,
+      ];
+    }
+    return [{ id: 'all', labelVi: 'Tất cả vị trí', labelEn: 'All Positions' }];
+  }, [initialJobs]);
+
+  // Nếu bộ lọc phòng ban đang chọn không còn trong danh sách vị trí đang tuyển thì đưa về 'all'
+  useEffect(() => {
+    if (selectedDept !== 'all' && !departments.some((d) => d.id === selectedDept)) {
+      setSelectedDept('all');
+    }
+  }, [departments, selectedDept]);
+
   // Lọc danh sách công việc
   const filteredJobs = useMemo(() => {
     return initialJobs.filter((job) => {
-      // Lọc phòng ban
+      // Lọc phòng ban theo phòng ban thực tế
       if (selectedDept !== 'all') {
-        const deptVi = (job.phong_ban || '').toLowerCase();
-        const deptEn = (job.phong_ban_en || '').toLowerCase();
-        const filterVal = selectedDept.toLowerCase();
-        if (!deptVi.includes(filterVal) && !deptEn.includes(filterVal)) {
+        const deptVi = (job.phong_ban || '').trim().toLowerCase();
+        const deptEn = (job.phong_ban_en || '').trim().toLowerCase();
+        const target = selectedDept.toLowerCase();
+        if (deptVi !== target && deptEn !== target && !deptVi.includes(target)) {
           return false;
         }
       }
@@ -80,65 +114,64 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
     });
   }, [initialJobs, selectedDept, searchKeyword]);
 
-  const departments = [
-    { id: 'all', labelVi: 'Tất cả vị trí', labelEn: 'All Positions' },
-    { id: 'y khoa', labelVi: 'Y Khoa & Bác Sĩ', labelEn: 'Veterinary & Clinical' },
-    { id: 'spa', labelVi: 'Chăm Sóc & Spa', labelEn: 'Grooming & Spa' },
-    { id: 'điều dưỡng', labelVi: 'Điều Dưỡng & Hồi Sức', labelEn: 'Nursing & ICU' },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAF7] text-slate-900 selection:bg-[#FFB800] selection:text-slate-900">
       {/* 1. Header luôn hiển thị */}
       <Header alwaysVisible />
 
       <main className="flex-1 pt-[64px] sm:pt-[72px]">
-        {/* 2. Search & Filter Bar */}
-        <div className="sticky top-[64px] sm:top-[72px] z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs py-4">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              {/* Department Tabs */}
-              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
-                {departments.map((dept) => {
-                  const isActive = selectedDept === dept.id;
-                  return (
-                    <button
-                      key={dept.id}
-                      onClick={() => setSelectedDept(dept.id)}
-                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                        isActive
-                          ? 'bg-[#2D5A27] text-white shadow-sm'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
-                      }`}
-                    >
-                      {isEn ? dept.labelEn : dept.labelVi}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Keyword Search Input */}
-              <div className="relative w-full md:w-72 shrink-0">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder={isEn ? 'Search position, skills...' : 'Tìm kiếm vị trí, kỹ năng...'}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2D5A27] focus:bg-white transition"
-                />
-                {searchKeyword && (
-                  <button
-                    onClick={() => setSearchKeyword('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
-                  >
-                    ×
-                  </button>
+        {/* 2. Search & Filter Bar - Chỉ hiển thị khi có việc đang tuyển */}
+        {initialJobs.length > 0 && (
+          <div className="sticky top-[64px] sm:top-[72px] z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs py-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                {/* Department Tabs - Chỉ hiển thị các phòng ban thực tế đang có tuyển dụng */}
+                {departments.length > 1 ? (
+                  <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
+                    {departments.map((dept) => {
+                      const isActive = selectedDept === dept.id;
+                      return (
+                        <button
+                          key={dept.id}
+                          onClick={() => setSelectedDept(dept.id)}
+                          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                            isActive
+                              ? 'bg-[#2D5A27] text-white shadow-sm'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+                          }`}
+                        >
+                          {isEn ? dept.labelEn : dept.labelVi}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div />
                 )}
+
+                {/* Keyword Search Input */}
+                <div className="relative w-full md:w-72 shrink-0">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.target.value)}
+                    aria-label={isEn ? 'Search position, skills' : 'Tìm kiếm vị trí, kỹ năng'}
+                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2D5A27] focus:bg-white transition"
+                  />
+                  {searchKeyword && (
+                    <button
+                      onClick={() => setSearchKeyword('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 4. Jobs List Section */}
         <section className="py-12 sm:py-16">
@@ -149,9 +182,11 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
                   {isEn ? 'Active Openings' : 'Các Vị Trí Đang Tuyển Dụng'}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  {isEn
-                    ? `Showing ${filteredJobs.length} opening(s)`
-                    : `Hiện có ${filteredJobs.length} vị trí đang tìm kiếm nhân tài`}
+                  {initialJobs.length === 0
+                    ? (isEn ? 'No positions available' : 'Chưa có vị trí tuyển dụng')
+                    : isEn
+                      ? `Showing ${filteredJobs.length} opening(s)`
+                      : `Hiện có ${filteredJobs.length} vị trí đang tìm kiếm nhân tài`}
                 </p>
               </div>
 
@@ -174,11 +209,6 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
                 <h3 className="text-base font-bold text-slate-700">
                   {isEn ? 'No job openings at this time' : 'Hiện tại chưa có vị trí tuyển dụng mới'}
                 </h3>
-                <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
-                  {isEn
-                    ? `PetM&M is not actively recruiting at the moment. You can still submit an open CV to ${emailContact}.`
-                    : `PetM&M hiện chưa mở thêm vị trí tuyển dụng mới. Quý ứng viên có thể gửi hồ sơ ứng tuyển về ${emailContact} để được ưu tiên liên hệ khi có vị trí phù hợp.`}
-                </p>
               </div>
             ) : filteredJobs.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 p-8">

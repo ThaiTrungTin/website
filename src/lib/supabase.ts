@@ -79,6 +79,7 @@ export interface ChiNhanhRecord {
   can_chinh_anh?: string | null;
   thu_tu?: number;
   kich_hoat?: boolean;
+  la_co_so_chinh?: boolean | null;
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }
@@ -96,6 +97,8 @@ export interface CauHinhRecord {
   link_messenger?: string;
   link_tiktok?: string;
   email?: string;
+  smtp_email?: string;
+  smtp_notify_recruitment_email?: string;
   dia_chi_chinh?: string;
   slogan_dau_trang_tieu_de?: string;
   slogan_dau_trang_tieu_de_en?: string;
@@ -420,3 +423,15 @@ export interface HoSoTuyenDungRecord {
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }
+
+export interface ChinhSachBaoMatRecord {
+  id: string;
+  tieu_de_vi: string;
+  tieu_de_en?: string | null;
+  noi_dung_vi: string;
+  noi_dung_en?: string | null;
+  ngay_cap_nhat?: string | null;
+  kich_hoat?: boolean;
+  ngay_tao?: string;
+}
+
