@@ -220,8 +220,9 @@ export function useNavDatabase() {
     const handleFocus = () => { loadData(); };
     window.addEventListener('focus', handleFocus);
 
+    const channelId = `realtime_nav_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
     const channel = supabase
-      .channel('realtime_nav_database')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chi_nhanh' }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dich_vu' }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bai_viet' }, loadData)

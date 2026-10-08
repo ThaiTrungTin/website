@@ -191,206 +191,172 @@ export default function AdminAuditLogsManager({
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header & Thống kê */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#2D5A27]/10 flex items-center justify-center text-[#2D5A27]">
-              <Activity className="w-5 h-5" />
+    <div className="space-y-4">
+      {/* KHỐI CỐ ĐỊNH: HEADER & BỘ LỌC KHI CUỘN */}
+      <div className="sticky top-[56px] sm:top-[61px] z-20 bg-[#F8FAFC]/95 backdrop-blur-md pt-1 pb-2 space-y-3 -mt-2">
+        {/* 1. Tiêu đề và nút làm mới */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[#2D5A27]/10 flex items-center justify-center text-[#2D5A27] shrink-0">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Nhật Ký Hoạt Động (Audit Logs)</h2>
+                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                    {totalCount.toLocaleString('vi-VN')} hoạt động
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Theo dõi &amp; kiểm soát toàn bộ thao tác vận hành của các tài khoản Quản trị theo thời gian thực
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">Nhật Ký Hoạt Động (Audit Logs)</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Theo dõi &amp; kiểm soát toàn bộ thao tác vận hành của các tài khoản Quản trị theo thời gian thực
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Nút làm mới */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fetchLogs}
-            disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#2D5A27]' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Thẻ số liệu thống kê */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">Tổng hoạt động</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          </div>
-          <div className="mt-2 text-2xl font-extrabold text-slate-900">{stats.total.toLocaleString('vi-VN')}</div>
-          <span className="text-[11px] text-slate-400">Ghi nhận toàn hệ thống</span>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">Hôm nay</span>
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          </div>
-          <div className="mt-2 text-2xl font-extrabold text-amber-600">{stats.today.toLocaleString('vi-VN')}</div>
-          <span className="text-[11px] text-slate-400">Thao tác trong ngày</span>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">Nhân sự thao tác</span>
-            <User className="w-3.5 h-3.5 text-blue-500" />
-          </div>
-          <div className="mt-2 text-2xl font-extrabold text-blue-600">{distinctUsers.length}</div>
-          <span className="text-[11px] text-slate-400">Tài khoản ghi nhận gần đây</span>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">Trạng thái bảo mật</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          </div>
-          <div className="mt-2 text-sm font-bold text-emerald-700 flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Tự động 24/7</span>
-          </div>
-          <span className="text-[11px] text-slate-400">Lưu độc lập vào CSDL</span>
-        </div>
-      </div>
-
-      {/* 3. Thanh tìm kiếm và bộ lọc */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-          {/* Ô tìm kiếm */}
-          <div className="relative lg:col-span-2">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Tìm theo tên nhân viên, nội dung..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(1);
-              }}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50"
-            />
           </div>
 
-          {/* Lọc theo Nhân viên */}
-          <div>
-            <select
-              value={selectedUser}
-              onChange={(e) => {
-                setSelectedUser(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50 text-slate-700"
-            >
-              <option value="all">Tất cả nhân viên</option>
-              {distinctUsers.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Lọc theo Chuyên mục */}
-          <div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50 text-slate-700"
-            >
-              <option value="all">Tất cả phân hệ</option>
-              <option value="Lịch hẹn">Lịch hẹn</option>
-              <option value="Chi nhánh">Chi nhánh</option>
-              <option value="Dịch vụ">Dịch vụ</option>
-              <option value="Cấu hình">Cấu hình hệ thống</option>
-              <option value="Đánh giá">Đánh giá</option>
-              <option value="Tuyển dụng">Tuyển dụng &amp; Ứng viên</option>
-              <option value="Cẩm nang">Cẩm nang</option>
-              <option value="Hỏi đáp">Hỏi đáp FAQ</option>
-              <option value="Đội ngũ">Đội ngũ bác sĩ</option>
-              <option value="Tài khoản">Tài khoản &amp; Nhân sự</option>
-            </select>
-          </div>
-
-          {/* Lọc theo Hành động */}
-          <div>
-            <select
-              value={selectedAction}
-              onChange={(e) => {
-                setSelectedAction(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50 text-slate-700"
-            >
-              <option value="all">Tất cả hành động</option>
-              <option value="THEM">Thêm mới</option>
-              <option value="SUA">Chỉnh sửa</option>
-              <option value="XOA">Xóa bỏ</option>
-              <option value="XU_LY">Xử lý đơn</option>
-              <option value="CAU_HINH">Cài đặt cấu hình</option>
-              <option value="DANG_NHAP">Đăng nhập</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Lọc theo thời gian & Nút đặt lại */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mr-1">
-              <Calendar className="w-3 h-3 text-slate-400" />
-              <span>Thời gian:</span>
-            </span>
-            {[
-              { id: 'all', label: 'Tất cả' },
-              { id: 'today', label: 'Hôm nay' },
-              { id: '7d', label: '7 ngày qua' },
-              { id: '30d', label: '30 ngày qua' },
-            ].map((btn) => (
-              <button
-                key={btn.id}
-                type="button"
-                onClick={() => {
-                  setSelectedDateRange(btn.id);
-                  setPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  selectedDateRange === btn.id
-                    ? 'bg-[#2D5A27] text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-
-          {(searchTerm || selectedUser !== 'all' || selectedCategory !== 'all' || selectedAction !== 'all' || selectedDateRange !== 'all') && (
+          {/* Nút làm mới */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={handleResetFilters}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-700 transition cursor-pointer flex items-center gap-1"
+              onClick={fetchLogs}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs cursor-pointer disabled:opacity-50"
             >
-              <X className="w-3.5 h-3.5" />
-              <span>Xóa bộ lọc</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#2D5A27]' : ''}`} />
+              <span>Làm mới</span>
             </button>
-          )}
+          </div>
+        </div>
+
+        {/* 2. Thanh tìm kiếm và bộ lọc */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+            {/* Ô tìm kiếm */}
+            <div className="relative lg:col-span-2">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm theo tên nhân viên, nội dung..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50"
+              />
+            </div>
+
+            {/* Lọc theo Nhân viên */}
+            <div>
+              <select
+                value={selectedUser}
+                onChange={(e) => {
+                  setSelectedUser(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50 text-slate-700"
+              >
+                <option value="all">Tất cả nhân viên</option>
+                {distinctUsers.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lọc theo Chuyên mục */}
+            <div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50 text-slate-700"
+              >
+                <option value="all">Tất cả phân hệ</option>
+                <option value="Lịch hẹn">Lịch hẹn</option>
+                <option value="Chi nhánh">Chi nhánh</option>
+                <option value="Dịch vụ">Dịch vụ</option>
+                <option value="Cấu hình">Cấu hình hệ thống</option>
+                <option value="Đánh giá">Đánh giá</option>
+                <option value="Tuyển dụng">Tuyển dụng &amp; Ứng viên</option>
+                <option value="Cẩm nang">Cẩm nang</option>
+                <option value="Hỏi đáp">Hỏi đáp FAQ</option>
+                <option value="Đội ngũ">Đội ngũ bác sĩ</option>
+                <option value="Tài khoản">Tài khoản &amp; Nhân sự</option>
+              </select>
+            </div>
+
+            {/* Lọc theo Hành động */}
+            <div>
+              <select
+                value={selectedAction}
+                onChange={(e) => {
+                  setSelectedAction(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#2D5A27] transition bg-slate-50/50 text-slate-700"
+              >
+                <option value="all">Tất cả hành động</option>
+                <option value="THEM">Thêm mới</option>
+                <option value="SUA">Chỉnh sửa</option>
+                <option value="XOA">Xóa bỏ</option>
+                <option value="XU_LY">Xử lý đơn</option>
+                <option value="CAU_HINH">Cài đặt cấu hình</option>
+                <option value="DANG_NHAP">Đăng nhập</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Lọc theo thời gian & Nút đặt lại */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mr-1">
+                <Calendar className="w-3 h-3 text-slate-400" />
+                <span>Thời gian:</span>
+              </span>
+              {[
+                { id: 'all', label: 'Tất cả' },
+                { id: 'today', label: 'Hôm nay' },
+                { id: '7d', label: '7 ngày qua' },
+                { id: '30d', label: '30 ngày qua' },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDateRange(btn.id);
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    selectedDateRange === btn.id
+                      ? 'bg-[#2D5A27] text-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            {(searchTerm || selectedUser !== 'all' || selectedCategory !== 'all' || selectedAction !== 'all' || selectedDateRange !== 'all') && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 transition cursor-pointer flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Xóa bộ lọc</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 4. Bảng danh sách nhật ký */}
+      {/* 3. Bảng danh sách nhật ký */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {isLoading && logs.length === 0 ? (
           <div className="p-12 text-center">
@@ -404,16 +370,16 @@ export default function AdminAuditLogsManager({
             <p className="text-xs text-slate-500 mt-1">Không tìm thấy bản ghi phù hợp với bộ lọc hiện tại.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[calc(100vh-270px)] min-h-[350px] overflow-y-auto">
             <table className="w-full text-left border-collapse text-xs">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
                 <tr className="bg-slate-50 border-b border-slate-200/90 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4 w-44">Thời gian</th>
-                  <th className="py-3 px-4 w-52">Người thực hiện</th>
-                  <th className="py-3 px-4 w-32">Hành động</th>
-                  <th className="py-3 px-4 w-36">Phân hệ</th>
-                  <th className="py-3 px-4">Nội dung chi tiết</th>
-                  <th className="py-3 px-4 w-28 text-center">Chi tiết</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-44 z-10 shadow-2xs">Thời gian</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-52 z-10 shadow-2xs">Người thực hiện</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-32 z-10 shadow-2xs">Hành động</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-36 z-10 shadow-2xs">Phân hệ</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 z-10 shadow-2xs">Nội dung chi tiết</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-28 text-center z-10 shadow-2xs">Chi tiết</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
