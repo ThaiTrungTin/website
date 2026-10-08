@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 // KHÓA BẢO MẬT NỘI BỘ BỆNH VIỆN THÚ Y PETM&M (SECRET ACCESS KEY)
 // Dành riêng cho Quản trị viên và Nhân viên phòng khám truy cập /admin và /taodanhgia
 // ============================================================================
-export const PETMM_SECRET_KEY = 'petmm_internal_secure_key_2026_x89f72b9a4c1';
+export const PETMM_SECRET_KEY = process.env.PETMM_SECRET_KEY || '';
 const COOKIE_NAME = 'petmm_staff_access';
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 ngày
 
