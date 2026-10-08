@@ -76,8 +76,15 @@ export async function POST(req: NextRequest) {
       vai_tro: currentUser.vai_tro,
       hanh_dong: 'CAU_HINH',
       chuyen_muc: 'Cấu hình',
-      chi_tiet: 'Cập nhật nội dung Chính sách bảo mật & Quyền riêng tư',
-      du_lieu_thay_doi: { lastUpdated: recordToSave.ngay_cap_nhat },
+      chi_tiet: `Cập nhật nội dung Chính sách bảo mật: "${recordToSave.tieu_de_vi}"`,
+      du_lieu_thay_doi: {
+        tieu_de_vi: recordToSave.tieu_de_vi,
+        tieu_de_en: recordToSave.tieu_de_en,
+        ngay_cap_nhat: recordToSave.ngay_cap_nhat,
+        kich_hoat: recordToSave.kich_hoat ? 'Đang kích hoạt (Công khai)' : 'Tạm ẩn',
+        do_dai_noi_dung_vi: `${recordToSave.noi_dung_vi.length} ký tự`,
+        do_dai_noi_dung_en: `${recordToSave.noi_dung_en.length} ký tự`,
+      },
     });
 
     try {

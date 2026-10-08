@@ -47,6 +47,7 @@ import {
   HoSoTuyenDungRecord,
   TuyenDungRecord,
 } from '@/lib/supabase';
+import { VietnamFlag, UKFlag } from '@/components/FlagIcons';
 import AdminAnalyticsSection from '@/components/AdminAnalyticsSection';
 
 type AdminTab =
@@ -358,7 +359,76 @@ export default function AdminDashboardTab({
     }
   };
 
-  // Tính tỷ lệ phân bổ lịch hẹn theo từng chi nhánh (Tổng 100%)
+  // Helper nhận diện khách đặt bằng tiếng Anh
+  const isAppEn = (app: LichHenRecord) => {
+    const ghiChu = app.ghi_chu || '';
+    const langMatch = ghiChu.match(/\[Lang:\s*(en|vi)\]/i);
+    if (langMatch) return langMatch[1].toLowerCase() === 'en';
+    return /consultation|general health|try the service|city facility|clinic/i.test(
+      (app.dich_vu || '') + ' ' + (app.ten_chi_nhanh || '')
+    );
+  };
+
+  // Helper chuẩn hóa tên chi nhánh (gom cả tiếng Việt & tiếng Anh về 1 cơ sở chuẩn)
+  const getCanonicalBranchName = (a: LichHenRecord): string => {
+    // 1. Khớp theo chi_nhanh_id
+    if (a.chi_nhanh_id && branches.length > 0) {
+      const found = branches.find((b) => b.id === a.chi_nhanh_id);
+      if (found) return found.ten_chi_nhanh || found.ten_ngan || 'Cơ sở chính';
+    }
+
+    const raw = (a.ten_chi_nhanh || '').trim();
+    if (raw && branches.length > 0) {
+      const lower = raw.toLowerCase();
+      // 2. Khớp trực tiếp với các trường tên/địa chỉ tiếng Việt và tiếng Anh của từng chi nhánh
+      const found = branches.find((b) => {
+        const viName = (b.ten_chi_nhanh || '').toLowerCase();
+        const enName = (b.ten_chi_nhanh_en || '').toLowerCase();
+        const viShort = (b.ten_ngan || '').toLowerCase();
+        const enShort = (b.ten_ngan_en || '').toLowerCase();
+        const viAddr = (b.dia_chi || '').toLowerCase();
+        const enAddr = (b.dia_chi_en || '').toLowerCase();
+
+        return (
+          (viName && (lower.includes(viName) || viName.includes(lower))) ||
+          (enName && (lower.includes(enName) || enName.includes(lower))) ||
+          (viShort && (lower.includes(viShort) || viShort.includes(lower))) ||
+          (enShort && (lower.includes(enShort) || enShort.includes(lower))) ||
+          (viAddr && (lower.includes(viAddr) || viAddr.includes(lower))) ||
+          (enAddr && (lower.includes(enAddr) || enAddr.includes(lower)))
+        );
+      });
+      if (found) return found.ten_chi_nhanh || found.ten_ngan || 'Cơ sở chính';
+
+      // 3. Khớp theo từ khóa địa lý đặc trưng (Thủ Đức / Thu Duc / Phước Long / 19 Đ. Số 1...)
+      if (
+        lower.includes('thu duc') ||
+        lower.includes('thủ đức') ||
+        lower.includes('phuoc long') ||
+        lower.includes('phước long') ||
+        lower.includes('19 d') ||
+        lower.includes('19 đ')
+      ) {
+        const td = branches.find(
+          (b) =>
+            (b.ten_chi_nhanh || '').toLowerCase().includes('thủ đức') ||
+            (b.dia_chi || '').toLowerCase().includes('thủ đức') ||
+            (b.dia_chi_en || '').toLowerCase().includes('thu duc')
+        );
+        if (td) return td.ten_chi_nhanh;
+      }
+    }
+
+    // 4. Nếu toàn hệ thống chỉ có 1 cơ sở, hoặc tên chung hệ thống
+    const mainBranch = branches.find((b) => b.la_co_so_chinh) || branches[0];
+    if (mainBranch && (!raw || branches.length === 1 || /petm&m|clinic|bệnh viện|trụ sở/i.test(raw))) {
+      return mainBranch.ten_chi_nhanh || mainBranch.ten_ngan || 'Cơ sở chính';
+    }
+
+    return raw || (mainBranch ? mainBranch.ten_chi_nhanh : 'Cơ sở chính');
+  };
+
+  // Tính tỷ lệ phân bổ lịch hẹn theo từng chi nhánh (Tổng 100%) - Đã gom tiếng Việt & tiếng Anh
   const branchStats = useMemo(() => {
     const total = appointments.length;
     const counts: Record<string, number> = {};
@@ -368,7 +438,7 @@ export default function AdminDashboardTab({
     });
 
     appointments.forEach((a) => {
-      const name = a.ten_chi_nhanh || 'Chưa phân loại';
+      const name = getCanonicalBranchName(a);
       counts[name] = (counts[name] || 0) + 1;
     });
 
@@ -652,7 +722,18 @@ export default function AdminDashboardTab({
                       >
                         {/* 1. Khách hàng */}
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-950 text-[13px]">{app.ho_ten_chu}</div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-slate-950 text-[13px]">{app.ho_ten_chu}</span>
+                            {isAppEn(app) ? (
+                              <span title="Khách đặt bằng tiếng Anh (English)" className="inline-flex items-center">
+                                <UKFlag className="w-4 h-3 rounded-[2px]" />
+                              </span>
+                            ) : (
+                              <span title="Khách đặt bằng tiếng Việt" className="inline-flex items-center">
+                                <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs font-bold text-slate-700 font-mono mt-0.5">
                             {app.so_dien_thoai}
                           </div>
@@ -662,7 +743,7 @@ export default function AdminDashboardTab({
                         <td className="py-3.5 px-3">
                           <div className="text-slate-950 font-bold line-clamp-1">{app.dich_vu}</div>
                           <div className="text-xs font-semibold text-slate-600 line-clamp-1">
-                            {app.ten_chi_nhanh || 'Cơ sở chính'}
+                            {getCanonicalBranchName(app)}
                           </div>
                         </td>
 
@@ -685,15 +766,10 @@ export default function AdminDashboardTab({
 
           {/* ĐÁY KHỐI LỊCH HẸN: THANH TỶ LỆ % ĐẶT LỊCH THEO CHI NHÁNH (TỔNG 100%) */}
           <div className="p-3.5 bg-slate-50/80 border-t border-slate-200 mt-auto">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                <span className="font-bold text-slate-800">
-                  Phân bổ lịch hẹn theo chi nhánh (100%)
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-500 italic hidden sm:inline">
-                Rê chuột vào thanh màu để xem tên chi nhánh
+            <div className="flex items-center gap-1.5 text-xs mb-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-600" />
+              <span className="font-bold text-slate-800">
+                Phân bổ lịch hẹn theo chi nhánh (100%)
               </span>
             </div>
 

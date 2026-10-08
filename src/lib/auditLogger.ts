@@ -61,6 +61,16 @@ export async function logAuditServer(params: CreateAuditLogParams) {
     if (error) {
       console.warn('⚠️ Lỗi ghi nhật ký hoạt động Server:', error.message);
     }
+
+    // Tự động xóa nhật ký cũ hơn 30 ngày
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    (async () => {
+      try {
+        await supabaseAdmin.from('nhat_ky_hoat_dong').delete().lt('ngay_tao', thirtyDaysAgo);
+      } catch (err) {
+        console.error('Lỗi tự động xóa nhật ký 30 ngày:', err);
+      }
+    })();
   } catch (err: any) {
     console.warn('⚠️ Ngoại lệ ghi nhật ký hoạt động Server:', err?.message || err);
   }

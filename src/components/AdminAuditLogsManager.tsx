@@ -1,29 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Activity,
   Search,
-  Filter,
-  Calendar,
   RefreshCw,
-  User,
-  Plus,
-  Edit3,
-  Trash2,
-  CheckCircle2,
-  Settings,
-  KeyRound,
-  ShieldAlert,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Laptop,
-  Layers,
-  Eye,
-  X,
-  FileText,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { AuditLogRecord } from '@/lib/auditLogger';
@@ -38,11 +22,10 @@ export default function AdminAuditLogsManager({
   showNotification,
 }: AdminAuditLogsManagerProps) {
   const [logs, setLogs] = useState<AuditLogRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
-  const [stats, setStats] = useState({ total: 0, today: 0 });
+  const [isLoading, setIsLoading] = useState(true);
   const [distinctUsers, setDistinctUsers] = useState<string[]>([]);
 
   // Bộ lọc
@@ -51,9 +34,6 @@ export default function AdminAuditLogsManager({
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedAction, setSelectedAction] = useState('all');
   const [selectedDateRange, setSelectedDateRange] = useState('all');
-
-  // Modal xem chi tiết JSON
-  const [selectedLogDetail, setSelectedLogDetail] = useState<AuditLogRecord | null>(null);
 
   // Tải dữ liệu nhật ký
   const fetchLogs = useCallback(async () => {
@@ -76,7 +56,6 @@ export default function AdminAuditLogsManager({
         setLogs(data.logs || []);
         setTotalCount(data.totalCount || 0);
         setTotalPages(data.totalPages || 1);
-        if (data.stats) setStats(data.stats);
         if (data.distinctUsers) setDistinctUsers(data.distinctUsers);
       } else {
         if (showNotification) {
@@ -93,22 +72,23 @@ export default function AdminAuditLogsManager({
     }
   }, [page, searchTerm, selectedUser, selectedCategory, selectedAction, selectedDateRange, showNotification]);
 
+  // Gọi fetchLogs khi các điều kiện thay đổi
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
-  // Lắng nghe thay đổi thời gian thực qua Supabase Realtime
+  // Đăng ký Supabase Realtime để nhận bản ghi mới ngay tức thì
   useEffect(() => {
     const channel = supabase
-      .channel('nhat_ky_hoat_dong_live')
+      .channel('realtime_nhat_ky_hoat_dong')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'nhat_ky_hoat_dong' },
         (payload) => {
-          if (payload.new) {
-            setLogs((prev) => [payload.new as AuditLogRecord, ...prev.slice(0, 24)]);
+          const newRecord = payload.new as AuditLogRecord;
+          if (newRecord && page === 1 && selectedDateRange === 'all') {
+            setLogs((prev) => [newRecord, ...prev.slice(0, 24)]);
             setTotalCount((c) => c + 1);
-            setStats((s) => ({ ...s, total: s.total + 1, today: s.today + 1 }));
           }
         }
       )
@@ -117,9 +97,9 @@ export default function AdminAuditLogsManager({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [page, selectedDateRange]);
 
-  // Xóa bộ lọc
+  // Xóa bộ lọc về mặc định
   const handleResetFilters = () => {
     setSearchTerm('');
     setSelectedUser('all');
@@ -130,106 +110,48 @@ export default function AdminAuditLogsManager({
   };
 
   // Định dạng ngày giờ
-  const formatDateTime = (isoString: string) => {
+  const formatDateTime = (isoString?: string) => {
+    if (!isoString) return { date: '—', time: '—' };
     try {
       const d = new Date(isoString);
-      return {
-        date: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      };
+      const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const date = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return { date, time };
     } catch {
       return { date: isoString, time: '' };
     }
   };
 
-  // Badge hành động
-  const getActionBadge = (action: string) => {
-    switch (action) {
+  // Nhãn hành động (không màu nền, không icon)
+  const getActionLabel = (action: string) => {
+    switch (action?.toUpperCase()) {
       case 'THEM':
-        return {
-          label: 'Thêm mới',
-          icon: Plus,
-          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        };
+        return 'Thêm mới';
       case 'SUA':
-        return {
-          label: 'Chỉnh sửa',
-          icon: Edit3,
-          bg: 'bg-amber-50 text-amber-700 border-amber-200',
-        };
+        return 'Chỉnh sửa';
       case 'XOA':
-        return {
-          label: 'Xóa bỏ',
-          icon: Trash2,
-          bg: 'bg-rose-50 text-rose-700 border-rose-200',
-        };
+        return 'Xóa bỏ';
       case 'XU_LY':
-        return {
-          label: 'Xử lý đơn',
-          icon: CheckCircle2,
-          bg: 'bg-blue-50 text-blue-700 border-blue-200',
-        };
+        return 'Xử lý đơn';
+      case 'GUI_TIN':
+        return 'Gửi Zalo';
+      case 'GUI_EMAIL':
+        return 'Gửi Email';
+      case 'XAC_NHAN':
+        return 'Xác nhận lịch';
       case 'CAU_HINH':
-        return {
-          label: 'Cài đặt',
-          icon: Settings,
-          bg: 'bg-purple-50 text-purple-700 border-purple-200',
-        };
+        return 'Cài đặt';
       case 'DANG_NHAP':
-        return {
-          label: 'Đăng nhập',
-          icon: KeyRound,
-          bg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-        };
+        return 'Đăng nhập';
       default:
-        return {
-          label: action,
-          icon: Activity,
-          bg: 'bg-slate-100 text-slate-700 border-slate-200',
-        };
+        return action || 'Thao tác';
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* KHỐI CỐ ĐỊNH: HEADER & BỘ LỌC KHI CUỘN */}
+      {/* KHỐI CỐ ĐỊNH: BỘ LỌC VÀ CÔNG CỤ */}
       <div className="sticky top-[56px] sm:top-[61px] z-20 bg-[#F8FAFC]/95 backdrop-blur-md pt-1 pb-2 space-y-3 -mt-2">
-        {/* 1. Tiêu đề và nút làm mới */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-[#2D5A27]/10 flex items-center justify-center text-[#2D5A27] shrink-0">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Nhật Ký Hoạt Động (Audit Logs)</h2>
-                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                    {totalCount.toLocaleString('vi-VN')} hoạt động
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Theo dõi &amp; kiểm soát toàn bộ thao tác vận hành của các tài khoản Quản trị theo thời gian thực
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Nút làm mới */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={fetchLogs}
-              disabled={isLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#2D5A27]' : ''}`} />
-              <span>Làm mới</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Thanh tìm kiếm và bộ lọc */}
         <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
             {/* Ô tìm kiếm */}
@@ -266,7 +188,7 @@ export default function AdminAuditLogsManager({
               </select>
             </div>
 
-            {/* Lọc theo Chuyên mục */}
+            {/* Lọc theo Phân hệ */}
             <div>
               <select
                 value={selectedCategory}
@@ -311,12 +233,11 @@ export default function AdminAuditLogsManager({
             </div>
           </div>
 
-          {/* Lọc theo thời gian & Nút đặt lại */}
+          {/* Lọc theo thời gian & Nút làm mới */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
             <div className="flex items-center gap-1.5 overflow-x-auto">
-              <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mr-1">
-                <Calendar className="w-3 h-3 text-slate-400" />
-                <span>Thời gian:</span>
+              <span className="text-[11px] font-semibold text-slate-500 mr-1">
+                Thời gian:
               </span>
               {[
                 { id: 'all', label: 'Tất cả' },
@@ -342,21 +263,37 @@ export default function AdminAuditLogsManager({
               ))}
             </div>
 
-            {(searchTerm || selectedUser !== 'all' || selectedCategory !== 'all' || selectedAction !== 'all' || selectedDateRange !== 'all') && (
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] text-slate-400">
+                (Tự động xóa nhật ký sau 30 ngày)
+              </span>
+
+              {(searchTerm || selectedUser !== 'all' || selectedCategory !== 'all' || selectedAction !== 'all' || selectedDateRange !== 'all') && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 transition cursor-pointer flex items-center gap-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Xóa bộ lọc</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={handleResetFilters}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-700 transition cursor-pointer flex items-center gap-1"
+                onClick={fetchLogs}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs cursor-pointer disabled:opacity-50"
               >
-                <X className="w-3.5 h-3.5" />
-                <span>Xóa bộ lọc</span>
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#2D5A27]' : ''}`} />
+                <span>Làm mới</span>
               </button>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Bảng danh sách nhật ký */}
+      {/* BẢNG DANH SÁCH NHẬT KÝ */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {isLoading && logs.length === 0 ? (
           <div className="p-12 text-center">
@@ -370,98 +307,62 @@ export default function AdminAuditLogsManager({
             <p className="text-xs text-slate-500 mt-1">Không tìm thấy bản ghi phù hợp với bộ lọc hiện tại.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[calc(100vh-270px)] min-h-[350px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[calc(100vh-220px)] min-h-[350px] overflow-y-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
                 <tr className="bg-slate-50 border-b border-slate-200/90 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-44 z-10 shadow-2xs">Thời gian</th>
-                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-52 z-10 shadow-2xs">Người thực hiện</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-40 z-10 shadow-2xs">Thời gian</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-48 z-10 shadow-2xs">Người thực hiện</th>
                   <th className="sticky top-0 bg-slate-50 py-3 px-4 w-32 z-10 shadow-2xs">Hành động</th>
                   <th className="sticky top-0 bg-slate-50 py-3 px-4 w-36 z-10 shadow-2xs">Phân hệ</th>
-                  <th className="sticky top-0 bg-slate-50 py-3 px-4 z-10 shadow-2xs">Nội dung chi tiết</th>
-                  <th className="sticky top-0 bg-slate-50 py-3 px-4 w-28 text-center z-10 shadow-2xs">Chi tiết</th>
+                  <th className="sticky top-0 bg-slate-50 py-3 px-4 z-10 shadow-2xs">Nội dung</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {logs.map((item) => {
                   const { date, time } = formatDateTime(item.ngay_tao);
-                  const badge = getActionBadge(item.hanh_dong);
-                  const BadgeIcon = badge.icon;
-                  const initial = (item.nguoi_thuc_hien || 'A').charAt(0).toUpperCase();
+                  const actionLabel = getActionLabel(item.hanh_dong);
 
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-slate-50/80 transition group"
+                      className="hover:bg-slate-50/80 transition"
                     >
                       {/* Thời gian */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-slate-900 font-semibold">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{time}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5 ml-5">{date}</div>
+                        <div className="text-slate-900 font-semibold">{time}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{date}</div>
                       </td>
 
                       {/* Người thực hiện */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-emerald-100 text-[#2D5A27] font-bold text-xs flex items-center justify-center shrink-0 border border-emerald-200">
-                            {initial}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-slate-900 truncate">{item.nguoi_thuc_hien}</div>
-                            <span className="inline-block text-[10px] font-semibold text-slate-500 uppercase">
-                              {item.vai_tro || 'admin'}
-                            </span>
-                          </div>
+                        <div className="font-semibold text-slate-900 truncate">{item.nguoi_thuc_hien}</div>
+                        <div className="text-[11px] text-slate-500 uppercase mt-0.5">
+                          {item.vai_tro || 'admin'}
                         </div>
                       </td>
 
                       {/* Hành động */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${badge.bg}`}
-                        >
-                          <BadgeIcon className="w-3 h-3" />
-                          <span>{badge.label}</span>
+                        <span className="font-semibold text-slate-800">
+                          {actionLabel}
                         </span>
                       </td>
 
                       {/* Phân hệ */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-semibold border border-slate-200/60">
-                          <Layers className="w-3 h-3 text-slate-400" />
-                          <span>{item.chuyen_muc}</span>
-                        </span>
+                        <span className="text-slate-700 font-medium">{item.chuyen_muc}</span>
                       </td>
 
-                      {/* Chi tiết */}
+                      {/* Nội dung */}
                       <td className="py-3 px-4">
-                        <div className="text-slate-800 font-medium leading-relaxed max-w-xl">
+                        <div className="text-slate-800 font-medium leading-relaxed">
                           {item.chi_tiet}
                         </div>
                         {item.ip_address && (
-                          <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
-                            <Laptop className="w-3 h-3" />
-                            <span>IP: {item.ip_address}</span>
+                          <div className="mt-0.5 text-[11px] text-slate-500">
+                            IP: {item.ip_address}
                           </div>
-                        )}
-                      </td>
-
-                      {/* Xem chi tiết JSON nếu có */}
-                      <td className="py-3 px-4 text-center">
-                        {item.du_lieu_thay_doi ? (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedLogDetail(item)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#2D5A27] font-semibold text-[11px] transition cursor-pointer"
-                          >
-                            <Eye className="w-3 h-3" />
-                            <span>Xem data</span>
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-300">—</span>
                         )}
                       </td>
                     </tr>
@@ -504,51 +405,6 @@ export default function AdminAuditLogsManager({
           </div>
         </div>
       </div>
-
-      {/* 5. Modal xem chi tiết thay đổi (JSON Viewer) */}
-      {selectedLogDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#2D5A27]" />
-                <h3 className="font-bold text-slate-900 text-sm">Chi Tiết Dữ Liệu Thay Đổi</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedLogDetail(null)}
-                className="w-7 h-7 rounded-lg hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-3">
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Hành động:</span>
-                <p className="text-xs font-semibold text-slate-800 mt-0.5">{selectedLogDetail.chi_tiet}</p>
-              </div>
-
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Dữ liệu thô (JSON):</span>
-                <pre className="mt-1 p-3 rounded-xl bg-slate-900 text-slate-100 text-[11px] font-mono overflow-x-auto max-h-60 leading-relaxed">
-                  {JSON.stringify(selectedLogDetail.du_lieu_thay_doi, null, 2)}
-                </pre>
-              </div>
-            </div>
-
-            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedLogDetail(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#2D5A27] text-white hover:bg-[#23481e] transition cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

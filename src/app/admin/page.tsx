@@ -11230,20 +11230,12 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-bold text-slate-900">{app.ho_ten_chu}</span>
                                   {isEnBooking ? (
-                                    <span
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold"
-                                      title="Khách đặt bằng tiếng Anh (English)"
-                                    >
-                                      <UKFlag className="w-3.5 h-2.5 rounded-xs" />
-                                      <span>ENG</span>
+                                    <span title="Khách đặt bằng tiếng Anh (English)" className="inline-flex items-center">
+                                      <UKFlag className="w-4 h-3 rounded-[2px]" />
                                     </span>
                                   ) : (
-                                    <span
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold"
-                                      title="Khách đặt bằng tiếng Việt"
-                                    >
-                                      <VietnamFlag className="w-3.5 h-2.5 rounded-xs" />
-                                      <span>VN</span>
+                                    <span title="Khách đặt bằng tiếng Việt" className="inline-flex items-center">
+                                      <VietnamFlag className="w-4 h-3 rounded-[2px]" />
                                     </span>
                                   )}
                                 </div>

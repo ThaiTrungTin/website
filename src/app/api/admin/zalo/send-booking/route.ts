@@ -3,6 +3,7 @@ import { sendZaloZnsBookingNotification } from '@/lib/zalo';
 import { verifyToken } from '@/lib/adminAuth';
 import { getTranslatedBranch, getTranslatedServices } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { logAuditServer } from '@/lib/auditLogger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -86,6 +87,30 @@ export async function POST(req: NextRequest) {
           .eq('id', targetBooking.id);
       }
 
+      await logAuditServer({
+        nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'XU_LY',
+        chuyen_muc: 'Lịch hẹn',
+        chi_tiet: `Gửi tin Zalo ZNS lần ${newCount} cho khách "${ownerName || 'Khách'}" (SĐT: ${phone})`,
+        du_lieu_thay_doi: {
+          loai_thao_tac: 'gui_zalo',
+          lan_gui: `Lần ${newCount}`,
+          so_dien_thoai: phone,
+          khach_hang: ownerName,
+          ma_lich_hen: bookingCode,
+          co_so: finalBranchName,
+          dich_vu: finalService,
+          ket_qua: result.mock ? 'Mô phỏng thành công' : 'Thành công',
+          diffs: {
+            so_lan_gui_zalo: {
+              cu: (targetBooking?.so_lan_gui_zalo || 0) > 0 ? `Lần ${targetBooking.so_lan_gui_zalo}` : 'Chưa gửi',
+              moi: `Lần ${newCount}`,
+            },
+          },
+        },
+      });
+
       return NextResponse.json({
         success: true,
         so_lan_gui_zalo: newCount,
@@ -105,6 +130,21 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', targetBooking.id);
       }
+
+      await logAuditServer({
+        nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'XU_LY',
+        chuyen_muc: 'Lịch hẹn',
+        chi_tiet: `Gửi tin Zalo ZNS thất bại tới khách "${ownerName || 'Khách'}" (SĐT: ${phone}): ${result.error || 'Lỗi gửi tin'}`,
+        du_lieu_thay_doi: {
+          loai_thao_tac: 'gui_zalo_that_bai',
+          so_dien_thoai: phone,
+          khach_hang: ownerName,
+          ma_lich_hen: bookingCode,
+          ly_do: result.error,
+        },
+      });
 
       return NextResponse.json({
         success: false,

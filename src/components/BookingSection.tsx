@@ -52,6 +52,36 @@ const getTodayDateVN = () => {
   }
 };
 
+// Helper lấy số phút hiện tại trong ngày theo múi giờ Việt Nam
+const getCurrentVNMinutes = () => {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const h = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+    const m = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+    return h * 60 + m;
+  } catch {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+};
+
+// Helper kiểm tra khung giờ đã qua hôm nay hay chưa (chỉ áp dụng khi chọn ngày là hôm nay)
+const isSlotPassedToday = (slot: string, chosenDate: string) => {
+  const todayVN = getTodayDateVN();
+  if (chosenDate !== todayVN) return false;
+  const startPart = slot.split('-')[0]?.trim(); // vd "08:00"
+  if (!startPart) return false;
+  const [hStr, mStr] = startPart.split(':');
+  const slotStartMinutes = parseInt(hStr, 10) * 60 + parseInt(mStr, 10);
+  const currentMinutes = getCurrentVNMinutes();
+  return currentMinutes >= slotStartMinutes;
+};
+
 const TIME_SLOTS = [
   '08:00 - 08:30',
   '08:30 - 09:00',
@@ -116,14 +146,28 @@ export default function BookingSection({
   const [timeSlot, setTimeSlot] = useState('');
   const [note, setNote] = useState('');
 
+  const todayVN = getTodayDateVN();
+
+  // Tự động bỏ chọn khung giờ nếu ngày được chọn là hôm nay và khung giờ đó đã qua
+  useEffect(() => {
+    if (timeSlot && date === todayVN && isSlotPassedToday(timeSlot, date)) {
+      setTimeSlot('');
+    }
+  }, [date, timeSlot, todayVN]);
+
   // Dropdown states cho web (không dùng popup trình duyệt)
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
+  const branchDropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
   const timeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(event.target as Node)) {
+        setIsBranchDropdownOpen(false);
+      }
       if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target as Node)) {
         setIsServiceDropdownOpen(false);
       }
@@ -206,9 +250,6 @@ export default function BookingSection({
           .order('thu_tu', { ascending: true });
         if (bData && bData.length > 0) {
           setDbBranches(bData);
-          if (!branch) setBranch(bData[0].id);
-        } else if (branchesData.length > 0 && !branch) {
-          setBranch(branchesData[0].id);
         }
 
         const { data: sData } = await supabase
@@ -321,17 +362,15 @@ export default function BookingSection({
     setIsSubmitting(true);
 
     try {
-      // Tìm tên chi nhánh hiển thị (hoặc mặc định hệ thống)
-      let branchName = isEn ? 'PetM&M Veterinary Clinic System' : 'Hệ Thống Bệnh Viện Thú Y PetM&M';
-      const chosenBranch = branch || (dbBranches[0]?.id) || (branchesData[0]?.id) || '';
-      if (dbBranches.length > 0) {
-        const found = dbBranches.find((b) => b.id === chosenBranch);
+      // Tìm tên chi nhánh hiển thị (lấy địa chỉ trong cài đặt chi nhánh)
+      let branchName = '';
+      if (branch && dbBranches.length > 0) {
+        const found = dbBranches.find((b) => b.id === branch);
         if (found) {
-          branchName = isEn && found.ten_ngan_en ? found.ten_ngan_en : (found.ten_ngan || found.ten_chi_nhanh);
+          const address = (isEn && found.dia_chi_en) || found.dia_chi || '';
+          const name = (isEn && (found.ten_chi_nhanh_en || found.ten_ngan_en)) || found.ten_chi_nhanh || found.ten_ngan || '';
+          branchName = address ? (name ? `${name} - ${address}` : address) : name;
         }
-      } else if (branchesData.length > 0) {
-        const found = branchesData.find((b) => b.id === chosenBranch);
-        if (found) branchName = found.shortName;
       }
 
       // Sinh mã tiếp nhận phía client
@@ -348,7 +387,7 @@ export default function BookingSection({
         ownerName: ownerName.trim(),
         phone: cleanPhone,
         petName: '',
-        branchName,
+        branchName: branchName || (isEn ? 'Flexible branch' : 'Linh hoạt cơ sở'),
         service: displayService,
         dateTime: formattedDateTime,
         date: formatToDMY(date),
@@ -369,8 +408,8 @@ export default function BookingSection({
           email: email.trim(),
           petName: '',
           petType: '',
-          branch: chosenBranch,
-          branchName,
+          branch: branch || null,
+          branchName: branchName || '',
           service: displayService,
           date,
           timeSlot,
@@ -495,6 +534,12 @@ export default function BookingSection({
                 <span className="text-slate-500">{isEn ? 'Time Slot:' : 'Khung Giờ:'}</span>
                 <span className="font-semibold text-slate-900">{bookingResult.timeSlot || (isEn ? 'Flexible' : 'Linh hoạt')}</span>
               </div>
+              {bookingResult.branchName && (
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                  <span className="text-slate-500">{isEn ? 'Branch:' : 'Chi Nhánh:'}</span>
+                  <span className="font-semibold text-slate-900 truncate max-w-[260px] text-right">{bookingResult.branchName}</span>
+                </div>
+              )}
               {bookingResult.service && (
                 <div className="flex justify-between items-center py-1">
                   <span className="text-slate-500">{isEn ? 'Service:' : 'Dịch Vụ:'}</span>
@@ -595,11 +640,12 @@ export default function BookingSection({
                     </div>
                   </div>
 
-                  {/* HÀNG 2: Gmail / Email (Nếu có) & Chọn dịch vụ (Không bắt buộc) */}
+                  {/* HÀNG 2: Gmail / Email & Dịch vụ khám (droplist web) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Ô nhập Gmail / Email */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Gmail / Email (Optional)' : 'Gmail / Email (Nếu có)'}
+                        {isEn ? 'Gmail / Email' : 'Gmail / Email'}
                       </label>
                       <div className="relative">
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -616,13 +662,14 @@ export default function BookingSection({
                     {/* Droplist dịch vụ của Web gọn gàng */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Select Service (Optional)' : 'Chọn dịch vụ (Không bắt buộc)'}
+                        {isEn ? 'Select Service' : 'Dịch vụ khám'}
                       </label>
                       <div className="relative" ref={serviceDropdownRef}>
                         <button
                           type="button"
                           onClick={() => {
                             setIsServiceDropdownOpen(!isServiceDropdownOpen);
+                            setIsBranchDropdownOpen(false);
                             setIsTimeDropdownOpen(false);
                           }}
                           className="w-full flex items-center justify-between pl-3.5 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-left text-slate-900 cursor-pointer"
@@ -630,7 +677,7 @@ export default function BookingSection({
                           <div className="flex items-center gap-2 truncate">
                             <Stethoscope className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span className={service ? 'text-slate-900 font-medium truncate' : 'text-slate-400 truncate'}>
-                              {service || (isEn ? '-- Select Service (Optional) --' : '-- Tùy chọn: Chọn dịch vụ --')}
+                              {service || (isEn ? '-- Select Service --' : '-- Chọn dịch vụ --')}
                             </span>
                           </div>
                           <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isServiceDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
@@ -647,7 +694,7 @@ export default function BookingSection({
                                 !service ? 'bg-emerald-50/50 font-semibold text-[#2D5A27]' : 'text-slate-600'
                               }`}
                             >
-                              <span>{isEn ? '-- Optional: Decide at clinic --' : '-- Tùy chọn: Tư vấn tại phòng khám --'}</span>
+                              <span>{isEn ? '-- Decide at clinic --' : '-- Tư vấn tại phòng khám --'}</span>
                               {!service && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                             </div>
 
@@ -714,7 +761,7 @@ export default function BookingSection({
                     </div>
                   </div>
 
-                  {/* HÀNG 3: Ngày hẹn (mặc định hôm nay) & Khung giờ hẹn (Không bắt buộc - droplist web) */}
+                  {/* HÀNG 3: Ngày hẹn (không cho chọn ngày trước hôm nay) & Khung giờ hẹn (không cho chọn giờ đã qua hôm nay) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -725,8 +772,15 @@ export default function BookingSection({
                         <input
                           type="date"
                           value={date}
-                          min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => setDate(e.target.value)}
+                          min={todayVN}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val && val < todayVN) {
+                              setDate(todayVN);
+                            } else {
+                              setDate(val);
+                            }
+                          }}
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-slate-900 cursor-pointer"
                         />
                       </div>
@@ -735,13 +789,14 @@ export default function BookingSection({
                     {/* Droplist Khung giờ của Web gọn gàng */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        {isEn ? 'Time Slot (Optional)' : 'Khung giờ hẹn (Không bắt buộc)'}
+                        {isEn ? 'Time Slot' : 'Khung giờ hẹn'}
                       </label>
                       <div className="relative" ref={timeDropdownRef}>
                         <button
                           type="button"
                           onClick={() => {
                             setIsTimeDropdownOpen(!isTimeDropdownOpen);
+                            setIsBranchDropdownOpen(false);
                             setIsServiceDropdownOpen(false);
                           }}
                           className="w-full flex items-center justify-between pl-3.5 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-left text-slate-900 cursor-pointer"
@@ -749,7 +804,7 @@ export default function BookingSection({
                           <div className="flex items-center gap-2 truncate">
                             <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span className={timeSlot ? 'text-slate-900 font-medium truncate' : 'text-slate-400 truncate'}>
-                              {timeSlot || (isEn ? '-- Select Time (Optional) --' : '-- Chọn khung giờ (Tùy chọn) --')}
+                              {timeSlot || (isEn ? '-- Select Time --' : '-- Chọn khung giờ --')}
                             </span>
                           </div>
                           <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isTimeDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
@@ -766,7 +821,7 @@ export default function BookingSection({
                                 !timeSlot ? 'bg-emerald-50/80 font-semibold text-[#2D5A27]' : 'text-slate-600'
                               }`}
                             >
-                              <span>{isEn ? '-- Flexible / Any time --' : '-- Linh hoạt (Đến giờ nào cũng được) --'}</span>
+                              <span>{isEn ? '-- Flexible --' : '-- Linh hoạt --'}</span>
                               {!timeSlot && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                             </div>
 
@@ -777,23 +832,31 @@ export default function BookingSection({
                               </div>
                               <div className="grid grid-cols-2 gap-1 mt-1">
                                 {TIME_SLOTS.slice(0, 7).map((slot) => {
+                                  const isPassed = isSlotPassedToday(slot, date);
                                   const isSelected = timeSlot === slot;
                                   return (
                                     <button
                                       type="button"
                                       key={slot}
+                                      disabled={isPassed}
                                       onClick={() => {
-                                        setTimeSlot(slot);
-                                        setIsTimeDropdownOpen(false);
+                                        if (!isPassed) {
+                                          setTimeSlot(slot);
+                                          setIsTimeDropdownOpen(false);
+                                        }
                                       }}
                                       className={`py-1.5 px-2.5 rounded-lg text-left text-xs font-medium transition flex items-center justify-between ${
-                                        isSelected
-                                          ? 'bg-[#2D5A27] text-white shadow-xs'
-                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700'
+                                        isPassed
+                                          ? 'bg-slate-100 text-slate-300 line-through cursor-not-allowed opacity-50'
+                                          : isSelected
+                                          ? 'bg-[#2D5A27] text-white shadow-xs cursor-pointer'
+                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700 cursor-pointer'
                                       }`}
+                                      title={isPassed ? 'Khung giờ này đã qua hôm nay' : slot}
                                     >
                                       <span>{slot}</span>
-                                      {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                      {isSelected && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                                      {isPassed && <span className="text-[10px] text-slate-400 no-underline font-normal">Đã qua</span>}
                                     </button>
                                   );
                                 })}
@@ -807,23 +870,31 @@ export default function BookingSection({
                               </div>
                               <div className="grid grid-cols-2 gap-1 mt-1">
                                 {TIME_SLOTS.slice(7, 14).map((slot) => {
+                                  const isPassed = isSlotPassedToday(slot, date);
                                   const isSelected = timeSlot === slot;
                                   return (
                                     <button
                                       type="button"
                                       key={slot}
+                                      disabled={isPassed}
                                       onClick={() => {
-                                        setTimeSlot(slot);
-                                        setIsTimeDropdownOpen(false);
+                                        if (!isPassed) {
+                                          setTimeSlot(slot);
+                                          setIsTimeDropdownOpen(false);
+                                        }
                                       }}
                                       className={`py-1.5 px-2.5 rounded-lg text-left text-xs font-medium transition flex items-center justify-between ${
-                                        isSelected
-                                          ? 'bg-[#2D5A27] text-white shadow-xs'
-                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700'
+                                        isPassed
+                                          ? 'bg-slate-100 text-slate-300 line-through cursor-not-allowed opacity-50'
+                                          : isSelected
+                                          ? 'bg-[#2D5A27] text-white shadow-xs cursor-pointer'
+                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700 cursor-pointer'
                                       }`}
+                                      title={isPassed ? 'Khung giờ này đã qua hôm nay' : slot}
                                     >
                                       <span>{slot}</span>
-                                      {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                      {isSelected && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                                      {isPassed && <span className="text-[10px] text-slate-400 no-underline font-normal">Đã qua</span>}
                                     </button>
                                   );
                                 })}
@@ -837,23 +908,31 @@ export default function BookingSection({
                               </div>
                               <div className="grid grid-cols-2 gap-1 mt-1">
                                 {TIME_SLOTS.slice(14).map((slot) => {
+                                  const isPassed = isSlotPassedToday(slot, date);
                                   const isSelected = timeSlot === slot;
                                   return (
                                     <button
                                       type="button"
                                       key={slot}
+                                      disabled={isPassed}
                                       onClick={() => {
-                                        setTimeSlot(slot);
-                                        setIsTimeDropdownOpen(false);
+                                        if (!isPassed) {
+                                          setTimeSlot(slot);
+                                          setIsTimeDropdownOpen(false);
+                                        }
                                       }}
                                       className={`py-1.5 px-2.5 rounded-lg text-left text-xs font-medium transition flex items-center justify-between ${
-                                        isSelected
-                                          ? 'bg-[#2D5A27] text-white shadow-xs'
-                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700'
+                                        isPassed
+                                          ? 'bg-slate-100 text-slate-300 line-through cursor-not-allowed opacity-50'
+                                          : isSelected
+                                          ? 'bg-[#2D5A27] text-white shadow-xs cursor-pointer'
+                                          : 'bg-slate-50 hover:bg-emerald-50 hover:text-[#2D5A27] text-slate-700 cursor-pointer'
                                       }`}
+                                      title={isPassed ? 'Khung giờ này đã qua hôm nay' : slot}
                                     >
                                       <span>{slot}</span>
-                                      {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                      {isSelected && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                                      {isPassed && <span className="text-[10px] text-slate-400 no-underline font-normal">Đã qua</span>}
                                     </button>
                                   );
                                 })}
@@ -865,10 +944,94 @@ export default function BookingSection({
                     </div>
                   </div>
 
-                  {/* HÀNG 4: Ghi chú / Triệu chứng (nếu có) */}
+                  {/* HÀNG 4: Chi nhánh (droplist web, lấy địa chỉ trong cài đặt chi nhánh) */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      {isEn ? 'Notes / Symptoms (Optional)' : 'Ghi chú / Triệu chứng (nếu có)'}
+                      {isEn ? 'Branch' : 'Chi nhánh'}
+                    </label>
+                    <div className="relative" ref={branchDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsBranchDropdownOpen(!isBranchDropdownOpen);
+                          setIsServiceDropdownOpen(false);
+                          setIsTimeDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between pl-3.5 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:border-[#2D5A27] focus:ring-2 focus:ring-[#2D5A27]/20 text-xs sm:text-sm outline-none transition text-left text-slate-900 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className={branch ? 'text-slate-900 font-medium truncate' : 'text-slate-400 truncate'}>
+                            {(() => {
+                              const found = dbBranches.find((b) => b.id === branch);
+                              if (!found) return isEn ? '-- Select Branch --' : '-- Chọn chi nhánh --';
+                              const addr = (isEn && found.dia_chi_en) || found.dia_chi || '';
+                              const name = (isEn && (found.ten_chi_nhanh_en || found.ten_ngan_en)) || found.ten_chi_nhanh || found.ten_ngan || '';
+                              return addr || name || (isEn ? '-- Select Branch --' : '-- Chọn chi nhánh --');
+                            })()}
+                          </span>
+                        </div>
+                        <ChevronDown
+                          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                            isBranchDropdownOpen ? 'rotate-180 text-emerald-600' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {isBranchDropdownOpen && (
+                        <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden max-h-60 overflow-y-auto text-xs sm:text-sm divide-y divide-slate-100">
+                          <div
+                            onClick={() => {
+                              setBranch('');
+                              setIsBranchDropdownOpen(false);
+                            }}
+                            className={`px-3.5 py-2.5 cursor-pointer hover:bg-emerald-50/70 transition flex items-center justify-between ${
+                              !branch ? 'bg-emerald-50/50 font-semibold text-[#2D5A27]' : 'text-slate-600'
+                            }`}
+                          >
+                            <span>{isEn ? '-- Flexible branch --' : '-- Linh hoạt cơ sở khám --'}</span>
+                            {!branch && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          </div>
+
+                          {dbBranches.map((b) => {
+                            const isSelected = branch === b.id;
+                            const address = (isEn && b.dia_chi_en) || b.dia_chi;
+                            const name = (isEn && (b.ten_chi_nhanh_en || b.ten_ngan_en)) || b.ten_chi_nhanh || b.ten_ngan;
+                            return (
+                              <div
+                                key={b.id}
+                                onClick={() => {
+                                  setBranch(b.id);
+                                  setIsBranchDropdownOpen(false);
+                                }}
+                                className={`px-3.5 py-2.5 cursor-pointer hover:bg-emerald-50 transition flex items-center justify-between gap-2 ${
+                                  isSelected ? 'bg-emerald-50 font-semibold text-[#2D5A27]' : 'text-slate-700'
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-xs sm:text-sm truncate text-slate-800">
+                                    {address || name}
+                                  </div>
+                                  {address && name && (
+                                    <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                                      {name}
+                                      {b.la_co_so_chinh && (isEn ? ' • Main Branch' : ' • Cơ sở chính')}
+                                    </div>
+                                  )}
+                                </div>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* HÀNG 5: Ghi chú / Triệu chứng */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      {isEn ? 'Notes / Symptoms' : 'Ghi chú / Triệu chứng'}
                     </label>
                     <textarea
                       rows={2}

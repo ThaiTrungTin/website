@@ -101,17 +101,82 @@ export async function POST(req: NextRequest) {
 
     if (action === 'update') {
       if (!id) throw new Error('Thiếu ID bản ghi để cập nhật');
+
+      // 1. Lấy dữ liệu cũ trước khi cập nhật để so sánh Diff thực sự
+      const { data: existingItem } = await supabaseAdmin
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { data, error } = await supabaseAdmin.from(table).update(payload).eq('id', id).select();
       if (error) throw error;
 
-      const itemName = payload.ten || payload.tieu_de || payload.cau_hoi || payload.ho_ten || '';
+      // Helper chuẩn hóa giá trị để so sánh chính xác tuyệt đối
+      const normalizeVal = (val: any): string => {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+        return JSON.stringify(val);
+      };
+
+      // 2. So sánh và CHỈ giữ lại các trường có giá trị THỰC SỰ THAY ĐỔI
+      const diffs: Record<string, { cu: any; moi: any }> = {};
+      const changedKeys: string[] = [];
+
+      for (const [k, v] of Object.entries(payload)) {
+        if (k === 'id' || k === 'ngay_tao' || k === 'ngay_cap_nhat') continue;
+        const oldVal = existingItem ? (existingItem as any)[k] : undefined;
+
+        if (normalizeVal(oldVal) !== normalizeVal(v)) {
+          diffs[k] = { cu: oldVal ?? null, moi: v ?? null };
+          changedKeys.push(k);
+        }
+      }
+
+      const itemName = payload.ten || payload.tieu_de || payload.cau_hoi || payload.ho_ten || (existingItem as any)?.ten || (existingItem as any)?.tieu_de || '';
+      
+      // Tạo diễn giải hành động rõ ràng theo thực tế người dùng sửa
+      let smartActionDesc = `Cập nhật ${label}${itemName ? `: "${itemName}"` : ''}`;
+      if (changedKeys.length === 1) {
+        const field = changedKeys[0];
+        if (field === 'hinh_anh' || field === 'anh_goc' || field === 'anh_bia') {
+          smartActionDesc = `Đổi ảnh ${label}${itemName ? `: "${itemName}"` : ''}`;
+        } else if (field === 'dia_chi' || field === 'dia_chi_en') {
+          const fromAddr = diffs[field].cu || 'trống';
+          const toAddr = diffs[field].moi || 'trống';
+          smartActionDesc = `Sửa địa chỉ ${label} từ "${fromAddr}" sang "${toAddr}"`;
+        } else if (field === 'gia' || field === 'gia_uudai') {
+          smartActionDesc = `Đổi giá ${label} từ ${diffs[field].cu} sang ${diffs[field].moi}`;
+        } else if (field === 'kich_hoat') {
+          smartActionDesc = `${diffs[field].moi ? 'Bật hiển thị' : 'Tạm ẩn'} ${label}${itemName ? `: "${itemName}"` : ''}`;
+        } else {
+          smartActionDesc = `Chỉnh sửa ${field} của ${label}`;
+        }
+      } else if (changedKeys.length > 1) {
+        if (changedKeys.includes('dia_chi')) {
+          smartActionDesc = `Sửa địa chỉ ${label} từ "${diffs['dia_chi'].cu || 'trống'}" sang "${diffs['dia_chi'].moi}" (+${changedKeys.length - 1} mục khác)`;
+        } else if (changedKeys.includes('anh_goc') || changedKeys.includes('hinh_anh')) {
+          smartActionDesc = `Đổi ảnh và cập nhật ${label}${itemName ? `: "${itemName}"` : ''} (${changedKeys.length} trường thay đổi)`;
+        } else {
+          smartActionDesc = `Cập nhật ${label}${itemName ? `: "${itemName}"` : ''} (${changedKeys.length} trường thay đổi)`;
+        }
+      } else {
+        smartActionDesc = `Lưu lại ${label}${itemName ? `: "${itemName}"` : ''} (không thay đổi nội dung)`;
+      }
+
       await logAuditServer({
         nguoi_thuc_hien: userName,
         vai_tro: currentUser.vai_tro,
         hanh_dong: 'SUA',
         chuyen_muc: category,
-        chi_tiet: `Cập nhật ${label}${itemName ? `: "${itemName}"` : ` (Mã #${id.slice(0, 8)})`}`,
-        du_lieu_thay_doi: { id, updates: payload },
+        chi_tiet: smartActionDesc,
+        du_lieu_thay_doi: {
+          id,
+          loai_thao_tac: 'chinh_sua',
+          ten_muc: itemName,
+          diffs, // CHỈ CÓ NHỮNG TRƯỜNG THỰC SỰ THAY ĐỔI
+        },
       });
 
       revalidateContent(table, id);

@@ -27,6 +27,16 @@ export async function GET(req: NextRequest) {
     const actionFilter = (searchParams.get('action') || '').trim();
     const dateRange = (searchParams.get('date_range') || 'all').trim();
 
+    // Tự động dọn dẹp các bản ghi nhật ký đã quá 30 ngày (2 lớp bảo vệ song song với DB trigger)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    (async () => {
+      try {
+        await supabaseAdmin.from('nhat_ky_hoat_dong').delete().lt('ngay_tao', thirtyDaysAgo);
+      } catch (err) {
+        console.error('Lỗi tự động dọn dẹp nhật ký 30 ngày:', err);
+      }
+    })();
+
     // 1. Khởi tạo truy vấn phân trang
     let query = supabaseAdmin
       .from('nhat_ky_hoat_dong')
