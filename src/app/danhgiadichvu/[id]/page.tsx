@@ -68,17 +68,21 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     notFound();
   }
 
-  // Tra cứu địa chỉ thực tế của cơ sở tương ứng
+  // Tra cứu địa chỉ và hình ảnh bìa thực tế của cơ sở tương ứng
   let branchAddress = '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
+  let branchCoverImage = '';
   if (record.co_so) {
     try {
       const { data: branchData } = await supabaseAdmin
         .from('chi_nhanh')
-        .select('dia_chi, ten_chi_nhanh')
+        .select('dia_chi, ten_chi_nhanh, anh_dai_dien, anh_goc')
         .ilike('ten_chi_nhanh', `%${record.co_so}%`)
         .maybeSingle();
       if (branchData?.dia_chi) {
         branchAddress = branchData.dia_chi;
+      }
+      if (branchData?.anh_dai_dien || branchData?.anh_goc) {
+        branchCoverImage = branchData.anh_dai_dien || branchData.anh_goc || '';
       }
     } catch {}
   }
@@ -102,6 +106,12 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     hinh_anh: safeHinhAnh,
   };
 
-  return <DanhGiaDichVuClient initialRecord={safeRecord} branchAddress={branchAddress} />;
+  return (
+    <DanhGiaDichVuClient
+      initialRecord={safeRecord}
+      branchAddress={branchAddress}
+      branchCoverImage={branchCoverImage}
+    />
+  );
 }
 

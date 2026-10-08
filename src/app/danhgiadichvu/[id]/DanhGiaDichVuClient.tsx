@@ -12,10 +12,13 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { supabase, YeuCauDanhGiaRecord } from '@/lib/supabase';
+import { useSystemConfig } from '@/context/SystemConfigContext';
+import PetLogo from '@/components/PetLogo';
 
 interface Props {
   initialRecord: YeuCauDanhGiaRecord;
   branchAddress?: string;
+  branchCoverImage?: string;
 }
 
 const STAR_LABELS: Record<number, { text: string; emoji: string; color: string }> = {
@@ -26,12 +29,78 @@ const STAR_LABELS: Record<number, { text: string; emoji: string; color: string }
   5: { text: 'Rất hài lòng!', emoji: '😄', color: 'text-green-600' },
 };
 
-export default function DanhGiaDichVuClient({ initialRecord, branchAddress }: Props) {
+export default function DanhGiaDichVuClient({ initialRecord, branchAddress, branchCoverImage }: Props) {
+  const { config } = useSystemConfig();
+  const logoUrl = config?.logo_website || config?.logo_favicon || '/logo-favicon.png';
+  const [branchImage, setBranchImage] = useState<string>(branchCoverImage || '');
+
+  // Tải hình ảnh bìa của chi nhánh nếu chưa có hoặc khi cơ sở thay đổi
+  useEffect(() => {
+    if (branchCoverImage) {
+      setBranchImage(branchCoverImage);
+      return;
+    }
+    const targetBranch = initialRecord?.co_so;
+    if (!targetBranch) return;
+
+    supabase
+      .from('chi_nhanh')
+      .select('anh_dai_dien, anh_goc')
+      .ilike('ten_chi_nhanh', `%${targetBranch}%`)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.anh_dai_dien || data?.anh_goc) {
+          setBranchImage(data.anh_dai_dien || data.anh_goc || '');
+        }
+      });
+  }, [branchCoverImage, initialRecord?.co_so]);
+
   const [record, setRecord] = useState<YeuCauDanhGiaRecord>(initialRecord);
   const isAlreadySubmitted = record.trang_thai === 'da_danh_gia';
 
   const [rating, setRating] = useState<number>(record.so_sao || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
+
+  // Lắng nghe Realtime cập nhật trạng thái phiếu đánh giá
+  useEffect(() => {
+    if (!record?.ma_danh_gia) return;
+
+    const channel = supabase
+      .channel(`review_rt_${record.ma_danh_gia}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'yeu_cau_danh_gia',
+          filter: `ma_danh_gia=eq.${record.ma_danh_gia}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            const updated = payload.new as YeuCauDanhGiaRecord;
+            setRecord((prev) => ({ ...prev, ...updated }));
+            if (updated.trang_thai === 'da_danh_gia') {
+              setIsSuccess(true);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    const bcChannel = supabase
+      .channel('taodanhgia_live_sync')
+      .on('broadcast', { event: 'review_completed' }, (e: any) => {
+        if (e.payload?.reviewCode === record.ma_danh_gia || e.payload?.id === record.id) {
+          setIsSuccess(true);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(bcChannel);
+    };
+  }, [record?.ma_danh_gia, record?.id]);
 
   const getDisplayImageUrl = (url?: string | null): string => {
     if (!url || typeof url !== 'string') return '';
@@ -173,11 +242,18 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress }: Pr
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-slate-50/50 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <main className="max-w-lg mx-auto px-4 py-6 sm:py-8">
+        {/* Brand Logo Header */}
+        <div className="text-center mb-6">
+          <div className="inline-block">
+            <PetLogo size="default" showSubline={false} />
+          </div>
+        </div>
+
         {isSuccess ? (
           /* THANK YOU SCREEN */
-          <div className="text-center py-4 animate-fade-in">
+          <div className="text-center py-4 animate-fade-in bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
             <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5 shadow-sm">
               <CheckCircle2 className="w-9 h-9 text-green-600" />
             </div>
@@ -238,13 +314,32 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress }: Pr
           </div>
         ) : (
           /* REVIEW FORM */
-          <div>
-            {/* Location header */}
-            <div className="flex items-start gap-3 mb-6 pb-5 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
-                <MapPin className="w-6 h-6 text-white" />
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-sm">
+            {/* Location header with Branch Cover Image */}
+            <div className="flex items-start gap-3.5 mb-6 pb-5 border-b border-slate-100">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200/90 p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                {branchImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={branchImage}
+                    alt={record.co_so || 'Chi nhánh PetM&M'}
+                    className="w-full h-full object-cover rounded-xl"
+                    onError={() => setBranchImage('')}
+                  />
+                ) : logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt="Logo PetM&M"
+                    className="w-full h-full object-contain p-1"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-xl bg-emerald-600 flex items-center justify-center text-white">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <h1 className="font-bold text-slate-900 text-base leading-tight">
                   {record.co_so || 'Bệnh Viện Thú Y PetM&M'}
                 </h1>
@@ -252,7 +347,7 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress }: Pr
                   {branchAddress || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh'}
                 </p>
                 <p className="text-xs text-slate-400 mt-1.5">
-                  Khách hàng: <strong className="text-slate-600">{record.ten_khach_hang}</strong>
+                  Khách hàng: <strong className="text-slate-700 font-semibold">{record.ten_khach_hang}</strong>
                 </p>
               </div>
             </div>

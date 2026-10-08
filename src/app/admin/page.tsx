@@ -13573,8 +13573,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         defaultDescVi='<p>Được thành lập với sứ mệnh kiến tạo chuẩn mực y tế thú cưng mới tại Việt Nam, PetM&M không chỉ là một bệnh viện đa khoa hiện đại, mà còn là một “ngôi nhà thứ hai” nơi mỗi bé cưng được bảo vệ bằng tình thương và sự tận tụy cao nhất.</p>'
         defaultTitleEn='<h2>Elevating Veterinary Medicine <br /><span style="color: #2D5A27; font-style: italic;">With Integrity &amp; Compassion</span></h2>'
         defaultDescEn='<p>Established with the vision of setting new standards in pet healthcare in Vietnam, PetM&M is not only a state-of-the-art veterinary hospital, but a trusted second home where every companion is cherished with devotion.</p>'
-        badgeVi={configForm.gioi_thieu_huy_hieu || 'SỨ MỆNH & TRIẾT LÝ PETM&M'}
-        badgeEn={configForm.gioi_thieu_huy_hieu_en || 'MISSION & PHILOSOPHY'}
+        badgeVi=""
+        badgeEn=""
         previewAlign="left"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {
@@ -13639,8 +13639,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         defaultDescVi='<p>Các bài viết được biên soạn trực tiếp bởi hội đồng y khoa PetM&M nhằm hỗ trợ ba mẹ chăm sóc bé khoa học mỗi ngày.</p>'
         defaultTitleEn='<h2>Pet Health, Wellness &amp; <br /><span style="color: #2D5A27; font-style: italic;">Practical Care Insights</span></h2>'
         defaultDescEn='<p>Expert articles curated by PetM&M veterinary specialists to empower pet parents with evidence-based care.</p>'
-        badgeVi="CẨM NANG BÁC SĨ PETM&M"
-        badgeEn="VETERINARY MEDICAL GUIDE"
+        badgeVi=""
+        badgeEn=""
         previewAlign="left"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {
@@ -13706,8 +13706,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         defaultDescVi='<p>Đăng ký trước để được tiếp đón theo khung giờ, không cần chờ đợi bốc số.</p>'
         defaultTitleEn='<h2>Book Your <span style="color: #2D5A27; font-style: italic;">Online Appointment</span></h2>'
         defaultDescEn='<p>Register in advance for priority consultation, Fear-Free space and zero waiting time.</p>'
-        badgeVi="ĐẶT LỊCH KHÁM ƯU TIÊN"
-        badgeEn="PRIORITY CLINIC BOOKING"
+        badgeVi=""
+        badgeEn=""
         previewAlign="center"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {
@@ -13776,8 +13776,8 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         defaultDescVi='<p>Môi trường làm việc y khoa chuẩn mực, đãi ngộ tương xứng và cơ hội thăng tiến rộng mở cùng đội ngũ chuyên gia thú y hàng đầu.</p>'
         defaultTitleEn='<h2>Join The <br /><span style="color: #2D5A27; font-style: italic;">PetM&amp;M Family</span></h2>'
         defaultDescEn='<p>A professional Fear-Free veterinary environment with competitive benefits and endless growth opportunities alongside leading specialists.</p>'
-        badgeVi="CƠ HỘI NGHỀ NGHIỆP TẠI PETM&M"
-        badgeEn="CAREER OPPORTUNITIES AT PETM&M"
+        badgeVi=""
+        badgeEn=""
         previewAlign="center"
         showNotification={showNotification}
         onSaveSuccess={(saved) => {

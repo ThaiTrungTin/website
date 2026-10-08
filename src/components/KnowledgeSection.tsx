@@ -188,10 +188,6 @@ export default function KnowledgeSection() {
           return (
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10">
               <ScrollRevealTitle>
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase mb-4 shadow-xs">
-                  <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-                  <span>{isEn ? 'VETERINARY MEDICAL GUIDE' : 'CẨM NANG BÁC SĨ PETM&M'}</span>
-                </div>
                 {camNangTitleHtml ? (
                   <div
                     className="rich-section-title font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight [&>h1]:m-0 [&>h2]:m-0 [&>h3]:m-0 [&>p]:m-0"

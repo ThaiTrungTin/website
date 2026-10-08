@@ -97,8 +97,8 @@ export default function Footer({ branch }: FooterProps) {
 
   const activeBranch = branch || mainBranch;
 
-  const defaultBranchNameVi = 'Cơ Sở Chính TP. Thủ Đức';
-  const defaultBranchNameEn = 'Thu Duc City Main Facility';
+  const defaultBranchNameVi = 'Cơ Sở Chính';
+  const defaultBranchNameEn = 'Main Facility';
   const defaultAddressVi = config.dia_chi_chinh || '19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh';
   const defaultAddressEn = '19, Street 1, Phuoc Long Ward, Thu Duc City, Ho Chi Minh City';
 
@@ -119,17 +119,17 @@ export default function Footer({ branch }: FooterProps) {
   const formatBranchNameForLanguage = (name: string, en: boolean) => {
     if (!en || !name) return name;
     return name
-      .replace(/Trụ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Thu Duc City Main Facility')
-      .replace(/Cơ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Thu Duc City Main Facility')
+      .replace(/Trụ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Main Facility')
+      .replace(/Cơ\s*Sở\s*Chính\s*(TP\.\s*Thủ\s*Đức)?/gi, 'Main Facility')
       .replace(/Phòng\s*Khám\s*Thuộc\s*Bệnh\s*Viện\s*Thú\s*Cưng\s*PetM&M/gi, 'PetM&M Pet Hospital Clinic')
       .replace(/Cơ\s*sở\s*TP\.\s*Thủ\s*Đức/gi, 'Thu Duc City Branch')
       .replace(/Cơ\s*sở/gi, 'Branch');
   };
 
-  // Định dạng tên cơ sở hiển thị: Đổi "Trụ Sở Chính" thành "Cơ Sở Chính"
+  // Định dạng tên cơ sở hiển thị: Cơ sở chính chỉ để "Cơ Sở Chính"
   const getBranchDisplayName = () => {
-    if (branch) {
-      // Đang xem chi nhánh cụ thể từ trang chi tiết
+    if (branch && !branch.la_co_so_chinh) {
+      // Đang xem chi nhánh cụ thể từ trang chi tiết (khác cơ sở chính)
       return isEn
         ? (branch.ten_chi_nhanh_en?.trim() ||
             (branch.ten_chi_nhanh
@@ -138,19 +138,7 @@ export default function Footer({ branch }: FooterProps) {
         : (branch.ten_chi_nhanh?.trim() || defaultBranchNameVi);
     }
 
-    if (activeBranch) {
-      if (isEn) {
-        if (activeBranch.ten_chi_nhanh_en?.trim()) return activeBranch.ten_chi_nhanh_en;
-        const area = activeBranch.khu_vuc_en || activeBranch.khu_vuc || '';
-        return area ? `Main Facility (${area})` : defaultBranchNameEn;
-      }
-
-      // Tiếng Việt: Đảm bảo có chữ "Cơ Sở Chính"
-      const area = activeBranch.khu_vuc || activeBranch.ten_ngan || '';
-      const cleanArea = area.replace(/^Cơ\s*sở\s*/i, '').trim();
-      return cleanArea ? `Cơ Sở Chính ${cleanArea}` : `Cơ Sở Chính - ${activeBranch.ten_chi_nhanh}`;
-    }
-
+    // Cơ sở chính chỉ hiển thị duy nhất "Cơ Sở Chính"
     return isEn ? defaultBranchNameEn : defaultBranchNameVi;
   };
 

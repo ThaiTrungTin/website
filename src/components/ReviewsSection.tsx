@@ -279,8 +279,16 @@ export default function ReviewsSection() {
       )
       .subscribe();
 
+    const bcChannel = supabase
+      .channel('taodanhgia_live_sync')
+      .on('broadcast', { event: 'review_completed' }, () => {
+        fetchReviews();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(bcChannel);
     };
   }, []);
 

@@ -416,10 +416,6 @@ export default function BookingSection({
       <div className={`relative z-10 max-w-6xl mx-auto ${isModal ? 'p-0' : 'px-4 sm:px-6'}`}>
         {!isModal && (
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100/90 text-[#2D5A27] text-xs font-bold mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-              <span>{isEn ? 'PRIORITY CLINIC BOOKING' : 'ĐẶT LỊCH KHÁM ƯU TIÊN'}</span>
-            </div>
             {titleHtml ? (
               <div
                 className="rich-text-preview font-editorial text-3xl sm:text-5xl font-normal tracking-tight text-slate-900 mb-3 [&_p]:m-0 [&_h1]:m-0 [&_h2]:m-0 [&_h3]:m-0 [&_h2]:font-editorial [&_h2]:text-3xl [&_h2]:sm:text-5xl [&_h2]:font-normal [&_h2]:tracking-tight"

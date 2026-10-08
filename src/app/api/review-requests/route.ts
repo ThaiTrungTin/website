@@ -52,7 +52,9 @@ export async function GET(req: NextRequest) {
       if (item.hinh_anh && item.hinh_anh.startsWith('{')) {
         try {
           const parsed = JSON.parse(item.hinh_anh);
-          if (parsed?.nguoi_tao) nguoi_tao = parsed.nguoi_tao;
+          if (parsed?.nguoi_tao && (!item.nguoi_tao || item.nguoi_tao === 'Ban Quản Trị')) {
+            nguoi_tao = parsed.nguoi_tao;
+          }
           cleanHinhAnh = parsed?.img || null;
         } catch {
           cleanHinhAnh = null;

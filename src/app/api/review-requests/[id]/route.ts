@@ -127,17 +127,20 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const cleanNoiDung = typeof body.noi_dung_danh_gia === 'string' ? body.noi_dung_danh_gia.trim() : '';
     const cleanHinhAnh = typeof body.hinh_anh === 'string' ? body.hinh_anh.trim() : null;
 
-    let creatorName = 'Ban Quản Trị';
+    let creatorName = existing.nguoi_tao || 'Nhân viên';
     if (existing.hinh_anh && existing.hinh_anh.startsWith('{')) {
       try {
         const parsed = JSON.parse(existing.hinh_anh);
-        if (parsed?.nguoi_tao) creatorName = parsed.nguoi_tao;
+        if (parsed?.nguoi_tao && parsed.nguoi_tao !== 'Ban Quản Trị') {
+          creatorName = parsed.nguoi_tao;
+        }
       } catch {}
     }
 
     const updatePayload = {
       so_sao,
       noi_dung_danh_gia: cleanNoiDung || null,
+      nguoi_tao: creatorName,
       hinh_anh: JSON.stringify({ nguoi_tao: creatorName, img: cleanHinhAnh }),
       trang_thai: 'da_danh_gia',
       ngay_danh_gia: new Date().toISOString(),
@@ -182,6 +185,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       await supabaseAdmin.from('danh_gia').insert([publicReview]);
     } catch (syncErr) {
       console.warn('[API Review Detail POST] Sync public review warning:', syncErr);
+    }
+
+    // 5. Gửi Realtime Broadcast để trang /taodanhgia cập nhật tức thì
+    try {
+      const bcChannel = supabaseAdmin.channel('taodanhgia_live_sync');
+      await bcChannel.send({
+        type: 'broadcast',
+        event: 'review_completed',
+        payload: { id: existing.id, ma_danh_gia: existing.ma_danh_gia },
+      });
+    } catch (bcErr) {
+      console.warn('[API Review Detail POST] Broadcast warning:', bcErr);
     }
 
     const sanitizedUpdated = {

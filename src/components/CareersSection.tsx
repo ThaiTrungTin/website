@@ -126,11 +126,6 @@ export default function CareersSection() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header chuẩn typography font-editorial & hiệu ứng xuất hiện */}
         <ScrollRevealTitle className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold uppercase tracking-wider mb-4 shadow-xs">
-            <Briefcase className="w-3.5 h-3.5 text-[#FFB800]" />
-            <span>{isEn ? 'CAREERS & OPPORTUNITIES' : 'CƠ HỘI NGHỀ NGHIỆP'}</span>
-          </div>
-
           {titleHtml ? (
             <div
               className="rich-text-preview font-editorial text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 leading-tight [&_p]:m-0 [&_h1]:m-0 [&_h2]:m-0 [&_h3]:m-0 [&_h2]:font-editorial [&_h2]:text-3xl [&_h2]:sm:text-5xl [&_h2]:lg:text-6xl [&_h2]:font-normal [&_h2]:tracking-tight [&_h2]:leading-tight"

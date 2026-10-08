@@ -149,8 +149,17 @@ export default function AdminDashboardTab({
       )
       .subscribe();
 
+    const bc = supabase
+      .channel('taodanhgia_live_sync')
+      .on('broadcast', { event: 'review_completed' }, () => {
+        fetchPendingReviewRequests();
+        fetchNotifStats();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(bc);
     };
   }, [fetchNotifStats, fetchPendingReviewRequests]);
 

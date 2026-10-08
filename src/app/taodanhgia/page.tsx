@@ -31,6 +31,10 @@ import {
   Download,
   Search,
   Pencil,
+  ArrowLeft,
+  ArrowRight,
+  Hash,
+  CheckCircle2,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import PetLogo from '@/components/PetLogo';
@@ -61,6 +65,18 @@ export default function TaoDanhGiaPage() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [copiedLoginPwd, setCopiedLoginPwd] = useState(false);
   const [autoFillLoginNotice, setAutoFillLoginNotice] = useState('');
+
+  // Chế độ xem đăng nhập / Quên mật khẩu
+  const [authViewMode, setAuthViewMode] = useState<'login' | 'forgot' | 'otp_reset'>('login');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
+  const [forgotSuccessMessage, setForgotSuccessMessage] = useState('');
+  const [otpCodeInput, setOtpCodeInput] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isOtpResetLoading, setIsOtpResetLoading] = useState(false);
+  const [otpResetSuccessMessage, setOtpResetSuccessMessage] = useState('');
 
   // Gửi heartbeat theo dõi trạng thái online / chuyển tab của nhân viên
   usePresenceHeartbeat(Boolean(currentUser));
@@ -156,6 +172,91 @@ export default function TaoDanhGiaPage() {
     }
   };
 
+  const handleSendOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      setLoginError('Vui lòng nhập địa chỉ email quản trị / nhân sự!');
+      return;
+    }
+    setIsForgotLoading(true);
+    setLoginError('');
+    setForgotSuccessMessage('');
+
+    try {
+      const res = await fetch('/api/admin/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setLoginError(data.message || 'Không thể tạo mã xác thực. Vui lòng kiểm tra lại email!');
+        return;
+      }
+      setForgotSuccessMessage(data.message || `Đã gửi mã xác thực về hòm thư ${forgotEmail}! Vui lòng kiểm tra Gmail.`);
+      setOtpCodeInput('');
+      setTimeout(() => {
+        setAuthViewMode('otp_reset');
+      }, 1200);
+    } catch {
+      setLoginError('Lỗi kết nối khi gửi yêu cầu mã xác thực.');
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
+  const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCodeInput.trim()) {
+      setLoginError('Vui lòng nhập mã xác thực OTP 6 số!');
+      return;
+    }
+    if (!newPassword || !confirmNewPassword) {
+      setLoginError('Vui lòng nhập mật khẩu mới và xác nhận mật khẩu!');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setLoginError('Mật khẩu mới phải có ít nhất 6 ký tự!');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setLoginError('Mật khẩu mới và xác nhận mật khẩu không trùng khớp!');
+      return;
+    }
+
+    setIsOtpResetLoading(true);
+    setLoginError('');
+
+    try {
+      const res = await fetch('/api/admin/verify-otp-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          otpCode: otpCodeInput.trim(),
+          newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setLoginError(data.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn!');
+        return;
+      }
+      setOtpResetSuccessMessage('Đổi mật khẩu thành công! Đang tự động đăng nhập...');
+      setTimeout(() => {
+        if (data.user) {
+          setCurrentUser(data.user);
+        } else {
+          setAuthViewMode('login');
+        }
+      }, 1200);
+    } catch {
+      setLoginError('Lỗi kết nối máy chủ xác thực OTP.');
+    } finally {
+      setIsOtpResetLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     setShowLogoutConfirm(false);
     try {
@@ -207,6 +308,7 @@ export default function TaoDanhGiaPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [phoneError, setPhoneError] = useState<string>('');
+  const [reviewCompletedNotice, setReviewCompletedNotice] = useState<string>('');
 
   const [historyList, setHistoryList] = useState<YeuCauDanhGiaRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
@@ -398,18 +500,92 @@ export default function TaoDanhGiaPage() {
       if (!isSilent) setIsLoadingHistory(true);
       const res = await fetch('/api/review-requests?limit=50');
       const json = await res.json();
-      if (res.ok && json.success) setHistoryList(json.data || []);
+      if (res.ok && json.success) {
+        const list: YeuCauDanhGiaRecord[] = json.data || [];
+        setHistoryList(list);
+
+        // Tự động kiểm tra nếu phiếu vừa tạo đang hiển thị mã QR đã được khách đánh giá xong
+        setCreatedRecord((prevCreated) => {
+          if (!prevCreated) return null;
+          const matching = list.find(
+            (it) => it.id === prevCreated.id || it.ma_danh_gia === prevCreated.ma_danh_gia
+          );
+          if (matching && matching.trang_thai === 'da_danh_gia') {
+            // Tự động hoàn trả về form tạo mới
+            setGeneratedLink('');
+            setQrCodeDataUrl('');
+            setTenKhachHang('');
+            setSoDienThoai('');
+            setEmail('');
+            setMaHoaDon('');
+            setReviewCompletedNotice(
+              `Khách hàng "${matching.ten_khach_hang}" đã hoàn tất đánh giá (${matching.so_sao || 5}★)! Form đã tự động làm mới để sẵn sàng tạo phiếu tiếp theo.`
+            );
+            return null;
+          }
+          return prevCreated;
+        });
+      }
     } catch {}
     finally {
       if (!isSilent) setIsLoadingHistory(false);
     }
   }, []);
 
+  // Tự động tắt thông báo khách đánh giá xong sau 8 giây
+  useEffect(() => {
+    if (!reviewCompletedNotice) return;
+    const timer = setTimeout(() => {
+      setReviewCompletedNotice('');
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [reviewCompletedNotice]);
+
   useEffect(() => {
     if (!currentUser) return;
     fetchHistory(false);
 
-    const channel = supabase
+    // 1. Kênh Broadcast tức thì khi khách gửi đánh giá thành công
+    const bcChannel = supabase
+      .channel('taodanhgia_live_sync')
+      .on('broadcast', { event: 'review_completed' }, (eventData: any) => {
+        fetchHistory(true);
+        const p = eventData?.payload;
+        if (p) {
+          setCreatedRecord((prevCreated) => {
+            if (!prevCreated) return null;
+            if (prevCreated.id === p.id || prevCreated.ma_danh_gia === p.reviewCode) {
+              setGeneratedLink('');
+              setQrCodeDataUrl('');
+              setTenKhachHang('');
+              setSoDienThoai('');
+              setEmail('');
+              setMaHoaDon('');
+              setReviewCompletedNotice(
+                `Khách hàng "${p.customerName || 'Khách'}" đã hoàn tất đánh giá (${p.stars || 5}★)! Form đã tự động làm mới để sẵn sàng tạo phiếu tiếp theo.`
+              );
+              return null;
+            }
+            return prevCreated;
+          });
+        }
+      })
+      .subscribe();
+
+    // 2. Kênh Postgres changes cho bảng danh_gia (anon có quyền SELECT công khai nên luôn nhận realtime)
+    const publicReviewChannel = supabase
+      .channel('taodanhgia_danh_gia_rt')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'danh_gia' },
+        () => {
+          fetchHistory(true);
+        }
+      )
+      .subscribe();
+
+    // 3. Kênh Postgres changes cho bảng yeu_cau_danh_gia
+    const reqChannel = supabase
       .channel('taodanhgia_yeu_cau_danh_gia_rt')
       .on(
         'postgres_changes',
@@ -420,8 +596,16 @@ export default function TaoDanhGiaPage() {
       )
       .subscribe();
 
+    // 4. Polling liên tục mỗi 6 giây bảo đảm dữ liệu luôn mới nhất
+    const pollTimer = setInterval(() => {
+      fetchHistory(true);
+    }, 6000);
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(bcChannel);
+      supabase.removeChannel(publicReviewChannel);
+      supabase.removeChannel(reqChannel);
+      clearInterval(pollTimer);
     };
   }, [currentUser, fetchHistory]);
 
@@ -571,13 +755,19 @@ export default function TaoDanhGiaPage() {
             <div className="inline-block mb-3">
               <PetLogo size="default" showSubline={false} />
             </div>
-            <h1 className="text-lg font-bold text-slate-900">Cổng Nhân Viên Tạo Đánh Giá</h1>
+            <h1 className="text-lg font-bold text-slate-900">
+              {authViewMode === 'login' && 'Cổng Nhân Viên Tạo Đánh Giá'}
+              {authViewMode === 'forgot' && 'Khôi Phục Mật Khẩu'}
+              {authViewMode === 'otp_reset' && 'Đặt Lại Mật Khẩu'}
+            </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Đăng nhập tài khoản nhân sự được cấp để tạo link khảo sát dịch vụ
+              {authViewMode === 'login' && 'Đăng nhập tài khoản nhân sự được cấp để tạo link khảo sát dịch vụ'}
+              {authViewMode === 'forgot' && 'Nhập email được cấp tài khoản để nhận mã xác thực OTP qua hộp thư'}
+              {authViewMode === 'otp_reset' && `Nhập mã xác thực OTP 6 số đã gửi đến ${forgotEmail} và thiết lập mật khẩu mới`}
             </p>
           </div>
 
-          {autoFillLoginNotice && (
+          {autoFillLoginNotice && authViewMode === 'login' && (
             <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-800 animate-in fade-in duration-200">
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -593,6 +783,20 @@ export default function TaoDanhGiaPage() {
             </div>
           )}
 
+          {forgotSuccessMessage && authViewMode === 'forgot' && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2 text-xs text-emerald-800 animate-in fade-in duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>{forgotSuccessMessage}</span>
+            </div>
+          )}
+
+          {otpResetSuccessMessage && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2 text-xs text-emerald-800 animate-in fade-in duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>{otpResetSuccessMessage}</span>
+            </div>
+          )}
+
           {loginError && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-700 animate-in fade-in duration-200">
               <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
@@ -600,86 +804,260 @@ export default function TaoDanhGiaPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Tên đăng nhập hoặc Email
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="nhansu@petmm.vn"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
-                  required
-                />
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          {authViewMode === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Tên đăng nhập hoặc Email
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="nhansu@petmm.vn"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                    required
+                  />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Mật khẩu
-              </label>
-              <div className="relative">
-                <input
-                  type={showLoginPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-16 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
-                  required
-                />
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
-                  {loginPassword && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(loginPassword);
-                        setCopiedLoginPwd(true);
-                        setTimeout(() => setCopiedLoginPwd(false), 2000);
-                      }}
-                      className="p-1 hover:text-emerald-700 transition rounded cursor-pointer"
-                      title={copiedLoginPwd ? 'Đã sao chép mật khẩu!' : 'Sao chép mật khẩu'}
-                    >
-                      {copiedLoginPwd ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Mật khẩu
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setShowLoginPassword((p) => !p)}
-                    className="p-1 hover:text-slate-600 cursor-pointer"
-                    title={showLoginPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    onClick={() => {
+                      setLoginError('');
+                      setForgotSuccessMessage('');
+                      if (loginUsername.includes('@')) {
+                        setForgotEmail(loginUsername);
+                      }
+                      setAuthViewMode('forgot');
+                    }}
+                    className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline font-semibold cursor-pointer"
                   >
-                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Quên mật khẩu?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full pl-10 pr-16 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                    required
+                  />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+                    {loginPassword && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(loginPassword);
+                          setCopiedLoginPwd(true);
+                          setTimeout(() => setCopiedLoginPwd(false), 2000);
+                        }}
+                        className="p-1 hover:text-emerald-700 transition rounded cursor-pointer"
+                        title={copiedLoginPwd ? 'Đã sao chép mật khẩu!' : 'Sao chép mật khẩu'}
+                      >
+                        {copiedLoginPwd ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword((p) => !p)}
+                      className="p-1 hover:text-slate-600 cursor-pointer"
+                      title={showLoginPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    >
+                      {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loginLoading}
+                className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 disabled:opacity-60"
+              >
+                {loginLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang đăng nhập...</span>
+                  </>
+                ) : (
+                  <span>Đăng Nhập Vào Hệ Thống</span>
+                )}
+              </button>
+            </form>
+          )}
+
+          {authViewMode === 'forgot' && (
+            <form onSubmit={handleSendOtpSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Địa chỉ Email tài khoản
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    placeholder="nhansu@petmm.vn hoặc email của bạn"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                    required
+                    autoFocus
+                  />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Hệ thống sẽ gửi mã xác thực 6 chữ số đến địa chỉ email này.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isForgotLoading}
+                className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 disabled:opacity-60"
+              >
+                {isForgotLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang tạo và gửi mã OTP...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Gửi Mã Xác Thực OTP</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginError('');
+                    setForgotSuccessMessage('');
+                    setAuthViewMode('login');
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-emerald-700 font-medium transition cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Quay lại đăng nhập
+                </button>
+              </div>
+            </form>
+          )}
+
+          {authViewMode === 'otp_reset' && (
+            <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Mã xác thực OTP (6 chữ số)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={otpCodeInput}
+                    onChange={(e) => setOtpCodeInput(e.target.value.replace(/\D/g, ''))}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm tracking-widest font-mono text-center focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                    required
+                    autoFocus
+                  />
+                  <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Mật khẩu mới
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    placeholder="Tối thiểu 6 ký tự"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                    required
+                  />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loginLoading}
-              className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 disabled:opacity-60"
-            >
-              {loginLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Đang đăng nhập...</span>
-                </>
-              ) : (
-                <span>Đăng Nhập Vào Hệ Thống</span>
-              )}
-            </button>
-          </form>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Xác nhận mật khẩu mới
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    placeholder="Nhập lại mật khẩu mới"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-emerald-600 focus:outline-none transition shadow-xs"
+                    required
+                  />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-            <Link href="/" className="text-xs text-emerald-700 hover:underline font-medium">
-              ← Quay về trang chủ PetM&amp;M
-            </Link>
-          </div>
+              <button
+                type="submit"
+                disabled={isOtpResetLoading}
+                className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 disabled:opacity-60"
+              >
+                {isOtpResetLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang cập nhật mật khẩu...</span>
+                  </>
+                ) : (
+                  <span>Xác Nhận Đổi Mật Khẩu</span>
+                )}
+              </button>
+
+              <div className="pt-2 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginError('');
+                    setAuthViewMode('forgot');
+                  }}
+                  className="text-slate-500 hover:text-emerald-700 cursor-pointer"
+                >
+                  Gửi lại mã OTP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginError('');
+                    setOtpResetSuccessMessage('');
+                    setAuthViewMode('login');
+                  }}
+                  className="inline-flex items-center gap-1 text-slate-600 hover:text-emerald-700 font-medium transition cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Quay lại đăng nhập
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -743,6 +1121,26 @@ export default function TaoDanhGiaPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT: Form / Result */}
           <div className="lg:col-span-5">
+            {reviewCompletedNotice && (
+              <div className="mb-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 shadow-xs flex items-start justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold text-emerald-900 mb-0.5 text-xs">Khách hàng đã hoàn tất đánh giá!</strong>
+                    <span className="text-emerald-800 leading-relaxed">{reviewCompletedNotice}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewCompletedNotice('')}
+                  className="text-xs text-emerald-700 hover:text-emerald-950 font-bold p-1 rounded cursor-pointer"
+                  title="Đóng thông báo"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {createdRecord && generatedLink ? (
               <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 animate-in fade-in duration-300">
                 <div className="flex items-center gap-3 mb-4 text-emerald-600">
@@ -1150,8 +1548,10 @@ export default function TaoDanhGiaPage() {
                           const d = item.ngay_tao ? new Date(item.ngay_tao) : new Date();
                           const pad = (n: number) => String(n).padStart(2, '0');
                           const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} - ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-                          const rawCreator = item.nguoi_tao || 'Nhân viên';
-                          const creator = rawCreator.replace(/\s*\((Admin|User|Quản trị viên|Nhân viên)\)/gi, '').trim();
+                          const rawCreator = (item.nguoi_tao && item.nguoi_tao !== 'Ban Quản Trị')
+                            ? item.nguoi_tao
+                            : (currentUser?.ho_ten || currentUser?.username || 'Nhân viên');
+                          const creator = rawCreator.replace(/\s*\((Admin|User|Quản trị viên|Nhân viên)\)/gi, '').trim() || 'Nhân viên';
 
                           return (
                             <tr
@@ -1205,18 +1605,29 @@ export default function TaoDanhGiaPage() {
                                 )}
                               </td>
 
-                              {/* 3. Thao tác: Zalo OA (badge số/lỗi), Sửa (chỉ khi chờ), Mã QR, Mở link */}
+                              {/* 3. Thao tác: Zalo OA (badge số/lỗi), Sửa (chỉ khi chờ), Mã QR, Mở link (mờ khi đã đánh giá) */}
                               <td className="py-3 px-3 text-center">
                                 <div className="inline-flex items-center justify-center gap-1.5">
-                                  {/* Nút gửi Zalo OA */}
+                                  {/* Nút gửi Zalo OA: mờ và khóa khi đã đánh giá */}
                                   {item.so_dien_thoai && (
                                     <div className="relative inline-block">
                                       <button
                                         type="button"
-                                        onClick={() => handleSendZaloOa(item)}
-                                        disabled={zaloSending}
-                                        className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0068FF] border border-blue-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
-                                        title={`Gửi qua Zalo OA (ZNS)${item.so_lan_gui_zalo ? ` - Đã gửi ${item.so_lan_gui_zalo} lần` : ''}`}
+                                        onClick={() => {
+                                          if (item.trang_thai === 'da_danh_gia') return;
+                                          handleSendZaloOa(item);
+                                        }}
+                                        disabled={zaloSending || item.trang_thai === 'da_danh_gia'}
+                                        className={`w-8 h-8 rounded-lg border flex items-center justify-center transition shadow-2xs ${
+                                          item.trang_thai === 'da_danh_gia'
+                                            ? 'bg-slate-100 text-slate-300 border-slate-200 opacity-40 cursor-not-allowed grayscale'
+                                            : 'bg-blue-50 hover:bg-blue-100 text-[#0068FF] border-blue-200 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50'
+                                        }`}
+                                        title={
+                                          item.trang_thai === 'da_danh_gia'
+                                            ? 'Khách hàng đã hoàn tất đánh giá, không gửi lại Zalo'
+                                            : `Gửi qua Zalo OA (ZNS)${item.so_lan_gui_zalo ? ` - Đã gửi ${item.so_lan_gui_zalo} lần` : ''}`
+                                        }
                                       >
                                         <ZaloIcon className="w-4.5 h-4.5 rounded-xs" />
                                       </button>
@@ -1255,26 +1666,49 @@ export default function TaoDanhGiaPage() {
                                     </button>
                                   )}
 
-                                  {/* Nút Xem QR */}
+                                  {/* Nút Xem QR: mờ và khóa khi đã đánh giá */}
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenQrModal(item)}
-                                    className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
-                                    title="Xem mã QR &amp; Sao chép link"
+                                    onClick={() => {
+                                      if (item.trang_thai === 'da_danh_gia') return;
+                                      handleOpenQrModal(item);
+                                    }}
+                                    disabled={item.trang_thai === 'da_danh_gia'}
+                                    className={`w-8 h-8 rounded-lg border flex items-center justify-center transition shadow-2xs ${
+                                      item.trang_thai === 'da_danh_gia'
+                                        ? 'bg-slate-100 text-slate-300 border-slate-200 opacity-40 cursor-not-allowed grayscale'
+                                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 hover:scale-105 active:scale-95 cursor-pointer'
+                                    }`}
+                                    title={
+                                      item.trang_thai === 'da_danh_gia'
+                                        ? 'Khách hàng đã hoàn tất đánh giá'
+                                        : 'Xem mã QR &amp; Sao chép link'
+                                    }
                                   >
                                     <QrCode className="w-4 h-4" />
                                   </button>
 
-                                  {/* Nút Đi tới trang đánh giá */}
-                                  <a
-                                    href={link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95"
-                                    title="Đi tới link đánh giá"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </a>
+                                  {/* Nút Đi tới trang đánh giá: mờ và khóa khi đã đánh giá */}
+                                  {item.trang_thai === 'da_danh_gia' ? (
+                                    <button
+                                      type="button"
+                                      disabled
+                                      className="w-8 h-8 rounded-lg bg-slate-100 text-slate-300 border border-slate-200 flex items-center justify-center shadow-2xs opacity-40 cursor-not-allowed grayscale"
+                                      title="Phiếu khảo sát này đã hoàn tất đánh giá"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </button>
+                                  ) : (
+                                    <a
+                                      href={link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition shadow-2xs hover:scale-105 active:scale-95"
+                                      title="Đi tới link đánh giá"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                  )}
                                 </div>
                               </td>
 

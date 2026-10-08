@@ -366,11 +366,6 @@ export default function AboutSection() {
           {/* CỘT TRÁI (6 CỘT): TIÊU ĐỀ, MÔ TẢ & 4 TRỤ CỘT Y ĐỨC */}
           <div className="lg:col-span-6 space-y-6">
             <ScrollRevealTitle>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2D5A27] text-xs font-bold tracking-wider uppercase mb-3 shadow-xs">
-                <Sparkles className="w-3.5 h-3.5 text-[#FFB800]" />
-                <span>{huyHieu}</span>
-              </div>
-
               {aboutTitleHtml ? (
                 <div
                   className="font-editorial text-2xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-slate-900 mb-4 leading-tight [&_p]:m-0 [&_span]:inline [&_strong]:font-semibold"
