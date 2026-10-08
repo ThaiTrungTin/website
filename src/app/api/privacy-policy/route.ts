@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
+import { logAuditServer } from '@/lib/auditLogger';
 import { DEFAULT_PRIVACY_POLICY, PrivacyPolicyConfig } from '@/types/privacyPolicy';
 
 // 1. GET: Lấy nội dung chính sách quyền riêng tư từ bảng độc lập chinh_sach_bao_mat
@@ -68,6 +70,21 @@ export async function POST(req: NextRequest) {
       .upsert(recordToSave);
 
     if (upsertErr) throw upsertErr;
+
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'CAU_HINH',
+      chuyen_muc: 'Cấu hình',
+      chi_tiet: 'Cập nhật nội dung Chính sách bảo mật & Quyền riêng tư',
+      du_lieu_thay_doi: { lastUpdated: recordToSave.ngay_cap_nhat },
+    });
+
+    try {
+      revalidatePath('/chinh-sach-bao-mat');
+      revalidatePath('/privacy-policy');
+      revalidatePath('/');
+    } catch {}
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
 import { logAuditServer } from '@/lib/auditLogger';
@@ -176,6 +177,10 @@ export async function POST(req: NextRequest) {
         du_lieu_thay_doi: { fields: changedFields },
       });
     }
+
+    try {
+      revalidatePath('/');
+    } catch {}
 
     return NextResponse.json({
       success: true,

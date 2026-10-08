@@ -5,15 +5,14 @@ import type { Metadata } from 'next';
 import { getAssetUrl } from '@/lib/assets';
 import KienThucDetailClient from '@/components/KienThucDetailClient';
 
-// ISR Cache: Revalidate every 60 seconds (Instant 0ms responses for cached pages)
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-// React cache to deduplicate Supabase call between generateMetadata and Page component
-const getArticle = cache(async (id: string): Promise<BaiVietRecord | null> => {
+const getArticle = async (id: string): Promise<BaiVietRecord | null> => {
   try {
     const { data, error } = await supabase
       .from('bai_viet')
@@ -27,10 +26,9 @@ const getArticle = cache(async (id: string): Promise<BaiVietRecord | null> => {
   } catch {
     return null;
   }
-});
+};
 
-// Lấy danh sách bài viết liên quan tinh gọn (chỉ lấy các trường cần thiết, bỏ qua nội dung dài)
-const getRelatedArticles = cache(async (currentId: string): Promise<BaiVietRecord[]> => {
+const getRelatedArticles = async (currentId: string): Promise<BaiVietRecord[]> => {
   try {
     const { data } = await supabase
       .from('bai_viet')
@@ -44,20 +42,7 @@ const getRelatedArticles = cache(async (currentId: string): Promise<BaiVietRecor
   } catch {
     return [];
   }
-});
-
-// Pre-render static paths for fast instant navigation
-export async function generateStaticParams() {
-  try {
-    const { data: articles } = await supabase
-      .from('bai_viet')
-      .select('id')
-      .eq('kich_hoat', true);
-    return (articles || []).map((a) => ({ id: a.id }));
-  } catch {
-    return [];
-  }
-}
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

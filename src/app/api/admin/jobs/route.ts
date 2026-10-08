@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
 import { logAuditServer } from '@/lib/auditLogger';
@@ -89,6 +90,12 @@ export async function POST(req: NextRequest) {
       du_lieu_thay_doi: { id: data.id, tieu_de: body.tieu_de },
     });
 
+    try {
+      revalidatePath('/tuyen-dung');
+      if (data?.id) revalidatePath(`/tuyen-dung/${data.id}`);
+      revalidatePath('/');
+    } catch {}
+
     return NextResponse.json({
       success: true,
       message: 'Đã thêm vị trí tuyển dụng mới thành công!',
@@ -143,6 +150,12 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    try {
+      revalidatePath('/tuyen-dung');
+      if (id) revalidatePath(`/tuyen-dung/${id}`);
+      revalidatePath('/');
+    } catch {}
+
     return NextResponse.json({
       success: true,
       message: 'Đã cập nhật vị trí tuyển dụng thành công!',
@@ -195,6 +208,12 @@ export async function PATCH(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    try {
+      revalidatePath('/tuyen-dung');
+      if (id) revalidatePath(`/tuyen-dung/${id}`);
+      revalidatePath('/');
+    } catch {}
 
     return NextResponse.json({
       success: true,
@@ -254,6 +273,12 @@ export async function DELETE(req: NextRequest) {
       chi_tiet: `Xóa vị trí tuyển dụng (Mã #${id.slice(0, 8)})`,
       du_lieu_thay_doi: { deletedJobId: id },
     });
+
+    try {
+      revalidatePath('/tuyen-dung');
+      if (id) revalidatePath(`/tuyen-dung/${id}`);
+      revalidatePath('/');
+    } catch {}
 
     return NextResponse.json({
       success: true,

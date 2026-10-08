@@ -4,13 +4,14 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import TuyenDungDetailClient from '@/components/TuyenDungDetailClient';
 
-export const revalidate = 60; // ISR cache 60s
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-const getJob = cache(async (id: string): Promise<TuyenDungRecord | null> => {
+const getJob = async (id: string): Promise<TuyenDungRecord | null> => {
   try {
     const { data, error } = await supabase
       .from('tuyen_dung')
@@ -24,9 +25,9 @@ const getJob = cache(async (id: string): Promise<TuyenDungRecord | null> => {
   } catch {
     return null;
   }
-});
+};
 
-const getOtherJobs = cache(async (currentId: string): Promise<TuyenDungRecord[]> => {
+const getOtherJobs = async (currentId: string): Promise<TuyenDungRecord[]> => {
   try {
     const { data } = await supabase
       .from('tuyen_dung')
@@ -40,19 +41,7 @@ const getOtherJobs = cache(async (currentId: string): Promise<TuyenDungRecord[]>
   } catch {
     return [];
   }
-});
-
-export async function generateStaticParams() {
-  try {
-    const { data: jobs } = await supabase
-      .from('tuyen_dung')
-      .select('id')
-      .eq('kich_hoat', true);
-    return (jobs || []).map((j) => ({ id: j.id }));
-  } catch {
-    return [];
-  }
-}
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

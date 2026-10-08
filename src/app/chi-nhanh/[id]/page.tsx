@@ -4,15 +4,15 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ChiNhanhDetailClient from '@/components/ChiNhanhDetailClient';
 
-// ISR Cache: Revalidate every 60 seconds (Instant 0ms responses for cached pages)
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-// React cache to deduplicate Supabase call between generateMetadata and Page component
-const getBranch = cache(async (id: string): Promise<ChiNhanhRecord | null> => {
+// Hàm lấy chi nhánh trực tiếp từ Supabase
+const getBranch = async (id: string): Promise<ChiNhanhRecord | null> => {
   try {
     const { data, error } = await supabase
       .from('chi_nhanh')
@@ -26,10 +26,10 @@ const getBranch = cache(async (id: string): Promise<ChiNhanhRecord | null> => {
   } catch {
     return null;
   }
-});
+};
 
 // Lấy bài viết cẩm nang mới nhất để hiển thị sidebar
-const getRecentArticles = cache(async (): Promise<{ id: string; tieu_de: string; tieu_de_en?: string | null; hinh_anh: string | null; chuyen_muc: string | null; chuyen_muc_en?: string | null; ngay_dang: string | null }[]> => {
+const getRecentArticles = async (): Promise<{ id: string; tieu_de: string; tieu_de_en?: string | null; hinh_anh: string | null; chuyen_muc: string | null; chuyen_muc_en?: string | null; ngay_dang: string | null }[]> => {
   try {
     const { data } = await supabase
       .from('bai_viet')
@@ -41,20 +41,7 @@ const getRecentArticles = cache(async (): Promise<{ id: string; tieu_de: string;
   } catch {
     return [];
   }
-});
-
-// Pre-render static paths for fast instant navigation
-export async function generateStaticParams() {
-  try {
-    const { data: branches } = await supabase
-      .from('chi_nhanh')
-      .select('id')
-      .eq('kich_hoat', true);
-    return (branches || []).map((b) => ({ id: b.id }));
-  } catch {
-    return [];
-  }
-}
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

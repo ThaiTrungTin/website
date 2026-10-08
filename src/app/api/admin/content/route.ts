@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
 import { logAuditServer, AuditAction, AuditCategory } from '@/lib/auditLogger';
+
+function revalidateContent(table: string, recordId?: string) {
+  try {
+    if (table === 'bai_viet') {
+      revalidatePath('/kien-thuc');
+      if (recordId) revalidatePath(`/kien-thuc/${recordId}`);
+      revalidatePath('/');
+    } else if (table === 'chi_nhanh') {
+      revalidatePath('/chi-nhanh');
+      if (recordId) revalidatePath(`/chi-nhanh/${recordId}`);
+      revalidatePath('/');
+    } else {
+      revalidatePath('/');
+    }
+  } catch (err) {
+    console.warn('revalidateContent warning:', err);
+  }
+}
 
 const ALLOWED_TABLES = new Set([
   'bai_viet',
@@ -75,6 +94,8 @@ export async function POST(req: NextRequest) {
         du_lieu_thay_doi: { inserted: data },
       });
 
+      revalidateContent(table, data?.[0]?.id);
+
       return NextResponse.json({ success: true, data });
     }
 
@@ -92,6 +113,8 @@ export async function POST(req: NextRequest) {
         chi_tiet: `Cập nhật ${label}${itemName ? `: "${itemName}"` : ` (Mã #${id.slice(0, 8)})`}`,
         du_lieu_thay_doi: { id, updates: payload },
       });
+
+      revalidateContent(table, id);
 
       return NextResponse.json({ success: true, data });
     }
@@ -118,6 +141,8 @@ export async function POST(req: NextRequest) {
         chi_tiet: `Xóa ${label}${itemName ? `: "${itemName}"` : ` (Mã #${id.slice(0, 8)})`}`,
         du_lieu_thay_doi: { id, deleted: existingItem },
       });
+
+      revalidateContent(table, id);
 
       return NextResponse.json({ success: true });
     }
@@ -147,6 +172,8 @@ export async function POST(req: NextRequest) {
         chi_tiet: `Thiết lập "${updatedBranch?.ten || 'Chi nhánh'}" làm Cơ sở chính (Trụ sở trung tâm)`,
         du_lieu_thay_doi: { branchId: id },
       });
+
+      revalidateContent('chi_nhanh', id);
 
       return NextResponse.json({ success: true });
     }

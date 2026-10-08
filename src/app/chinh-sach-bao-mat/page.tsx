@@ -3,7 +3,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { DEFAULT_PRIVACY_POLICY, PrivacyPolicyConfig } from '@/types/privacyPolicy';
 import PrivacyPolicyClient from '@/components/PrivacyPolicyClient';
 
-export const revalidate = 60; // Tự động làm mới cache mỗi 60 giây
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Chính Sách Bảo Mật & Bảo Vệ Quyền Riêng Tư | Bệnh Viện Thú Cưng PetM&M',

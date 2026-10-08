@@ -3,7 +3,8 @@ import { supabase, TuyenDungRecord } from '@/lib/supabase';
 import type { Metadata } from 'next';
 import TuyenDungListClient from '@/components/TuyenDungListClient';
 
-export const revalidate = 60; // ISR cache 60s
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const getJobs = cache(async (): Promise<TuyenDungRecord[]> => {
   try {
