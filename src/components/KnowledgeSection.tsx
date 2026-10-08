@@ -120,12 +120,16 @@ export default function KnowledgeSection() {
 
     fetchArticles();
 
+    const handleFocus = () => { fetchArticles(); };
+    window.addEventListener('focus', handleFocus);
+
     const channel = supabase
       .channel('bai_viet_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bai_viet' }, fetchArticles)
       .subscribe();
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
       supabase.removeChannel(channel);
     };
   }, []);

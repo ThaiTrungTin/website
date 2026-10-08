@@ -21,7 +21,7 @@ import {
   Calendar,
   Users,
 } from 'lucide-react';
-import { TuyenDungRecord } from '@/lib/supabase';
+import { supabase, TuyenDungRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import Header from '@/components/Header';
@@ -34,10 +34,41 @@ interface Props {
 }
 
 export default function TuyenDungListClient({ initialJobs }: Props) {
+  const [jobs, setJobs] = useState<TuyenDungRecord[]>(initialJobs);
   const { language, isEn } = useLanguage();
   const { config } = useSystemConfig();
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
+
+  useEffect(() => {
+    setJobs(initialJobs);
+  }, [initialJobs]);
+
+  const fetchJobs = async () => {
+    try {
+      const { data } = await supabase
+        .from('tuyen_dung')
+        .select('*')
+        .eq('kich_hoat', true)
+        .order('thu_tu', { ascending: true });
+      if (data) setJobs(data as TuyenDungRecord[]);
+    } catch {}
+  };
+
+  useEffect(() => {
+    const handleFocus = () => { fetchJobs(); };
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel('realtime_tuyen_dung_list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tuyen_dung' }, fetchJobs)
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const hotlineRaw = (config.hotline || '0903 599 339').replace(/\s+/g, '');
   const hotlineDisplay = config.hotline_hien_thi || config.hotline || '0903 599 339';
@@ -49,7 +80,7 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
     const list: { id: string; labelVi: string; labelEn: string }[] = [];
     const seen = new Set<string>();
 
-    initialJobs.forEach((job) => {
+    jobs.forEach((job) => {
       const deptVi = (job.phong_ban || '').trim();
       const deptEn = (job.phong_ban_en || '').trim() || deptVi;
       if (deptVi && !seen.has(deptVi.toLowerCase())) {
@@ -69,7 +100,7 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
       ];
     }
     return [{ id: 'all', labelVi: 'Tất cả vị trí', labelEn: 'All Positions' }];
-  }, [initialJobs]);
+  }, [jobs]);
 
   // Nếu bộ lọc phòng ban đang chọn không còn trong danh sách vị trí đang tuyển thì đưa về 'all'
   useEffect(() => {
@@ -80,7 +111,7 @@ export default function TuyenDungListClient({ initialJobs }: Props) {
 
   // Lọc danh sách công việc
   const filteredJobs = useMemo(() => {
-    return initialJobs.filter((job) => {
+    return jobs.filter((job) => {
       // Lọc phòng ban theo phòng ban thực tế
       if (selectedDept !== 'all') {
         const deptVi = (job.phong_ban || '').trim().toLowerCase();

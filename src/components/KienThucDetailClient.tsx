@@ -15,7 +15,7 @@ import {
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
-import { BaiVietRecord } from '@/lib/supabase';
+import { supabase, BaiVietRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { getAssetUrl } from '@/lib/assets';
 import ArticleContent from '@/components/ArticleContent';
@@ -31,9 +31,52 @@ interface Props {
   relatedArticles: BaiVietRecord[];
 }
 
-export default function KienThucDetailClient({ article, relatedArticles }: Props) {
+export default function KienThucDetailClient({ article: initialArticle, relatedArticles }: Props) {
+  const [article, setArticle] = useState<BaiVietRecord>(initialArticle);
   const { language } = useLanguage();
   const isEn = language === 'en';
+
+  useEffect(() => {
+    setArticle(initialArticle);
+  }, [initialArticle]);
+
+  useEffect(() => {
+    if (!initialArticle?.id) return;
+
+    const refetchArticle = async () => {
+      try {
+        const { data } = await supabase
+          .from('bai_viet')
+          .select('*')
+          .eq('id', initialArticle.id)
+          .maybeSingle();
+        if (data) setArticle(data as BaiVietRecord);
+      } catch {}
+    };
+
+    const handleFocus = () => { refetchArticle(); };
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel(`realtime_article_detail_${initialArticle.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bai_viet', filter: `id=eq.${initialArticle.id}` },
+        (payload) => {
+          if (payload.new) {
+            setArticle(payload.new as BaiVietRecord);
+          } else {
+            refetchArticle();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [initialArticle?.id]);
 
   const handleOpenBookingModal = () => {
     if (typeof window !== 'undefined') {

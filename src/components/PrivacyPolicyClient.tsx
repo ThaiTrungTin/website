@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
   ChevronRight,
   Calendar,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { PrivacyPolicyConfig } from '@/types/privacyPolicy';
 import { useLanguage } from '@/context/LanguageContext';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -20,9 +21,49 @@ interface Props {
 }
 
 export default function PrivacyPolicyClient({ initialData }: Props) {
+  const [data, setData] = useState<PrivacyPolicyConfig>(initialData);
   // Đồng bộ ngôn ngữ trực tiếp theo nút chuyển đổi ngôn ngữ của toàn trang web (Header/Footer)
   const { language } = useLanguage();
   const isEn = language === 'en';
+
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
+
+  useEffect(() => {
+    const fetchPolicy = async () => {
+      try {
+        const { data: row } = await supabase
+          .from('chinh_sach_bao_mat')
+          .select('*')
+          .eq('id', 'main')
+          .maybeSingle();
+        if (row) {
+          setData({
+            titleVi: row.tieu_de_vi || initialData.titleVi,
+            titleEn: row.tieu_de_en || initialData.titleEn,
+            contentVi: row.noi_dung_vi || initialData.contentVi,
+            contentEn: row.noi_dung_en || initialData.contentEn,
+            lastUpdated: row.ngay_cap_nhat || initialData.lastUpdated,
+            isActive: row.kich_hoat !== false,
+          });
+        }
+      } catch {}
+    };
+
+    const handleFocus = () => { fetchPolicy(); };
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel('realtime_chinh_sach_bao_mat_detail')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chinh_sach_bao_mat' }, fetchPolicy)
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [initialData]);
 
   const handleOpenBookingModal = () => {
     if (typeof window !== 'undefined') {
@@ -30,8 +71,8 @@ export default function PrivacyPolicyClient({ initialData }: Props) {
     }
   };
 
-  const title = (isEn && initialData.titleEn) ? initialData.titleEn : initialData.titleVi;
-  const rawContent = (isEn && initialData.contentEn) ? initialData.contentEn : initialData.contentVi;
+  const title = (isEn && data.titleEn) ? data.titleEn : data.titleVi;
+  const rawContent = (isEn && data.contentEn) ? data.contentEn : data.contentVi;
   const cleanHtml = sanitizeHtml(rawContent);
 
   // Tự động cập nhật tiêu đề tab trình duyệt theo ngôn ngữ đang chọn
@@ -90,12 +131,12 @@ export default function PrivacyPolicyClient({ initialData }: Props) {
               {renderCleanTitle(title)}
             </h1>
 
-            {initialData.lastUpdated && (
+            {data.lastUpdated && (
               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                 <Calendar className="w-3.5 h-3.5 text-[#2D5A27]" />
                 <span>
                   {isEn ? 'Effective date: ' : 'Ngày hiệu lực / Cập nhật: '}
-                  <strong className="text-slate-700 font-mono font-semibold">{initialData.lastUpdated}</strong>
+                  <strong className="text-slate-700 font-mono font-semibold">{data.lastUpdated}</strong>
                 </span>
               </div>
             )}

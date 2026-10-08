@@ -85,6 +85,9 @@ export default function CareersSection() {
   useEffect(() => {
     fetchJobs();
 
+    const handleFocus = () => { fetchJobs(); };
+    window.addEventListener('focus', handleFocus);
+
     const channel = supabase
       .channel('tuyen_dung_changes_home')
       .on(
@@ -97,6 +100,7 @@ export default function CareersSection() {
       .subscribe();
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
       supabase.removeChannel(channel);
     };
   }, [fetchJobs]);

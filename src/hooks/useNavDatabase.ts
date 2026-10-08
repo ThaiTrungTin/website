@@ -217,8 +217,20 @@ export function useNavDatabase() {
 
     loadData();
 
+    const handleFocus = () => { loadData(); };
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel('realtime_nav_database')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chi_nhanh' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dich_vu' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bai_viet' }, loadData)
+      .subscribe();
+
     return () => {
       isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
     };
   }, [isEn]);
 

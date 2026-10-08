@@ -446,6 +446,9 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
   useEffect(() => {
     fetchServicesFromDb();
 
+    const handleFocus = () => { fetchServicesFromDb(); };
+    window.addEventListener('focus', handleFocus);
+
     const channel = supabase
       .channel('client_services_rt')
       .on(
@@ -458,6 +461,7 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
       .subscribe();
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
       supabase.removeChannel(channel);
     };
   }, [fetchServicesFromDb]);

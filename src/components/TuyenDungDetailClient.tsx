@@ -88,9 +88,52 @@ function FormattedLongText({ content }: { content: string }) {
   );
 }
 
-export default function TuyenDungDetailClient({ job, otherJobs }: Props) {
+export default function TuyenDungDetailClient({ job: initialJob, otherJobs }: Props) {
+  const [job, setJob] = useState<TuyenDungRecord>(initialJob);
   const { language, isEn } = useLanguage();
   const { config } = useSystemConfig();
+
+  useEffect(() => {
+    setJob(initialJob);
+  }, [initialJob]);
+
+  useEffect(() => {
+    if (!initialJob?.id) return;
+
+    const refetchJob = async () => {
+      try {
+        const { data } = await supabase
+          .from('tuyen_dung')
+          .select('*')
+          .eq('id', initialJob.id)
+          .maybeSingle();
+        if (data) setJob(data as TuyenDungRecord);
+      } catch {}
+    };
+
+    const handleFocus = () => { refetchJob(); };
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel(`realtime_job_detail_${initialJob.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tuyen_dung', filter: `id=eq.${initialJob.id}` },
+        (payload) => {
+          if (payload.new) {
+            setJob(payload.new as TuyenDungRecord);
+          } else {
+            refetchJob();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [initialJob?.id]);
 
   // Form ứng tuyển state
   const [fullName, setFullName] = useState('');

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, Phone, Clock, Navigation, BookOpen, ArrowRight } from 'lucide-react';
-import { ChiNhanhRecord } from '@/lib/supabase';
+import { supabase, ChiNhanhRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { getAssetUrl, getDirectionsUrl } from '@/lib/assets';
 import ArticleContent from '@/components/ArticleContent';
@@ -27,9 +27,52 @@ interface Props {
   }[];
 }
 
-export default function ChiNhanhDetailClient({ branch, recentArticles }: Props) {
+export default function ChiNhanhDetailClient({ branch: initialBranch, recentArticles }: Props) {
+  const [branch, setBranch] = useState<ChiNhanhRecord>(initialBranch);
   const { language } = useLanguage();
   const isEn = language === 'en';
+
+  useEffect(() => {
+    setBranch(initialBranch);
+  }, [initialBranch]);
+
+  useEffect(() => {
+    if (!initialBranch?.id) return;
+
+    const refetchBranch = async () => {
+      try {
+        const { data } = await supabase
+          .from('chi_nhanh')
+          .select('*')
+          .eq('id', initialBranch.id)
+          .maybeSingle();
+        if (data) setBranch(data as ChiNhanhRecord);
+      } catch {}
+    };
+
+    const handleFocus = () => { refetchBranch(); };
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel(`realtime_branch_detail_${initialBranch.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chi_nhanh', filter: `id=eq.${initialBranch.id}` },
+        (payload) => {
+          if (payload.new) {
+            setBranch(payload.new as ChiNhanhRecord);
+          } else {
+            refetchBranch();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [initialBranch?.id]);
 
   const handleOpenBookingModal = () => {
     if (typeof window !== 'undefined') {

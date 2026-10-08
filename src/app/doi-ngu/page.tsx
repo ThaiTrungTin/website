@@ -530,6 +530,9 @@ export default function DoiNguYTePage() {
 
     fetchTeam();
 
+    const handleFocus = () => { fetchTeam(); };
+    window.addEventListener('focus', handleFocus);
+
     const channel = supabase
       .channel('doi_ngu_realtime')
       .on(
@@ -542,6 +545,7 @@ export default function DoiNguYTePage() {
       .subscribe();
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
       supabase.removeChannel(channel);
     };
   }, []);

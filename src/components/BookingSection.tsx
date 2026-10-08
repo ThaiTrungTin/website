@@ -268,6 +268,16 @@ export default function BookingSection({
     };
     window.addEventListener('petmm_booking_cover_updated', handleCoverUpdate);
 
+    const handleFocus = () => { loadData(); };
+    window.addEventListener('focus', handleFocus);
+
+    const bookingChannel = supabase
+      .channel('realtime_booking_data')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chi_nhanh' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dich_vu' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cau_hinh' }, loadData)
+      .subscribe();
+
     // Lắng nghe chọn nhanh dịch vụ từ ngoài vào
     const handleSelectService = (e: any) => {
       if (e?.detail?.service) {
@@ -277,6 +287,8 @@ export default function BookingSection({
     window.addEventListener('petmm_select_service', handleSelectService);
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(bookingChannel);
       window.removeEventListener('petmm_booking_cover_updated', handleCoverUpdate);
       window.removeEventListener('petmm_select_service', handleSelectService);
     };
