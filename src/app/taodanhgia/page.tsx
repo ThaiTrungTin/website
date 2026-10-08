@@ -457,25 +457,21 @@ export default function TaoDanhGiaPage() {
     const val = e.target.value;
     if (/[^\d]/.test(val)) {
       setPhoneError('Chỉ được nhập số điện thoại, không nhập chữ hay ký tự khác!');
-      const digitsOnly = val.replace(/\D/g, '').slice(0, 10);
+      const digitsOnly = val.replace(/\D/g, '').slice(0, 15);
       setSoDienThoai(digitsOnly);
       return;
     }
 
-    if (val.length > 10) {
-      setPhoneError('Số điện thoại chỉ có tối đa 10 chữ số (bạn đang nhập quá số lượng)!');
-      setSoDienThoai(val.slice(0, 10));
+    if (val.length > 15) {
+      setPhoneError('Số điện thoại chỉ có tối đa 15 chữ số!');
+      setSoDienThoai(val.slice(0, 15));
       return;
     }
 
     setSoDienThoai(val);
 
-    if (val.length > 0 && !val.startsWith('0')) {
-      setPhoneError('Số điện thoại phải bắt đầu bằng số 0!');
-    } else if (val.length > 0 && val.length < 10) {
-      setPhoneError(`Số điện thoại chưa đủ 10 chữ số (${val.length}/10)`);
-    } else if (val.length === 10 && !/^(0[35789])[0-9]{8}$/.test(val)) {
-      setPhoneError('Đầu số điện thoại không hợp lệ (hợp lệ: 03, 05, 07, 08, 09)');
+    if (val.length > 0 && val.length < 9) {
+      setPhoneError(`Số điện thoại cần từ 9 đến 15 chữ số (${val.length}/9)`);
     } else {
       setPhoneError('');
     }
@@ -621,16 +617,8 @@ export default function TaoDanhGiaPage() {
         setErrorMessage('Số điện thoại chỉ được chứa các chữ số, không chứa chữ hay ký tự khác!');
         return;
       }
-      if (cleanSDT.length !== 10) {
-        setErrorMessage(`Số điện thoại phải gồm đúng 10 chữ số (hiện tại: ${cleanSDT.length} số)!`);
-        return;
-      }
-      if (!cleanSDT.startsWith('0')) {
-        setErrorMessage('Số điện thoại phải bắt đầu bằng số 0!');
-        return;
-      }
-      if (!/^(0[35789])[0-9]{8}$/.test(cleanSDT)) {
-        setErrorMessage('Đầu số điện thoại không hợp lệ (hợp lệ: 03x, 05x, 07x, 08x, 09x)!');
+      if (cleanSDT.length < 9 || cleanSDT.length > 15) {
+        setErrorMessage(`Số điện thoại phải từ 9 đến 15 chữ số (hiện tại: ${cleanSDT.length} số)!`);
         return;
       }
     }
@@ -1295,7 +1283,7 @@ export default function TaoDanhGiaPage() {
                       <input
                         type="tel"
                         inputMode="numeric"
-                        maxLength={10}
+                        maxLength={15}
                         value={soDienThoai}
                         onChange={handlePhoneChange}
                         className={`${inputCls} ${phoneError ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : ''}`}

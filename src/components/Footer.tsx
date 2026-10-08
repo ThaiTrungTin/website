@@ -152,12 +152,34 @@ export default function Footer({ branch }: FooterProps) {
     : (activeBranch?.dia_chi?.trim() || defaultAddressVi);
 
   const branchPhone = activeBranch?.so_dien_thoai || hotlineDisplay;
-  const mapEmbedUrl =
-    activeBranch?.link_ggmap_embed ||
-    'https://maps.google.com/maps?q=Ph%C3%B2ng+kh%C3%A1m+Th%C3%BA+c%C6%B0ng+PetM%26M,+19+%C4%90.+S%E1%BB%91+1,+Ph%C6%B0%E1%BB%9Bc+Long,+H%E1%BB%93+Ch%C3%AD+Minh&t=&z=16&ie=UTF8&iwloc=&output=embed';
+
+  // Xử lý link nhúng Google Maps thông minh:
+  // 1. Nếu có link embed: tự động làm sạch (trích xuất src nếu lỡ dán cả thẻ <iframe>)
+  // 2. Nếu chưa nhập link embed: TỰ ĐỘNG SINH BẢN ĐỒ GOOGLE MAPS THEO ĐÚNG ĐỊA CHỈ CHI NHÁNH CHÍNH (không bao giờ bị gán cứng cơ sở cũ)
+  const getSafeMapEmbedUrl = () => {
+    const rawEmbed = activeBranch?.link_ggmap_embed?.trim();
+    if (rawEmbed) {
+      const match = rawEmbed.match(/src=["']([^"']+)["']/i);
+      return match ? match[1] : rawEmbed;
+    }
+    const targetQuery =
+      activeBranch?.dia_chi?.trim() ||
+      activeBranch?.ten_chi_nhanh?.trim() ||
+      branchAddress ||
+      defaultAddressVi;
+    return `https://maps.google.com/maps?q=${encodeURIComponent(targetQuery)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+  };
+
+  const mapEmbedUrl = getSafeMapEmbedUrl();
+
   const mapAppUrl =
-    activeBranch?.link_ggmap_app ||
-    'https://www.google.com/maps/place/Ph%C3%B2ng+kh%C3%A1m+Th%C3%BA+c%C6%B0ng+PetM%26M/@10.825,106.765,17z';
+    activeBranch?.link_ggmap_app?.trim() ||
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      activeBranch?.dia_chi?.trim() ||
+        activeBranch?.ten_chi_nhanh?.trim() ||
+        branchAddress ||
+        'PetM&M'
+    )}`;
 
   return (
     <footer id="contact" className="relative text-white overflow-hidden bg-gradient-to-b from-[#163814] via-[#10290F] to-[#0A1A09] pt-14 pb-12 border-t border-emerald-900/60 select-none">

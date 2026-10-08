@@ -96,8 +96,16 @@ export default function LocationsSection() {
             doctorDegreeEn: b.bang_cap_bac_si_en?.trim() || '',
             parkingInfo: b.thong_tin_do_xe?.trim() || '',
             parkingInfoEn: b.thong_tin_do_xe_en?.trim() || '',
-            mapEmbedUrl: b.link_ggmap_embed?.trim() || '',
-            googleMapsAppUrl: b.link_ggmap_app?.trim() || '',
+            mapEmbedUrl: (() => {
+              const raw = b.link_ggmap_embed?.trim();
+              if (raw) {
+                const match = raw.match(/src=["']([^"']+)["']/i);
+                return match ? match[1] : raw;
+              }
+              const query = b.dia_chi?.trim() || b.ten_chi_nhanh?.trim() || '';
+              return query ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=16&ie=UTF8&iwloc=&output=embed` : '';
+            })(),
+            googleMapsAppUrl: b.link_ggmap_app?.trim() || (b.dia_chi?.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.dia_chi.trim())}` : ''),
             features: parsedFeatures,
             featuresEn: parsedFeaturesEn,
           };

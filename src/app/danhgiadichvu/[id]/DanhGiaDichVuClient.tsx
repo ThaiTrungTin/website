@@ -192,8 +192,8 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress, bran
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    if (!rating || rating < 1 || rating > 5) {
-      setErrorMessage('Vui lòng chọn số sao đánh giá');
+    if (!rating || rating < 4) {
+      setErrorMessage('Vui lòng chọn 4 hoặc 5 sao để gửi đánh giá.');
       return;
     }
 
@@ -388,6 +388,23 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress, bran
                     </span>
                   </div>
                 )}
+
+                {/* Thông báo chân thành khi khách chọn 1, 2, 3 sao */}
+                {activeStar > 0 && activeStar <= 3 && (
+                  <div className="mt-3.5 p-4 rounded-2xl bg-amber-50 border border-amber-200/90 text-left shadow-xs transition-all animate-fade-in">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xl shrink-0 leading-tight">💬</span>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-amber-950 text-xs sm:text-sm leading-snug">
+                          PetM&M thành thật xin lỗi vì trải nghiệm chưa trọn vẹn của bạn và bé cưng!
+                        </p>
+                        <p className="text-amber-800 text-xs sm:text-xs leading-relaxed">
+                          Rất mong bạn chia sẻ cụ thể điều chưa hài lòng ở bên dưới để Ban Quản Lý hỗ trợ và khắc phục ngay nhé.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Text feedback */}
@@ -400,7 +417,11 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress, bran
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={4}
-                  placeholder="Dịch vụ tốt, bác sĩ tận tâm..."
+                  placeholder={
+                    activeStar > 0 && activeStar <= 3
+                      ? "Chia sẻ cụ thể điều bạn chưa hài lòng để Ban Quản Lý liên hệ hỗ trợ bạn..."
+                      : "Dịch vụ tốt, bác sĩ tận tâm..."
+                  }
                   className="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all resize-none shadow-sm"
                 />
               </div>
@@ -467,11 +488,15 @@ export default function DanhGiaDichVuClient({ initialRecord, branchAddress, bran
                 </div>
               )}
 
-              {/* Submit */}
+              {/* Submit - Chỉ cho phép gửi khi chọn 4 hoặc 5 sao */}
               <button
                 type="submit"
-                disabled={isSubmitting || isUploadingImage || !rating}
-                className="w-full py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-semibold text-sm shadow-sm transition-all disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSubmitting || isUploadingImage || !rating || rating < 4}
+                className={`w-full py-3.5 rounded-full font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 ${
+                  !rating || rating < 4
+                    ? 'bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed pointer-events-none'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-[0.99]'
+                }`}
               >
                 {isSubmitting ? (
                   <>

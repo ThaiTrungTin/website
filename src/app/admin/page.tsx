@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
@@ -31,6 +31,9 @@ import {
   Search,
   Menu,
   ChevronRight,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
   Sparkles,
   Globe,
   Save,
@@ -73,9 +76,12 @@ import {
   Shield,
   Activity,
   MonitorX,
+  CornerDownRight,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { usePresenceHeartbeat } from '@/lib/usePresenceHeartbeat';
 import { supabase, HeroBannerItem, ChiNhanhRecord, CauHinhRecord, DichVuRecord, CauHoiThuongGapRecord, LichHenRecord, DanhGiaRecord, DoiNguRecord, BaiVietRecord, SupportPanelConfig, DEFAULT_SUPPORT_CONFIG, HoSoTuyenDungRecord, TuyenDungRecord } from '@/lib/supabase';
+import { parseReviewReply, attachReplyTag, stripReplyTag } from '@/lib/reviewReply';
 import { mutateAdminContent } from '@/lib/adminContentClient';
 import { useSystemConfig } from '@/context/SystemConfigContext';
 import AdminImageInput from '@/components/AdminImageInput';
@@ -3859,6 +3865,22 @@ export default function AdminDashboardPage() {
   const [isSavingBookingCover, setIsSavingBookingCover] = useState(false);
   const [isSendingConfirmEmail, setIsSendingConfirmEmail] = useState(false);
 
+  // Phân trang Quản Lý Lịch Hẹn
+  const [appointmentPage, setAppointmentPage] = useState(1);
+  const [appointmentPageSize, setAppointmentPageSize] = useState(10);
+
+  // Phân trang Quản Lý Đánh Giá Khách Hàng
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewPageSize, setReviewPageSize] = useState(10);
+
+  useEffect(() => {
+    setAppointmentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
+    setReviewPage(1);
+  }, [searchTerm]);
+
   // Quản lý Cửa sổ (Modal) Thiết kế Cột Phải & Ảnh Bìa Form Đặt Lịch
   const [isBookingDesignModalOpen, setIsBookingDesignModalOpen] = useState(false);
   const [bookingDesignLangTab, setBookingDesignLangTab] = useState<'vi' | 'en'>('vi');
@@ -5054,6 +5076,15 @@ export default function AdminDashboardPage() {
   const [reviewModalTab, setReviewModalTab] = useState<'vi' | 'en'>('vi');
   const [isTranslatingReview, setIsTranslatingReview] = useState(false);
 
+  useEffect(() => {
+    if (!highlightedId) return;
+    const revIdx = reviews.findIndex((r) => r.id === highlightedId);
+    if (revIdx !== -1) {
+      const targetPage = Math.floor(revIdx / reviewPageSize) + 1;
+      setReviewPage(targetPage);
+    }
+  }, [highlightedId, reviews, reviewPageSize]);
+
   const loadReviews = useCallback(async (silent = false) => {
     if (!silent) setReviewsLoading(true);
     try {
@@ -5102,8 +5133,9 @@ function formatDisplayReviewDate(val?: string | null): string {
 }
 
 function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
-  if (rev.noi_dung_en && (rev.noi_dung_en.includes('User:') || rev.noi_dung_en.includes('Được tạo bởi:'))) {
-    return rev.noi_dung_en.replace('Được tạo bởi:', 'User:');
+  const cleanEn = stripReplyTag(rev.noi_dung_en);
+  if (cleanEn && (cleanEn.includes('User:') || cleanEn.includes('Được tạo bởi:'))) {
+    return cleanEn.replace('Được tạo bởi:', 'User:');
   }
   const d = rev.ngay_tao ? new Date(rev.ngay_tao) : new Date(rev.ngay_danh_gia || Date.now());
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -5113,6 +5145,125 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
   const creator = rev.ten_khach_hang_en?.trim() || 'Trần Văn A';
   return `User: ${creator} ; ${dateFormatted}`;
 }
+
+  const [replyingReview, setReplyingReview] = useState<DanhGiaRecord | null>(null);
+  const [replyForm, setReplyForm] = useState<{ replier: string; reply: string; reply_en: string; date: string }>({
+    replier: 'PetM&M',
+    reply: '',
+    reply_en: '',
+    date: '',
+  });
+  const [replyModalTab, setReplyModalTab] = useState<'vi' | 'en'>('vi');
+  const [isTranslatingReply, setIsTranslatingReply] = useState(false);
+  const [isSavingReply, setIsSavingReply] = useState(false);
+
+  const handleOpenReplyModal = (rev: DanhGiaRecord) => {
+    const existing = parseReviewReply(rev);
+    setReplyingReview(rev);
+    setReplyForm({
+      replier: existing?.replier || 'PetM&M',
+      reply: existing?.reply || '',
+      reply_en: existing?.reply_en || '',
+      date: existing?.date ? toDateInputValue(existing.date) : new Date().toISOString().split('T')[0],
+    });
+    setReplyModalTab('vi');
+  };
+
+  const handleAutoTranslateReply = async () => {
+    if (!replyForm.reply?.trim()) {
+      showNotification('error', 'Vui lòng nhập nội dung phản hồi Tiếng Việt trước khi chuyển đổi!');
+      return;
+    }
+    setIsTranslatingReply(true);
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: replyForm.reply }),
+      });
+      const data = await res.json();
+      if (data.success && data.translation) {
+        setReplyForm((prev) => ({
+          ...prev,
+          reply_en: data.translation,
+        }));
+        setReplyModalTab('en');
+        showNotification('success', 'Đã chuyển đổi phản hồi sang Tiếng Anh thành công!');
+      } else {
+        throw new Error(data.error || 'Dịch tự động thất bại');
+      }
+    } catch (err: any) {
+      console.error('Lỗi chuyển đổi Tiếng Anh:', err);
+      showNotification('error', `Lỗi chuyển đổi: ${err.message}`);
+    } finally {
+      setIsTranslatingReply(false);
+    }
+  };
+
+  const handleSaveReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyingReview) return;
+    if (!replyForm.reply.trim()) {
+      showNotification('error', 'Vui lòng nhập nội dung phản hồi!');
+      return;
+    }
+
+    setIsSavingReply(true);
+    try {
+      const newNoiDungEn = attachReplyTag(replyingReview.noi_dung_en, {
+        reply: replyForm.reply.trim(),
+        reply_en: replyForm.reply_en?.trim() || undefined,
+        replier: replyForm.replier.trim() || 'PetM&M',
+        date: replyForm.date || new Date().toISOString().split('T')[0],
+      });
+
+      await mutateAdminContent('danh_gia', 'update', replyingReview.id, {
+        noi_dung_en: newNoiDungEn,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
+
+      showNotification('success', 'Đã lưu phản hồi của PetM&M thành công!');
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === replyingReview.id ? { ...r, noi_dung_en: newNoiDungEn } : r
+        )
+      );
+      setReplyingReview(null);
+    } catch (err: any) {
+      console.error('Lỗi lưu phản hồi:', err);
+      showNotification('error', `Lỗi lưu phản hồi: ${err.message}`);
+    } finally {
+      setIsSavingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async () => {
+    if (!replyingReview) return;
+    if (!window.confirm('Bạn có chắc muốn xóa phản hồi này không?')) return;
+
+    setIsSavingReply(true);
+    try {
+      const newNoiDungEn = attachReplyTag(replyingReview.noi_dung_en, null);
+
+      await mutateAdminContent('danh_gia', 'update', replyingReview.id, {
+        noi_dung_en: newNoiDungEn,
+        ngay_cap_nhat: new Date().toISOString(),
+      });
+
+      showNotification('success', 'Đã xóa phản hồi của đánh giá!');
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === replyingReview.id ? { ...r, noi_dung_en: newNoiDungEn } : r
+        )
+      );
+      setReplyingReview(null);
+    } catch (err: any) {
+      console.error('Lỗi xóa phản hồi:', err);
+      showNotification('error', `Lỗi xóa phản hồi: ${err.message}`);
+    } finally {
+      setIsSavingReply(false);
+    }
+  };
 
   const handleAddNewReview = () => {
     const nextOrder = reviews.length > 0 ? Math.max(...reviews.map((r) => r.thu_tu || 0)) + 1 : 1;
@@ -6022,6 +6173,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     );
   });
 
+  // Phân trang danh sách lịch hẹn
+  const totalAppointmentPages = Math.max(1, Math.ceil(filteredAppointments.length / appointmentPageSize));
+  const currentAppointmentPage = Math.min(appointmentPage, totalAppointmentPages);
+  const paginatedAppointments = useMemo(() => {
+    const start = (currentAppointmentPage - 1) * appointmentPageSize;
+    return filteredAppointments.slice(start, start + appointmentPageSize);
+  }, [filteredAppointments, currentAppointmentPage, appointmentPageSize]);
+
   const filteredReviews = reviews.filter((r) => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
@@ -6035,6 +6194,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
       (r.so_dien_thoai && r.so_dien_thoai.toLowerCase().includes(term))
     );
   });
+
+  // Phân trang danh sách đánh giá khách hàng
+  const totalReviewPages = Math.max(1, Math.ceil(filteredReviews.length / reviewPageSize));
+  const currentReviewPage = Math.min(reviewPage, totalReviewPages);
+  const paginatedReviews = useMemo(() => {
+    const start = (currentReviewPage - 1) * reviewPageSize;
+    return filteredReviews.slice(start, start + reviewPageSize);
+  }, [filteredReviews, currentReviewPage, reviewPageSize]);
 
   const filteredTeamMembers = teamMembers.filter((m) => {
     if (teamCategoryFilter !== 'all' && m.phan_loai !== teamCategoryFilter) return false;
@@ -7014,7 +7181,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
         )}
 
         {/* WORKSPACE BODY */}
-        <main className="flex-1 p-4 sm:p-8 max-w-[1720px] w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-8 max-w-[1720px] w-full mx-auto flex flex-col">
           {/* ===================================================== */}
           {/* TAB 0: TỔNG QUAN HỆ THỐNG (DASHBOARD) */}
           {/* ===================================================== */}
@@ -11069,9 +11236,9 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
           {/* TAB 4: BẢNG DỮ LIỆU QUẢN LÝ LỊCH HẸN (APPOINTMENTS)  */}
           {/* ===================================================== */}
           {activeTab === 'appointments' && (
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
               {/* Header Card với ô tìm kiếm & Nút Bật Cửa Sổ Thiết Kế Trực Quan */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                   <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                     <CalendarDays className="w-5 h-5 text-[#2D5A27]" />
@@ -11121,7 +11288,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               </div>
 
               {/* Status Quick Filter Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 shrink-0">
                 {[
                   { key: 'all', label: 'Tất Cả Lịch Hẹn', count: appointments.length, color: 'text-slate-700 bg-slate-100 border-slate-200' },
                   { key: 'cho_xac_nhan', label: 'Chờ Tiếp Nhận', count: appointments.filter((a) => a.trang_thai === 'cho_xac_nhan').length, color: 'text-amber-800 bg-amber-50 border-amber-200' },
@@ -11151,14 +11318,14 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               </div>
 
               {/* Bảng Dữ Liệu Lịch Hẹn */}
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs flex-1 flex flex-col min-h-[420px] md:min-h-[calc(100vh-300px)] md:max-h-[calc(100vh-300px)]">
                 {appointmentsLoading && appointments.length === 0 ? (
-                  <div className="p-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
+                  <div className="p-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2 flex-1 my-auto">
                     <RefreshCw className="w-5 h-5 animate-spin text-[#2D5A27]" />
                     <span>Đang tải danh sách lịch hẹn từ Supabase...</span>
                   </div>
                 ) : filteredAppointments.length === 0 ? (
-                  <div className="p-12 text-center text-slate-400 text-xs">
+                  <div className="p-12 text-center text-slate-400 text-xs flex-1 flex flex-col items-center justify-center my-auto">
                     <CalendarDays className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="font-semibold text-slate-600">Không tìm thấy lịch hẹn nào</p>
                     <p className="text-[11px] text-slate-400 mt-1">
@@ -11168,21 +11335,22 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                    <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 relative">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-3 px-4">Mã &amp; Thời Gian Đặt</th>
-                          <th className="py-3 px-4">Khách Hàng &amp; Liên Hệ</th>
-                          <th className="py-3 px-4">Ghi Chú</th>
-                          <th className="py-3 px-4">Cơ Sở &amp; Dịch Vụ</th>
-                          <th className="py-3 px-4">Thời Gian Khám</th>
-                          <th className="py-3 px-4 text-center">Trạng Thái</th>
-                          <th className="py-3 px-4 text-right">Thao Tác</th>
+                      <thead className="sticky top-0 z-20 bg-slate-100 shadow-2xs border-b border-slate-200">
+                        <tr className="border-b border-slate-200 bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20">Mã &amp; Thời Gian Đặt</th>
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20">Khách Hàng &amp; Liên Hệ</th>
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20">Ghi Chú</th>
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20">Cơ Sở &amp; Dịch Vụ</th>
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20">Thời Gian Khám</th>
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20 text-center">Trạng Thái</th>
+                          <th className="py-3 px-4 bg-slate-100 sticky top-0 z-20 text-right">Thao Tác</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {filteredAppointments.map((app) => {
+                        {paginatedAppointments.map((app: any) => {
                           const { email, cleanNote, lang } = extractEmailAndNote(app.ghi_chu);
                           const isEnBooking = lang === 'en' || /consultation|general health|try the service|city facility|clinic/i.test((app.dich_vu || '') + ' ' + (app.ten_chi_nhanh || ''));
                           const serviceVi = getAdminServiceVi(app.dich_vu);
@@ -11325,7 +11493,125 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       </tbody>
                     </table>
                   </div>
-                )}
+
+                  {/* Thanh Phân Trang Quản Lý Lịch Hẹn */}
+                  <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 mt-auto shrink-0 sticky bottom-0 z-20">
+                    {/* Trái: Thông tin hiển thị & Chọn số dòng/trang */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span>
+                        Hiển thị{' '}
+                        <strong className="text-slate-900 font-semibold">
+                          {filteredAppointments.length === 0
+                            ? 0
+                            : (currentAppointmentPage - 1) * appointmentPageSize + 1}
+                        </strong>
+                        {' '}-{' '}
+                        <strong className="text-slate-900 font-semibold">
+                          {Math.min(
+                            currentAppointmentPage * appointmentPageSize,
+                            filteredAppointments.length
+                          )}
+                        </strong>
+                        {' '}trên tổng số{' '}
+                        <strong className="text-[#2D5A27] font-bold">
+                          {filteredAppointments.length}
+                        </strong>
+                        {' '}lịch hẹn
+                      </span>
+
+                      <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300">
+                        <span className="text-[11px] text-slate-500">Số dòng:</span>
+                        <select
+                          value={appointmentPageSize}
+                          onChange={(e) => {
+                            setAppointmentPageSize(Number(e.target.value));
+                            setAppointmentPage(1);
+                          }}
+                          className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#2D5A27] cursor-pointer"
+                        >
+                          <option value={10}>10 / trang</option>
+                          <option value={20}>20 / trang</option>
+                          <option value={50}>50 / trang</option>
+                          <option value={100}>100 / trang</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Phải: Các nút điều hướng trang */}
+                    {totalAppointmentPages > 1 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setAppointmentPage(1)}
+                          disabled={currentAppointmentPage === 1}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Về trang đầu"
+                        >
+                          <ChevronsLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAppointmentPage((prev) => Math.max(1, prev - 1))}
+                          disabled={currentAppointmentPage === 1}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Trang trước"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Danh sách các số trang */}
+                        {(() => {
+                          const pages: number[] = [];
+                          const maxVisible = 5;
+                          let start = Math.max(1, currentAppointmentPage - Math.floor(maxVisible / 2));
+                          let end = Math.min(totalAppointmentPages, start + maxVisible - 1);
+                          if (end - start + 1 < maxVisible) {
+                            start = Math.max(1, end - maxVisible + 1);
+                          }
+                          for (let i = start; i <= end; i++) {
+                            pages.push(i);
+                          }
+                          return pages.map((pageNum) => (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => setAppointmentPage(pageNum)}
+                              className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                pageNum === currentAppointmentPage
+                                  ? 'bg-[#2D5A27] text-white shadow-xs'
+                                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          ));
+                        })()}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAppointmentPage((prev) => Math.min(totalAppointmentPages, prev + 1))
+                          }
+                          disabled={currentAppointmentPage === totalAppointmentPages}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Trang sau"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAppointmentPage(totalAppointmentPages)}
+                          disabled={currentAppointmentPage === totalAppointmentPages}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Đến trang cuối"
+                        >
+                          <ChevronsRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
               </div>
             </div>
           )}
@@ -11925,9 +12211,9 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
           {/* TAB 6: QUẢN LÝ ĐÁNH GIÁ KHÁCH HÀNG (REVIEWS)         */}
           {/* ===================================================== */}
           {activeTab === 'reviews' && (
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
               {/* Header Card với ô tìm kiếm & Nút "+ Thêm đánh giá" */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                 <div>
                   <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                     <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
@@ -11974,47 +12260,48 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               </div>
 
               {/* Data Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs flex-1 flex flex-col min-h-[420px] md:min-h-[calc(100vh-240px)] md:max-h-[calc(100vh-240px)]">
                 {reviewsLoading && reviews.length === 0 ? (
-                  <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
+                  <div className="p-16 text-center text-slate-500 flex flex-col items-center justify-center gap-3 flex-1 my-auto">
                     <RefreshCw className="w-6 h-6 animate-spin text-[#2D5A27]" />
                     <span className="text-xs font-medium">Đang tải danh sách đánh giá từ Supabase...</span>
                   </div>
                 ) : filteredReviews.length === 0 ? (
-                  <div className="p-16 text-center text-slate-500">
+                  <div className="p-16 text-center text-slate-500 flex-1 flex flex-col items-center justify-center my-auto">
                     <Star className="w-10 h-10 mx-auto text-slate-300 mb-3" />
                     <p className="text-sm font-semibold text-slate-700">Chưa có đánh giá nào</p>
                     <p className="text-xs text-slate-400 mt-1">Bấm nút "Thêm Đánh Giá" ở góc phải để thêm đánh giá mới.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
-                          <th className="py-3 px-4 w-12 text-center">STT</th>
-                          <th className="py-3 px-4 min-w-[180px]">Khách Hàng (Chủ Nuôi)</th>
-                          <th className="py-3 px-4 min-w-[120px]">Số Điện Thoại</th>
-                          <th className="py-3 px-4 min-w-[110px] text-center">Đánh Giá</th>
-                          <th className="py-3 px-4 min-w-[320px]">Nội Dung Nhận Xét</th>
-                          <th className="py-3 px-4 min-w-[100px] text-center">Thời Gian</th>
-                          <th className="py-3 px-4 min-w-[100px] text-center">Trạng Thái</th>
-                          <th className="py-3 px-4 min-w-[100px] text-right">Thao Tác</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredReviews.map((rev, index) => (
-                          <tr
-                            key={rev.id}
-                            id={`review-row-${rev.id}`}
-                            className={`transition-all duration-500 group ${
-                              highlightedId === rev.id
-                                ? 'bg-emerald-100/90 ring-2 ring-emerald-500 shadow-md font-bold'
-                                : 'hover:bg-slate-50/60'
-                            }`}
-                          >
-                            <td className="py-3.5 px-4 text-center font-bold text-slate-400">
-                              {index + 1}
-                            </td>
+                  <>
+                    <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 relative">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="sticky top-0 z-20 bg-slate-100 shadow-2xs border-b border-slate-200">
+                          <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[11px] tracking-wider">
+                            <th className="py-3 px-4 w-12 text-center bg-slate-100 sticky top-0 z-20">STT</th>
+                            <th className="py-3 px-4 min-w-[170px] bg-slate-100 sticky top-0 z-20">Khách Hàng (Chủ Nuôi)</th>
+                            <th className="py-3 px-4 min-w-[110px] bg-slate-100 sticky top-0 z-20">Số Điện Thoại</th>
+                            <th className="py-3 px-4 min-w-[100px] text-center bg-slate-100 sticky top-0 z-20">Đánh Giá</th>
+                            <th className="py-3 px-4 min-w-[200px] max-w-[240px] bg-slate-100 sticky top-0 z-20">Nội Dung Nhận Xét</th>
+                            <th className="py-3 px-4 min-w-[100px] text-center bg-slate-100 sticky top-0 z-20">Thời Gian</th>
+                            <th className="py-3 px-4 min-w-[95px] text-center bg-slate-100 sticky top-0 z-20">Trạng Thái</th>
+                            <th className="py-3 px-4 min-w-[120px] text-right bg-slate-100 sticky top-0 z-20">Thao Tác</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {paginatedReviews.map((rev: any, index: number) => (
+                            <tr
+                              key={rev.id}
+                              id={`review-row-${rev.id}`}
+                              className={`transition-all duration-500 group ${
+                                highlightedId === rev.id
+                                  ? 'bg-emerald-100/90 ring-2 ring-emerald-500 shadow-md font-bold'
+                                  : 'hover:bg-slate-50/60'
+                              }`}
+                            >
+                              <td className="py-3.5 px-4 text-center font-bold text-slate-400">
+                                {(currentReviewPage - 1) * reviewPageSize + index + 1}
+                              </td>
 
                             <td className="py-3.5 px-4">
                               <div className="flex items-center gap-2.5">
@@ -12059,7 +12346,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4">
+                            <td className="py-3.5 px-4 min-w-[200px] max-w-[240px]">
                               <div className="space-y-1.5">
                                 <div className="flex items-start gap-1.5">
                                   <VietnamFlag className="w-3.5 h-2.5 rounded-[1px] mt-0.5 shrink-0" />
@@ -12071,6 +12358,28 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                                   <span className="text-slate-400">👤</span>
                                   <span>{formatReviewCreatorInfo(rev)}</span>
                                 </div>
+                                {(() => {
+                                  const reply = parseReviewReply(rev);
+                                  if (!reply) return null;
+                                  return (
+                                    <div className="mt-1.5 p-2 rounded-lg bg-emerald-50/90 border border-emerald-200/90 text-[11px] text-slate-800 space-y-1">
+                                      <div className="flex items-center justify-between gap-1.5 font-bold text-[#2D5A27] text-[10px]">
+                                        <span className="flex items-center gap-1">
+                                          <CornerDownRight className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span>Phản hồi từ {reply.replier || 'PetM&M'}</span>
+                                        </span>
+                                        {reply.date && (
+                                          <span className="text-slate-400 font-mono font-normal">
+                                            ({formatDisplayReviewDate(reply.date)})
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="italic text-slate-700 pl-4.5 text-[11px] line-clamp-2">
+                                        &ldquo;{reply.reply}&rdquo;
+                                      </p>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </td>
 
@@ -12106,6 +12415,24 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
 
                             <td className="py-3.5 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
+                                {(() => {
+                                  const hasReply = !!parseReviewReply(rev);
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenReplyModal(rev)}
+                                      className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 text-[11px] font-semibold ${
+                                        hasReply
+                                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 shadow-xs'
+                                          : 'border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700'
+                                      }`}
+                                      title={hasReply ? 'Xem & sửa phản hồi của PetM&M' : 'Trả lời đánh giá này (Người trả lời mặc định: PetM&M)'}
+                                    >
+                                      <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span className="hidden sm:inline">{hasReply ? 'Đã reply' : 'Trả lời'}</span>
+                                    </button>
+                                  );
+                                })()}
                                 <button
                                   type="button"
                                   onClick={() => handleEditReview(rev)}
@@ -12129,7 +12456,125 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                       </tbody>
                     </table>
                   </div>
-                )}
+
+                  {/* Thanh Phân Trang Quản Lý Đánh Giá Khách Hàng */}
+                  <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 mt-auto shrink-0 sticky bottom-0 z-20">
+                    {/* Trái: Thông tin hiển thị & Chọn số dòng/trang */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span>
+                        Hiển thị{' '}
+                        <strong className="text-slate-900 font-semibold">
+                          {filteredReviews.length === 0
+                            ? 0
+                            : (currentReviewPage - 1) * reviewPageSize + 1}
+                        </strong>
+                        {' '}-{' '}
+                        <strong className="text-slate-900 font-semibold">
+                          {Math.min(
+                            currentReviewPage * reviewPageSize,
+                            filteredReviews.length
+                          )}
+                        </strong>
+                        {' '}trên tổng số{' '}
+                        <strong className="text-[#2D5A27] font-bold">
+                          {filteredReviews.length}
+                        </strong>
+                        {' '}đánh giá
+                      </span>
+
+                      <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300">
+                        <span className="text-[11px] text-slate-500">Số dòng:</span>
+                        <select
+                          value={reviewPageSize}
+                          onChange={(e) => {
+                            setReviewPageSize(Number(e.target.value));
+                            setReviewPage(1);
+                          }}
+                          className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#2D5A27] cursor-pointer"
+                        >
+                          <option value={10}>10 / trang</option>
+                          <option value={20}>20 / trang</option>
+                          <option value={50}>50 / trang</option>
+                          <option value={100}>100 / trang</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Phải: Các nút điều hướng trang */}
+                    {totalReviewPages > 1 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setReviewPage(1)}
+                          disabled={currentReviewPage === 1}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Về trang đầu"
+                        >
+                          <ChevronsLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReviewPage((prev) => Math.max(1, prev - 1))}
+                          disabled={currentReviewPage === 1}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Trang trước"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Danh sách các số trang */}
+                        {(() => {
+                          const pages: number[] = [];
+                          const maxVisible = 5;
+                          let start = Math.max(1, currentReviewPage - Math.floor(maxVisible / 2));
+                          let end = Math.min(totalReviewPages, start + maxVisible - 1);
+                          if (end - start + 1 < maxVisible) {
+                            start = Math.max(1, end - maxVisible + 1);
+                          }
+                          for (let i = start; i <= end; i++) {
+                            pages.push(i);
+                          }
+                          return pages.map((pageNum) => (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => setReviewPage(pageNum)}
+                              className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                pageNum === currentReviewPage
+                                  ? 'bg-[#2D5A27] text-white shadow-xs'
+                                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          ));
+                        })()}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReviewPage((prev) => Math.min(totalReviewPages, prev + 1))
+                          }
+                          disabled={currentReviewPage === totalReviewPages}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Trang sau"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReviewPage(totalReviewPages)}
+                          disabled={currentReviewPage === totalReviewPages}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 cursor-pointer"
+                          title="Đến trang cuối"
+                        >
+                          <ChevronsRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
               </div>
             </div>
           )}
@@ -13405,16 +13850,40 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Link Google Maps Embed (iframe bản đồ nhúng):
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Link Google Maps Embed (iframe bản đồ nhúng):
+                    </label>
+                    {editingBranch.dia_chi?.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const query = editingBranch.dia_chi?.trim() || editingBranch.ten_chi_nhanh?.trim() || '';
+                          const autoUrl = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+                          setEditingBranch((prev) => ({ ...prev, link_ggmap_embed: autoUrl }));
+                          showNotification('success', 'Đã tự động tạo link nhúng Google Maps theo địa chỉ chi nhánh!');
+                        }}
+                        className="text-[11px] font-semibold text-[#2D5A27] hover:underline cursor-pointer"
+                      >
+                        ⚡ Tự tạo theo địa chỉ
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={editingBranch.link_ggmap_embed || ''}
-                    onChange={(e) => setEditingBranch((prev) => ({ ...prev, link_ggmap_embed: e.target.value }))}
+                    onChange={(e) => {
+                      let val = e.target.value.trim();
+                      const match = val.match(/src=["']([^"']+)["']/i);
+                      if (match) val = match[1];
+                      setEditingBranch((prev) => ({ ...prev, link_ggmap_embed: val }));
+                    }}
                     className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none font-mono text-[11px]"
-                    placeholder="https://www.google.com/maps/embed?pb=..."
+                    placeholder="Dán link hoặc cả mã iframe Google Maps (ví dụ: https://maps.google.com/...)"
                   />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    💡 Nếu để trống, hệ thống sẽ tự động ghim bản đồ theo đúng địa chỉ đã nhập ở trên.
+                  </p>
                 </div>
 
                 {/* KHỐI ẢNH ĐẠI DIỆN & CẮT CHỈNH INTERACTIVE (ẢNH BÊN TRÁI, Ô VUÔNG KÉO CẮT) */}
@@ -16063,6 +16532,61 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                 </label>
               </div>
 
+              {/* Phản hồi từ bệnh viện PetM&M */}
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                    <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Phản hồi từ bệnh viện PetM&M</span>
+                  </label>
+                  {parseReviewReply(editingReview as any) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingReview((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                noi_dung_en: attachReplyTag(prev.noi_dung_en, null),
+                              }
+                            : null
+                        );
+                      }}
+                      className="text-[10px] text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Xóa phản hồi
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={3}
+                  value={parseReviewReply(editingReview as any)?.reply || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const existingReply = parseReviewReply(editingReview as any);
+                    setEditingReview((prev) => {
+                      if (!prev) return null;
+                      const newNoiDungEn = attachReplyTag(
+                        prev.noi_dung_en,
+                        val.trim()
+                          ? {
+                              reply: val,
+                              replier: existingReply?.replier || 'PetM&M',
+                              date: existingReply?.date || new Date().toISOString().split('T')[0],
+                            }
+                          : null
+                      );
+                      return {
+                        ...prev,
+                        noi_dung_en: newNoiDungEn,
+                      };
+                    });
+                  }}
+                  placeholder="Nhập nội dung phản hồi chính thức từ PetM&M để hiển thị trên web..."
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                />
+              </div>
+
               {/* Modal Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
                 <button
@@ -16083,6 +16607,237 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
               </div>
             </form>
           </AdminResizableModal>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 8.1. MODAL PHẢN HỒI ĐÁNH GIÁ CỦA BỆNH VIỆN PETM&M         */}
+      {/* ========================================================= */}
+      {replyingReview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setReplyingReview(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
+          >
+            {/* Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-emerald-800 to-teal-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center text-white shadow-xs">
+                  <MessageSquareQuote className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base leading-tight">
+                    Phản Hồi Đánh Giá Khách Hàng
+                  </h3>
+                  <p className="text-[11px] text-emerald-100/80 font-medium">
+                    Phản hồi chính thức sẽ hiển thị công khai trên website
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyingReview(null)}
+                className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <form onSubmit={handleSaveReply} className="p-5 overflow-y-auto space-y-4">
+              {/* Thanh chuyển đổi ngôn ngữ & Nút dịch AI */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setReplyModalTab('vi')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      replyModalTab === 'vi'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <VietnamFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản Tiếng Việt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReplyModalTab('en')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      replyModalTab === 'en'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <UKFlag className="w-4 h-3 rounded-[2px]" />
+                    <span>Bản English</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAutoTranslateReply}
+                  disabled={isTranslatingReply}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer"
+                  title="Dịch tự động phản hồi sang Tiếng Anh chuyên nghiệp bằng AI"
+                >
+                  {isTranslatingReply ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslatingReply ? 'Đang chuyển đổi...' : 'Chuyển đổi ENG'}</span>
+                </button>
+              </div>
+
+              {/* Thẻ xem trước đánh giá của khách */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full overflow-hidden bg-slate-200 border border-slate-300 shrink-0">
+                      <img
+                        src={replyingReview.hinh_anh_thu_cung || '/pet_golden_spa.jpg'}
+                        alt={replyingReview.ten_khach_hang}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-slate-900 leading-none">
+                        {replyingReview.ten_khach_hang}
+                      </p>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {replyingReview.so_dien_thoai}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 text-amber-500">
+                    {[...Array(replyingReview.so_sao || 5)].map((_, i) => (
+                      <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded-lg border border-slate-200/60 leading-relaxed">
+                  &ldquo;{replyingReview.noi_dung}&rdquo;
+                </p>
+              </div>
+
+              {/* Input ẩn người trả lời (mặc định PetM&M) & Ô ngày phản hồi */}
+              <input type="hidden" value={replyForm.replier} />
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Ngày phản hồi:
+                </label>
+                <input
+                  type="date"
+                  value={replyForm.date}
+                  onChange={(e) => setReplyForm((prev) => ({ ...prev, date: e.target.value }))}
+                  className="w-full sm:w-1/2 text-xs px-3 py-2 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none"
+                />
+              </div>
+
+              {/* Ô nhập nội dung phản hồi theo tab ngôn ngữ */}
+              {replyModalTab === 'vi' ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nội dung phản hồi (Tiếng Việt): <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={replyForm.reply}
+                    onChange={(e) => setReplyForm((prev) => ({ ...prev, reply: e.target.value }))}
+                    placeholder="Nhập lời cảm ơn, giải đáp hoặc phản hồi chính thức từ PetM&M..."
+                    className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                    required
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nội dung phản hồi (English):
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={replyForm.reply_en}
+                    onChange={(e) => setReplyForm((prev) => ({ ...prev, reply_en: e.target.value }))}
+                    placeholder="Enter official hospital response in English..."
+                    className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 focus:border-[#2D5A27] focus:outline-none resize-none leading-relaxed"
+                  />
+                </div>
+              )}
+
+              {/* Gợi ý mẫu phản hồi nhanh (đã bỏ tiêu đề, hiển thị nội dung trực tiếp) */}
+              {replyModalTab === 'vi' && (
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>Mẫu câu gợi ý nhanh:</span>
+                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      'Dạ PetM&M chân thành cảm ơn ba mẹ đã tin tưởng gửi gắm bé yêu. Chúc bé luôn ngoan ngoãn và khỏe mạnh nhé ạ!',
+                      'Dạ PetM&M cảm ơn quý khách đã dành thời gian đánh giá dịch vụ. Đội ngũ y bác sĩ sẽ luôn nỗ lực để mang đến trải nghiệm Fear-Free tốt nhất cho các bé!',
+                      'PetM&M rất vui vì được chăm sóc cho bé cưng! Hẹn gặp lại ba mẹ và bé trong các lần thăm khám và spa định kỳ sắp tới nhé ạ!',
+                    ].map((text, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setReplyForm((prev) => ({ ...prev, reply: text }))}
+                        className="text-left text-[11px] p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-900 transition cursor-pointer"
+                      >
+                        <p className="line-clamp-2 leading-relaxed">&ldquo;{text}&rdquo;</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                {parseReviewReply(replyingReview) ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteReply}
+                    disabled={isSavingReply}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-semibold transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa phản hồi</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReplyingReview(null)}
+                    disabled={isSavingReply}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    Hủy Bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingReply}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#2D5A27] hover:bg-[#23481e] text-white text-xs font-bold shadow-md transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSavingReply ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isSavingReply ? 'Đang lưu...' : 'Lưu Phản Hồi'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

@@ -306,6 +306,9 @@ export interface DanhGiaRecord {
   da_xac_thuc?: boolean | null;
   thu_tu?: number | null;
   kich_hoat?: boolean | null;
+  phan_hoi?: string | null;
+  nguoi_phan_hoi?: string | null;
+  ngay_phan_hoi?: string | null;
   ngay_tao?: string;
   ngay_cap_nhat?: string;
 }

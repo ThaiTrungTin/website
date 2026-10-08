@@ -28,32 +28,6 @@ export default async function DanhGiaDichVuDetailPage({ params }: Props) {
     notFound();
   }
 
-  // Hỗ trợ mã DEMO hoặc placeholder cho kiểm duyệt viên Zalo ZNS
-  const isDemoOrPlaceholder = 
-    cleanId.toLowerCase() === 'demo' || 
-    cleanId.toLowerCase() === 'test' || 
-    cleanId === '<demo>' ||
-    cleanId === '<review_code>' || 
-    cleanId.toLowerCase() === 'review_code' ||
-    cleanId.startsWith('demo-');
-
-  if (isDemoOrPlaceholder) {
-    const demoRecord: import('@/lib/supabase').YeuCauDanhGiaRecord = {
-      id: 'demo-sample-id',
-      ma_danh_gia: cleanId,
-      ten_khach_hang: 'Khách hàng Trải nghiệm (Bản xem trước Zalo)',
-      so_dien_thoai: '0934395168',
-      co_so: 'Bệnh viện thú y PetM&M',
-      trang_thai: 'cho_danh_gia',
-      ngay_tao: new Date().toISOString(),
-    };
-    return (
-      <DanhGiaDichVuClient
-        initialRecord={demoRecord}
-        branchAddress="19 Đ. Số 1, Phường Phước Long, TP. Thủ Đức, TP. Hồ Chí Minh"
-      />
-    );
-  }
 
   // Truy vấn kiểm tra mã đánh giá từ cơ sở dữ liệu
   const { data: record, error } = await supabaseAdmin

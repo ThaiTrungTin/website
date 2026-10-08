@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   ThumbsUp,
   Maximize2,
   X,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase, DanhGiaRecord } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
+import { parseReviewReply, stripReplyTag } from '@/lib/reviewReply';
 import ScrollRevealTitle from './ScrollRevealTitle';
 import CustomFilterDropdown from './CustomFilterDropdown';
 import { getAssetUrl } from '@/lib/assets';
@@ -30,7 +32,7 @@ const DEFAULT_REVIEWS: DanhGiaRecord[] = [
     noi_dung:
       'Bé Bông nhà mình bị viêm da cơ địa dai dẳng chữa nhiều nơi không dứt. Đến PetM&M được bác sĩ soi da và lên phác đồ tắm thủy liệu thảo mộc ozone kết hợp dinh dưỡng. Sau 3 tuần lông bé mọc lại dày mượt, hết hẳn ngứa. Bác sĩ và các bạn điều dưỡng cực kỳ nhẹ nhàng, cưng bé như người nhà!',
     noi_dung_en:
-      'My pet Bong suffered from persistent atopic dermatitis that couldn\'t be cured elsewhere. Coming to PetM&M, the veterinarian examined his skin and designed an ozone herbal hydrotherapy regimen combined with nutrition. After 3 weeks, his coat grew back thick and glossy, with no itching left. The doctors and nurses are extremely gentle, treating him like family!',
+      'My pet Bong suffered from persistent atopic dermatitis that couldn\'t be cured elsewhere. Coming to PetM&M, the veterinarian examined his skin and designed an ozone herbal hydrotherapy regimen combined with nutrition. After 3 weeks, his coat grew back thick and glossy, with no itching left. The doctors and nurses are extremely gentle, treating him like family!\n\n[PETMM_REPLY:{"reply":"Dạ PetM&M chân thành cảm ơn chị Minh Thư! Chúc bé Bông luôn ngoan khỏe và đáng yêu nhé ạ.","replier":"PetM&M","date":"2026-10-02"}]',
     dich_vu_su_dung: 'Spa Thủy Liệu & Trị Liệu Da Thảo Mộc',
     dich_vu_su_dung_en: 'Hydrotherapy & Herbal Skin Therapy',
     chi_nhanh: 'Chi nhánh Quận 7',
@@ -203,12 +205,12 @@ function formatReviewTime(time: string | null | undefined, timeEn: string | null
 }
 
 function getReviewContent(rev: DanhGiaRecord, isEn: boolean): string {
-  let enText = (rev.noi_dung_en || '').trim();
+  let enText = stripReplyTag(rev.noi_dung_en || '').trim();
   if (enText.includes('Được tạo bởi:') || enText.includes('User:')) {
     enText = '';
   }
 
-  let text = isEn && enText ? enText : (rev.noi_dung || '').trim();
+  let text = isEn && enText ? enText : stripReplyTag(rev.noi_dung || '').trim();
 
   if (!text || text.startsWith('Khách hàng đánh giá dịch vụ') || text.includes('dịch vụ 5 sao tại PetM&M')) {
     return isEn
@@ -231,12 +233,19 @@ export default function ReviewsSection() {
   // Mở rộng Xem thêm / Thu gọn cho từng review
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
 
+  // Mở rộng / Thu gọn phản hồi người bán (Shopee-style 1 dòng)
+  const [expandedReplyMap, setExpandedReplyMap] = useState<Record<string, boolean>>({});
+  const toggleReplyExpand = (id: string) => {
+    setExpandedReplyMap((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Lightbox xem ảnh to toàn màn hình
   const [lightboxData, setLightboxData] = useState<{
     url: string;
     author: string;
     content: string;
     stars: number;
+    reply?: { reply: string; reply_en?: string; replier: string; date?: string } | null;
   } | null>(null);
 
   // Lượt thích (Hữu ích kiểu Google Maps)
@@ -245,8 +254,6 @@ export default function ReviewsSection() {
 
   // Cuộn ngang
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
 
   // Tải danh sách đánh giá từ Supabase và lắng nghe realtime
   useEffect(() => {
@@ -346,27 +353,44 @@ export default function ReviewsSection() {
     });
   }, [reviews, starFilter, imageFilter]);
 
-  const checkScroll = () => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    setCanScrollLeft(scrollLeft > 10);
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-  };
-
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
+  // Nhân bản danh sách đánh giá để tạo vòng lặp mượt mà không bao giờ bị đứt đoạn (1 -> 10 -> 1 -> 10)
+  const loopReviews = useMemo(() => {
+    if (filteredReviews.length === 0) return [];
+    let items = [...filteredReviews];
+    while (items.length < 8) {
+      items = [...items, ...filteredReviews];
+    }
+    return items;
   }, [filteredReviews]);
 
+  // Tự động tính thời gian chu kỳ dựa theo số lượng thẻ:
+  // Mỗi thẻ đánh giá trôi qua mất đúng ~6.8 giây -> Tốc độ pixel/giây luôn luôn CỐ ĐỊNH
+  // Dù có 8, 20 hay 100 đánh giá thì tốc độ lướt trước mắt người xem vẫn không bao giờ bị nhanh lên!
+  const marqueeDuration = useMemo(() => {
+    const count = loopReviews.length;
+    if (count === 0) return 68;
+    return Math.max(30, Math.round(count * 6.8));
+  }, [loopReviews]);
+
+  // Tạm dừng marquee khi hover trực tiếp vào thẻ hoặc bấm nút điều hướng
+  const [isMarqueePaused, setIsMarqueePaused] = useState(false);
+  const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const scroll = (direction: 'left' | 'right') => {
-    if (!scrollRef.current) return;
-    const scrollAmount = 300;
-    scrollRef.current.scrollBy({
+    const el = scrollRef.current;
+    if (!el) return;
+
+    setIsMarqueePaused(true);
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    resumeTimeoutRef.current = setTimeout(() => {
+      setIsMarqueePaused(false);
+    }, 2500);
+
+    const scrollAmount = 320;
+    el.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth',
     });
-    setTimeout(checkScroll, 350);
   };
 
   const toggleExpand = (id: string) => {
@@ -398,6 +422,253 @@ export default function ReviewsSection() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const renderReviewCard = (rev: DanhGiaRecord, uniqueKey: string) => {
+    const clientName =
+      isEn && rev.ten_khach_hang_en ? rev.ten_khach_hang_en : rev.ten_khach_hang;
+    const contentText = getReviewContent(rev, isEn);
+    const isLongText = (contentText || '').length > 85;
+    const isExpanded = !!expandedMap[rev.id];
+    const hasImage = Boolean(
+      rev.hinh_anh_thu_cung && rev.hinh_anh_thu_cung.trim() !== ''
+    );
+    const userLiked = !!userLikedMap[rev.id];
+    const likeCount = likesMap[rev.id] || 0;
+
+    return (
+      <div
+        key={uniqueKey}
+        onMouseEnter={() => {
+          setIsMarqueePaused(true);
+          if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+        }}
+        onMouseLeave={() => {
+          setIsMarqueePaused(false);
+        }}
+        onTouchStart={() => {
+          setIsMarqueePaused(true);
+          if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+        }}
+        onTouchEnd={() => {
+          if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+          resumeTimeoutRef.current = setTimeout(() => {
+            setIsMarqueePaused(false);
+          }, 2000);
+        }}
+        className="group/card relative bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200/90 shadow-2xs hover:shadow-xl hover:border-emerald-300 hover:-translate-y-2.5 transition-all duration-300 ease-out flex flex-col justify-between min-w-[260px] sm:min-w-[285px] max-w-[285px] sm:max-w-[305px] shrink-0 cursor-pointer z-10 hover:z-30 select-text"
+      >
+        <div>
+          {/* 1. Header Google Maps nhỏ gọn: Avatar chữ cái + Tên + Badge xác thực */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getAvatarColor(
+                  clientName
+                )} flex items-center justify-center text-white font-bold text-xs shadow-2xs shrink-0 select-none`}
+              >
+                {getAvatarInitial(clientName)}
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 truncate leading-snug">
+                  {clientName}
+                </h3>
+                <div className="flex items-center gap-1 text-[10px] text-slate-500 font-light leading-none">
+                  {/* SĐT auto ẩn 4 số cuối và viết liền nhau */}
+                  {rev.so_dien_thoai && (
+                    <span className="font-mono whitespace-nowrap">
+                      {formatMaskedPhone(rev.so_dien_thoai)}
+                    </span>
+                  )}
+                  {rev.chi_nhanh && (
+                    <>
+                      <span>•</span>
+                      <span className="truncate max-w-[100px]">
+                        {rev.chi_nhanh}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {rev.da_xac_thuc && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60 shrink-0">
+                <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                <span>{isEn ? 'Verified' : 'Đã xác thực'}</span>
+              </span>
+            )}
+          </div>
+
+          {/* 2. Dòng sao vàng Google Maps & Ngày */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center gap-0.5">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3 h-3 ${
+                    i < (rev.so_sao || 5)
+                      ? 'fill-[#fbbc04] text-[#fbbc04]'
+                      : 'fill-slate-200 text-slate-200'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400">
+              {formatReviewTime(rev.ngay_danh_gia, rev.ngay_danh_gia_en, isEn)}
+            </span>
+          </div>
+
+          {/* 3. Nội dung nhận xét: 2 DÒNG, CHỮ XEM THÊM NẰM NGAY CUỐI DÒNG 2 */}
+          <div className="text-[12px] text-slate-700 leading-relaxed font-light mb-2.5">
+            {isLongText && !isExpanded ? (
+              <p>
+                &ldquo;{contentText.slice(0, 75).trim()}...{' '}
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(rev.id)}
+                  className="text-[#1a73e8] hover:underline font-semibold text-[11px] inline cursor-pointer focus:outline-hidden whitespace-nowrap"
+                >
+                  {isEn ? 'Xem thêm' : 'Xem thêm'}
+                </button>
+                &rdquo;
+              </p>
+            ) : (
+              <p>
+                &ldquo;{contentText}&rdquo;
+                {isLongText && isExpanded && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(rev.id)}
+                      className="text-[#1a73e8] hover:underline font-semibold text-[11px] inline cursor-pointer focus:outline-hidden whitespace-nowrap ml-1"
+                    >
+                      {isEn ? 'Thu gọn' : 'Thu gọn'}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+
+          {/* 4. Hình ảnh bự ra rõ nét nhưng thấp gọn (h-28 sm:h-32), bấm vào phóng to */}
+          {hasImage && rev.hinh_anh_thu_cung && (
+            <div className="mb-2.5">
+              <div
+                onClick={() =>
+                  setLightboxData({
+                    url: rev.hinh_anh_thu_cung || '',
+                    author: clientName,
+                    content: contentText || '',
+                    stars: rev.so_sao || 5,
+                    reply: parseReviewReply(rev),
+                  })
+                }
+                className="relative h-28 sm:h-32 w-full rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group/img cursor-pointer shadow-2xs hover:shadow-xs transition-all"
+              >
+                <Image
+                  src={getAssetUrl(rev.hinh_anh_thu_cung)}
+                  alt={`Hình ảnh đánh giá từ ${clientName}`}
+                  fill
+                  sizes="(max-width: 768px) 260px, 300px"
+                  className="object-cover group-hover/img:scale-105 transition-transform duration-200"
+                />
+
+                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/70 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs">
+                    <Maximize2 className="w-2.5 h-2.5" />
+                    <span>{isEn ? 'View photo' : 'Xem ảnh to'}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Phản hồi chính thức phong cách Shopee: viền mảnh, không tô màu nền, 1 dòng có mũi tên lên/xuống thu phóng */}
+          {(() => {
+            const reply = parseReviewReply(rev);
+            if (!reply) return null;
+            const isExpanded = !!expandedReplyMap[rev.id];
+            const replyText = isEn && reply.reply_en ? reply.reply_en : reply.reply;
+            return (
+              <div className="mt-2.5 mb-2 rounded-lg border border-slate-200/90 bg-white/70 hover:bg-slate-50/50 transition-all p-2.5 text-[11px]">
+                <div
+                  onClick={() => toggleReplyExpand(rev.id)}
+                  className="flex items-center justify-between gap-1.5 cursor-pointer select-none"
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-slate-800 text-[11px]">
+                    <span className="text-[#2D5A27]">↳</span>
+                    <span>
+                      {isEn ? 'Seller Response' : `Phản Hồi Của ${reply.replier || 'PetM&M'}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-slate-400">
+                    {reply.date && (
+                      <span className="text-[10px] font-mono">
+                        {formatReviewTime(reply.date, reply.date, isEn)}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={isExpanded ? 'Thu gọn phản hồi' : 'Xem thêm phản hồi'}
+                      className="p-0.5 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => toggleReplyExpand(rev.id)}
+                  className="mt-1 cursor-pointer"
+                >
+                  <p
+                    className={`text-slate-600 leading-relaxed pl-2.5 border-l-2 border-slate-200 italic ${
+                      isExpanded ? '' : 'line-clamp-1'
+                    }`}
+                  >
+                    &ldquo;{replyText}&rdquo;
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* 5. Footer Google Maps: Nút Hữu ích & Dịch vụ */}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => handleLike(rev.id)}
+            className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border transition-all cursor-pointer ${
+              userLiked
+                ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <ThumbsUp
+              className={`w-2.5 h-2.5 ${
+                userLiked ? 'fill-blue-600 text-blue-600' : 'text-slate-500'
+              }`}
+            />
+            <span>{isEn ? 'Helpful' : 'Hữu ích'}</span>
+            {likeCount > 0 && <span>({likeCount})</span>}
+          </button>
+
+          {rev.dich_vu_su_dung && (
+            <span className="text-[9px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60 truncate max-w-[140px]">
+              {rev.dich_vu_su_dung}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <section
@@ -514,243 +785,58 @@ export default function ReviewsSection() {
           </div>
         </div>
 
-        {/* Khung Carousel Cuộn ngang với nút điều hướng */}
-        <div className="relative group/carousel">
-          {/* Nút lướt qua trái */}
-          <button
-            type="button"
-            onClick={() => scroll('left')}
-            disabled={!canScrollLeft}
-            aria-label={isEn ? 'Previous reviews' : 'Xem đánh giá trước'}
-            className={`hidden sm:flex absolute -left-2 sm:-left-4 lg:-left-5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
-              canScrollLeft
-                ? 'bg-white/95 border-slate-200 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white hover:scale-105 active:scale-95 shadow-lg'
-                : 'bg-white/60 border-slate-200 text-slate-300 opacity-0 pointer-events-none'
-            }`}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+        {/* Khung cuộn ngang: Tự động chạy chậm rãi vô tận + Hỗ trợ lướt nhanh bằng tay & Nút điều hướng <> */}
+        {filteredReviews.length === 0 ? (
+          <div className="bg-white rounded-xl border border-dashed border-slate-200 p-8 text-center text-slate-500 text-xs sm:text-sm">
+            {isEn
+              ? 'No reviews match your selected filters.'
+              : 'Không tìm thấy đánh giá nào phù hợp với bộ lọc đã chọn.'}
+          </div>
+        ) : (
+          <div className="relative group/carousel w-full">
+            {/* Nút lướt qua trái */}
+            <button
+              type="button"
+              onClick={() => scroll('left')}
+              aria-label={isEn ? 'Previous reviews' : 'Xem đánh giá trước'}
+              className="flex absolute -left-2 sm:-left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center border border-slate-200 bg-white/95 text-slate-700 shadow-md hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white transition-all duration-200 cursor-pointer active:scale-95"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
 
-          {/* Nút lướt qua phải */}
-          <button
-            type="button"
-            onClick={() => scroll('right')}
-            disabled={!canScrollRight}
-            aria-label={isEn ? 'Next reviews' : 'Xem đánh giá tiếp theo'}
-            className={`hidden sm:flex absolute -right-2 sm:-right-4 lg:-right-5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full items-center justify-center border transition-all cursor-pointer shadow-md backdrop-blur-xs ${
-              canScrollRight
-                ? 'bg-white/95 border-slate-200 text-slate-800 hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white hover:scale-105 active:scale-95 shadow-lg'
-                : 'bg-white/60 border-slate-200 text-slate-300 opacity-0 pointer-events-none'
-            }`}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            {/* Nút lướt qua phải */}
+            <button
+              type="button"
+              onClick={() => scroll('right')}
+              aria-label={isEn ? 'Next reviews' : 'Xem đánh giá tiếp theo'}
+              className="flex absolute -right-2 sm:-right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center border border-slate-200 bg-white/95 text-slate-700 shadow-md hover:bg-[#2D5A27] hover:border-[#2D5A27] hover:text-white transition-all duration-200 cursor-pointer active:scale-95"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
 
-          {/* Danh sách thẻ đánh giá CUỘN NGANG (Kích thước nhỏ gọn & thấp) */}
-          {filteredReviews.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200/90 p-8 text-center text-slate-500">
-              <p className="text-xs sm:text-sm">
-                {isEn
-                  ? 'No reviews match the selected filters.'
-                  : 'Không có đánh giá nào phù hợp với bộ lọc này.'}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setStarFilter('all');
-                  setImageFilter('all');
-                }}
-                className="mt-2 text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
-              >
-                {isEn ? 'Reset filters' : 'Đặt lại bộ lọc'}
-              </button>
-            </div>
-          ) : (
+            {/* Dải thẻ cuộn ngang mượt mà: GPU marquee không bị khựng, hỗ trợ vuốt tay & lướt bằng nút <> */}
             <div
               ref={scrollRef}
-              onScroll={checkScroll}
-              className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth pb-3 -mx-4 px-4 sm:mx-0 sm:px-0"
+              className="flex overflow-x-auto pt-3.5 pb-4 px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-x-contain"
             >
-              {filteredReviews.map((rev) => {
-                const clientName =
-                  isEn && rev.ten_khach_hang_en ? rev.ten_khach_hang_en : rev.ten_khach_hang;
-                const contentText = getReviewContent(rev, isEn);
-                const isLongText = (contentText || '').length > 85;
-                const isExpanded = !!expandedMap[rev.id];
-                const hasImage = Boolean(
-                  rev.hinh_anh_thu_cung && rev.hinh_anh_thu_cung.trim() !== ''
-                );
-                const userLiked = !!userLikedMap[rev.id];
-                const likeCount = likesMap[rev.id] || 0;
-
-                return (
-                  <div
-                    key={rev.id}
-                    className="group relative bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200/90 shadow-2xs hover:shadow-sm transition-all duration-200 flex flex-col justify-between min-w-[260px] sm:min-w-[285px] max-w-[285px] sm:max-w-[305px] snap-start shrink-0"
-                  >
-                    <div>
-                      {/* 1. Header Google Maps nhỏ gọn: Avatar chữ cái + Tên + Badge xác thực */}
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getAvatarColor(
-                              clientName
-                            )} flex items-center justify-center text-white font-bold text-xs shadow-2xs shrink-0 select-none`}
-                          >
-                            {getAvatarInitial(clientName)}
-                          </div>
-
-                          <div className="min-w-0">
-                            <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 truncate leading-snug">
-                              {clientName}
-                            </h3>
-                            <div className="flex items-center gap-1 text-[10px] text-slate-500 font-light leading-none">
-                              {/* SĐT auto ẩn 4 số cuối và viết liền nhau */}
-                              {rev.so_dien_thoai && (
-                                <span className="font-mono whitespace-nowrap">
-                                  {formatMaskedPhone(rev.so_dien_thoai)}
-                                </span>
-                              )}
-                              {rev.chi_nhanh && (
-                                <>
-                                  <span>•</span>
-                                  <span className="truncate max-w-[100px]">
-                                    {rev.chi_nhanh}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {rev.da_xac_thuc && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60 shrink-0">
-                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
-                            <span>{isEn ? 'Verified' : 'Đã xác thực'}</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* 2. Dòng sao vàng Google Maps & Ngày */}
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <div className="flex items-center gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3 h-3 ${
-                                i < (rev.so_sao || 5)
-                                  ? 'fill-[#fbbc04] text-[#fbbc04]'
-                                  : 'fill-slate-200 text-slate-200'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-slate-400">
-                          {formatReviewTime(rev.ngay_danh_gia, rev.ngay_danh_gia_en, isEn)}
-                        </span>
-                      </div>
-
-                      {/* 3. Nội dung nhận xét: 2 DÒNG, CHỮ XEM THÊM NẰM NGAY CUỐI DÒNG 2 */}
-                      <div className="text-[12px] text-slate-700 leading-relaxed font-light mb-2.5">
-                        {isLongText && !isExpanded ? (
-                          <p>
-                            &ldquo;{contentText.slice(0, 75).trim()}...{' '}
-                            <button
-                              type="button"
-                              onClick={() => toggleExpand(rev.id)}
-                              className="text-[#1a73e8] hover:underline font-semibold text-[11px] inline cursor-pointer focus:outline-hidden whitespace-nowrap"
-                            >
-                              {isEn ? 'Xem thêm' : 'Xem thêm'}
-                            </button>
-                            &rdquo;
-                          </p>
-                        ) : (
-                          <p>
-                            &ldquo;{contentText}&rdquo;
-                            {isLongText && isExpanded && (
-                              <>
-                                {' '}
-                                <button
-                                  type="button"
-                                  onClick={() => toggleExpand(rev.id)}
-                                  className="text-[#1a73e8] hover:underline font-semibold text-[11px] inline cursor-pointer focus:outline-hidden whitespace-nowrap ml-1"
-                                >
-                                  {isEn ? 'Thu gọn' : 'Thu gọn'}
-                                </button>
-                              </>
-                            )}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* 4. Hình ảnh bự ra rõ nét nhưng thấp gọn (h-28 sm:h-32), bấm vào phóng to */}
-                      {hasImage && rev.hinh_anh_thu_cung && (
-                        <div className="mb-2.5">
-                          <div
-                            onClick={() =>
-                              setLightboxData({
-                                url: rev.hinh_anh_thu_cung || '',
-                                author: clientName,
-                                content: contentText || '',
-                                stars: rev.so_sao || 5,
-                              })
-                            }
-                            className="relative h-28 sm:h-32 w-full rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group/img cursor-pointer shadow-2xs hover:shadow-xs transition-all"
-                          >
-                            <Image
-                              src={getAssetUrl(rev.hinh_anh_thu_cung)}
-                              alt={`Hình ảnh đánh giá từ ${clientName}`}
-                              fill
-                              sizes="(max-width: 768px) 260px, 300px"
-                              className="object-cover group-hover/img:scale-105 transition-transform duration-200"
-                            />
-
-                            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-center justify-center">
-                              <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/70 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs">
-                                <Maximize2 className="w-2.5 h-2.5" />
-                                <span>{isEn ? 'View photo' : 'Xem ảnh to'}</span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 5. Footer Google Maps: Nút Hữu ích & Dịch vụ */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => handleLike(rev.id)}
-                        className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border transition-all cursor-pointer ${
-                          userLiked
-                            ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <ThumbsUp
-                          className={`w-2.5 h-2.5 ${
-                            userLiked ? 'fill-blue-600 text-blue-600' : 'text-slate-500'
-                          }`}
-                        />
-                        <span>{isEn ? 'Helpful' : 'Hữu ích'}</span>
-                        {likeCount > 0 && <span>({likeCount})</span>}
-                      </button>
-
-                      {rev.dich_vu_su_dung && (
-                        <span className="text-[9px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60 truncate max-w-[140px]">
-                          {rev.dich_vu_su_dung}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              <div
+                style={{ animationDuration: `${marqueeDuration}s` }}
+                className={`flex gap-3 sm:gap-4 w-max animate-reviews-marquee ${
+                  isMarqueePaused ? 'is-paused' : ''
+                }`}
+              >
+                {loopReviews.map((rev, index) =>
+                  renderReviewCard(rev, `batch1-${rev.id}-${index}`)
+                )}
+                {loopReviews.map((rev, index) =>
+                  renderReviewCard(rev, `batch2-${rev.id}-${index}`)
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Lightbox Modal Phóng to toàn màn hình */}
       {lightboxData && (
         <div
           role="dialog"
@@ -817,6 +903,24 @@ export default function ReviewsSection() {
                 <p className="text-[11px] sm:text-xs text-slate-300 line-clamp-2 leading-relaxed">
                   &ldquo;{lightboxData.content}&rdquo;
                 </p>
+              )}
+
+              {lightboxData.reply && (
+                <div className="mt-2.5 p-2.5 rounded-lg border border-slate-700 bg-slate-800/80 text-slate-200 text-[11px] leading-relaxed">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="font-bold text-emerald-400">
+                      ↳ {isEn ? 'Seller Response' : `Phản Hồi Của ${lightboxData.reply.replier || 'PetM&M'}`}
+                    </span>
+                    {lightboxData.reply.date && (
+                      <span className="text-slate-400 text-[10px] font-mono">
+                        {formatReviewTime(lightboxData.reply.date, lightboxData.reply.date, isEn)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="italic text-slate-300 pl-2.5 border-l-2 border-emerald-500/60">
+                    &ldquo;{isEn && lightboxData.reply.reply_en ? lightboxData.reply.reply_en : lightboxData.reply.reply}&rdquo;
+                  </p>
+                </div>
               )}
             </div>
           </div>

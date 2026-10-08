@@ -915,3 +915,26 @@ body {
   will-change: transform;
 }
 
+/* Reviews Infinite Marquee (Trượt mượt mà vô tận từ phải sang trái 1 -> 10 -> 1 -> 10) */
+@keyframes reviewsMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-reviews-marquee {
+  display: flex;
+  width: max-content;
+  animation: reviewsMarquee 68s linear infinite;
+  will-change: transform;
+}
+
+.animate-reviews-marquee:hover,
+.animate-reviews-marquee:has(.group\/card:hover),
+.animate-reviews-marquee.is-paused {
+  animation-play-state: paused !important;
+}
+
