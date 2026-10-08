@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
+import { logAuditServer, AuditAction, AuditCategory } from '@/lib/auditLogger';
 
 const ALLOWED_TABLES = new Set([
   'bai_viet',
@@ -11,6 +12,26 @@ const ALLOWED_TABLES = new Set([
   'cau_hoi_thuong_gap',
   'hinh_anh',
 ]);
+
+const TABLE_CATEGORY_MAP: Record<string, AuditCategory> = {
+  chi_nhanh: 'Chi nhánh',
+  dich_vu: 'Dịch vụ',
+  bai_viet: 'Cẩm nang',
+  doi_ngu_y_te: 'Đội ngũ',
+  danh_gia: 'Đánh giá',
+  cau_hoi_thuong_gap: 'Hỏi đáp',
+  hinh_anh: 'Hệ thống',
+};
+
+const TABLE_LABEL_MAP: Record<string, string> = {
+  chi_nhanh: 'chi nhánh',
+  dich_vu: 'dịch vụ',
+  bai_viet: 'bài viết cẩm nang',
+  doi_ngu_y_te: 'bác sĩ / nhân sự y tế',
+  danh_gia: 'đánh giá khách hàng',
+  cau_hoi_thuong_gap: 'câu hỏi thường gặp FAQ',
+  hinh_anh: 'hình ảnh / slide giới thiệu',
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,10 +55,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const category = TABLE_CATEGORY_MAP[table] || 'Hệ thống';
+    const label = TABLE_LABEL_MAP[table] || table;
+    const userName = currentUser.ho_ten || currentUser.username;
+
     if (action === 'insert') {
       const dataToInsert = Array.isArray(payload) ? payload : [payload];
       const { data, error } = await supabaseAdmin.from(table).insert(dataToInsert).select();
       if (error) throw error;
+
+      const firstItem = dataToInsert[0] || {};
+      const itemName = firstItem.ten || firstItem.tieu_de || firstItem.cau_hoi || firstItem.ho_ten || '';
+      await logAuditServer({
+        nguoi_thuc_hien: userName,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'THEM',
+        chuyen_muc: category,
+        chi_tiet: `Thêm mới ${label}${itemName ? `: "${itemName}"` : ''}`,
+        du_lieu_thay_doi: { inserted: data },
+      });
+
       return NextResponse.json({ success: true, data });
     }
 
@@ -45,13 +82,43 @@ export async function POST(req: NextRequest) {
       if (!id) throw new Error('Thiếu ID bản ghi để cập nhật');
       const { data, error } = await supabaseAdmin.from(table).update(payload).eq('id', id).select();
       if (error) throw error;
+
+      const itemName = payload.ten || payload.tieu_de || payload.cau_hoi || payload.ho_ten || '';
+      await logAuditServer({
+        nguoi_thuc_hien: userName,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'SUA',
+        chuyen_muc: category,
+        chi_tiet: `Cập nhật ${label}${itemName ? `: "${itemName}"` : ` (Mã #${id.slice(0, 8)})`}`,
+        du_lieu_thay_doi: { id, updates: payload },
+      });
+
       return NextResponse.json({ success: true, data });
     }
 
     if (action === 'delete') {
       if (!id) throw new Error('Thiếu ID bản ghi để xóa');
+      
+      // Lấy thông tin bản ghi trước khi xóa để ghi tên cụ thể
+      const { data: existingItem } = await supabaseAdmin
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { error } = await supabaseAdmin.from(table).delete().eq('id', id);
       if (error) throw error;
+
+      const itemName = existingItem?.ten || existingItem?.tieu_de || existingItem?.cau_hoi || existingItem?.ho_ten || '';
+      await logAuditServer({
+        nguoi_thuc_hien: userName,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'XOA',
+        chuyen_muc: category,
+        chi_tiet: `Xóa ${label}${itemName ? `: "${itemName}"` : ` (Mã #${id.slice(0, 8)})`}`,
+        du_lieu_thay_doi: { id, deleted: existingItem },
+      });
+
       return NextResponse.json({ success: true });
     }
 
@@ -64,11 +131,23 @@ export async function POST(req: NextRequest) {
         .neq('id', id);
 
       // 2. Bật cơ sở chính ở chi nhánh được chọn
-      const { error } = await supabaseAdmin
+      const { data: updatedBranch, error } = await supabaseAdmin
         .from('chi_nhanh')
         .update({ la_co_so_chinh: true, ngay_cap_nhat: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
       if (error) throw error;
+
+      await logAuditServer({
+        nguoi_thuc_hien: userName,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'CAU_HINH',
+        chuyen_muc: 'Chi nhánh',
+        chi_tiet: `Thiết lập "${updatedBranch?.ten || 'Chi nhánh'}" làm Cơ sở chính (Trụ sở trung tâm)`,
+        du_lieu_thay_doi: { branchId: id },
+      });
+
       return NextResponse.json({ success: true });
     }
 

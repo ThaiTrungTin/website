@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
+import { logAuditServer } from '@/lib/auditLogger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -139,6 +140,41 @@ export async function POST(req: NextRequest) {
         );
       }
       systemData = data;
+    }
+
+    // Ghi nhật ký hoạt động
+    const changedFields = [
+      ...Object.keys(systemPayload).filter((k) => k !== 'ngay_cap_nhat'),
+      ...Object.keys(extraPayload),
+    ];
+    if (changedFields.length > 0) {
+      const fieldLabels: Record<string, string> = {
+        hotline: 'Hotline',
+        hotline_hien_thi: 'Hotline hiển thị',
+        link_zalo: 'Link Zalo',
+        link_facebook: 'Facebook',
+        link_messenger: 'Messenger',
+        email: 'Email liên hệ',
+        dia_chi_chinh: 'Địa chỉ chính',
+        slogan_dau_trang_noi_dung: 'Slogan đầu trang',
+        slogan_cuoi_trang_noi_dung: 'Slogan cuối trang',
+        smtp_email: 'SMTP Email',
+        zalo_oa_id: 'Zalo OA',
+      };
+      const summaryLabels =
+        changedFields
+          .slice(0, 3)
+          .map((k) => fieldLabels[k] || k)
+          .join(', ') + (changedFields.length > 3 ? ` và ${changedFields.length - 3} mục khác` : '');
+
+      await logAuditServer({
+        nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+        vai_tro: currentUser.vai_tro,
+        hanh_dong: 'CAU_HINH',
+        chuyen_muc: 'Cấu hình',
+        chi_tiet: `Cập nhật cài đặt hệ thống (${summaryLabels})`,
+        du_lieu_thay_doi: { fields: changedFields },
+      });
     }
 
     return NextResponse.json({

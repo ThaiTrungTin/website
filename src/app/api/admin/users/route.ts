@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
 import { sendMail } from '@/lib/mailer';
+import { logAuditServer } from '@/lib/auditLogger';
 
 // GET: Lấy danh sách tất cả nhân sự / tài khoản quản trị
 export async function GET(req: NextRequest) {
@@ -239,6 +240,16 @@ export async function POST(req: NextRequest) {
       console.warn('Lỗi chuẩn bị email khởi tạo tài khoản:', err?.message || err);
     }
 
+    // Ghi nhật ký hoạt động
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'THEM',
+      chuyen_muc: 'Tài khoản',
+      chi_tiet: `Khởi tạo tài khoản nhân sự mới: "${cleanName}" (${cleanEmail}) với vai trò ${roleDisplayName}`,
+      du_lieu_thay_doi: { email: cleanEmail, ho_ten: cleanName, vai_tro: roleDisplayName },
+    });
+
     return NextResponse.json({
       success: true,
       message: `Đã tạo tài khoản thành công! Thông tin đăng nhập đang được gửi ngầm đến ${cleanEmail}.`,
@@ -321,6 +332,19 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // Ghi nhật ký hoạt động
+    const actionDetails = [];
+    if (vai_tro !== undefined) actionDetails.push(`vai trò = ${meta.vai_tro}`);
+    if (trang_thai !== undefined) actionDetails.push(`trạng thái = ${meta.trang_thai === 'locked' ? 'Đã khóa' : 'Đang hoạt động'}`);
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'SUA',
+      chuyen_muc: 'Tài khoản',
+      chi_tiet: `Cập nhật tài khoản "${targetUser.user_metadata?.ho_ten || targetUser.email}" (${actionDetails.join(', ')})`,
+      du_lieu_thay_doi: { id, updates: meta },
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Cập nhật tài khoản thành công!',
@@ -385,6 +409,16 @@ export async function DELETE(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Ghi nhật ký hoạt động
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'XOA',
+      chuyen_muc: 'Tài khoản',
+      chi_tiet: `Xóa vĩnh viễn tài khoản nhân sự: "${targetUser?.user_metadata?.ho_ten || targetUser?.email}" (${targetUser?.email})`,
+      du_lieu_thay_doi: { deletedUserId: userId, email: targetUser?.email },
+    });
 
     return NextResponse.json({
       success: true,

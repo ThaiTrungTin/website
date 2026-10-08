@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateToken, AdminUser } from '@/lib/adminAuth';
+import { logAuditServer } from '@/lib/auditLogger';
 
 // In-memory rate limiting chống dò mật khẩu brute-force
 const loginAttemptsMap = new Map<string, { count: number; lockedUntil: number }>();
@@ -132,6 +133,20 @@ export async function POST(req: NextRequest) {
     // 3. Tạo token phiên đăng nhập an toàn
     const token = generateToken(authenticatedUser);
     const redirectUrl = authenticatedUser.vai_tro === 'user' ? '/taodanhgia' : '/admin';
+
+    // Ghi nhật ký đăng nhập
+    const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
+    const userAgent = req.headers.get('user-agent') || '';
+    await logAuditServer({
+      nguoi_thuc_hien: authenticatedUser.ho_ten || authenticatedUser.username,
+      vai_tro: authenticatedUser.vai_tro,
+      hanh_dong: 'DANG_NHAP',
+      chuyen_muc: 'Tài khoản',
+      chi_tiet: `Đăng nhập thành công vào hệ thống (${authenticatedUser.vai_tro === 'user' ? 'Cổng Tạo Đánh Giá' : 'Trang Quản Trị'})`,
+      du_lieu_thay_doi: { username: authenticatedUser.username },
+      ip_address: clientIp,
+      user_agent: userAgent,
+    });
 
     const res = NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
+import { logAuditServer } from '@/lib/auditLogger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -73,6 +74,15 @@ export async function POST(req: NextRequest) {
         },
       });
     }
+
+    // Ghi nhật ký đổi mật khẩu
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'SUA',
+      chuyen_muc: 'Tài khoản',
+      chi_tiet: `Đổi mật khẩu tài khoản (${currentUser.username})`,
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
+import { logAuditServer } from '@/lib/auditLogger';
 
 export async function GET(req: NextRequest) {
   try {
@@ -77,6 +78,16 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Ghi nhật ký hoạt động
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'THEM',
+      chuyen_muc: 'Tuyển dụng',
+      chi_tiet: `Thêm vị trí tuyển dụng mới: "${body.tieu_de}"`,
+      du_lieu_thay_doi: { id: data.id, tieu_de: body.tieu_de },
+    });
 
     return NextResponse.json({
       success: true,
@@ -233,6 +244,16 @@ export async function DELETE(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Ghi nhật ký hoạt động
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'XOA',
+      chuyen_muc: 'Tuyển dụng',
+      chi_tiet: `Xóa vị trí tuyển dụng (Mã #${id.slice(0, 8)})`,
+      du_lieu_thay_doi: { deletedJobId: id },
+    });
 
     return NextResponse.json({
       success: true,

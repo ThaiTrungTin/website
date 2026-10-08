@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { verifyToken } from '@/lib/adminAuth';
+import { logAuditServer } from '@/lib/auditLogger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -82,6 +83,18 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // Ghi nhật ký hoạt động
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: updates.trang_thai ? 'XU_LY' : 'SUA',
+      chuyen_muc: 'Tuyển dụng',
+      chi_tiet: updates.trang_thai
+        ? `Đổi trạng thái hồ sơ ứng viên "${data.ho_ten || 'Ứng viên'}" (${data.vi_tri || '—'}) sang "${updates.trang_thai}"`
+        : `Cập nhật hồ sơ ứng viên "${data.ho_ten || 'Ứng viên'}"`,
+      du_lieu_thay_doi: { id, updates },
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Cập nhật hồ sơ thành công!',
@@ -118,6 +131,13 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Lấy thông tin ứng viên trước khi xóa để ghi nhật ký
+    const { data: existingApp } = await supabaseAdmin
+      .from('ho_so_tuyen_dung')
+      .select('ho_ten, email, so_dien_thoai, vi_tri')
+      .eq('id', id)
+      .single();
+
     const { error } = await supabaseAdmin
       .from('ho_so_tuyen_dung')
       .delete()
@@ -130,6 +150,16 @@ export async function DELETE(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Ghi nhật ký hoạt động
+    await logAuditServer({
+      nguoi_thuc_hien: currentUser.ho_ten || currentUser.username,
+      vai_tro: currentUser.vai_tro,
+      hanh_dong: 'XOA',
+      chuyen_muc: 'Tuyển dụng',
+      chi_tiet: `Xóa hồ sơ ứng viên "${existingApp?.ho_ten || 'Ứng viên'}" (${existingApp?.vi_tri || '—'})`,
+      du_lieu_thay_doi: { deleted: existingApp },
+    });
 
     return NextResponse.json({
       success: true,

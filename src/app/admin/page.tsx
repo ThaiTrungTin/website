@@ -110,6 +110,7 @@ import AdminNotificationFailureToast, {
   NotificationFailureItem,
 } from '@/components/AdminNotificationFailureToast';
 import AdminNotificationLogsManager from '@/components/AdminNotificationLogsManager';
+import AdminAuditLogsManager from '@/components/AdminAuditLogsManager';
 
 // ── BẢNG ICON RUNG PHONG CÁCH ZALO ──
 export interface VibratingEmojiItem {
@@ -253,7 +254,7 @@ function SloganInlineEditor({
   );
 }
 
-type AdminTab = 'dashboard' | 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff';
+type AdminTab = 'dashboard' | 'banners' | 'branches' | 'services' | 'appointments' | 'faqs' | 'reviews' | 'team' | 'articles' | 'config' | 'staff' | 'audit_logs';
 export type ConfigSubTab = 'contact' | 'email' | 'zalo' | 'spam' | 'notification-logs' | 'about' | 'slides' | 'stats' | 'slogans' | 'announcement' | 'privacy';
 
 // ── LOGOUT CONFIRMATION MODAL ──────────────────────────────────────────────
@@ -6075,6 +6076,7 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
     articles: { title: 'Quản Lý Cẩm Nang & Bài Viết', category: 'Tin Tức & Kiến Thức', icon: BookOpen },
     config: { title: 'Cài Đặt Hệ Thống', category: 'Cài Đặt', icon: Settings },
     staff: { title: 'Quản Lý Nhân Sự & Tài Khoản', category: 'Quản Trị Hệ Thống', icon: Users },
+    audit_logs: { title: 'Nhật Ký Hoạt Động & Vận Hành', category: 'Quản Trị Hệ Thống', icon: Activity },
   };
 
   const subTabTitles: Record<ConfigSubTab, string> = {
@@ -6586,6 +6588,29 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
                     }`}
                   />
                   <span>Nhân Sự &amp; Tài Khoản</span>
+                </div>
+              </button>
+
+              {/* Nhật Ký Hoạt Động */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('audit_logs');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group cursor-pointer ${
+                  activeTab === 'audit_logs'
+                    ? 'bg-[#2D5A27] text-white shadow-sm shadow-[#2D5A27]/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Activity
+                    className={`w-4 h-4 transition ${
+                      activeTab === 'audit_logs' ? 'text-amber-300' : 'text-slate-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span>Nhật Ký Hoạt Động</span>
                 </div>
               </button>
             </nav>
@@ -12373,6 +12398,13 @@ function formatReviewCreatorInfo(rev: DanhGiaRecord): string {
           {/* TAB NHÂN SỰ: QUẢN LÝ TÀI KHOẢN & NHÂN SỰ HỆ THỐNG        */}
           {/* ========================================================= */}
           {activeTab === 'staff' && <StaffManagementTab currentUser={currentUser} showNotification={showNotification} />}
+
+          {/* ========================================================= */}
+          {/* TAB NHẬT KÝ HOẠT ĐỘNG: AUDIT LOGS QUẢN TRỊ VIÊN         */}
+          {/* ========================================================= */}
+          {activeTab === 'audit_logs' && (
+            <AdminAuditLogsManager currentUser={currentUser} showNotification={showNotification} />
+          )}
 
           {/* ========================================================= */}
           {/* TAB 8: QUẢN LÝ BÀI VIẾT & CẨM NANG KIẾN THỨC             */}
