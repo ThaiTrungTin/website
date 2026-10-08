@@ -353,8 +353,8 @@ export default function ReviewsSection() {
     });
   }, [reviews, starFilter, imageFilter]);
 
-  // Nhân bản danh sách đánh giá để tạo vòng lặp mượt mà không bao giờ bị đứt đoạn (1 -> 10 -> 1 -> 10)
-  const loopReviews = useMemo(() => {
+  // Đảm bảo danh sách cơ sở có ít nhất 8 thẻ để bao phủ toàn bộ chiều rộng màn hình lớn
+  const baseReviews = useMemo(() => {
     if (filteredReviews.length === 0) return [];
     let items = [...filteredReviews];
     while (items.length < 8) {
@@ -363,22 +363,82 @@ export default function ReviewsSection() {
     return items;
   }, [filteredReviews]);
 
-  // Tự động tính thời gian chu kỳ dựa theo số lượng thẻ:
-  // Mỗi thẻ đánh giá trôi qua mất đúng ~6.8 giây -> Tốc độ pixel/giây luôn luôn CỐ ĐỊNH
-  // Dù có 8, 20 hay 100 đánh giá thì tốc độ lướt trước mắt người xem vẫn không bao giờ bị nhanh lên!
-  const marqueeDuration = useMemo(() => {
-    const count = loopReviews.length;
-    if (count === 0) return 68;
-    return Math.max(30, Math.round(count * 6.8));
-  }, [loopReviews]);
-
-  // Tạm dừng marquee khi hover trực tiếp vào thẻ hoặc bấm nút điều hướng
+  // Điều khiển tự động cuộn vô tận mượt mà (Continuous Infinite Loop) bằng requestAnimationFrame
   const [isMarqueePaused, setIsMarqueePaused] = useState(false);
+  const isPausedRef = useRef(false);
+  const posRef = useRef(0);
+  const set1Ref = useRef<HTMLDivElement>(null);
+  const set2Ref = useRef<HTMLDivElement>(null);
   const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Đồng bộ ref với state
+  useEffect(() => {
+    isPausedRef.current = isMarqueePaused;
+  }, [isMarqueePaused]);
+
+  // Reset vị trí cuộn khi đổi bộ lọc
+  useEffect(() => {
+    posRef.current = 0;
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, [starFilter, imageFilter]);
+
+  // Vòng lặp cuộn tự động mượt mà bằng requestAnimationFrame, không bao giờ bị đứt đoạn hay nhảy giật
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || baseReviews.length === 0) return;
+
+    let animId: number;
+    let lastTime = performance.now();
+    // Tốc độ ~0.55px/frame tại 60Hz (~33px/s) - êm ái, vừa vặn để đọc
+    const speed = 0.55;
+
+    const tick = (now: number) => {
+      const delta = Math.min(now - lastTime, 50);
+      lastTime = now;
+
+      if (set1Ref.current && set2Ref.current && el) {
+        const loopDistance = set2Ref.current.offsetLeft - set1Ref.current.offsetLeft;
+
+        if (loopDistance > 0) {
+          if (!isPausedRef.current) {
+            posRef.current += speed * (delta / 16.67);
+
+            // Nối vòng hoàn hảo: khi đi hết độ dài Batch 1, quay về đầu với khoảng cách chuẩn xác 100%
+            if (posRef.current >= loopDistance) {
+              posRef.current -= loopDistance;
+            }
+
+            el.scrollLeft = posRef.current;
+          } else {
+            // Khi đang tạm dừng (hoặc người dùng đang lướt tay), giữ posRef đồng bộ với scroll thực tế
+            posRef.current = el.scrollLeft;
+            if (posRef.current >= loopDistance * 2) {
+              posRef.current -= loopDistance;
+              el.scrollLeft = posRef.current;
+            } else if (posRef.current < 0) {
+              posRef.current += loopDistance;
+              el.scrollLeft = posRef.current;
+            }
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(tick);
+    };
+
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [baseReviews]);
+
+  // Xử lý nút bấm điều hướng <> mượt mà và không bao giờ bị hết danh sách
   const scroll = (direction: 'left' | 'right') => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || !set1Ref.current || !set2Ref.current) return;
+
+    const loopDistance = set2Ref.current.offsetLeft - set1Ref.current.offsetLeft;
+    if (loopDistance <= 0) return;
 
     setIsMarqueePaused(true);
     if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
@@ -386,11 +446,24 @@ export default function ReviewsSection() {
       setIsMarqueePaused(false);
     }, 2500);
 
-    const scrollAmount = 320;
-    el.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
+    const scrollAmount = 300;
+    let target = el.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+
+    if (target < 0) {
+      target += loopDistance;
+      el.scrollLeft += loopDistance;
+      posRef.current = el.scrollLeft;
+    } else if (target >= loopDistance * 2) {
+      target -= loopDistance;
+      el.scrollLeft -= loopDistance;
+      posRef.current = el.scrollLeft;
+    }
+
+    el.scrollTo({
+      left: target,
       behavior: 'smooth',
     });
+    posRef.current = target;
   };
 
   const toggleExpand = (id: string) => {
@@ -814,23 +887,32 @@ export default function ReviewsSection() {
               <ChevronRight className="w-4 h-4" />
             </button>
 
-            {/* Dải thẻ cuộn ngang mượt mà: GPU marquee không bị khựng, hỗ trợ vuốt tay & lướt bằng nút <> */}
+            {/* Dải thẻ cuộn ngang mượt mà: GPU requestAnimationFrame loop vô tận, hỗ trợ vuốt tay & lướt bằng nút <> */}
             <div
               ref={scrollRef}
               className="flex overflow-x-auto pt-3.5 pb-4 px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-x-contain"
             >
-              <div
-                style={{ animationDuration: `${marqueeDuration}s` }}
-                className={`flex gap-3 sm:gap-4 w-max animate-reviews-marquee ${
-                  isMarqueePaused ? 'is-paused' : ''
-                }`}
-              >
-                {loopReviews.map((rev, index) =>
-                  renderReviewCard(rev, `batch1-${rev.id}-${index}`)
-                )}
-                {loopReviews.map((rev, index) =>
-                  renderReviewCard(rev, `batch2-${rev.id}-${index}`)
-                )}
+              <div className="flex gap-3 sm:gap-4 w-max">
+                {/* Batch 1: Thẻ gốc */}
+                <div ref={set1Ref} className="flex gap-3 sm:gap-4 shrink-0">
+                  {baseReviews.map((rev, index) =>
+                    renderReviewCard(rev, `batch1-${rev.id}-${index}`)
+                  )}
+                </div>
+
+                {/* Batch 2: Nối vòng liền mạch */}
+                <div ref={set2Ref} className="flex gap-3 sm:gap-4 shrink-0" aria-hidden="true">
+                  {baseReviews.map((rev, index) =>
+                    renderReviewCard(rev, `batch2-${rev.id}-${index}`)
+                  )}
+                </div>
+
+                {/* Batch 3: Đệm trơn tru cho màn hình siêu rộng */}
+                <div className="flex gap-3 sm:gap-4 shrink-0" aria-hidden="true">
+                  {baseReviews.map((rev, index) =>
+                    renderReviewCard(rev, `batch3-${rev.id}-${index}`)
+                  )}
+                </div>
               </div>
             </div>
           </div>
